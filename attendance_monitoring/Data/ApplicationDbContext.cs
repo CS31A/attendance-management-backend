@@ -1,3 +1,4 @@
+using attendance_monitoring.Classes;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
@@ -9,5 +10,7 @@ namespace attendance_monitoring.Data
         public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) : base(options)
         {
         }
+        
+        public DbSet<Student> Students { get; set; }
     }
 }

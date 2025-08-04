@@ -79,15 +79,15 @@ builder.Services.AddAuthentication(options =>
 // builder.Services.AddScoped<IStudentRepository, Student>();
 // builder.Services.AddScoped<ILoginRepository, Login>();
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen(c =>
-{
-    c.SwaggerDoc("v1", new OpenApiInfo
-    {
-        Title = "Attendance Monitoring API",
-        Version = "v1",
-        Description = "API for the web and mobile frontends to retrieve data from."
-    });
-});
+// builder.Services.AddSwaggerGen(c =>
+// {
+//     c.SwaggerDoc("v1", new OpenApiInfo
+//     {
+//         Title = "Attendance Monitoring API",
+//         Version = "v1",
+//         Description = "API for the web and mobile frontends to retrieve data from."
+//     });
+// });
 
 var app = builder.Build();
 

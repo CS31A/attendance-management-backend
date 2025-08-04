@@ -11,6 +11,16 @@ namespace attendance_monitoring.Controllers
     [Route("api/[controller]")]
     public class AccountController(UserManager<IdentityUser> userManager, IConfiguration configuration) : ControllerBase
     {
+        [HttpGet("db-check")]
+        public async Task<IActionResult> DbCheck([FromServices] IConfiguration cfg)
+        {
+            var cs = cfg.GetConnectionString("DefaultConnection");
+            await using var conn = new Microsoft.Data.SqlClient.SqlConnection(cs);
+            await conn.OpenAsync();
+            await using var cmd = new Microsoft.Data.SqlClient.SqlCommand("SELECT 1", conn);
+            var result = (int)await cmd.ExecuteScalarAsync();
+            return Ok(new { connected = result == 1 });
+        }
         [HttpPost("register")]
         public async Task<IActionResult> Register([FromBody] LoginRequest request)
         {
