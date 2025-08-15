@@ -8,11 +8,32 @@ namespace attendance_monitoring.Controllers;
 [Route("api/[controller]")]
 public class StudentController : ControllerBase
 {
+    private readonly IStudentRepository _studentRepository;
 
-    private IStudentRepository student;
-
-    public StudentController(IStudentRepository student)
+    public StudentController(IStudentRepository studentRepository)
     {
-        this.student = student;
+        _studentRepository = studentRepository;
+    }
+
+    // GET: api/Student
+    [HttpGet]
+    public async Task<ActionResult<IEnumerable<Student>>> GetStudents()
+    {
+        var students = await _studentRepository.GetAllStudentsAsync();
+        return Ok(students);
+    }
+
+    // GET: api/Student/5
+    [HttpGet("{id}")]
+    public async Task<ActionResult<Student>> GetStudent(string id)
+    {
+        var student = await _studentRepository.GetStudentByIdAsync(id);
+
+        if (student == null)
+        {
+            return NotFound();
+        }
+
+        return Ok(student);
     }
 }
