@@ -1,4 +1,5 @@
 using attendance_monitoring.Data;
+using attendance_monitoring.Repositories;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.AspNetCore.Identity;
@@ -76,18 +77,11 @@ builder.Services.AddAuthentication(options =>
         IssuerSigningKey = new SymmetricSecurityKey(System.Text.Encoding.UTF8.GetBytes(builder.Configuration["AppSettings:Token"]!))
     };
 });
-// builder.Services.AddScoped<IStudentRepository, Student>();
-// builder.Services.AddScoped<ILoginRepository, Login>();
+
+// Register repositories
+builder.Services.AddScoped<IStudentRepository, StudentRepository>();
+
 builder.Services.AddEndpointsApiExplorer();
-// builder.Services.AddSwaggerGen(c =>
-// {
-//     c.SwaggerDoc("v1", new OpenApiInfo
-//     {
-//         Title = "Attendance Monitoring API",
-//         Version = "v1",
-//         Description = "API for the web and mobile frontends to retrieve data from."
-//     });
-// });
 
 var app = builder.Build();
 

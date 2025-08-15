@@ -1,8 +1,6 @@
-using attendance_monitoring.Repositories;
-
 namespace attendance_monitoring.Classes;
 
-public class Student : IStudentRepository
+public class Student
 {
    public string Id { get; set; }
    public string Firstname { get; set; }
