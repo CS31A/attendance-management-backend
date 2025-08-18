@@ -12,8 +12,8 @@ using attendance_monitoring.Data;
 namespace attendance_monitoring.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20250804140634_Init")]
-    partial class Init
+    [Migration("20250815060022_InitialCreateWithIntId")]
+    partial class InitialCreateWithIntId
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -225,8 +225,11 @@ namespace attendance_monitoring.Migrations
 
             modelBuilder.Entity("attendance_monitoring.Classes.Student", b =>
                 {
-                    b.Property<string>("Id")
-                        .HasColumnType("nvarchar(450)");
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
