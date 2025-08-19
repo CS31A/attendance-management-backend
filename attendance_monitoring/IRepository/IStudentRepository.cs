@@ -7,7 +7,7 @@ namespace attendance_monitoring.Repositories;
 
 public interface IStudentRepository
 {
-    Task<IEnumerable<Student>> GetAllStudentsAsync();
+    Task<IEnumerable<Student>> GetAllStudentsAsync(PaginationQuery paginationQuery);
     Task<Student?> GetStudentByIdAsync(int id);
     Task<Student> CreateStudent(Student student);
     Task<int> SaveChangesAsync();
