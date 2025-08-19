@@ -19,9 +19,9 @@ public class StudentController : ControllerBase
 
     // GET: api/Student
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<Student>>> GetStudents()
+    public async Task<ActionResult<IEnumerable<Student>>> GetStudents([FromQuery] PaginationQuery paginationQuery)
     {
-        var students = await _studentRepository.GetAllStudentsAsync();
+        var students = await _studentRepository.GetAllStudentsAsync(paginationQuery);
         return Ok(students);
     }
 

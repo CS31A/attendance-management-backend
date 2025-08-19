@@ -17,9 +17,13 @@ public class StudentRepository : IStudentRepository
         _context = context;
     }
 
-    public async Task<IEnumerable<Student>> GetAllStudentsAsync()
+    public async Task<IEnumerable<Student>> GetAllStudentsAsync(PaginationQuery paginationQuery)
     {
-        return await _context.Students.ToListAsync();
+        // return await _context.Students.ToListAsync();
+        return await _context.Students
+            .Skip((paginationQuery.PageNumber - 1) * paginationQuery.PageSize)
+            .Take(paginationQuery.PageSize)
+            .ToListAsync();
     }
 
     public async Task<Student?> GetStudentByIdAsync(int id)
