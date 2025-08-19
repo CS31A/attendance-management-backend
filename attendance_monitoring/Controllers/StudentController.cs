@@ -3,9 +3,11 @@ using attendance_monitoring.Models.Request;
 using attendance_monitoring.Repositories;
 using Microsoft.AspNetCore.Mvc;
 using System;
+using Microsoft.AspNetCore.Authorization;
 
 namespace attendance_monitoring.Controllers;
 
+[Authorize]
 [ApiController]
 [Route("api/[controller]")]
 public class StudentController : ControllerBase
