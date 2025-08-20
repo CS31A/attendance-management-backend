@@ -5,11 +5,13 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
-
 using Microsoft.IdentityModel.Tokens;
-
 using Microsoft.OpenApi.Models;
 using Scalar.AspNetCore;
+using DotNetEnv;
+
+// Load environment variables from .env file
+DotNetEnv.Env.Load();
 
 var builder = WebApplication.CreateBuilder(args);
 
