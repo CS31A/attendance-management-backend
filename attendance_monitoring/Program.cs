@@ -1,4 +1,5 @@
 using attendance_monitoring.Data;
+using attendance_monitoring.Classes;
 using attendance_monitoring.Repositories;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
