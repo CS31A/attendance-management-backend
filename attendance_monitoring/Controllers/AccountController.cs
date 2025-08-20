@@ -5,6 +5,8 @@ using System.ComponentModel.DataAnnotations;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
+using attendance_monitoring.Classes;
+using attendance_monitoring.Data;
 
 namespace attendance_monitoring.Controllers
 {
@@ -16,17 +18,20 @@ namespace attendance_monitoring.Controllers
         private readonly SignInManager<IdentityUser> _signInManager;
         private readonly RoleManager<IdentityRole> _roleManager;
         private readonly IConfiguration _configuration;
+        private readonly ApplicationDbContext _context;
 
         public AccountController(
             UserManager<IdentityUser> userManager,
             SignInManager<IdentityUser> signInManager,
             RoleManager<IdentityRole> roleManager,
-            IConfiguration configuration)
+            IConfiguration configuration,
+            ApplicationDbContext context)
         {
             _userManager = userManager;
             _signInManager = signInManager;
             _roleManager = roleManager;
             _configuration = configuration;
+            _context = context;
         }
 
         // POST: api/account/register
@@ -99,6 +104,23 @@ namespace attendance_monitoring.Controllers
 
             await _userManager.AddToRoleAsync(user, roleToAssign);
 
+            // If the user is a student, also create a student record
+            if (roleToAssign.Equals("Student", StringComparison.OrdinalIgnoreCase))
+            {
+                var student = new Student
+                {
+                    Firstname = registerDto.Firstname ?? "",
+                    Lastname = registerDto.Lastname ?? "",
+                    Email = registerDto.Email,
+                    UserId = user.Id,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                };
+
+                _context.Students.Add(student);
+                await _context.SaveChangesAsync();
+            }
+
             return Ok(new { Message = $"User registered successfully with {roleToAssign} role" });
         }
 
@@ -170,6 +192,16 @@ namespace attendance_monitoring.Controllers
         [Required(ErrorMessage = "Username is required")]
         [StringLength(50, ErrorMessage = "Username must be between 3 and 50 characters", MinimumLength = 3)]
         public string Username { get; set; } = string.Empty;
+
+        /// <summary>
+        /// First name of the user (optional)
+        /// </summary>
+        public string? Firstname { get; set; }
+
+        /// <summary>
+        /// Last name of the user (optional)
+        /// </summary>
+        public string? Lastname { get; set; }
 
         /// <summary>
         /// Email address for the new account

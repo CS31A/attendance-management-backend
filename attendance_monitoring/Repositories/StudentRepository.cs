@@ -31,6 +31,11 @@ public class StudentRepository : IStudentRepository
         return await _context.Students.FindAsync(id);
     }
 
+    public async Task<Student?> GetStudentByUserIdAsync(string userId)
+    {
+        return await _context.Students.FirstOrDefaultAsync(s => s.UserId == userId);
+    }
+
     public async Task<Student> CreateStudent(Student student)
     {
         var entry = await _context.Students.AddAsync(student);
