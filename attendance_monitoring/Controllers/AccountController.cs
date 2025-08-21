@@ -159,7 +159,7 @@ namespace attendance_monitoring.Controllers
                 new Claim(JwtRegisteredClaimNames.Sub, user.UserName ?? string.Empty),
                 new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
                 new Claim(ClaimTypes.NameIdentifier, user.Id),
-                new Claim(ClaimTypes.Name, user.UserName ?? string.Empty)
+                new Claim(ClaimTypes.Name, user.UserName!)
             };
 
             // Add roles as claims

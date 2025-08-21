@@ -5,6 +5,9 @@ using Microsoft.AspNetCore.Mvc;
 using System;
 using Microsoft.AspNetCore.Authorization;
 using System.Security.Claims;
+using System.IdentityModel.Tokens.Jwt;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity;
 
 namespace attendance_monitoring.Controllers;
 
@@ -51,8 +54,32 @@ public class StudentController : ControllerBase
             return BadRequest(ModelState);
         }
 
-        // Get the current user's ID from claims
+        // Get the current user's ID from claims - prioritize NameIdentifier claim which contains the actual user ID
         var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        
+        if (!string.IsNullOrEmpty(userId) && userId == User.FindFirst(ClaimTypes.Name)?.Value)
+        {
+            var username = userId; 
+            var userManager = HttpContext.RequestServices.GetService<UserManager<IdentityUser>>();
+            if (userManager != null)
+            {
+                var user = await userManager.FindByNameAsync(username);
+                if (user != null)
+                {
+                    userId = user.Id;
+                }
+            }
+        }
+        
+        if (string.IsNullOrEmpty(userId))
+        {
+            userId = User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
+        }
+        
+        if (string.IsNullOrEmpty(userId))
+        {
+            userId = User.FindFirst(ClaimTypes.Name)?.Value;
+        }
         
         if (string.IsNullOrEmpty(userId))
         {
@@ -83,5 +110,87 @@ public class StudentController : ControllerBase
         await _studentRepository.SaveChangesAsync();
         
         return CreatedAtAction(nameof(GetStudent), new { id = data.Id }, data);
+    }
+    
+    // PATCH: api/Student/{id}
+    [HttpPatch("{id}")]
+    public async Task<ActionResult<Student>> PatchStudent(int id, UpdateStudent updateStudent)
+    {
+        if (!ModelState.IsValid)
+        {
+            return BadRequest(ModelState);
+        }
+
+        // Get the current user's ID from claims - prioritize NameIdentifier claim which contains the actual user ID
+        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        
+        if (!string.IsNullOrEmpty(userId) && userId == User.FindFirst(ClaimTypes.Name)?.Value)
+        {
+            var username = userId;
+            var userManager = HttpContext.RequestServices.GetService<UserManager<IdentityUser>>();
+            if (userManager != null)
+            {
+                var user = await userManager.FindByNameAsync(username);
+                if (user != null)
+                {
+                    userId = user.Id; 
+                }
+            }
+        }
+        
+        if (string.IsNullOrEmpty(userId))
+        {
+            userId = User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
+        }
+        
+        if (string.IsNullOrEmpty(userId))
+        {
+            userId = User.FindFirst(ClaimTypes.Name)?.Value;
+        }
+        
+        if (string.IsNullOrEmpty(userId))
+        {
+            return BadRequest("User ID not found in token");
+        }
+        
+        var existingStudent = await _studentRepository.GetStudentByIdAsync(id);
+        if (existingStudent == null)
+        {
+            return NotFound("Student not found");
+        }
+
+        // Check if the student belongs to the current user OR if the current user is an Admin/Teacher
+        var userRole = User.FindFirst(ClaimTypes.Role)?.Value;
+        
+        var isAuthorized = existingStudent.UserId == userId || 
+                          (userRole != null && (userRole.Equals("Admin", StringComparison.OrdinalIgnoreCase) || 
+                                               userRole.Equals("Teacher", StringComparison.OrdinalIgnoreCase))) ||
+                          userId == existingStudent.UserId; 
+        
+        if (!isAuthorized)
+        {
+            return Unauthorized("You are not authorized to update this student record.");
+        }
+        
+        if (!string.IsNullOrEmpty(updateStudent.Firstname))
+        {
+            existingStudent.Firstname = updateStudent.Firstname;
+        }
+        
+        if (!string.IsNullOrEmpty(updateStudent.Lastname))
+        {
+            existingStudent.Lastname = updateStudent.Lastname;
+        }
+        
+        if (!string.IsNullOrEmpty(updateStudent.Email))
+        {
+            existingStudent.Email = updateStudent.Email;
+        }
+
+        var data = await _studentRepository.UpdateStudentAsync(existingStudent);
+        
+        await _studentRepository.SaveChangesAsync();
+        
+        return Ok(data);
     }
 }
