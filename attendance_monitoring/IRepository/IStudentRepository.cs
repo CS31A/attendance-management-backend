@@ -11,5 +11,6 @@ public interface IStudentRepository
     Task<Student?> GetStudentByIdAsync(int id);
     Task<Student?> GetStudentByUserIdAsync(string userId);
     Task<Student> CreateStudent(Student student);
+    Task<Student> UpdateStudentAsync(Student student);
     Task<int> SaveChangesAsync();
 }
