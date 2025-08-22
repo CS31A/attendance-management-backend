@@ -1,9 +1,9 @@
 using attendance_monitoring.Data;
-using attendance_monitoring.Classes;
+using attendance_monitoring.IServices;
 using attendance_monitoring.IRepository;
 using attendance_monitoring.Repositories;
+using attendance_monitoring.Services;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
@@ -84,6 +84,9 @@ builder.Services.AddAuthentication(options =>
 
 // Register repositories
 builder.Services.AddScoped<IStudentRepository, StudentRepository>();
+
+// Register services
+builder.Services.AddScoped<IStudentService, StudentService>();
 
 builder.Services.AddEndpointsApiExplorer();
 

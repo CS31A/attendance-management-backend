@@ -41,6 +41,7 @@ public class StudentRepository(ApplicationDbContext context) : IStudentRepositor
     {
         student.UpdatedAt = DateTime.UtcNow;
         var entry = context.Students.Update(student);
+        await context.SaveChangesAsync();
         return entry.Entity;
     }
     
