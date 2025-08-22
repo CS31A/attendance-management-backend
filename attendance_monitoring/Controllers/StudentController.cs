@@ -1,5 +1,6 @@
 using attendance_monitoring.Classes;
 using attendance_monitoring.Models.Request;
+using attendance_monitoring.Models.DTO;
 using attendance_monitoring.Repositories;
 using Microsoft.AspNetCore.Mvc;
 using System;

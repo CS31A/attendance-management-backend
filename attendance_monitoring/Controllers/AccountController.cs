@@ -1,39 +1,25 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
-using System.ComponentModel.DataAnnotations;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 using attendance_monitoring.Classes;
 using attendance_monitoring.Data;
+using attendance_monitoring.Models.DTO;
 
 namespace attendance_monitoring.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    public class AccountController : ControllerBase
+    public class AccountController(
+        UserManager<IdentityUser> userManager,
+        SignInManager<IdentityUser> signInManager,
+        RoleManager<IdentityRole> roleManager,
+        IConfiguration configuration,
+        ApplicationDbContext context)
+        : ControllerBase
     {
-        private readonly UserManager<IdentityUser> _userManager;
-        private readonly SignInManager<IdentityUser> _signInManager;
-        private readonly RoleManager<IdentityRole> _roleManager;
-        private readonly IConfiguration _configuration;
-        private readonly ApplicationDbContext _context;
-
-        public AccountController(
-            UserManager<IdentityUser> userManager,
-            SignInManager<IdentityUser> signInManager,
-            RoleManager<IdentityRole> roleManager,
-            IConfiguration configuration,
-            ApplicationDbContext context)
-        {
-            _userManager = userManager;
-            _signInManager = signInManager;
-            _roleManager = roleManager;
-            _configuration = configuration;
-            _context = context;
-        }
-
         // POST: api/account/register
         [HttpPost("register")]
         public async Task<ActionResult<object>> Register(RegisterDto registerDto)
@@ -52,14 +38,14 @@ namespace attendance_monitoring.Controllers
             }
 
             // Check if user already exists
-            var existingUser = await _userManager.FindByNameAsync(registerDto.Username);
+            var existingUser = await userManager.FindByNameAsync(registerDto.Username);
             if (existingUser != null)
             {
                 ModelState.AddModelError("Username", "Username already exists");
                 return BadRequest(ModelState);
             }
 
-            existingUser = await _userManager.FindByEmailAsync(registerDto.Email);
+            existingUser = await userManager.FindByEmailAsync(registerDto.Email);
             if (existingUser != null)
             {
                 ModelState.AddModelError("Email", "Email already exists");
@@ -72,7 +58,7 @@ namespace attendance_monitoring.Controllers
                 Email = registerDto.Email
             };
 
-            var result = await _userManager.CreateAsync(user, registerDto.Password);
+            var result = await userManager.CreateAsync(user, registerDto.Password);
             if (!result.Succeeded)
             {
                 foreach (var error in result.Errors)
@@ -86,9 +72,9 @@ namespace attendance_monitoring.Controllers
             var validRoles = new[] { "Admin", "Teacher", "Student" };
             foreach (var role in validRoles)
             {
-                if (!await _roleManager.RoleExistsAsync(role))
+                if (!await roleManager.RoleExistsAsync(role))
                 {
-                    await _roleManager.CreateAsync(new IdentityRole(role));
+                    await roleManager.CreateAsync(new IdentityRole(role));
                 }
             }
 
@@ -96,13 +82,13 @@ namespace attendance_monitoring.Controllers
             // Default to "Student" role as requested
             var roleToAssign = "Student";
             
-            // If a specific role is provided and it's valid, use that instead
+            // If a specific role is provided, and it's valid, use that instead
             if (!string.IsNullOrEmpty(registerDto.Role) && validRoles.Contains(registerDto.Role, StringComparer.OrdinalIgnoreCase))
             {
                 roleToAssign = registerDto.Role;
             }
 
-            await _userManager.AddToRoleAsync(user, roleToAssign);
+            await userManager.AddToRoleAsync(user, roleToAssign);
 
             // If the user is a student, also create a student record
             if (roleToAssign.Equals("Student", StringComparison.OrdinalIgnoreCase))
@@ -117,8 +103,8 @@ namespace attendance_monitoring.Controllers
                     UpdatedAt = DateTime.UtcNow
                 };
 
-                _context.Students.Add(student);
-                await _context.SaveChangesAsync();
+                context.Students.Add(student);
+                await context.SaveChangesAsync();
             }
 
             return Ok(new { Message = $"User registered successfully with {roleToAssign} role" });
@@ -134,14 +120,14 @@ namespace attendance_monitoring.Controllers
                 return BadRequest(ModelState);
             }
 
-            var user = await _userManager.FindByNameAsync(loginDto.Username);
+            var user = await userManager.FindByNameAsync(loginDto.Username);
             if (user == null)
             {
                 ModelState.AddModelError("Username", "Invalid username or password");
                 return Unauthorized(ModelState);
             }
 
-            var result = await _signInManager.CheckPasswordSignInAsync(user, loginDto.Password, false);
+            var result = await signInManager.CheckPasswordSignInAsync(user, loginDto.Password, false);
             if (!result.Succeeded)
             {
                 ModelState.AddModelError("Password", "Invalid username or password");
@@ -163,86 +149,23 @@ namespace attendance_monitoring.Controllers
             };
 
             // Add roles as claims
-            var roles = await _userManager.GetRolesAsync(user);
+            var roles = await userManager.GetRolesAsync(user);
             foreach (var role in roles)
             {
                 claims.Add(new Claim(ClaimTypes.Role, role));
             }
 
-            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["AppSettings:Token"] ?? string.Empty));
-            var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(configuration["AppSettings:Token"] ?? string.Empty));
+            var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
             var token = new JwtSecurityToken(
-                issuer: _configuration["AppSettings:Issuer"],
-                audience: _configuration["AppSettings:Audience"],
+                issuer: configuration["AppSettings:Issuer"],
+                audience: configuration["AppSettings:Audience"],
                 claims: claims,
                 expires: DateTime.Now.AddMinutes(30),
-                signingCredentials: creds);
+                signingCredentials: credentials);
 
             return new JwtSecurityTokenHandler().WriteToken(token);
         }
-    }
-
-    // DTOs
-    public class RegisterDto
-    {
-        /// <summary>
-        /// Username for the new account
-        /// </summary>
-        [Required(ErrorMessage = "Username is required")]
-        [StringLength(50, ErrorMessage = "Username must be between 3 and 50 characters", MinimumLength = 3)]
-        public string Username { get; set; } = string.Empty;
-
-        /// <summary>
-        /// First name of the user (optional)
-        /// </summary>
-        public string? Firstname { get; set; }
-
-        /// <summary>
-        /// Last name of the user (optional)
-        /// </summary>
-        public string? Lastname { get; set; }
-
-        /// <summary>
-        /// Email address for the new account
-        /// </summary>
-        [Required(ErrorMessage = "Email is required")]
-        [EmailAddress(ErrorMessage = "Invalid email format")]
-        public string Email { get; set; } = string.Empty;
-
-        /// <summary>
-        /// Password for the new account
-        /// </summary>
-        [Required(ErrorMessage = "Password is required")]
-        [StringLength(100, ErrorMessage = "Password must be between 6 and 100 characters", MinimumLength = 6)]
-        public string Password { get; set; } = string.Empty;
-
-        /// <summary>
-        /// Confirmation of the password
-        /// </summary>
-        [Required(ErrorMessage = "Repeated password is required")]
-        [Compare("Password", ErrorMessage = "Passwords do not match")]
-        public string RepeatedPassword { get; set; } = string.Empty;
-
-        /// <summary>
-        /// User role - valid values are: "Student", "Teacher", "Admin"
-        /// Defaults to "Student" if not provided or invalid
-        /// </summary>
-        public string? Role { get; set; }
-    }
-
-    public class LoginDto
-    {
-        /// <summary>
-        /// Username for login
-        /// </summary>
-        [Required(ErrorMessage = "Username is required")]
-        public string Username { get; set; } = string.Empty;
-
-        /// <summary>
-        /// Password for login
-        /// </summary>
-        [Required(ErrorMessage = "Password is required")]
-        public string Password { get; set; } = string.Empty;
     }
 }
