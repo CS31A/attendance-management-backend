@@ -1,4 +1,4 @@
-namespace attendance_monitoring.Models.Response;
+namespace attendance_monitoring.Models.DTO;
 
 public class LoginModel
 {
