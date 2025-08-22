@@ -1,9 +1,7 @@
 using attendance_monitoring.Classes;
-using System.Collections.Generic;
-using System.Threading.Tasks;
 using attendance_monitoring.Models.Request;
 
-namespace attendance_monitoring.Repositories;
+namespace attendance_monitoring.IRepository;
 
 public interface IStudentRepository
 {
