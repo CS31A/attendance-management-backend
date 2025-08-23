@@ -105,6 +105,20 @@ namespace attendance_monitoring.Controllers
 
                 context.Students.Add(student);
                 await context.SaveChangesAsync();
+            } else if (roleToAssign.Equals("Teacher", StringComparison.OrdinalIgnoreCase))
+            {
+                var instructor = new Instructor
+                {
+                    Firstname = registerDto.Firstname ?? "",
+                    Lastname = registerDto.Lastname ?? "",
+                    Email = registerDto.Email,
+                    UserId = user.Id,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                };
+
+                context.Instructors.Add(instructor);
+                await context.SaveChangesAsync();
             }
 
             return Ok(new { Message = $"User registered successfully with {roleToAssign} role" });

@@ -84,9 +84,11 @@ builder.Services.AddAuthentication(options =>
 
 // Register repositories
 builder.Services.AddScoped<IStudentRepository, StudentRepository>();
+builder.Services.AddScoped<IInstructorRepository, InstructorRepository>();
 
 // Register services
 builder.Services.AddScoped<IStudentService, StudentService>();
+builder.Services.AddScoped<IInstructorService, InstructorService>();
 
 builder.Services.AddEndpointsApiExplorer();
 
