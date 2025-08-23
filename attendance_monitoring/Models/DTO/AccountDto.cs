@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using attendance_monitoring.Attributes;
 
 namespace attendance_monitoring.Models.DTO;
 
@@ -26,6 +27,7 @@ public class RegisterDto
     /// </summary>
     [Required(ErrorMessage = "Email is required")]
     [EmailAddress(ErrorMessage = "Invalid email format")]
+    [AllowedEmailDomains(ErrorMessage = "Email domain is not allowed. Please use an email address from an allowed domain.")]
     public string Email { get; set; } = string.Empty;
 
     /// <summary>
