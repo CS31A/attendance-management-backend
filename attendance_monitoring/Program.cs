@@ -82,6 +82,13 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
+builder.Services.AddAuthorization(Options =>
+{
+    Options.AddPolicy("AdminPolicy", policy => policy.RequireRole("Admin"));
+    Options.AddPolicy("PrivilegedPolicy", policy => policy.RequireRole("Admin", "Teacher"));
+    Options.AddPolicy("UserPolicy", policy => policy.RequireRole("Admin", "Teacher", "Student"));
+});
+
 // Register repositories
 builder.Services.AddScoped<IStudentRepository, StudentRepository>();
 builder.Services.AddScoped<IInstructorRepository, InstructorRepository>();
