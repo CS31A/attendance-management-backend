@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace attendance_monitoring.Controllers;
 
-[Authorize]
+[Authorize(Policy = "UserPolicy")]
 [ApiController]
 [Route("api/[controller]")]
 public class StudentController : ControllerBase
@@ -42,6 +42,7 @@ public class StudentController : ControllerBase
     
     // POST: api/Students/
     [HttpPost("")]
+    [Authorize(Policy = "PrivilegedPolicy")]
     public async Task<ActionResult<Student>> CreateStudent(CreateStudent createStudent)
     {
         if (!ModelState.IsValid)
