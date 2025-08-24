@@ -41,24 +41,30 @@ public class StudentController : ControllerBase
     }
     
     // POST: api/Students/
-    [HttpPost("")]
-    [Authorize(Policy = "PrivilegedPolicy")]
-    public async Task<ActionResult<Student>> CreateStudent(CreateStudent createStudent)
-    {
-        if (!ModelState.IsValid)
-        {
-            return BadRequest(ModelState);
-        }
+    // [HttpPost("")]
+    // [Authorize(Policy = "PrivilegedPolicy")]
+    // public async Task<ActionResult<Student>> CreateStudent(CreateStudent createStudent)
+    // {
+    //     if (!ModelState.IsValid)
+    //     {
+    //         return BadRequest(ModelState);
+    //     }
 
-        var (student, error) = await _studentService.CreateStudentAsync(createStudent, User);
+    //     var (student, error) = await _studentService.CreateStudentAsync(createStudent, User);
 
-        if (error != null)
-        {
-            return BadRequest(error);
-        }
+    //     if (error != null)
+    //     {
+    //         return BadRequest(error);
+    //     }
 
-        return CreatedAtAction(nameof(GetStudent), new { id = student.Id }, student);
-    }
+    //     return CreatedAtAction(nameof(GetStudent), new { id = student.Id }, student);
+    // }
+    
+    // REDUNDANT ENDPOINT: This endpoint is redundant because student records are automatically 
+    // created during user registration. All new users default to "Student" role and get a 
+    // student record created automatically. Do not remove this code block entirely as it 
+    // might be needed for future administrative purposes, but it's currently commented out 
+    // to prevent confusion and potential misuse.
     
     // PATCH: api/Student/{id}
     [HttpPatch("{id}")]

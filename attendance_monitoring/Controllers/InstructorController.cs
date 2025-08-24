@@ -41,26 +41,34 @@ public class InstructorController : ControllerBase
     }
     
     // POST: api/Instructor/
-    [HttpPost("")]
-    public async Task<ActionResult<Instructor>> CreateInstructor(CreateInstructor createInstructor)
-    {
-        if (!ModelState.IsValid)
-        {
-            return BadRequest(ModelState);
-        }
+    // [HttpPost("")]
+    // public async Task<ActionResult<Instructor>> CreateInstructor(CreateInstructor createInstructor)
+    // {
+    //     if (!ModelState.IsValid)
+    //     {
+    //         return BadRequest(ModelState);
+    //     }
 
-        var (instructor, error) = await _instructorService.CreateInstructorAsync(createInstructor, User);
+    //     var (instructor, error) = await _instructorService.CreateInstructorAsync(createInstructor, User);
 
-        if (error != null)
-        {
-            return BadRequest(error);
-        }
+    //     if (error != null)
+    //     {
+    //         return BadRequest(error);
+    //     }
 
-        return CreatedAtAction(nameof(GetInstructor), new { id = instructor.Id }, instructor);
-    }
+    //     return CreatedAtAction(nameof(GetInstructor), new { id = instructor.Id }, instructor);
+    // }
+    
+    // REDUNDANT ENDPOINT: This endpoint is redundant because instructor records are automatically 
+    // created during user registration when a user registers with the "Teacher" role. Additionally, 
+    // this endpoint had a security issue as it allowed any authenticated user to create instructor 
+    // records. Do not remove this code block entirely as it might be needed for future 
+    // administrative purposes, but it's currently commented out to prevent confusion and 
+    // potential security vulnerabilities.
     
     // PATCH: api/Instructor/{id}
     [HttpPatch("{id}")]
+    [Authorize(Policy = "PrivilegedPolicy")]
     public async Task<ActionResult<Instructor>> PatchInstructor(int id, UpdateInstructor updateInstructor)
     {
         if (!ModelState.IsValid)
