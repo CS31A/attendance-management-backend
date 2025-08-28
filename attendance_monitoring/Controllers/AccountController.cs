@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
@@ -7,6 +8,8 @@ using System.Text;
 using attendance_monitoring.Classes;
 using attendance_monitoring.Data;
 using attendance_monitoring.Models.DTO;
+using attendance_monitoring.IServices;
+using Microsoft.EntityFrameworkCore;
 
 namespace attendance_monitoring.Controllers
 {
@@ -17,7 +20,8 @@ namespace attendance_monitoring.Controllers
         SignInManager<IdentityUser> signInManager,
         RoleManager<IdentityRole> roleManager,
         IConfiguration configuration,
-        ApplicationDbContext context)
+        ApplicationDbContext context,
+        IRefreshTokenService refreshTokenService)
         : ControllerBase
     {
         // POST: api/account/register
@@ -126,7 +130,7 @@ namespace attendance_monitoring.Controllers
 
         // POST: api/account/login
         [HttpPost("login")]
-        public async Task<ActionResult<object>> Login(LoginDto loginDto)
+        public async Task<ActionResult<TokenResponseDto>> Login(LoginDto loginDto)
         {
             // Validate model state
             if (!ModelState.IsValid)
@@ -148,17 +152,132 @@ namespace attendance_monitoring.Controllers
                 return Unauthorized(ModelState);
             }
 
-            var token = await GenerateJwtToken(user);
-            return Ok(new { Token = token });
+            var accessToken = await GenerateJwtToken(user);
+            
+            // Generate refresh token
+            var (refreshTokenEntity, refreshToken) = await refreshTokenService.CreateRefreshTokenAsync(user.Id);
+
+            return Ok(new TokenResponseDto
+            {
+                AccessToken = accessToken,
+                RefreshToken = refreshToken
+            });
+        }
+
+        // POST: api/account/refresh
+        [HttpPost("refresh")]
+        public async Task<ActionResult<TokenResponseDto>> Refresh(RefreshTokenRequestDto refreshTokenRequest)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            // Validate the refresh token
+            var (refreshTokenEntity, validationError) = await refreshTokenService.ValidateRefreshTokenAsync(refreshTokenRequest.RefreshToken);
+            
+            if (refreshTokenEntity == null)
+            {
+                return Unauthorized(new { Message = validationError });
+            }
+
+            // Get the user associated with the refresh token
+            var user = await userManager.FindByIdAsync(refreshTokenEntity.UserId);
+            if (user == null)
+            {
+                return Unauthorized(new { Message = "User not found" });
+            }
+
+            // Rotate the refresh token
+            var (newRefreshTokenEntity, newRefreshToken) = await refreshTokenService.RotateRefreshTokenAsync(
+                refreshTokenRequest.RefreshToken, 
+                user.Id);
+            
+            if (string.IsNullOrEmpty(newRefreshToken))
+            {
+                return Unauthorized(new { Message = "Failed to rotate refresh token" });
+            }
+
+            // Generate new access token
+            var newAccessToken = await GenerateJwtToken(user);
+
+            return Ok(new TokenResponseDto
+            {
+                AccessToken = newAccessToken,
+                RefreshToken = newRefreshToken
+            });
+        }
+
+        // POST: api/account/revoke
+        [HttpPost("revoke")]
+        [Authorize]
+        public async Task<ActionResult> Revoke(RevokeTokenRequestDto revokeTokenRequest)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            // Get the user ID from the claims
+            var userId = GetUserId(User);
+            
+            if (string.IsNullOrEmpty(userId))
+            {
+                return Unauthorized(new { Message = "User not found" });
+            }
+            
+            // Hash the refresh token to check what we're looking for
+            var tokenHash = refreshTokenService.HashRefreshToken(revokeTokenRequest.RefreshToken);
+
+            // Get the stored token to check its details
+            var storedToken = await context.RefreshTokens.FirstOrDefaultAsync(rt => rt.TokenHash == tokenHash);
+            if (storedToken == null)
+            {
+                return Unauthorized(new { Message = "Refresh token not found" });
+            }
+
+            // Check if token belongs to the current user
+            if (storedToken.UserId != userId)
+            {
+                // Let's also check if we can find the user associated with the token
+                var tokenUser = await userManager.FindByIdAsync(storedToken.UserId);
+                if (tokenUser != null)
+                {
+                    return Unauthorized(new { Message = "Refresh token does not belong to the current user" });
+                }
+                else
+                {
+                    return Unauthorized(new { Message = "Refresh token does not belong to the current user" });
+                }
+            }
+
+            // Check if token is already revoked
+            if (storedToken.IsRevoked)
+            {
+                return Unauthorized(new { Message = "Refresh token has already been revoked" });
+            }
+
+            // Check if token has expired
+            if (storedToken.ExpiresAt < DateTime.UtcNow)
+            {
+                return Unauthorized(new { Message = "Refresh token has expired" });
+            }
+
+            // Revoke the refresh token
+            storedToken.IsRevoked = true;
+            storedToken.RevokedAt = DateTime.UtcNow;
+            await context.SaveChangesAsync();
+            
+            return Ok(new { Message = "Refresh token revoked successfully" });
         }
 
         private async Task<string> GenerateJwtToken(IdentityUser user)
         {
             var claims = new List<Claim>
             {
-                new Claim(JwtRegisteredClaimNames.Sub, user.UserName ?? string.Empty),
+                new Claim(JwtRegisteredClaimNames.Sub, user.Id ?? string.Empty),
                 new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
-                new Claim(ClaimTypes.NameIdentifier, user.Id),
+                new Claim(ClaimTypes.NameIdentifier, user.Id!),
                 new Claim(ClaimTypes.Name, user.UserName!)
             };
 
@@ -176,10 +295,15 @@ namespace attendance_monitoring.Controllers
                 issuer: configuration["AppSettings:Issuer"],
                 audience: configuration["AppSettings:Audience"],
                 claims: claims,
-                expires: DateTime.Now.AddMinutes(30),
+                expires: DateTime.UtcNow.AddMinutes(15), // Shorter expiration for access token
                 signingCredentials: credentials);
 
             return new JwtSecurityTokenHandler().WriteToken(token);
+        }
+        
+        private string GetUserId(ClaimsPrincipal userPrincipal)
+        {
+            return userPrincipal.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         }
     }
 }

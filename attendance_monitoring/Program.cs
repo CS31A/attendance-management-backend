@@ -92,10 +92,12 @@ builder.Services.AddAuthorization(Options =>
 // Register repositories
 builder.Services.AddScoped<IStudentRepository, StudentRepository>();
 builder.Services.AddScoped<IInstructorRepository, InstructorRepository>();
+builder.Services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
 
 // Register services
 builder.Services.AddScoped<IStudentService, StudentService>();
 builder.Services.AddScoped<IInstructorService, InstructorService>();
+builder.Services.AddScoped<IRefreshTokenService, RefreshTokenService>();
 
 builder.Services.AddEndpointsApiExplorer();
 
@@ -128,7 +130,7 @@ app.MapGet("/weatherforecast", () =>
         var forecast = Enumerable.Range(1, 5).Select(index =>
                 new WeatherForecast
                 (
-                    DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
+                    DateOnly.FromDateTime(DateTime.UtcNow.AddDays(index)),
                     Random.Shared.Next(-20, 55),
                     summaries[Random.Shared.Next(summaries.Length)]
                 ))
