@@ -101,6 +101,15 @@ builder.Services.AddScoped<IRefreshTokenService, RefreshTokenService>();
 
 builder.Services.AddEndpointsApiExplorer();
 
+builder.Logging.ClearProviders();
+builder.Logging.AddConsole();
+builder.Logging.AddDebug();
+builder.Logging.AddEventSourceLogger();
+
+builder.Logging.SetMinimumLevel(LogLevel.Information);
+builder.Logging.AddFilter("Microsoft", LogLevel.Warning);
+builder.Logging.AddFilter("System", LogLevel.Warning);
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
