@@ -14,12 +14,12 @@ namespace attendance_monitoring.Services
     public class StudentService : IStudentService
     {
         private readonly IStudentRepository _studentRepository;
-        private readonly UserManager<IdentityUser> _userManager;
+        private readonly UserContextService _userContextService;
 
-        public StudentService(IStudentRepository studentRepository, UserManager<IdentityUser> userManager)
+        public StudentService(IStudentRepository studentRepository, UserContextService userContextService)
         {
             _studentRepository = studentRepository ?? throw new ArgumentNullException(nameof(studentRepository));
-            _userManager = userManager ?? throw new ArgumentNullException(nameof(userManager));
+            _userContextService = userContextService ?? throw new ArgumentNullException(nameof(userContextService));
         }
 
         public async Task<IEnumerable<Student>> GetAllStudentsAsync(PaginationQuery paginationQuery)
@@ -55,7 +55,7 @@ namespace attendance_monitoring.Services
                 return (null, "Email is required");
             }
 
-            var userId = await GetUserIdAsync(userPrincipal);
+            var userId = await _userContextService.GetUserIdAsync(userPrincipal);
             if (string.IsNullOrEmpty(userId))
             {
                 return (null, "User ID not found in token");
@@ -91,7 +91,7 @@ namespace attendance_monitoring.Services
                 return (null, "Update student data is required");
             }
 
-            var userId = await GetUserIdAsync(userPrincipal);
+            var userId = await _userContextService.GetUserIdAsync(userPrincipal);
             if (string.IsNullOrEmpty(userId))
             {
                 return (null, "User ID not found in token");
@@ -103,11 +103,7 @@ namespace attendance_monitoring.Services
                 return (null, "Student not found");
             }
 
-            var userRole = userPrincipal.FindFirst(ClaimTypes.Role)?.Value;
-            var isAuthorized = existingStudent.UserId == userId ||
-                               (userRole != null && (userRole.Equals("Admin", StringComparison.OrdinalIgnoreCase) ||
-                                                    userRole.Equals("Teacher", StringComparison.OrdinalIgnoreCase)));
-
+            var isAuthorized = await _userContextService.IsAuthorizedAsync(userPrincipal, existingStudent.UserId, "Admin", "Teacher");
             if (!isAuthorized)
             {
                 return (null, "You are not authorized to update this student record.");
@@ -128,49 +124,13 @@ namespace attendance_monitoring.Services
                 existingStudent.Email = updateStudent.Email;
             }
 
+            existingStudent.UpdatedAt = DateTime.UtcNow;
+
             var updatedStudent = await _studentRepository.UpdateStudentAsync(existingStudent);
             await _studentRepository.SaveChangesAsync();
 
             return (updatedStudent, null);
         }
 
-        private async Task<string> GetUserIdAsync(ClaimsPrincipal userPrincipal)
-        {
-            // Null check for defense in depth
-            if (userPrincipal == null)
-            {
-                return null;
-            }
-
-            var userId = userPrincipal.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-
-            if (!string.IsNullOrEmpty(userId) && userId == userPrincipal.FindFirst(ClaimTypes.Name)?.Value)
-            {
-                var username = userId;
-                // Null check for _userManager
-                if (_userManager != null)
-                {
-                    var user = await _userManager.FindByNameAsync(username);
-                    if (user != null)
-                    {
-                        return user.Id;
-                    }
-                }
-            }
-            
-            if (!string.IsNullOrEmpty(userId))
-            {
-                return userId;
-            }
-
-            userId = userPrincipal.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
-            if (!string.IsNullOrEmpty(userId))
-            {
-                return userId;
-            }
-
-            userId = userPrincipal.FindFirst(ClaimTypes.Name)?.Value;
-            return userId;
-        }
     }
 }
