@@ -7,14 +7,14 @@ public class CreateStudent
 {
     [Required]
     [StringLength(100)]
-    public string Firstname { get; set; }
+    public string Firstname { get; set; } = string.Empty;
 
     [Required]
     [StringLength(100)]
-    public string Lastname { get; set; }
+    public string Lastname { get; set; } = string.Empty;
 
     [Required]
     [EmailAddress]
     [AllowedEmailDomains(ErrorMessage = "Email domain is not allowed. Please use an email address from an allowed domain.")]
-    public string Email { get; set; }
+    public string Email { get; set; } = string.Empty;
 }

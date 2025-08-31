@@ -6,6 +6,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 using attendance_monitoring.Classes;
+using attendance_monitoring.Constants;
 using attendance_monitoring.Data;
 using attendance_monitoring.Models.DTO;
 using attendance_monitoring.IServices;
@@ -331,7 +332,7 @@ namespace attendance_monitoring.Controllers
                 issuer: configuration["AppSettings:Issuer"],
                 audience: configuration["AppSettings:Audience"],
                 claims: claims,
-                expires: DateTime.UtcNow.AddMinutes(15), // Shorter expiration for access token
+                expires: DateTime.UtcNow.AddMinutes(TokenConstants.AccessTokenExpirationMinutes),
                 signingCredentials: credentials);
 
             return new JwtSecurityTokenHandler().WriteToken(token);

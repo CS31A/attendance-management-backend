@@ -10,7 +10,9 @@ public class Section
     [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
     public int Id { get; set; }
 
-    public string Name { get; set; }
+    [Required(ErrorMessage = "Section name is required")]
+    [StringLength(100, ErrorMessage = "Section name must be between 1 and 100 characters", MinimumLength = 1)]
+    public string Name { get; set; } = string.Empty;
 
     // Foreign key to Instructor - should not be nullable
     public int InstructorId { get; set; }
