@@ -22,6 +22,12 @@ public class RefreshTokenRepository : IRefreshTokenRepository
             .FirstOrDefaultAsync(rt => rt.TokenHash == tokenHash);
     }
 
+    public async Task<RefreshToken?> GetByReplacedTokenHashAsync(string replacedTokenHash)
+    {
+        return await _context.RefreshTokens
+            .FirstOrDefaultAsync(rt => rt.ReplacedByTokenHash == replacedTokenHash);
+    }
+
     public async Task<RefreshToken> CreateAsync(RefreshToken refreshToken)
     {
         var entry = await _context.RefreshTokens.AddAsync(refreshToken);
