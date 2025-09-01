@@ -17,10 +17,13 @@ public class AllowedEmailDomainsAttribute : ValidationAttribute
     /// <returns>Validation result</returns>
     protected override ValidationResult? IsValid(object? value, ValidationContext validationContext)
     {
-        // Check if value is null or not a string
-        if (value is null || value is not string email)
+        var email = value as string;
+
+        // If the email is null or empty, the validation passes because this is an optional field.
+        // Use [Required] for mandatory fields.
+        if (string.IsNullOrEmpty(email))
         {
-            return new ValidationResult(ErrorMessage ?? "Email is required");
+            return ValidationResult.Success;
         }
 
         // Get allowed domains from configuration
