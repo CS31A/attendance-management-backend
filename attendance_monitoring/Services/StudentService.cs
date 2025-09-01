@@ -1,13 +1,8 @@
-using System;
-using System.Collections.Generic;
-using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
-using System.Threading.Tasks;
 using attendance_monitoring.Classes;
 using attendance_monitoring.IRepository;
 using attendance_monitoring.IServices;
 using attendance_monitoring.Models.Request;
-using Microsoft.AspNetCore.Identity;
 
 namespace attendance_monitoring.Services
 {

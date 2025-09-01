@@ -9,7 +9,6 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using Scalar.AspNetCore;
-using DotNetEnv;
 
 // Load environment variables from .env file
 DotNetEnv.Env.Load();
