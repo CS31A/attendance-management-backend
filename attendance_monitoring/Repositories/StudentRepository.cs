@@ -36,15 +36,13 @@ public class StudentRepository(ApplicationDbContext context) : IStudentRepositor
         var entry = await context.Students.AddAsync(student);
         return entry.Entity;
     }
-    
-    public async Task<Student> UpdateStudentAsync(Student student)
+
+    public Task<Student> UpdateStudentAsync(Student student)
     {
-        student.UpdatedAt = DateTime.UtcNow;
         var entry = context.Students.Update(student);
-        await context.SaveChangesAsync();
-        return entry.Entity;
+        return Task.FromResult(entry.Entity);
     }
-    
+
     public async Task<int> SaveChangesAsync()
     {
         return await context.SaveChangesAsync();
