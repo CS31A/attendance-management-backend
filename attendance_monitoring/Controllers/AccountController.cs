@@ -11,7 +11,6 @@ using attendance_monitoring.Data;
 using attendance_monitoring.Models.DTO;
 using attendance_monitoring.IServices;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
 
 namespace attendance_monitoring.Controllers
 {
@@ -312,10 +311,10 @@ namespace attendance_monitoring.Controllers
         {
             var claims = new List<Claim>
             {
-                new Claim(JwtRegisteredClaimNames.Sub, user.Id ?? string.Empty),
+                new Claim(JwtRegisteredClaimNames.Sub, user.Id),
                 new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
-                new Claim(ClaimTypes.NameIdentifier, user.Id!),
-                new Claim(ClaimTypes.Name, user.UserName!)
+                new Claim(ClaimTypes.NameIdentifier, user.Id),
+                new Claim(ClaimTypes.Name, user.UserName ?? string.Empty)
             };
 
             // Add roles as claims
@@ -338,7 +337,7 @@ namespace attendance_monitoring.Controllers
             return new JwtSecurityTokenHandler().WriteToken(token);
         }
 
-        private string GetUserId(ClaimsPrincipal userPrincipal)
+        private string? GetUserId(ClaimsPrincipal userPrincipal)
         {
             return userPrincipal.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         }
