@@ -10,16 +10,16 @@ namespace attendance_monitoring.Data
         public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) : base(options)
         {
         }
-        
+
         public DbSet<Student> Students { get; set; }
         public DbSet<Instructor> Instructors { get; set; }
         public DbSet<Section> Sections { get; set; }
         public DbSet<RefreshToken> RefreshTokens { get; set; }
-        
+
         protected override void OnModelCreating(ModelBuilder builder)
         {
             base.OnModelCreating(builder);
-            
+
             // Configure index for RefreshToken TokenHash for fast lookups
             builder.Entity<RefreshToken>()
                 .HasIndex(r => r.TokenHash)
