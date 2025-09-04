@@ -1,13 +1,8 @@
-using System;
-using System.Collections.Generic;
-using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
-using System.Threading.Tasks;
 using attendance_monitoring.Classes;
 using attendance_monitoring.IRepository;
 using attendance_monitoring.IServices;
 using attendance_monitoring.Models.Request;
-using Microsoft.AspNetCore.Identity;
 
 namespace attendance_monitoring.Services
 {
@@ -32,7 +27,7 @@ namespace attendance_monitoring.Services
             return await _instructorRepository.GetInstructorByIdAsync(id);
         }
 
-        public async Task<(Instructor, string)> CreateInstructorAsync(CreateInstructor createInstructor, ClaimsPrincipal userPrincipal)
+        public async Task<(Instructor?, string?)> CreateInstructorAsync(CreateInstructor createInstructor, ClaimsPrincipal userPrincipal)
         {
             // Additional validation for defense in depth
             if (createInstructor == null)
@@ -83,7 +78,7 @@ namespace attendance_monitoring.Services
             return (createdInstructor, null);
         }
 
-        public async Task<(Instructor, string)> UpdateInstructorAsync(int id, UpdateInstructor updateInstructor, ClaimsPrincipal userPrincipal)
+        public async Task<(Instructor?, string?)> UpdateInstructorAsync(int id, UpdateInstructor updateInstructor, ClaimsPrincipal userPrincipal)
         {
             // Additional validation for defense in depth
             if (updateInstructor == null)
