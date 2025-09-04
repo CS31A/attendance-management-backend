@@ -1,6 +1,5 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using Microsoft.AspNetCore.Identity;
 
 namespace attendance_monitoring.Classes;
 
@@ -16,6 +15,13 @@ public class Section
 
     // Foreign key to Instructor - should not be nullable
     public int InstructorId { get; set; }
+
+    // Foreign key to Course - should not be nullable
+    public int CourseId { get; set; }
+
+    // Navigation property - required relationship
+    [ForeignKey("CourseId")]
+    public Course Course { get; set; } = null!;
 
     // Navigation property - required relationship
     [ForeignKey("InstructorId")]
