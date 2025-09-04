@@ -22,12 +22,12 @@ namespace attendance_monitoring.Services
             return await _studentRepository.GetAllStudentsAsync(paginationQuery);
         }
 
-        public async Task<Student> GetStudentByIdAsync(int id)
+        public async Task<Student?> GetStudentByIdAsync(int id)
         {
             return await _studentRepository.GetStudentByIdAsync(id);
         }
 
-        public async Task<(Student, string)> CreateStudentAsync(CreateStudent createStudent, ClaimsPrincipal userPrincipal)
+        public async Task<(Student?, string?)> CreateStudentAsync(CreateStudent createStudent, ClaimsPrincipal userPrincipal)
         {
             // Additional validation for defense in depth
             if (createStudent == null)
@@ -78,7 +78,7 @@ namespace attendance_monitoring.Services
             return (createdStudent, null);
         }
 
-        public async Task<(Student, string)> UpdateStudentAsync(int id, UpdateStudent updateStudent, ClaimsPrincipal userPrincipal)
+        public async Task<(Student?, string?)> UpdateStudentAsync(int id, UpdateStudent updateStudent, ClaimsPrincipal userPrincipal)
         {
             // Additional validation for defense in depth
             if (updateStudent == null)
