@@ -27,7 +27,7 @@ namespace attendance_monitoring.Services
             return await _instructorRepository.GetAllInstructorsAsync(paginationQuery);
         }
 
-        public async Task<Instructor> GetInstructorByIdAsync(int id)
+        public async Task<Instructor?> GetInstructorByIdAsync(int id)
         {
             return await _instructorRepository.GetInstructorByIdAsync(id);
         }
