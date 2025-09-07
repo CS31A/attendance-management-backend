@@ -20,4 +20,6 @@ RUN dotnet publish "./attendance_monitoring.csproj" -c $BUILD_CONFIGURATION -o /
 FROM base AS final
 WORKDIR /app
 COPY --from=publish /app/publish .
+# Set environment variable for HTTPS port
+ENV ASPNETCORE_HTTPS_PORT=8081
 ENTRYPOINT ["dotnet", "attendance_monitoring.dll"]

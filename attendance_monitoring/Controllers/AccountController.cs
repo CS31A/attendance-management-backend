@@ -26,8 +26,16 @@ namespace attendance_monitoring.Controllers
         ILogger<AccountController> logger) // Inject ILogger
         : ControllerBase
     {
-        // POST: api/account/register
+        /// <summary>
+        /// Register a new user account
+        /// </summary>
+        /// <param name="registerDto">User registration data</param>
+        /// <returns>Registration result</returns>
+        /// <response code="200">User registered successfully</response>
+        /// <response code="400">Invalid input data</response>
         [HttpPost("register")]
+        [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
         public async Task<ActionResult<object>> Register(RegisterDto registerDto)
         {
             logger.LogInformation("Registration attempt for username: {Username}", registerDto.Username);
@@ -142,8 +150,18 @@ namespace attendance_monitoring.Controllers
             return Ok(new { Message = $"User registered successfully with {roleToAssign} role" });
         }
 
-        // POST: api/account/login
+        /// <summary>
+        /// Authenticate user and return access/refresh tokens
+        /// </summary>
+        /// <param name="loginDto">User login credentials</param>
+        /// <returns>JWT tokens</returns>
+        /// <response code="200">Login successful</response>
+        /// <response code="401">Invalid credentials</response>
+        /// <response code="400">Invalid input data</response>
         [HttpPost("login")]
+        [ProducesResponseType(typeof(TokenResponseDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
         public async Task<ActionResult<TokenResponseDto>> Login(LoginDto loginDto)
         {
             logger.LogInformation("Login attempt for username: {Username}", loginDto.Username);
@@ -182,8 +200,6 @@ namespace attendance_monitoring.Controllers
                 RefreshToken = refreshToken
             });
         }
-
-
 
         // POST: api/account/refresh
         [HttpPost("refresh")]
