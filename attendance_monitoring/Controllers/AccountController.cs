@@ -1,30 +1,18 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.IdentityModel.Tokens;
-using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
-using System.Text;
-using attendance_monitoring.Classes;
-using attendance_monitoring.Constants;
-using attendance_monitoring.Data;
+using System.Threading.Tasks;
 using attendance_monitoring.Models.DTO;
 using attendance_monitoring.IServices;
 using attendance_monitoring.Models.DTO.Response;
-using Microsoft.EntityFrameworkCore;
-using attendance_monitoring.IRepository;
+using Microsoft.Extensions.Logging;
 
 namespace attendance_monitoring.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    public class AccountController(
-        UserManager<IdentityUser> userManager,
-        IConfiguration configuration,
-        ApplicationDbContext context,
-        IRefreshTokenService refreshTokenService,
-        ILogger<AccountController> logger,
-        IAccountRepository accountRepository)
+    public class AccountController(IAccountService accountService, ILogger<AccountController> logger)
         : ControllerBase
     {
         #region Endpoints
@@ -43,106 +31,26 @@ namespace attendance_monitoring.Controllers
         public async Task<ActionResult<RegisterResponseDto>> Register(RegisterDto registerDto)
         {
             logger.LogInformation("Registration attempt for username: {Username}", registerDto.Username);
-            // Validate model state
             if (!ModelState.IsValid)
             {
                 logger.LogWarning("Registration failed due to invalid model state for username: {Username}", registerDto.Username);
                 return BadRequest(ModelState);
             }
 
-            // Validate that passwords match (additional check)
-            if (registerDto.Password != registerDto.RepeatedPassword)
-            {
-                logger.LogWarning("Registration failed due to password mismatch for username: {Username}", registerDto.Username);
-                ModelState.AddModelError("RepeatedPassword", "Passwords do not match");
-                return BadRequest(ModelState);
-            }
+            var (result, response) = await accountService.RegisterAsync(registerDto);
 
-            // Check if user already exists
-            var existingUser = await accountRepository.FindUserByUsernameAsync(registerDto.Username);
-            if (existingUser != null)
-            {
-                logger.LogWarning("Registration failed because username already exists: {Username}", registerDto.Username);
-                ModelState.AddModelError("Username", "Username already exists");
-                return BadRequest(ModelState);
-            }
-
-            existingUser = await accountRepository.FindUserByEmailAsync(registerDto.Email);
-            if (existingUser != null)
-            {
-                logger.LogWarning("Registration failed because email already exists: {Email}", registerDto.Email);
-                ModelState.AddModelError("Email", "Email already exists");
-                return BadRequest(ModelState);
-            }
-
-            var user = new IdentityUser
-            {
-                UserName = registerDto.Username,
-                Email = registerDto.Email
-            };
-
-            var result = await accountRepository.CreateUserAsync(user, registerDto.Password);
             if (!result.Succeeded)
             {
                 foreach (var error in result.Errors)
                 {
-                    logger.LogError("Error during user creation for {Username}: {ErrorDescription}", registerDto.Username, error.Description);
+                    logger.LogError("Error during user registration for {Username}: {ErrorDescription}", registerDto.Username, error.Description);
                     ModelState.AddModelError(string.Empty, error.Description);
                 }
                 return BadRequest(ModelState);
             }
 
-            // Create roles if they don't exist
-            var validRoles = new[] { "Admin", "Teacher", "Student" };
-            await accountRepository.EnsureRolesExistAsync(validRoles);
-
-            // Assign role to user
-            // Default to "Student" role as requested
-            var roleToAssign = "Student";
-
-            // If a specific role is provided, and it's valid, use that instead
-            if (!string.IsNullOrEmpty(registerDto.Role) && validRoles.Contains(registerDto.Role, StringComparer.OrdinalIgnoreCase))
-            {
-                roleToAssign = registerDto.Role;
-            }
-
-            await accountRepository.AddUserToRoleAsync(user, roleToAssign);
-            logger.LogInformation("Assigned role {Role} to user {Username}", roleToAssign, user.UserName);
-
-            // If the user is a student, also create a student record
-            if (roleToAssign.Equals("Student", StringComparison.OrdinalIgnoreCase))
-            {
-                var student = new Student
-                {
-                    Firstname = registerDto.Firstname ?? "",
-                    Lastname = registerDto.Lastname ?? "",
-                    Email = registerDto.Email,
-                    UserId = user.Id,
-                    CreatedAt = DateTime.UtcNow,
-                    UpdatedAt = DateTime.UtcNow
-                };
-
-                await accountRepository.CreateStudentProfileAsync(student);
-                logger.LogInformation("Created student record for user: {Username}", user.UserName);
-            }
-            else if (roleToAssign.Equals("Teacher", StringComparison.OrdinalIgnoreCase))
-            {
-                var instructor = new Instructor
-                {
-                    Firstname = registerDto.Firstname ?? "",
-                    Lastname = registerDto.Lastname ?? "",
-                    Email = registerDto.Email,
-                    UserId = user.Id,
-                    CreatedAt = DateTime.UtcNow,
-                    UpdatedAt = DateTime.UtcNow
-                };
-
-                await accountRepository.CreateInstructorProfileAsync(instructor);
-                logger.LogInformation("Created instructor record for user: {Username}", user.UserName);
-            }
-
-            logger.LogInformation("User registered successfully: {Username} with role {Role}", user.UserName, roleToAssign);
-            return Ok(new RegisterResponseDto { Message = $"User registered successfully with {roleToAssign} role" });
+            logger.LogInformation("User registered successfully: {Username}", registerDto.Username);
+            return Ok(response);
         }
         #endregion
 
@@ -162,40 +70,23 @@ namespace attendance_monitoring.Controllers
         public async Task<ActionResult<TokenResponseDto>> Login(LoginDto loginDto)
         {
             logger.LogInformation("Login attempt for username: {Username}", loginDto.Username);
-            // Validate model state
             if (!ModelState.IsValid)
             {
                 logger.LogWarning("Login failed due to invalid model state for username: {Username}", loginDto.Username);
                 return BadRequest(ModelState);
             }
 
-            var user = await accountRepository.FindUserByUsernameAsync(loginDto.Username);
-            if (user == null)
+            var (tokenResponse, error) = await accountService.LoginAsync(loginDto);
+
+            if (tokenResponse == null)
             {
-                logger.LogWarning("Login failed for username {Username}: Invalid username or password", loginDto.Username);
-                ModelState.AddModelError("Username", "Invalid username or password");
+                logger.LogWarning("Login failed for username {Username}: {Error}", loginDto.Username, error);
+                ModelState.AddModelError("Error", error ?? "An unexpected error occurred.");
                 return Unauthorized(ModelState);
             }
-
-            var result = await accountRepository.CheckPasswordAsync(user, loginDto.Password);
-            if (!result.Succeeded)
-            {
-                logger.LogWarning("Login failed for username {Username}: Invalid username or password", loginDto.Username);
-                ModelState.AddModelError("Password", "Invalid username or password");
-                return Unauthorized(ModelState);
-            }
-
-            var accessToken = await GenerateJwtToken(user);
-
-            // Generate refresh token
-            var (refreshTokenEntity, refreshToken) = await refreshTokenService.CreateRefreshTokenAsync(user.Id);
 
             logger.LogInformation("User {Username} logged in successfully", loginDto.Username);
-            return Ok(new TokenResponseDto
-            {
-                AccessToken = accessToken,
-                RefreshToken = refreshToken
-            });
+            return Ok(tokenResponse);
         }
         #endregion
 
@@ -211,43 +102,16 @@ namespace attendance_monitoring.Controllers
                 return BadRequest(ModelState);
             }
 
-            // Validate the refresh token
-            var (refreshTokenEntity, validationError) = await refreshTokenService.ValidateRefreshTokenAsync(refreshTokenRequest.RefreshToken);
+            var (tokenResponse, error) = await accountService.RefreshAsync(refreshTokenRequest);
 
-            if (refreshTokenEntity == null)
+            if (tokenResponse == null)
             {
-                logger.LogWarning("Token refresh failed: {ValidationError}", validationError);
-                return Unauthorized(new { Message = validationError });
+                logger.LogWarning("Token refresh failed: {Error}", error);
+                return Unauthorized(new { Message = error });
             }
 
-            // Get the user associated with the refresh token
-            var user = await accountRepository.FindUserByIdAsync(refreshTokenEntity.UserId);
-            if (user == null)
-            {
-                logger.LogWarning("Token refresh failed: User not found for token.");
-                return Unauthorized(new { Message = "User not found" });
-            }
-
-            // Rotate the refresh token
-            var (newRefreshTokenEntity, newRefreshToken) = await refreshTokenService.RotateRefreshTokenAsync(
-                refreshTokenRequest.RefreshToken,
-                user.Id);
-
-            if (string.IsNullOrEmpty(newRefreshToken))
-            {
-                logger.LogError("Token refresh failed for user {UserId}: Failed to rotate refresh token.", user.Id);
-                return Unauthorized(new { Message = "Failed to rotate refresh token" });
-            }
-
-            // Generate new access token
-            var newAccessToken = await GenerateJwtToken(user);
-
-            logger.LogInformation("Token refreshed successfully for user {UserId}.", user.Id);
-            return Ok(new TokenResponseDto
-            {
-                AccessToken = newAccessToken,
-                RefreshToken = newRefreshToken
-            });
+            logger.LogInformation("Token refreshed successfully.");
+            return Ok(tokenResponse);
         }
         #endregion
 
@@ -265,64 +129,23 @@ namespace attendance_monitoring.Controllers
                 return BadRequest(ModelState);
             }
 
-            // Get the user ID from the claims
             var userId = GetUserId(User);
-
             if (string.IsNullOrEmpty(userId))
             {
                 logger.LogWarning("Token revocation failed: User not found from claims.");
                 return Unauthorized(new { Message = "User not found" });
             }
 
-            // Hash the refresh token to check what we're looking for
-            var tokenHash = refreshTokenService.HashRefreshToken(revokeTokenRequest.RefreshToken);
+            var (response, error) = await accountService.RevokeAsync(revokeTokenRequest, userId);
 
-            // Get the stored token to check its details
-            var storedToken = await context.RefreshTokens.FirstOrDefaultAsync(rt => rt.TokenHash == tokenHash);
-            if (storedToken == null)
+            if (response == null)
             {
-                logger.LogWarning("Token revocation failed: Refresh token not found.");
-                return Unauthorized(new { Message = "Refresh token not found" });
+                logger.LogWarning("Token revocation failed: {Error}", error);
+                return Unauthorized(new { Message = error });
             }
-
-            // Check if token belongs to the current user
-            if (storedToken.UserId != userId)
-            {
-                // Let's also check if we can find the user associated with the token
-                var tokenUser = await accountRepository.FindUserByIdAsync(storedToken.UserId);
-                if (tokenUser != null)
-                {
-                    logger.LogWarning("Token revocation failed: Refresh token does not belong to the current user {UserId}.", userId);
-                    return Unauthorized(new { Message = "Refresh token does not belong to the current user" });
-                }
-                else
-                {
-                    logger.LogWarning("Token revocation failed: Refresh token does not belong to the current user {UserId}.", userId);
-                    return Unauthorized(new { Message = "Refresh token does not belong to the current user" });
-                }
-            }
-
-            // Check if token is already revoked
-            if (storedToken.IsRevoked)
-            {
-                logger.LogWarning("Token revocation failed: Refresh token has already been revoked.");
-                return Unauthorized(new { Message = "Refresh token has already been revoked" });
-            }
-
-            // Check if token has expired
-            if (storedToken.ExpiresAt < DateTime.UtcNow)
-            {
-                logger.LogWarning("Token revocation failed: Refresh token has expired.");
-                return Unauthorized(new { Message = "Refresh token has expired" });
-            }
-
-            // Revoke the refresh token
-            storedToken.IsRevoked = true;
-            storedToken.RevokedAt = DateTime.UtcNow;
-            await context.SaveChangesAsync();
 
             logger.LogInformation("Refresh token revoked successfully for user {UserId}.", userId);
-            return Ok(new RevokeResponseDto { Message = "Refresh token revoked successfully" });
+            return Ok(response);
         }
         #endregion
 
@@ -347,36 +170,6 @@ namespace attendance_monitoring.Controllers
         #endregion
 
         #region Private Methods
-        private async Task<string> GenerateJwtToken(IdentityUser user)
-        {
-            var claims = new List<Claim>
-            {
-                new Claim(JwtRegisteredClaimNames.Sub, user.Id),
-                new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
-                new Claim(ClaimTypes.NameIdentifier, user.Id),
-                new Claim(ClaimTypes.Name, user.UserName ?? string.Empty)
-            };
-
-            // Add roles as claims
-            var roles = await accountRepository.GetUserRolesAsync(user);
-            foreach (var role in roles)
-            {
-                claims.Add(new Claim(ClaimTypes.Role, role));
-            }
-
-            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(configuration["AppSettings:Token"] ?? string.Empty));
-            var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
-
-            var token = new JwtSecurityToken(
-                issuer: configuration["AppSettings:Issuer"],
-                audience: configuration["AppSettings:Audience"],
-                claims: claims,
-                expires: DateTime.UtcNow.AddMinutes(TokenConstants.AccessTokenExpirationMinutes),
-                signingCredentials: credentials);
-
-            return new JwtSecurityTokenHandler().WriteToken(token);
-        }
-
         private string? GetUserId(ClaimsPrincipal userPrincipal)
         {
             return userPrincipal.FindFirst(ClaimTypes.NameIdentifier)?.Value;

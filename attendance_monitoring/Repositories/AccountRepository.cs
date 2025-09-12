@@ -1,5 +1,3 @@
-using System.Collections.Generic;
-using System.Threading.Tasks;
 using attendance_monitoring.Classes;
 using attendance_monitoring.Data;
 using attendance_monitoring.IRepository;
