@@ -3,9 +3,6 @@ using attendance_monitoring.Data;
 using attendance_monitoring.IRepository;
 using attendance_monitoring.Models.Request;
 using Microsoft.EntityFrameworkCore;
-using System;
-using System.Collections.Generic;
-using System.Threading.Tasks;
 
 namespace attendance_monitoring.Repositories;
 
@@ -41,7 +38,7 @@ public class InstructorRepository : IInstructorRepository
         var entry = await _context.Instructors.AddAsync(instructor);
         return entry.Entity;
     }
-    
+
     public async Task<Instructor> UpdateInstructorAsync(Instructor instructor)
     {
         instructor.UpdatedAt = DateTime.UtcNow;
@@ -49,7 +46,7 @@ public class InstructorRepository : IInstructorRepository
         await _context.SaveChangesAsync();
         return entry.Entity;
     }
-    
+
     public async Task<int> SaveChangesAsync()
     {
         return await _context.SaveChangesAsync();
