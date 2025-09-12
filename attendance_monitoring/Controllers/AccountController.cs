@@ -10,6 +10,7 @@ using attendance_monitoring.Constants;
 using attendance_monitoring.Data;
 using attendance_monitoring.Models.DTO;
 using attendance_monitoring.IServices;
+using attendance_monitoring.Models.DTO.Response;
 using Microsoft.EntityFrameworkCore;
 
 namespace attendance_monitoring.Controllers
@@ -26,6 +27,9 @@ namespace attendance_monitoring.Controllers
         ILogger<AccountController> logger) // Inject ILogger
         : ControllerBase
     {
+        #region Endpoints
+
+        #region POST: api/account/register
         /// <summary>
         /// Register a new user account
         /// </summary>
@@ -34,9 +38,9 @@ namespace attendance_monitoring.Controllers
         /// <response code="200">User registered successfully</response>
         /// <response code="400">Invalid input data</response>
         [HttpPost("register")]
-        [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(RegisterResponseDto), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
-        public async Task<ActionResult<object>> Register(RegisterDto registerDto)
+        public async Task<ActionResult<RegisterResponseDto>> Register(RegisterDto registerDto)
         {
             logger.LogInformation("Registration attempt for username: {Username}", registerDto.Username);
             // Validate model state
@@ -147,9 +151,11 @@ namespace attendance_monitoring.Controllers
             }
 
             logger.LogInformation("User registered successfully: {Username} with role {Role}", user.UserName, roleToAssign);
-            return Ok(new { Message = $"User registered successfully with {roleToAssign} role" });
+            return Ok(new RegisterResponseDto { Message = $"User registered successfully with {roleToAssign} role" });
         }
+        #endregion
 
+        #region POST: api/account/login
         /// <summary>
         /// Authenticate user and return access/refresh tokens
         /// </summary>
@@ -200,7 +206,9 @@ namespace attendance_monitoring.Controllers
                 RefreshToken = refreshToken
             });
         }
+        #endregion
 
+        #region POST: api/account/refresh
         // POST: api/account/refresh
         [HttpPost("refresh")]
         public async Task<ActionResult<TokenResponseDto>> Refresh(RefreshTokenRequestDto refreshTokenRequest)
@@ -250,11 +258,14 @@ namespace attendance_monitoring.Controllers
                 RefreshToken = newRefreshToken
             });
         }
+        #endregion
 
+        #region POST: api/account/revoke
         // POST: api/account/revoke
         [HttpPost("revoke")]
         [Authorize]
-        public async Task<ActionResult> Revoke(RevokeTokenRequestDto revokeTokenRequest)
+        [ProducesResponseType(typeof(RevokeResponseDto), StatusCodes.Status200OK)]
+        public async Task<ActionResult<RevokeResponseDto>> Revoke(RevokeTokenRequestDto revokeTokenRequest)
         {
             logger.LogInformation("Token revocation attempt.");
             if (!ModelState.IsValid)
@@ -320,9 +331,31 @@ namespace attendance_monitoring.Controllers
             await context.SaveChangesAsync();
 
             logger.LogInformation("Refresh token revoked successfully for user {UserId}.", userId);
-            return Ok(new { Message = "Refresh token revoked successfully" });
+            return Ok(new RevokeResponseDto { Message = "Refresh token revoked successfully" });
         }
+        #endregion
 
+        #region GET: api/account/check
+        /// <summary>
+        /// Check if the user is authenticated
+        /// </summary>
+        /// <returns>Authentication status</returns>
+        /// <response code="200">User is authenticated</response>
+        /// <response code="401">User is not authenticated</response>
+        [HttpGet("check")]
+        [Authorize]
+        [ProducesResponseType(typeof(CheckAuthResponseDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status401Unauthorized)]
+        public ActionResult<CheckAuthResponseDto> Check()
+        {
+            logger.LogInformation("Authentication check for user: {UserId}", User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
+            return Ok(new CheckAuthResponseDto { Message = "User is authenticated", User = User.Identity?.Name });
+        }
+        #endregion
+
+        #endregion
+
+        #region Private Methods
         private async Task<string> GenerateJwtToken(IdentityUser user)
         {
             var claims = new List<Claim>
@@ -357,5 +390,6 @@ namespace attendance_monitoring.Controllers
         {
             return userPrincipal.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         }
+        #endregion
     }
 }
