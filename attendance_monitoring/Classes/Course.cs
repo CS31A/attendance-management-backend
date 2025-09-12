@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Text.Json.Serialization;
 
 namespace attendance_monitoring.Classes;
 
@@ -18,6 +19,7 @@ public class Course
     public string Description { get; set; } = string.Empty;
 
     // Navigation property for related Sections
+    [JsonIgnore]
     public ICollection<Section> Sections { get; set; } = new List<Section>();
 
     public DateTime CreatedAt { get; set; }

@@ -1,6 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using Microsoft.AspNetCore.Identity;
+using System.Text.Json.Serialization;
 
 namespace attendance_monitoring.Classes;
 
@@ -15,6 +16,7 @@ public class RefreshToken
     
     // Navigation property
     [ForeignKey("UserId")]
+    [JsonIgnore]
     public IdentityUser User { get; set; } = null!;
     
     // Hashed refresh token

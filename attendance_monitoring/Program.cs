@@ -101,6 +101,18 @@ builder.Services.AddScoped<UserContextService>();
 
 builder.Services.AddEndpointsApiExplorer();
 
+// Add CORS policy
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowFrontend", policy =>
+    {
+        policy.WithOrigins("http://localhost:5173") // Frontend origin
+              .AllowAnyHeader()
+              .AllowAnyMethod()
+              .AllowCredentials(); // If you need to send cookies or authorization headers
+    });
+});
+
 builder.Logging.ClearProviders();
 builder.Logging.AddConsole();
 builder.Logging.AddDebug();
@@ -121,10 +133,17 @@ if (app.Environment.IsDevelopment())
         c.SwaggerEndpoint("/swagger/v1/swagger.json", "Attendance Monitoring API");
     });
     app.MapOpenApi();
-    app.MapScalarApiReference();
+    // Configure Scalar to use the Swagger-generated OpenAPI document (includes MVC controller endpoints)
+    app.MapScalarApiReference(options =>
+    {
+        options
+            .WithTitle("Attendance Monitoring API")
+            .WithOpenApiRoutePattern("/swagger/v1/swagger.json");
+    });
 }
 
 app.UseHttpsRedirection();
+app.UseCors("AllowFrontend");
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
