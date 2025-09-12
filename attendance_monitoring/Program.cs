@@ -98,6 +98,8 @@ builder.Services.AddScoped<IAccountRepository, AccountRepository>();
 builder.Services.AddScoped<IStudentService, StudentService>();
 builder.Services.AddScoped<IInstructorService, InstructorService>();
 builder.Services.AddScoped<IRefreshTokenService, RefreshTokenService>();
+builder.Services.AddScoped<IAccountService, AccountService>();
+builder.Services.AddScoped<IRoleInitializationService, RoleInitializationService>();
 builder.Services.AddScoped<UserContextService>();
 
 builder.Services.AddEndpointsApiExplorer();
@@ -148,5 +150,12 @@ app.UseCors("AllowFrontend");
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
+
+// Initialize roles
+using (var scope = app.Services.CreateScope())
+{
+    var roleInitializationService = scope.ServiceProvider.GetRequiredService<IRoleInitializationService>();
+    roleInitializationService.InitializeRolesAsync().Wait();
+}
 
 app.Run();
