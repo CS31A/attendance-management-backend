@@ -12,6 +12,7 @@ using attendance_monitoring.Models.DTO;
 using attendance_monitoring.IServices;
 using attendance_monitoring.Models.DTO.Response;
 using Microsoft.EntityFrameworkCore;
+using attendance_monitoring.IRepository;
 
 namespace attendance_monitoring.Controllers
 {
@@ -19,12 +20,11 @@ namespace attendance_monitoring.Controllers
     [Route("api/[controller]")]
     public class AccountController(
         UserManager<IdentityUser> userManager,
-        SignInManager<IdentityUser> signInManager,
-        RoleManager<IdentityRole> roleManager,
         IConfiguration configuration,
         ApplicationDbContext context,
         IRefreshTokenService refreshTokenService,
-        ILogger<AccountController> logger) // Inject ILogger
+        ILogger<AccountController> logger,
+        IAccountRepository accountRepository)
         : ControllerBase
     {
         #region Endpoints
@@ -59,7 +59,7 @@ namespace attendance_monitoring.Controllers
             }
 
             // Check if user already exists
-            var existingUser = await userManager.FindByNameAsync(registerDto.Username);
+            var existingUser = await accountRepository.FindUserByUsernameAsync(registerDto.Username);
             if (existingUser != null)
             {
                 logger.LogWarning("Registration failed because username already exists: {Username}", registerDto.Username);
@@ -67,7 +67,7 @@ namespace attendance_monitoring.Controllers
                 return BadRequest(ModelState);
             }
 
-            existingUser = await userManager.FindByEmailAsync(registerDto.Email);
+            existingUser = await accountRepository.FindUserByEmailAsync(registerDto.Email);
             if (existingUser != null)
             {
                 logger.LogWarning("Registration failed because email already exists: {Email}", registerDto.Email);
@@ -81,7 +81,7 @@ namespace attendance_monitoring.Controllers
                 Email = registerDto.Email
             };
 
-            var result = await userManager.CreateAsync(user, registerDto.Password);
+            var result = await accountRepository.CreateUserAsync(user, registerDto.Password);
             if (!result.Succeeded)
             {
                 foreach (var error in result.Errors)
@@ -94,14 +94,7 @@ namespace attendance_monitoring.Controllers
 
             // Create roles if they don't exist
             var validRoles = new[] { "Admin", "Teacher", "Student" };
-            foreach (var role in validRoles)
-            {
-                if (!await roleManager.RoleExistsAsync(role))
-                {
-                    await roleManager.CreateAsync(new IdentityRole(role));
-                    logger.LogInformation("Created role: {Role}", role);
-                }
-            }
+            await accountRepository.EnsureRolesExistAsync(validRoles);
 
             // Assign role to user
             // Default to "Student" role as requested
@@ -113,7 +106,7 @@ namespace attendance_monitoring.Controllers
                 roleToAssign = registerDto.Role;
             }
 
-            await userManager.AddToRoleAsync(user, roleToAssign);
+            await accountRepository.AddUserToRoleAsync(user, roleToAssign);
             logger.LogInformation("Assigned role {Role} to user {Username}", roleToAssign, user.UserName);
 
             // If the user is a student, also create a student record
@@ -129,8 +122,7 @@ namespace attendance_monitoring.Controllers
                     UpdatedAt = DateTime.UtcNow
                 };
 
-                context.Students.Add(student);
-                await context.SaveChangesAsync();
+                await accountRepository.CreateStudentProfileAsync(student);
                 logger.LogInformation("Created student record for user: {Username}", user.UserName);
             }
             else if (roleToAssign.Equals("Teacher", StringComparison.OrdinalIgnoreCase))
@@ -145,8 +137,7 @@ namespace attendance_monitoring.Controllers
                     UpdatedAt = DateTime.UtcNow
                 };
 
-                context.Instructors.Add(instructor);
-                await context.SaveChangesAsync();
+                await accountRepository.CreateInstructorProfileAsync(instructor);
                 logger.LogInformation("Created instructor record for user: {Username}", user.UserName);
             }
 
@@ -178,7 +169,7 @@ namespace attendance_monitoring.Controllers
                 return BadRequest(ModelState);
             }
 
-            var user = await userManager.FindByNameAsync(loginDto.Username);
+            var user = await accountRepository.FindUserByUsernameAsync(loginDto.Username);
             if (user == null)
             {
                 logger.LogWarning("Login failed for username {Username}: Invalid username or password", loginDto.Username);
@@ -186,7 +177,7 @@ namespace attendance_monitoring.Controllers
                 return Unauthorized(ModelState);
             }
 
-            var result = await signInManager.CheckPasswordSignInAsync(user, loginDto.Password, false);
+            var result = await accountRepository.CheckPasswordAsync(user, loginDto.Password);
             if (!result.Succeeded)
             {
                 logger.LogWarning("Login failed for username {Username}: Invalid username or password", loginDto.Username);
@@ -230,7 +221,7 @@ namespace attendance_monitoring.Controllers
             }
 
             // Get the user associated with the refresh token
-            var user = await userManager.FindByIdAsync(refreshTokenEntity.UserId);
+            var user = await accountRepository.FindUserByIdAsync(refreshTokenEntity.UserId);
             if (user == null)
             {
                 logger.LogWarning("Token refresh failed: User not found for token.");
@@ -298,7 +289,7 @@ namespace attendance_monitoring.Controllers
             if (storedToken.UserId != userId)
             {
                 // Let's also check if we can find the user associated with the token
-                var tokenUser = await userManager.FindByIdAsync(storedToken.UserId);
+                var tokenUser = await accountRepository.FindUserByIdAsync(storedToken.UserId);
                 if (tokenUser != null)
                 {
                     logger.LogWarning("Token revocation failed: Refresh token does not belong to the current user {UserId}.", userId);
@@ -367,7 +358,7 @@ namespace attendance_monitoring.Controllers
             };
 
             // Add roles as claims
-            var roles = await userManager.GetRolesAsync(user);
+            var roles = await accountRepository.GetUserRolesAsync(user);
             foreach (var role in roles)
             {
                 claims.Add(new Claim(ClaimTypes.Role, role));
