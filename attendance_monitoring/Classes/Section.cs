@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Text.Json.Serialization;
 
 namespace attendance_monitoring.Classes;
 
@@ -21,10 +22,12 @@ public class Section
 
     // Navigation property - required relationship
     [ForeignKey("CourseId")]
+    [JsonIgnore]
     public Course Course { get; set; } = null!;
 
     // Navigation property - required relationship
     [ForeignKey("InstructorId")]
+    [JsonIgnore]
     public Instructor Instructor { get; set; } = null!;
 
     public DateTime CreatedAt { get; set; }

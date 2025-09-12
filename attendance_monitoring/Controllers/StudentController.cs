@@ -6,6 +6,9 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace attendance_monitoring.Controllers;
 
+/// <summary>
+/// Controller for managing student records
+/// </summary>
 [Authorize(Policy = "UserPolicy")]
 [ApiController]
 [Route("api/[controller]")]
@@ -18,6 +21,12 @@ public class StudentController : ControllerBase
         _studentService = studentService;
     }
 
+    /// <summary>
+    /// Get a list of students with pagination
+    /// </summary>
+    /// <param name="paginationQuery">Pagination parameters</param>
+    /// <returns>A list of students</returns>
+    /// <response code="200">Returns the list of students</response>
     // GET: api/Student
     [HttpGet]
     public async Task<ActionResult<IEnumerable<Student>>> GetStudents([FromQuery] PaginationQuery paginationQuery)
@@ -26,6 +35,13 @@ public class StudentController : ControllerBase
         return Ok(students);
     }
 
+    /// <summary>
+    /// Get a specific student by ID
+    /// </summary>
+    /// <param name="id">The ID of the student to retrieve</param>
+    /// <returns>The requested student</returns>
+    /// <response code="200">Returns the requested student</response>
+    /// <response code="404">Student not found</response>
     // GET: api/Student/5
     [HttpGet("{id}")]
     public async Task<ActionResult<Student>> GetStudent(int id)
@@ -66,6 +82,16 @@ public class StudentController : ControllerBase
     // might be needed for future administrative purposes, but it's currently commented out 
     // to prevent confusion and potential misuse.
     
+    /// <summary>
+    /// Update a student record
+    /// </summary>
+    /// <param name="id">The ID of the student to update</param>
+    /// <param name="updateStudent">The updated student data</param>
+    /// <returns>The updated student</returns>
+    /// <response code="200">Returns the updated student</response>
+    /// <response code="400">Invalid input data</response>
+    /// <response code="404">Student not found</response>
+    /// <response code="401">Not authorized to update this student</response>
     // PATCH: api/Student/{id}
     [HttpPatch("{id}")]
     public async Task<ActionResult<Student>> PatchStudent(int id, UpdateStudent updateStudent)

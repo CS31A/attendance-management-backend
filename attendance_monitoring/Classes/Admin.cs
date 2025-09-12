@@ -1,6 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using Microsoft.AspNetCore.Identity;
+using System.Text.Json.Serialization;
 
 namespace attendance_monitoring.Classes;
 
@@ -19,6 +20,7 @@ public class Admin
     
     // Navigation property - required relationship
     [ForeignKey("UserId")]
+    [JsonIgnore]
     public IdentityUser User { get; set; } = null!;
     
     public DateTime CreatedAt { get; set; }
