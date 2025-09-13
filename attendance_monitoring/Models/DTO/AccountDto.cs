@@ -54,9 +54,9 @@ public class RegisterDto
 public class LoginDto
 {
     /// <summary>
-    /// Username for login
+    /// Email or username for login
     /// </summary>
-    [Required(ErrorMessage = "Username is required")]
+    [Required(ErrorMessage = "Email or username is required")]
     public string Username { get; set; } = string.Empty;
 
     /// <summary>

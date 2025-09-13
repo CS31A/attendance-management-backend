@@ -19,31 +19,19 @@ using Microsoft.IdentityModel.Tokens;
 
 namespace attendance_monitoring.Services
 {
-    public class AccountService : IAccountService
+    public class AccountService(
+        IConfiguration configuration,
+        ApplicationDbContext context,
+        IRefreshTokenService refreshTokenService,
+        ILogger<AccountService> logger,
+        IAccountRepository accountRepository)
+        : IAccountService
     {
-        private readonly IConfiguration _configuration;
-        private readonly ApplicationDbContext _context;
-        private readonly IRefreshTokenService _refreshTokenService;
-        private readonly ILogger<AccountService> _logger;
-        private readonly IAccountRepository _accountRepository;
 
-        public AccountService(
-            IConfiguration configuration,
-            ApplicationDbContext context,
-            IRefreshTokenService refreshTokenService,
-            ILogger<AccountService> logger,
-            IAccountRepository accountRepository)
-        {
-            _configuration = configuration;
-            _context = context;
-            _refreshTokenService = refreshTokenService;
-            _logger = logger;
-            _accountRepository = accountRepository;
-        }
-
+        #region Registration Methods
         public async Task<(IdentityResult, RegisterResponseDto?)> RegisterAsync(RegisterDto registerDto)
         {
-            _logger.LogInformation("Registration attempt for username: {Username}", registerDto.Username);
+            logger.LogInformation("Registration attempt for username: {Username}", registerDto.Username);
 
             if (registerDto.Password != registerDto.RepeatedPassword)
             {
@@ -51,14 +39,14 @@ namespace attendance_monitoring.Services
                 return (result, null);
             }
 
-            var existingUser = await _accountRepository.FindUserByUsernameAsync(registerDto.Username);
+            var existingUser = await accountRepository.FindUserByUsernameAsync(registerDto.Username);
             if (existingUser != null)
             {
                 var result = IdentityResult.Failed(new IdentityError { Code = "UsernameExists", Description = "Username already exists" });
                 return (result, null);
             }
 
-            existingUser = await _accountRepository.FindUserByEmailAsync(registerDto.Email);
+            existingUser = await accountRepository.FindUserByEmailAsync(registerDto.Email);
             if (existingUser != null)
             {
                 var result = IdentityResult.Failed(new IdentityError { Code = "EmailExists", Description = "Email already exists" });
@@ -71,7 +59,7 @@ namespace attendance_monitoring.Services
                 Email = registerDto.Email
             };
 
-            var createResult = await _accountRepository.CreateUserAsync(user, registerDto.Password);
+            var createResult = await accountRepository.CreateUserAsync(user, registerDto.Password);
             if (!createResult.Succeeded)
             {
                 return (createResult, null);
@@ -85,8 +73,8 @@ namespace attendance_monitoring.Services
                 roleToAssign = registerDto.Role;
             }
 
-            await _accountRepository.AddUserToRoleAsync(user, roleToAssign);
-            _logger.LogInformation("Assigned role {Role} to user {Username}", roleToAssign, user.UserName);
+            await accountRepository.AddUserToRoleAsync(user, roleToAssign);
+            logger.LogInformation("Assigned role {Role} to user {Username}", roleToAssign, user.UserName);
 
             if (roleToAssign.Equals("Student", StringComparison.OrdinalIgnoreCase))
             {
@@ -99,8 +87,8 @@ namespace attendance_monitoring.Services
                     CreatedAt = DateTime.UtcNow,
                     UpdatedAt = DateTime.UtcNow
                 };
-                await _accountRepository.CreateStudentProfileAsync(student);
-                _logger.LogInformation("Created student record for user: {Username}", user.UserName);
+                await accountRepository.CreateStudentProfileAsync(student);
+                logger.LogInformation("Created student record for user: {Username}", user.UserName);
             }
             else if (roleToAssign.Equals("Teacher", StringComparison.OrdinalIgnoreCase))
             {
@@ -113,37 +101,59 @@ namespace attendance_monitoring.Services
                     CreatedAt = DateTime.UtcNow,
                     UpdatedAt = DateTime.UtcNow
                 };
-                await _accountRepository.CreateInstructorProfileAsync(instructor);
-                _logger.LogInformation("Created instructor record for user: {Username}", user.UserName);
+                await accountRepository.CreateInstructorProfileAsync(instructor);
+                logger.LogInformation("Created instructor record for user: {Username}", user.UserName);
             }
 
-            _logger.LogInformation("User registered successfully: {Username} with role {Role}", user.UserName, roleToAssign);
+            logger.LogInformation("User registered successfully: {Username} with role {Role}", user.UserName, roleToAssign);
             var response = new RegisterResponseDto { Message = $"User registered successfully with {roleToAssign} role" };
             return (IdentityResult.Success, response);
         }
+        #endregion
 
+        #region Login Methods
         public async Task<(TokenResponseDto?, string?)> LoginAsync(LoginDto loginDto)
         {
-            _logger.LogInformation("Login attempt for username: {Username}", loginDto.Username);
+            logger.LogInformation("Login attempt for identifier: {Identifier}", loginDto.Username);
 
-            var user = await _accountRepository.FindUserByUsernameAsync(loginDto.Username);
-            if (user == null)
+            // Check if the identifier is an email or username
+            IdentityUser? user = null;
+            if (loginDto.Username.Contains("@"))
             {
-                _logger.LogWarning("Login failed for username {Username}: Invalid username or password", loginDto.Username);
-                return (null, "Invalid username or password");
+                // Treat as email
+                user = await accountRepository.FindUserByEmailAsync(loginDto.Username);
+                if (user != null)
+                {
+                    logger.LogInformation("Found user by email: {Email}", loginDto.Username);
+                }
+            }
+            else
+            {
+                // Treat as username
+                user = await accountRepository.FindUserByUsernameAsync(loginDto.Username);
+                if (user != null)
+                {
+                    logger.LogInformation("Found user by username: {Username}", loginDto.Username);
+                }
             }
 
-            var result = await _accountRepository.CheckPasswordAsync(user, loginDto.Password);
+            if (user == null)
+            {
+                logger.LogWarning("Login failed for identifier {Identifier}: Invalid email or username or password", loginDto.Username);
+                return (null, "Invalid email or username or password");
+            }
+
+            var result = await accountRepository.CheckPasswordAsync(user, loginDto.Password);
             if (!result.Succeeded)
             {
-                _logger.LogWarning("Login failed for username {Username}: Invalid username or password", loginDto.Username);
-                return (null, "Invalid username or password");
+                logger.LogWarning("Login failed for user {Username}: Invalid password", user.UserName);
+                return (null, "Invalid email or username or password");
             }
 
             var accessToken = await GenerateJwtToken(user);
-            var (refreshTokenEntity, refreshToken) = await _refreshTokenService.CreateRefreshTokenAsync(user.Id);
+            var (refreshTokenEntity, refreshToken) = await refreshTokenService.CreateRefreshTokenAsync(user.Id);
 
-            _logger.LogInformation("User {Username} logged in successfully", loginDto.Username);
+            logger.LogInformation("User {Username} logged in successfully", user.UserName);
             var tokenResponse = new TokenResponseDto
             {
                 AccessToken = accessToken,
@@ -151,38 +161,40 @@ namespace attendance_monitoring.Services
             };
             return (tokenResponse, null);
         }
+        #endregion
 
+        #region Token Management Methods
         public async Task<(TokenResponseDto?, string?)> RefreshAsync(RefreshTokenRequestDto refreshTokenRequest)
         {
-            _logger.LogInformation("Token refresh attempt.");
+            logger.LogInformation("Token refresh attempt.");
 
-            var (refreshTokenEntity, validationError) = await _refreshTokenService.ValidateRefreshTokenAsync(refreshTokenRequest.RefreshToken);
+            var (refreshTokenEntity, validationError) = await refreshTokenService.ValidateRefreshTokenAsync(refreshTokenRequest.RefreshToken);
             if (refreshTokenEntity == null)
             {
-                _logger.LogWarning("Token refresh failed: {ValidationError}", validationError);
+                logger.LogWarning("Token refresh failed: {ValidationError}", validationError);
                 return (null, validationError);
             }
 
-            var user = await _accountRepository.FindUserByIdAsync(refreshTokenEntity.UserId);
+            var user = await accountRepository.FindUserByIdAsync(refreshTokenEntity.UserId);
             if (user == null)
             {
-                _logger.LogWarning("Token refresh failed: User not found for token.");
+                logger.LogWarning("Token refresh failed: User not found for token.");
                 return (null, "User not found");
             }
 
-            var (newRefreshTokenEntity, newRefreshToken) = await _refreshTokenService.RotateRefreshTokenAsync(
+            var (newRefreshTokenEntity, newRefreshToken) = await refreshTokenService.RotateRefreshTokenAsync(
                 refreshTokenRequest.RefreshToken,
                 user.Id);
 
             if (string.IsNullOrEmpty(newRefreshToken))
             {
-                _logger.LogError("Token refresh failed for user {UserId}: Failed to rotate refresh token.", user.Id);
+                logger.LogError("Token refresh failed for user {UserId}: Failed to rotate refresh token.", user.Id);
                 return (null, "Failed to rotate refresh token");
             }
 
             var newAccessToken = await GenerateJwtToken(user);
 
-            _logger.LogInformation("Token refreshed successfully for user {UserId}.", user.Id);
+            logger.LogInformation("Token refreshed successfully for user {UserId}.", user.Id);
             var tokenResponse = new TokenResponseDto
             {
                 AccessToken = newAccessToken,
@@ -193,44 +205,46 @@ namespace attendance_monitoring.Services
 
         public async Task<(RevokeResponseDto?, string?)> RevokeAsync(RevokeTokenRequestDto revokeTokenRequest, string userId)
         {
-            _logger.LogInformation("Token revocation attempt for user {UserId}.", userId);
+            logger.LogInformation("Token revocation attempt for user {UserId}.", userId);
 
-            var tokenHash = _refreshTokenService.HashRefreshToken(revokeTokenRequest.RefreshToken);
-            var storedToken = await _context.RefreshTokens.FirstOrDefaultAsync(rt => rt.TokenHash == tokenHash);
+            var tokenHash = refreshTokenService.HashRefreshToken(revokeTokenRequest.RefreshToken);
+            var storedToken = await context.RefreshTokens.FirstOrDefaultAsync(rt => rt.TokenHash == tokenHash);
 
             if (storedToken == null)
             {
-                _logger.LogWarning("Token revocation failed: Refresh token not found.");
+                logger.LogWarning("Token revocation failed: Refresh token not found.");
                 return (null, "Refresh token not found");
             }
 
             if (storedToken.UserId != userId)
             {
-                _logger.LogWarning("Token revocation failed: Refresh token does not belong to the current user {UserId}.", userId);
+                logger.LogWarning("Token revocation failed: Refresh token does not belong to the current user {UserId}.", userId);
                 return (null, "Refresh token does not belong to the current user");
             }
 
             if (storedToken.IsRevoked)
             {
-                _logger.LogWarning("Token revocation failed: Refresh token has already been revoked.");
+                logger.LogWarning("Token revocation failed: Refresh token has already been revoked.");
                 return (null, "Refresh token has already been revoked");
             }
 
             if (storedToken.ExpiresAt < DateTime.UtcNow)
             {
-                _logger.LogWarning("Token revocation failed: Refresh token has expired.");
+                logger.LogWarning("Token revocation failed: Refresh token has expired.");
                 return (null, "Refresh token has expired");
             }
 
             storedToken.IsRevoked = true;
             storedToken.RevokedAt = DateTime.UtcNow;
-            await _context.SaveChangesAsync();
+            await context.SaveChangesAsync();
 
-            _logger.LogInformation("Refresh token revoked successfully for user {UserId}.", userId);
+            logger.LogInformation("Refresh token revoked successfully for user {UserId}.", userId);
             var response = new RevokeResponseDto { Message = "Refresh token revoked successfully" };
             return (response, null);
         }
+        #endregion
 
+        #region Helper Methods
         private async Task<string> GenerateJwtToken(IdentityUser user)
         {
             var claims = new List<Claim>
@@ -241,23 +255,24 @@ namespace attendance_monitoring.Services
                 new Claim(ClaimTypes.Name, user.UserName ?? string.Empty)
             };
 
-            var roles = await _accountRepository.GetUserRolesAsync(user);
+            var roles = await accountRepository.GetUserRolesAsync(user);
             foreach (var role in roles)
             {
                 claims.Add(new Claim(ClaimTypes.Role, role));
             }
 
-            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["AppSettings:Token"] ?? string.Empty));
+            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(configuration["AppSettings:Token"] ?? string.Empty));
             var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
             var token = new JwtSecurityToken(
-                issuer: _configuration["AppSettings:Issuer"],
-                audience: _configuration["AppSettings:Audience"],
+                issuer: configuration["AppSettings:Issuer"],
+                audience: configuration["AppSettings:Audience"],
                 claims: claims,
                 expires: DateTime.UtcNow.AddMinutes(TokenConstants.AccessTokenExpirationMinutes),
                 signingCredentials: credentials);
 
             return new JwtSecurityTokenHandler().WriteToken(token);
         }
+        #endregion
     }
 }
