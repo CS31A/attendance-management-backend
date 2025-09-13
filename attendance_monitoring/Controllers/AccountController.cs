@@ -221,7 +221,7 @@ namespace attendance_monitoring.Controllers
             {
                 HttpOnly = true,
                 Secure = true, // Set to true in production with HTTPS
-                SameSite = SameSiteMode.Strict,
+                SameSite = SameSiteMode.Lax, // Changed this from strict breh
                 Expires = DateTime.UtcNow.AddDays(7) // Adjust as needed
             };
 
@@ -231,7 +231,7 @@ namespace attendance_monitoring.Controllers
             {
                 HttpOnly = true,
                 Secure = true, // Set to true in production with HTTPS
-                SameSite = SameSiteMode.Strict,
+                SameSite = SameSiteMode.Lax,
                 Expires = DateTime.UtcNow.AddDays(7) // Adjust as needed
             };
             
