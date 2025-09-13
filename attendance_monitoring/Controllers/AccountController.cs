@@ -6,7 +6,6 @@ using System.Threading.Tasks;
 using attendance_monitoring.Models.DTO;
 using attendance_monitoring.IServices;
 using attendance_monitoring.Models.DTO.Response;
-using Microsoft.Extensions.Logging;
 
 namespace attendance_monitoring.Controllers
 {
@@ -34,7 +33,7 @@ namespace attendance_monitoring.Controllers
             if (!ModelState.IsValid)
             {
                 logger.LogWarning("Registration failed due to invalid model state for username: {Username}", registerDto.Username);
-                return BadRequest(ModelState);
+                return BadRequest(new RegisterResponseDto { Success = false, Message = "Invalid request data" });
             }
 
             var (result, response) = await accountService.RegisterAsync(registerDto);
@@ -44,13 +43,12 @@ namespace attendance_monitoring.Controllers
                 foreach (var error in result.Errors)
                 {
                     logger.LogError("Error during user registration for {Username}: {ErrorDescription}", registerDto.Username, error.Description);
-                    ModelState.AddModelError(string.Empty, error.Description);
                 }
-                return BadRequest(ModelState);
+                return BadRequest(new RegisterResponseDto { Success = false, Message = string.Join("; ", result.Errors.Select(e => e.Description)) });
             }
 
             logger.LogInformation("User registered successfully: {Username}", registerDto.Username);
-            return Ok(response);
+            return Ok(new RegisterResponseDto { Success = true, Message = response?.Message ?? "User registered successfully" });
         }
         #endregion
 
@@ -64,16 +62,16 @@ namespace attendance_monitoring.Controllers
         /// <response code="401">Invalid credentials</response>
         /// <response code="400">Invalid input data</response>
         [HttpPost("login")]
-        [ProducesResponseType(typeof(TokenResponseDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(LoginResponseDto), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
-        public async Task<ActionResult<TokenResponseDto>> Login(LoginDto loginDto)
+        public async Task<ActionResult<LoginResponseDto>> Login(LoginDto loginDto)
         {
             logger.LogInformation("Login attempt for username: {Username}", loginDto.Username);
             if (!ModelState.IsValid)
             {
                 logger.LogWarning("Login failed due to invalid model state for username: {Username}", loginDto.Username);
-                return BadRequest(ModelState);
+                return BadRequest(new LoginResponseDto { Success = false, Message = "Invalid request data" });
             }
 
             var (tokenResponse, error) = await accountService.LoginAsync(loginDto);
@@ -81,25 +79,85 @@ namespace attendance_monitoring.Controllers
             if (tokenResponse == null)
             {
                 logger.LogWarning("Login failed for username {Username}: {Error}", loginDto.Username, error);
-                ModelState.AddModelError("Error", error ?? "An unexpected error occurred.");
-                return Unauthorized(ModelState);
+                return Unauthorized(new LoginResponseDto { Success = false, Message = error ?? "Login failed" });
             }
 
             logger.LogInformation("User {Username} logged in successfully", loginDto.Username);
-            return Ok(tokenResponse);
+            return Ok(new LoginResponseDto { 
+                Success = true, 
+                Message = "Login successful",
+                AccessToken = tokenResponse.AccessToken, 
+                RefreshToken = tokenResponse.RefreshToken 
+            });
+        }
+        #endregion
+        
+        #region POST: api/account/web/login
+        /// <summary>
+        /// Authenticate user and return access/refresh tokens (http-only cookies)
+        /// </summary>
+        /// <param name="loginDto">User login credentials</param>
+        /// <returns>JWT tokens</returns>
+        /// <response code="200">Login successful</response>
+        /// <response code="401">Invalid credentials</response>
+        /// <response code="400">Invalid input data</response>
+        [HttpPost("web/login")]
+        [ProducesResponseType(typeof(WebLoginResponseDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+        public async Task<ActionResult<WebLoginResponseDto>> WebLogin(LoginDto loginDto)
+        {
+            logger.LogInformation("Login attempt for username: {Username}", loginDto.Username);
+            if (!ModelState.IsValid)
+            {
+                logger.LogWarning("Login failed due to invalid model state for username: {Username}", loginDto.Username);
+                return BadRequest(new WebLoginResponseDto { Success = false, Message = "Invalid request data" });
+            }
+
+            var (tokenResponse, error) = await accountService.LoginAsync(loginDto);
+
+            if (tokenResponse == null)
+            {
+                logger.LogWarning("Login failed for username {Username}: {Error}", loginDto.Username, error);
+                return Unauthorized(new WebLoginResponseDto { Success = false, Message = error ?? "An unexpected error occurred." });
+            }
+
+            // Set HTTP-only cookies for access and refresh tokens
+            var cookieOptions = new CookieOptions
+            {
+                HttpOnly = true,
+                Secure = true, // Set to true in production with HTTPS
+                SameSite = SameSiteMode.Strict,
+                Expires = DateTime.UtcNow.AddDays(7) // Adjust as needed
+            };
+
+            Response.Cookies.Append("accessToken", tokenResponse.AccessToken, cookieOptions);
+            
+            var refreshCookieOptions = new CookieOptions
+            {
+                HttpOnly = true,
+                Secure = true, // Set to true in production with HTTPS
+                SameSite = SameSiteMode.Strict,
+                Expires = DateTime.UtcNow.AddDays(7) // Adjust as needed
+            };
+            
+            Response.Cookies.Append("refreshToken", tokenResponse.RefreshToken, refreshCookieOptions);
+
+            logger.LogInformation("User {Username} logged in successfully", loginDto.Username);
+            return Ok(new WebLoginResponseDto { Success = true, Message = "Login successful" });
         }
         #endregion
 
         #region POST: api/account/refresh
         // POST: api/account/refresh
         [HttpPost("refresh")]
-        public async Task<ActionResult<TokenResponseDto>> Refresh(RefreshTokenRequestDto refreshTokenRequest)
+        public async Task<ActionResult<RefreshResponseDto>> Refresh(RefreshTokenRequestDto refreshTokenRequest)
         {
             logger.LogInformation("Token refresh attempt.");
             if (!ModelState.IsValid)
             {
                 logger.LogWarning("Token refresh failed due to invalid model state.");
-                return BadRequest(ModelState);
+                return BadRequest(new RefreshResponseDto { Success = false, Message = "Invalid request data" });
             }
 
             var (tokenResponse, error) = await accountService.RefreshAsync(refreshTokenRequest);
@@ -107,11 +165,73 @@ namespace attendance_monitoring.Controllers
             if (tokenResponse == null)
             {
                 logger.LogWarning("Token refresh failed: {Error}", error);
-                return Unauthorized(new { Message = error });
+                return Unauthorized(new RefreshResponseDto { Success = false, Message = error ?? "Token refresh failed" });
             }
 
             logger.LogInformation("Token refreshed successfully.");
-            return Ok(tokenResponse);
+            return Ok(new RefreshResponseDto 
+            { 
+                Success = true, 
+                Message = "Token refreshed successfully",
+                AccessToken = tokenResponse.AccessToken, 
+                RefreshToken = tokenResponse.RefreshToken 
+            });
+        }
+        #endregion
+
+        #region POST: api/account/web/refresh
+        /// <summary>
+        /// Refresh tokens using HTTP-only cookies
+        /// </summary>
+        /// <returns>New JWT tokens</returns>
+        /// <response code="200">Tokens refreshed successfully</response>
+        /// <response code="401">Invalid refresh token</response>
+        [HttpPost("web/refresh")]
+        [ProducesResponseType(typeof(WebRefreshResponseDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        public async Task<ActionResult<WebRefreshResponseDto>> WebRefresh()
+        {
+            logger.LogInformation("Web token refresh attempt.");
+
+            // Get refresh token from cookie
+            if (!Request.Cookies.TryGetValue("refreshToken", out var refreshToken))
+            {
+                logger.LogWarning("Token refresh failed: No refresh token in cookies.");
+                return Unauthorized(new WebRefreshResponseDto { Success = false, Message = "Refresh token not found" });
+            }
+
+            var refreshTokenRequest = new RefreshTokenRequestDto { RefreshToken = refreshToken };
+            var (tokenResponse, error) = await accountService.RefreshAsync(refreshTokenRequest);
+
+            if (tokenResponse == null)
+            {
+                logger.LogWarning("Token refresh failed: {Error}", error);
+                return Unauthorized(new WebRefreshResponseDto { Success = false, Message = error ?? "Token refresh failed" });
+            }
+
+            // Update HTTP-only cookies with new tokens
+            var cookieOptions = new CookieOptions
+            {
+                HttpOnly = true,
+                Secure = true, // Set to true in production with HTTPS
+                SameSite = SameSiteMode.Strict,
+                Expires = DateTime.UtcNow.AddDays(7) // Adjust as needed
+            };
+
+            Response.Cookies.Append("accessToken", tokenResponse.AccessToken, cookieOptions);
+            
+            var refreshCookieOptions = new CookieOptions
+            {
+                HttpOnly = true,
+                Secure = true, // Set to true in production with HTTPS
+                SameSite = SameSiteMode.Strict,
+                Expires = DateTime.UtcNow.AddDays(7) // Adjust as needed
+            };
+            
+            Response.Cookies.Append("refreshToken", tokenResponse.RefreshToken, refreshCookieOptions);
+
+            logger.LogInformation("Web tokens refreshed successfully.");
+            return Ok(new WebRefreshResponseDto { Success = true, Message = "Tokens refreshed successfully" });
         }
         #endregion
 
@@ -126,14 +246,14 @@ namespace attendance_monitoring.Controllers
             if (!ModelState.IsValid)
             {
                 logger.LogWarning("Token revocation failed due to invalid model state.");
-                return BadRequest(ModelState);
+                return BadRequest(new RevokeResponseDto { Success = false, Message = "Invalid request data" });
             }
 
             var userId = GetUserId(User);
             if (string.IsNullOrEmpty(userId))
             {
                 logger.LogWarning("Token revocation failed: User not found from claims.");
-                return Unauthorized(new { Message = "User not found" });
+                return Unauthorized(new RevokeResponseDto { Success = false, Message = "User not found" });
             }
 
             var (response, error) = await accountService.RevokeAsync(revokeTokenRequest, userId);
@@ -141,11 +261,58 @@ namespace attendance_monitoring.Controllers
             if (response == null)
             {
                 logger.LogWarning("Token revocation failed: {Error}", error);
-                return Unauthorized(new { Message = error });
+                return Unauthorized(new RevokeResponseDto { Success = false, Message = error ?? "Token revocation failed" });
             }
 
             logger.LogInformation("Refresh token revoked successfully for user {UserId}.", userId);
-            return Ok(response);
+            return Ok(new RevokeResponseDto { Success = true, Message = response.Message });
+        }
+        #endregion
+
+        #region POST: api/account/web/revoke
+        /// <summary>
+        /// Revoke refresh token using HTTP-only cookies
+        /// </summary>
+        /// <returns>Revocation status</returns>
+        /// <response code="200">Token revoked successfully</response>
+        /// <response code="401">Invalid token or user</response>
+        [HttpPost("web/revoke")]
+        [Authorize]
+        [ProducesResponseType(typeof(WebRevokeResponseDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        public async Task<ActionResult<WebRevokeResponseDto>> WebRevoke()
+        {
+            logger.LogInformation("Web token revocation attempt.");
+
+            // Get refresh token from cookie
+            if (!Request.Cookies.TryGetValue("refreshToken", out var refreshToken))
+            {
+                logger.LogWarning("Token revocation failed: No refresh token in cookies.");
+                return Unauthorized(new WebRevokeResponseDto { Success = false, Message = "Refresh token not found" });
+            }
+
+            var userId = GetUserId(User);
+            if (string.IsNullOrEmpty(userId))
+            {
+                logger.LogWarning("Token revocation failed: User not found from claims.");
+                return Unauthorized(new WebRevokeResponseDto { Success = false, Message = "User not found" });
+            }
+
+            var revokeTokenRequest = new RevokeTokenRequestDto { RefreshToken = refreshToken };
+            var (response, error) = await accountService.RevokeAsync(revokeTokenRequest, userId);
+
+            if (response == null)
+            {
+                logger.LogWarning("Token revocation failed: {Error}", error);
+                return Unauthorized(new WebRevokeResponseDto { Success = false, Message = error ?? "Token revocation failed" });
+            }
+
+            // Clear cookies after revocation
+            Response.Cookies.Delete("accessToken");
+            Response.Cookies.Delete("refreshToken");
+
+            logger.LogInformation("Refresh token revoked successfully for user {UserId}.", userId);
+            return Ok(new WebRevokeResponseDto { Success = true, Message = "Token revoked successfully" });
         }
         #endregion
 
@@ -162,8 +329,28 @@ namespace attendance_monitoring.Controllers
         [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status401Unauthorized)]
         public ActionResult<CheckAuthResponseDto> Check()
         {
-            logger.LogInformation("Authentication check for user: {UserId}", User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
-            return Ok(new CheckAuthResponseDto { Message = "User is authenticated", User = User.Identity?.Name });
+            logger.LogInformation("Authentication check for user: {UserId}", GetUserId(User));
+            var username = GetUsername(User);
+            return Ok(new CheckAuthResponseDto { Success = true, Message = "User is authenticated", User = username });
+        }
+        #endregion
+
+        #region POST: api/account/web/logout
+        /// <summary>
+        /// Logout user by clearing HTTP-only cookies
+        /// </summary>
+        /// <returns>Logout status</returns>
+        /// <response code="200">User logged out successfully</response>
+        [HttpPost("web/logout")]
+        [ProducesResponseType(typeof(WebLoginResponseDto), StatusCodes.Status200OK)]
+        public ActionResult<WebLoginResponseDto> WebLogout()
+        {
+            // Clear cookies
+            Response.Cookies.Delete("accessToken");
+            Response.Cookies.Delete("refreshToken");
+            
+            logger.LogInformation("User logged out successfully");
+            return Ok(new WebLoginResponseDto { Success = true, Message = "Logged out successfully" });
         }
         #endregion
 
@@ -173,6 +360,11 @@ namespace attendance_monitoring.Controllers
         private string? GetUserId(ClaimsPrincipal userPrincipal)
         {
             return userPrincipal.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        }
+        
+        private string? GetUsername(ClaimsPrincipal userPrincipal)
+        {
+            return userPrincipal.FindFirst(ClaimTypes.Name)?.Value;
         }
         #endregion
     }
