@@ -18,6 +18,7 @@ public class InstructorRepository : IInstructorRepository
     public async Task<IEnumerable<Instructor>> GetAllInstructorsAsync(PaginationQuery paginationQuery)
     {
         return await _context.Instructors
+            .OrderBy(i => i.Id)
             .Skip((paginationQuery.PageNumber - 1) * paginationQuery.PageSize)
             .Take(paginationQuery.PageSize)
             .ToListAsync();
