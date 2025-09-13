@@ -67,10 +67,10 @@ namespace attendance_monitoring.Controllers
         [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
         public async Task<ActionResult<LoginResponseDto>> Login(LoginDto loginDto)
         {
-            logger.LogInformation("Login attempt for username: {Username}", loginDto.Username);
+            logger.LogInformation("Login attempt for identifier: {Identifier}", loginDto.Username);
             if (!ModelState.IsValid)
             {
-                logger.LogWarning("Login failed due to invalid model state for username: {Username}", loginDto.Username);
+                logger.LogWarning("Login failed due to invalid model state for identifier: {Identifier}", loginDto.Username);
                 return BadRequest(new LoginResponseDto { Success = false, Message = "Invalid request data" });
             }
 
@@ -78,11 +78,11 @@ namespace attendance_monitoring.Controllers
 
             if (tokenResponse == null)
             {
-                logger.LogWarning("Login failed for username {Username}: {Error}", loginDto.Username, error);
+                logger.LogWarning("Login failed for identifier {Identifier}: {Error}", loginDto.Username, error);
                 return Unauthorized(new LoginResponseDto { Success = false, Message = error ?? "Login failed" });
             }
 
-            logger.LogInformation("User {Username} logged in successfully", loginDto.Username);
+            logger.LogInformation("User logged in successfully");
             return Ok(new LoginResponseDto { 
                 Success = true, 
                 Message = "Login successful",
@@ -96,7 +96,7 @@ namespace attendance_monitoring.Controllers
         /// <summary>
         /// Authenticate user and return access/refresh tokens (http-only cookies)
         /// </summary>
-        /// <param name="loginDto">User login credentials</param>
+        /// <param name="webLoginDto">User login credentials with email or username</param>
         /// <returns>JWT tokens</returns>
         /// <response code="200">Login successful</response>
         /// <response code="401">Invalid credentials</response>
@@ -105,20 +105,27 @@ namespace attendance_monitoring.Controllers
         [ProducesResponseType(typeof(WebLoginResponseDto), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
-        public async Task<ActionResult<WebLoginResponseDto>> WebLogin(LoginDto loginDto)
+        public async Task<ActionResult<WebLoginResponseDto>> WebLogin(WebLoginDto webLoginDto)
         {
-            logger.LogInformation("Login attempt for username: {Username}", loginDto.Username);
+            logger.LogInformation("Web login attempt for identifier: {Identifier}", webLoginDto.Identifier);
             if (!ModelState.IsValid)
             {
-                logger.LogWarning("Login failed due to invalid model state for username: {Username}", loginDto.Username);
+                logger.LogWarning("Web login failed due to invalid model state for identifier: {Identifier}", webLoginDto.Identifier);
                 return BadRequest(new WebLoginResponseDto { Success = false, Message = "Invalid request data" });
             }
+
+            // Map WebLoginDto to LoginDto for compatibility with existing LoginAsync method
+            var loginDto = new LoginDto 
+            { 
+                Username = webLoginDto.Identifier, 
+                Password = webLoginDto.Password 
+            };
 
             var (tokenResponse, error) = await accountService.LoginAsync(loginDto);
 
             if (tokenResponse == null)
             {
-                logger.LogWarning("Login failed for username {Username}: {Error}", loginDto.Username, error);
+                logger.LogWarning("Web login failed for identifier {Identifier}: {Error}", webLoginDto.Identifier, error);
                 return Unauthorized(new WebLoginResponseDto { Success = false, Message = error ?? "An unexpected error occurred." });
             }
 
@@ -143,7 +150,7 @@ namespace attendance_monitoring.Controllers
             
             Response.Cookies.Append("refreshToken", tokenResponse.RefreshToken, refreshCookieOptions);
 
-            logger.LogInformation("User {Username} logged in successfully", loginDto.Username);
+            logger.LogInformation("User logged in successfully via web login");
             return Ok(new WebLoginResponseDto { Success = true, Message = "Login successful" });
         }
         #endregion
