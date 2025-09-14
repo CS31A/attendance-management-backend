@@ -6,27 +6,51 @@ using attendance_monitoring.Models.Request;
 
 namespace attendance_monitoring.Services
 {
+    /// <summary>
+    /// Service class for managing instructor-related operations
+    /// </summary>
     public class InstructorService : IInstructorService
     {
         private readonly IInstructorRepository _instructorRepository;
         private readonly UserContextService _userContextService;
 
+        /// <summary>
+        /// Initializes a new instance of the InstructorService class
+        /// </summary>
+        /// <param name="instructorRepository">Repository for instructor data operations</param>
+        /// <param name="userContextService">Service for managing user context and authorization</param>
         public InstructorService(IInstructorRepository instructorRepository, UserContextService userContextService)
         {
             _instructorRepository = instructorRepository ?? throw new ArgumentNullException(nameof(instructorRepository));
             _userContextService = userContextService ?? throw new ArgumentNullException(nameof(userContextService));
         }
 
+        /// <summary>
+        /// Retrieves all instructors with pagination support
+        /// </summary>
+        /// <param name="paginationQuery">Pagination parameters</param>
+        /// <returns>A collection of instructors</returns>
         public async Task<IEnumerable<Instructor>> GetAllInstructorsAsync(PaginationQuery paginationQuery)
         {
             return await _instructorRepository.GetAllInstructorsAsync(paginationQuery);
         }
 
+        /// <summary>
+        /// Retrieves a specific instructor by ID
+        /// </summary>
+        /// <param name="id">The ID of the instructor to retrieve</param>
+        /// <returns>The instructor with the specified ID, or null if not found</returns>
         public async Task<Instructor?> GetInstructorByIdAsync(int id)
         {
             return await _instructorRepository.GetInstructorByIdAsync(id);
         }
 
+        /// <summary>
+        /// Creates a new instructor record
+        /// </summary>
+        /// <param name="createInstructor">The instructor data to create</param>
+        /// <param name="userPrincipal">The claims principal of the current user</param>
+        /// <returns>A tuple containing the created instructor (if successful) and an error message (if any)</returns>
         public async Task<(Instructor?, string?)> CreateInstructorAsync(CreateInstructor createInstructor, ClaimsPrincipal userPrincipal)
         {
             // Additional validation for defense in depth
@@ -78,6 +102,13 @@ namespace attendance_monitoring.Services
             return (createdInstructor, null);
         }
 
+        /// <summary>
+        /// Updates an existing instructor record
+        /// </summary>
+        /// <param name="id">The ID of the instructor to update</param>
+        /// <param name="updateInstructor">The updated instructor data</param>
+        /// <param name="userPrincipal">The claims principal of the current user</param>
+        /// <returns>A tuple containing the updated instructor (if successful) and an error message (if any)</returns>
         public async Task<(Instructor?, string?)> UpdateInstructorAsync(int id, UpdateInstructor updateInstructor, ClaimsPrincipal userPrincipal)
         {
             // Additional validation for defense in depth

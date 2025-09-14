@@ -6,27 +6,51 @@ using attendance_monitoring.Models.Request;
 
 namespace attendance_monitoring.Services
 {
+    /// <summary>
+    /// Service class for managing student-related operations
+    /// </summary>
     public class StudentService : IStudentService
     {
         private readonly IStudentRepository _studentRepository;
         private readonly UserContextService _userContextService;
 
+        /// <summary>
+        /// Initializes a new instance of the StudentService class
+        /// </summary>
+        /// <param name="studentRepository">Repository for student data operations</param>
+        /// <param name="userContextService">Service for managing user context and authorization</param>
         public StudentService(IStudentRepository studentRepository, UserContextService userContextService)
         {
             _studentRepository = studentRepository ?? throw new ArgumentNullException(nameof(studentRepository));
             _userContextService = userContextService ?? throw new ArgumentNullException(nameof(userContextService));
         }
 
+        /// <summary>
+        /// Retrieves all students with pagination support
+        /// </summary>
+        /// <param name="paginationQuery">Pagination parameters</param>
+        /// <returns>A collection of students</returns>
         public async Task<IEnumerable<Student>> GetAllStudentsAsync(PaginationQuery paginationQuery)
         {
             return await _studentRepository.GetAllStudentsAsync(paginationQuery);
         }
 
+        /// <summary>
+        /// Retrieves a specific student by ID
+        /// </summary>
+        /// <param name="id">The ID of the student to retrieve</param>
+        /// <returns>The student with the specified ID, or null if not found</returns>
         public async Task<Student?> GetStudentByIdAsync(int id)
         {
             return await _studentRepository.GetStudentByIdAsync(id);
         }
 
+        /// <summary>
+        /// Creates a new student record
+        /// </summary>
+        /// <param name="createStudent">The student data to create</param>
+        /// <param name="userPrincipal">The claims principal of the current user</param>
+        /// <returns>A tuple containing the created student (if successful) and an error message (if any)</returns>
         public async Task<(Student?, string?)> CreateStudentAsync(CreateStudent createStudent, ClaimsPrincipal userPrincipal)
         {
             // Additional validation for defense in depth
@@ -78,6 +102,13 @@ namespace attendance_monitoring.Services
             return (createdStudent, null);
         }
 
+        /// <summary>
+        /// Updates an existing student record
+        /// </summary>
+        /// <param name="id">The ID of the student to update</param>
+        /// <param name="updateStudent">The updated student data</param>
+        /// <param name="userPrincipal">The claims principal of the current user</param>
+        /// <returns>A tuple containing the updated student (if successful) and an error message (if any)</returns>
         public async Task<(Student?, string?)> UpdateStudentAsync(int id, UpdateStudent updateStudent, ClaimsPrincipal userPrincipal)
         {
             // Additional validation for defense in depth
