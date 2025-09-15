@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Configuration;
 using System.Security.Claims;
 using System.Threading.Tasks;
 using attendance_monitoring.Models.DTO;
@@ -11,7 +12,7 @@ namespace attendance_monitoring.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    public class AccountController(IAccountService accountService, ILogger<AccountController> logger)
+    public class AccountController(IAccountService accountService, ILogger<AccountController> logger, IConfiguration configuration)
         : ControllerBase
     {
         #region Endpoints
@@ -130,12 +131,15 @@ namespace attendance_monitoring.Controllers
             }
 
             // Set HTTP-only cookies for access and refresh tokens
+            var accessTokenExpirationMinutes = configuration.GetValue<int>("CookieSettings:AccessTokenExpirationMinutes", 15);
+            var refreshTokenExpirationDays = configuration.GetValue<int>("CookieSettings:RefreshTokenExpirationDays", 7);
+            
             var cookieOptions = new CookieOptions
             {
                 HttpOnly = true,
                 Secure = true, // Set to true in production with HTTPS
                 SameSite = SameSiteMode.Strict,
-                Expires = DateTime.UtcNow.AddDays(7) // Adjust as needed
+                Expires = DateTime.UtcNow.AddMinutes(accessTokenExpirationMinutes)
             };
 
             Response.Cookies.Append("accessToken", tokenResponse.AccessToken, cookieOptions);
@@ -145,7 +149,7 @@ namespace attendance_monitoring.Controllers
                 HttpOnly = true,
                 Secure = true, // Set to true in production with HTTPS
                 SameSite = SameSiteMode.Strict,
-                Expires = DateTime.UtcNow.AddDays(7) // Adjust as needed
+                Expires = DateTime.UtcNow.AddDays(refreshTokenExpirationDays)
             };
             
             Response.Cookies.Append("refreshToken", tokenResponse.RefreshToken, refreshCookieOptions);
@@ -217,12 +221,15 @@ namespace attendance_monitoring.Controllers
             }
 
             // Update HTTP-only cookies with new tokens
+            var accessTokenExpirationMinutes = configuration.GetValue<int>("CookieSettings:AccessTokenExpirationMinutes", 15);
+            var refreshTokenExpirationDays = configuration.GetValue<int>("CookieSettings:RefreshTokenExpirationDays", 7);
+            
             var cookieOptions = new CookieOptions
             {
                 HttpOnly = true,
                 Secure = true, // Set to true in production with HTTPS
                 SameSite = SameSiteMode.Lax, // Changed this from strict breh
-                Expires = DateTime.UtcNow.AddDays(7) // Adjust as needed
+                Expires = DateTime.UtcNow.AddMinutes(accessTokenExpirationMinutes)
             };
 
             Response.Cookies.Append("accessToken", tokenResponse.AccessToken, cookieOptions);
@@ -232,7 +239,7 @@ namespace attendance_monitoring.Controllers
                 HttpOnly = true,
                 Secure = true, // Set to true in production with HTTPS
                 SameSite = SameSiteMode.Lax,
-                Expires = DateTime.UtcNow.AddDays(7) // Adjust as needed
+                Expires = DateTime.UtcNow.AddDays(refreshTokenExpirationDays)
             };
             
             Response.Cookies.Append("refreshToken", tokenResponse.RefreshToken, refreshCookieOptions);
