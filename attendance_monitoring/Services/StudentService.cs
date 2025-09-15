@@ -13,16 +13,19 @@ namespace attendance_monitoring.Services
     {
         private readonly IStudentRepository _studentRepository;
         private readonly UserContextService _userContextService;
+        private readonly ISectionRepository _sectionRepository;
 
         /// <summary>
         /// Initializes a new instance of the StudentService class
         /// </summary>
         /// <param name="studentRepository">Repository for student data operations</param>
         /// <param name="userContextService">Service for managing user context and authorization</param>
-        public StudentService(IStudentRepository studentRepository, UserContextService userContextService)
+        /// <param name="sectionRepository">Repository for section data operations</param>
+        public StudentService(IStudentRepository studentRepository, UserContextService userContextService, ISectionRepository sectionRepository)
         {
             _studentRepository = studentRepository ?? throw new ArgumentNullException(nameof(studentRepository));
             _userContextService = userContextService ?? throw new ArgumentNullException(nameof(userContextService));
+            _sectionRepository = sectionRepository ?? throw new ArgumentNullException(nameof(sectionRepository));
         }
 
         /// <summary>
@@ -74,6 +77,18 @@ namespace attendance_monitoring.Services
                 return (null, "Email is required");
             }
 
+            if (createStudent.SectionId <= 0)
+            {
+                return (null, "Valid SectionId is required");
+            }
+
+            // Validate that the SectionId exists
+            var section = await _sectionRepository.GetSectionByIdAsync(createStudent.SectionId);
+            if (section == null)
+            {
+                return (null, "The specified section does not exist");
+            }
+
             var userId = await _userContextService.GetUserIdAsync(userPrincipal);
             if (string.IsNullOrEmpty(userId))
             {
@@ -92,6 +107,7 @@ namespace attendance_monitoring.Services
                 Lastname = createStudent.Lastname,
                 Email = createStudent.Email,
                 UserId = userId,
+                SectionId = createStudent.SectionId,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             };

@@ -49,6 +49,12 @@ public class RegisterDto
     /// Defaults to "Student" if not provided or invalid
     /// </summary>
     public string? Role { get; set; }
+
+    /// <summary>
+    /// Section ID for student registration (required for students)
+    /// </summary>
+    [Required(ErrorMessage = "SectionId is required for student registration")]
+    public int SectionId { get; set; }
 }
 
 public class LoginDto
