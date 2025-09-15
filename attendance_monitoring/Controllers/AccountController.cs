@@ -98,7 +98,8 @@ namespace attendance_monitoring.Controllers
                 Success = true,
                 Message = "Login successful",
                 AccessToken = tokenResponse.AccessToken,
-                RefreshToken = tokenResponse.RefreshToken
+                RefreshToken = tokenResponse.RefreshToken,
+                User = loginDto.Username
             });
         }
         #endregion
