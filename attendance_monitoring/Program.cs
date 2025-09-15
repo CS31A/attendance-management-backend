@@ -115,6 +115,7 @@ builder.Services.AddScoped<IStudentService, StudentService>();
 builder.Services.AddScoped<IInstructorService, InstructorService>();
 builder.Services.AddScoped<IRefreshTokenService, RefreshTokenService>();
 builder.Services.AddScoped<IAccountService, AccountService>();
+builder.Services.AddScoped<ISectionService, SectionService>();
 builder.Services.AddScoped<IRoleInitializationService, RoleInitializationService>();
 builder.Services.AddScoped<UserContextService>();
 
