@@ -14,6 +14,11 @@ namespace attendance_monitoring.Data
         public DbSet<Student> Students { get; set; } = null!;
         public DbSet<Instructor> Instructors { get; set; } = null!;
         public DbSet<Section> Sections { get; set; } = null!;
+        public DbSet<Admin> Admins { get; set; } = null!;
+        public DbSet<Classroom> Classrooms { get; set; } = null!;
+        public DbSet<Course> Courses { get; set; } = null!;
+        public DbSet<Schedules> Schedules { get; set; } = null!;
+        public DbSet<Subject> Subjects { get; set; } = null!;
         public DbSet<RefreshToken> RefreshTokens { get; set; } = null!;
 
         protected override void OnModelCreating(ModelBuilder builder)
