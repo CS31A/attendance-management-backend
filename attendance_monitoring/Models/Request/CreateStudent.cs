@@ -17,4 +17,7 @@ public class CreateStudent
     [EmailAddress]
     [AllowedEmailDomains(ErrorMessage = "Email domain is not allowed. Please use an email address from an allowed domain.")]
     public string Email { get; set; } = string.Empty;
+    
+    [Required]
+    public int SectionId { get; set; }
 }
