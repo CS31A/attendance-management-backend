@@ -1,9 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Configuration;
 using System.Security.Claims;
-using System.Threading.Tasks;
 using attendance_monitoring.Models.DTO;
 using attendance_monitoring.IServices;
 using attendance_monitoring.Models.DTO.Response;
@@ -31,6 +28,18 @@ namespace attendance_monitoring.Controllers
         public async Task<ActionResult<RegisterResponseDto>> Register(RegisterDto registerDto)
         {
             logger.LogInformation("Registration attempt for username: {Username}", registerDto.Username);
+
+            // Validate that SectionId is provided for student registrations
+            if ((string.IsNullOrEmpty(registerDto.Role) ||
+                registerDto.Role.Equals("Student", StringComparison.OrdinalIgnoreCase)))
+            {
+                if (registerDto.SectionId <= 0)
+                {
+                    logger.LogWarning("Student registration failed for username: {Username}: Valid SectionId is required", registerDto.Username);
+                    return BadRequest(new RegisterResponseDto { Success = false, Message = "Valid SectionId is required for student registration" });
+                }
+            }
+
             if (!ModelState.IsValid)
             {
                 logger.LogWarning("Registration failed due to invalid model state for username: {Username}", registerDto.Username);
@@ -84,15 +93,16 @@ namespace attendance_monitoring.Controllers
             }
 
             logger.LogInformation("User logged in successfully");
-            return Ok(new LoginResponseDto { 
-                Success = true, 
+            return Ok(new LoginResponseDto
+            {
+                Success = true,
                 Message = "Login successful",
-                AccessToken = tokenResponse.AccessToken, 
-                RefreshToken = tokenResponse.RefreshToken 
+                AccessToken = tokenResponse.AccessToken,
+                RefreshToken = tokenResponse.RefreshToken
             });
         }
         #endregion
-        
+
         #region POST: api/account/web/login
         /// <summary>
         /// Authenticate user and return access/refresh tokens (http-only cookies)
@@ -116,10 +126,10 @@ namespace attendance_monitoring.Controllers
             }
 
             // Map WebLoginDto to LoginDto for compatibility with existing LoginAsync method
-            var loginDto = new LoginDto 
-            { 
-                Username = webLoginDto.Identifier, 
-                Password = webLoginDto.Password 
+            var loginDto = new LoginDto
+            {
+                Username = webLoginDto.Identifier,
+                Password = webLoginDto.Password
             };
 
             var (tokenResponse, error) = await accountService.LoginAsync(loginDto);
@@ -133,7 +143,7 @@ namespace attendance_monitoring.Controllers
             // Set HTTP-only cookies for access and refresh tokens
             var accessTokenExpirationMinutes = configuration.GetValue<int>("CookieSettings:AccessTokenExpirationMinutes", 15);
             var refreshTokenExpirationDays = configuration.GetValue<int>("CookieSettings:RefreshTokenExpirationDays", 7);
-            
+
             var cookieOptions = new CookieOptions
             {
                 HttpOnly = true,
@@ -143,7 +153,7 @@ namespace attendance_monitoring.Controllers
             };
 
             Response.Cookies.Append("accessToken", tokenResponse.AccessToken, cookieOptions);
-            
+
             var refreshCookieOptions = new CookieOptions
             {
                 HttpOnly = true,
@@ -151,7 +161,7 @@ namespace attendance_monitoring.Controllers
                 SameSite = SameSiteMode.Strict,
                 Expires = DateTime.UtcNow.AddDays(refreshTokenExpirationDays)
             };
-            
+
             Response.Cookies.Append("refreshToken", tokenResponse.RefreshToken, refreshCookieOptions);
 
             logger.LogInformation("User logged in successfully via web login");
@@ -180,12 +190,12 @@ namespace attendance_monitoring.Controllers
             }
 
             logger.LogInformation("Token refreshed successfully.");
-            return Ok(new RefreshResponseDto 
-            { 
-                Success = true, 
+            return Ok(new RefreshResponseDto
+            {
+                Success = true,
                 Message = "Token refreshed successfully",
-                AccessToken = tokenResponse.AccessToken, 
-                RefreshToken = tokenResponse.RefreshToken 
+                AccessToken = tokenResponse.AccessToken,
+                RefreshToken = tokenResponse.RefreshToken
             });
         }
         #endregion
@@ -223,7 +233,7 @@ namespace attendance_monitoring.Controllers
             // Update HTTP-only cookies with new tokens
             var accessTokenExpirationMinutes = configuration.GetValue<int>("CookieSettings:AccessTokenExpirationMinutes", 15);
             var refreshTokenExpirationDays = configuration.GetValue<int>("CookieSettings:RefreshTokenExpirationDays", 7);
-            
+
             var cookieOptions = new CookieOptions
             {
                 HttpOnly = true,
@@ -233,7 +243,7 @@ namespace attendance_monitoring.Controllers
             };
 
             Response.Cookies.Append("accessToken", tokenResponse.AccessToken, cookieOptions);
-            
+
             var refreshCookieOptions = new CookieOptions
             {
                 HttpOnly = true,
@@ -241,7 +251,7 @@ namespace attendance_monitoring.Controllers
                 SameSite = SameSiteMode.Lax,
                 Expires = DateTime.UtcNow.AddDays(refreshTokenExpirationDays)
             };
-            
+
             Response.Cookies.Append("refreshToken", tokenResponse.RefreshToken, refreshCookieOptions);
 
             logger.LogInformation("Web tokens refreshed successfully.");
@@ -363,7 +373,7 @@ namespace attendance_monitoring.Controllers
             // Clear cookies
             Response.Cookies.Delete("accessToken");
             Response.Cookies.Delete("refreshToken");
-            
+
             logger.LogInformation("User logged out successfully");
             return Ok(new WebLoginResponseDto { Success = true, Message = "Logged out successfully" });
         }
@@ -376,7 +386,7 @@ namespace attendance_monitoring.Controllers
         {
             return userPrincipal.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         }
-        
+
         private string? GetUsername(ClaimsPrincipal userPrincipal)
         {
             return userPrincipal.FindFirst(ClaimTypes.Name)?.Value;

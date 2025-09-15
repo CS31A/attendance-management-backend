@@ -1,9 +1,6 @@
-using System;
-using System.Collections.Generic;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
-using System.Threading.Tasks;
 using attendance_monitoring.Classes;
 using attendance_monitoring.Constants;
 using attendance_monitoring.Data;
@@ -13,8 +10,6 @@ using attendance_monitoring.Models.DTO;
 using attendance_monitoring.Models.DTO.Response;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Logging;
 using Microsoft.IdentityModel.Tokens;
 
 namespace attendance_monitoring.Services
@@ -24,7 +19,8 @@ namespace attendance_monitoring.Services
         ApplicationDbContext context,
         IRefreshTokenService refreshTokenService,
         ILogger<AccountService> logger,
-        IAccountRepository accountRepository)
+        IAccountRepository accountRepository,
+        ISectionRepository sectionRepository)
         : IAccountService
     {
 
@@ -78,12 +74,22 @@ namespace attendance_monitoring.Services
 
             if (roleToAssign.Equals("Student", StringComparison.OrdinalIgnoreCase))
             {
+                // Validate that the SectionId exists
+                var section = await sectionRepository.GetSectionByIdAsync(registerDto.SectionId);
+                if (section == null)
+                {
+                    logger.LogWarning("Student registration failed for user {Username}: SectionId {SectionId} does not exist", user.UserName, registerDto.SectionId);
+                    var result = IdentityResult.Failed(new IdentityError { Code = "InvalidSection", Description = "The specified section does not exist" });
+                    return (result, null);
+                }
+
                 var student = new Student
                 {
                     Firstname = registerDto.Firstname ?? "",
                     Lastname = registerDto.Lastname ?? "",
                     Email = registerDto.Email,
                     UserId = user.Id,
+                    SectionId = registerDto.SectionId,
                     CreatedAt = DateTime.UtcNow,
                     UpdatedAt = DateTime.UtcNow
                 };
