@@ -34,7 +34,7 @@ public interface IInstructorRepository
     /// </summary>
     /// <param name="instructor">The instructor to create.</param>
     /// <returns>The created instructor.</returns>
-    Task<Instructor> CreateInstructor(Instructor instructor);
+    Task<Instructor> CreateInstructorAsync(Instructor instructor);
 
     /// <summary>
     /// Updates an existing instructor.
@@ -47,15 +47,15 @@ public interface IInstructorRepository
     /// Soft deletes an instructor by their ID.
     /// </summary>
     /// <param name="id">The instructor ID.</param>
-    /// <returns>True if the instructor was soft deleted; otherwise, false.</returns>
-    Task<bool> SoftDeleteInstructor(int id);
+    /// <returns>True if the instructor was softly deleted; otherwise, false.</returns>
+    Task<bool> SoftDeleteInstructorAsync(int id);
 
     /// <summary>
     /// Hard deletes an instructor by their ID.
     /// </summary>
     /// <param name="id">The instructor ID.</param>
     /// <returns>True if the instructor was hard deleted; otherwise, false.</returns>
-    Task<bool> HardDeleteInstructor(int id);
+    Task<bool> HardDeleteInstructorAsync(int id);
 
     /// <summary>
     /// Saves changes to the database.

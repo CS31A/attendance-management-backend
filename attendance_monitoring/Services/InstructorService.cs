@@ -90,7 +90,7 @@ namespace attendance_monitoring.Services
                 UpdatedAt = DateTime.UtcNow
             };
 
-            var createdInstructor = await _instructorRepository.CreateInstructor(instructor);
+            var createdInstructor = await _instructorRepository.CreateInstructorAsync(instructor);
             await _instructorRepository.SaveChangesAsync();
 
             return (createdInstructor, null);
@@ -177,7 +177,7 @@ namespace attendance_monitoring.Services
                 return "You are not authorized to delete this instructor record.";
             }
 
-            var result = await _instructorRepository.SoftDeleteInstructor(id);
+            var result = await _instructorRepository.SoftDeleteInstructorAsync(id);
             return !result ? "Failed to soft delete instructor" : null;
         }
 
@@ -212,7 +212,7 @@ namespace attendance_monitoring.Services
                 return "You are not authorized to permanently delete this instructor record.";
             }
 
-            var result = await _instructorRepository.HardDeleteInstructor(id);
+            var result = await _instructorRepository.HardDeleteInstructorAsync(id);
             return !result ? "Failed to hard delete instructor" : null;
         }
     }
