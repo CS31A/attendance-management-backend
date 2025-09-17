@@ -1,8 +1,10 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using Microsoft.EntityFrameworkCore;
 
 namespace attendance_monitoring.Classes;
 
+[Index(nameof(Name), IsUnique = true)]
 public class Classroom
 {
     [Key]
