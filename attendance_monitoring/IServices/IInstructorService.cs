@@ -10,4 +10,6 @@ public interface IInstructorService
     Task<Instructor?> GetInstructorByIdAsync(int id);
     Task<(Instructor?, string?)> CreateInstructorAsync(CreateInstructor createInstructor, ClaimsPrincipal user);
     Task<(Instructor?, string?)> UpdateInstructorAsync(int id, UpdateInstructor updateInstructor, ClaimsPrincipal user);
+    Task<string?> SoftDeleteInstructorAsync(int id, ClaimsPrincipal user);
+    Task<string?> HardDeleteInstructorAsync(int id, ClaimsPrincipal user);
 }

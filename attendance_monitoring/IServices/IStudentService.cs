@@ -10,4 +10,6 @@ public interface IStudentService
     Task<Student?> GetStudentByIdAsync(int id);
     Task<(Student?, string?)> CreateStudentAsync(CreateStudent createStudent, ClaimsPrincipal user);
     Task<(Student?, string?)> UpdateStudentAsync(int id, UpdateStudent updateStudent, ClaimsPrincipal user);
+    Task<string?> SoftDeleteStudentAsync(int id, ClaimsPrincipal user);
+    Task<string?> HardDeleteStudentAsync(int id, ClaimsPrincipal user);
 }
