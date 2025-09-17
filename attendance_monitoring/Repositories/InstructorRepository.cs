@@ -28,7 +28,7 @@ public class InstructorRepository(ApplicationDbContext context) : IInstructorRep
         return await context.Instructors.FirstOrDefaultAsync(i => i.UserId == userId && !i.IsDeleted);
     }
 
-    public async Task<Instructor> CreateInstructor(Instructor instructor)
+    public async Task<Instructor> CreateInstructorAsync(Instructor instructor)
     {
         var entry = await context.Instructors.AddAsync(instructor);
         return entry.Entity;
@@ -42,7 +42,7 @@ public class InstructorRepository(ApplicationDbContext context) : IInstructorRep
         return entry.Entity;
     }
 
-    public async Task<bool> SoftDeleteInstructor(int id)
+    public async Task<bool> SoftDeleteInstructorAsync(int id)
     {
         var instructor = await context.Instructors.FindAsync(id);
         if (instructor == null)
@@ -57,7 +57,7 @@ public class InstructorRepository(ApplicationDbContext context) : IInstructorRep
         return true;
     }
 
-    public async Task<bool> HardDeleteInstructor(int id)
+    public async Task<bool> HardDeleteInstructorAsync(int id)
     {
         var instructor = await context.Instructors.FindAsync(id);
         if (instructor == null)
