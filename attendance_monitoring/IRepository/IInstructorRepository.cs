@@ -48,14 +48,14 @@ public interface IInstructorRepository
     /// </summary>
     /// <param name="id">The instructor ID.</param>
     /// <returns>True if the instructor was soft deleted; otherwise, false.</returns>
-    Task<bool> SoftDeleteInstructorAsync(int id);
+    Task<bool> SoftDeleteInstructor(int id);
 
     /// <summary>
     /// Hard deletes an instructor by their ID.
     /// </summary>
     /// <param name="id">The instructor ID.</param>
     /// <returns>True if the instructor was hard deleted; otherwise, false.</returns>
-    Task<bool> HardDeleteInstructorAsync(int id);
+    Task<bool> HardDeleteInstructor(int id);
 
     /// <summary>
     /// Saves changes to the database.

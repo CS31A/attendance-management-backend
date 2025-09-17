@@ -1,6 +1,7 @@
 using attendance_monitoring.Classes;
 using attendance_monitoring.IServices;
 using attendance_monitoring.Models.Request;
+using attendance_monitoring.Models.DTO.Response;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -92,5 +93,81 @@ public class InstructorController : ControllerBase
         }
 
         return Ok(instructor);
+    }
+
+    // PATCH: api/Instructor/{id}/soft-delete
+    [HttpPatch("{id}/soft-delete")]
+    [Authorize(Policy = "PrivilegedPolicy")]
+    public async Task<ActionResult<SoftDeleteResponse>> SoftDeleteInstructor(int id)
+    {
+        var error = await _instructorService.SoftDeleteInstructorAsync(id, User);
+
+        if (error == null)
+            return Ok(new SoftDeleteResponse
+            {
+                Success = true,
+                Message = "Instructor marked as deleted successfully"
+            });
+        if (error.Contains("not found"))
+        {
+            return NotFound(new SoftDeleteResponse 
+            { 
+                Success = false, 
+                Message = error 
+            });
+        }
+        if (error.Contains("not authorized"))
+        {
+            return Unauthorized(new SoftDeleteResponse 
+            { 
+                Success = false, 
+                Message = error 
+            });
+        }
+        return BadRequest(new SoftDeleteResponse 
+        { 
+            Success = false, 
+            Message = error 
+        });
+
+    }
+
+    // DELETE: api/Instructor/{id}
+    [HttpDelete("{id}")]
+    [Authorize(Policy = "AdminPolicy")]
+    public async Task<ActionResult<SoftDeleteResponse>> HardDeleteInstructor(int id)
+    {
+        var error = await _instructorService.HardDeleteInstructorAsync(id, User);
+
+        if (error != null)
+        {
+            if (error.Contains("not found"))
+            {
+                return NotFound(new SoftDeleteResponse 
+                { 
+                    Success = false, 
+                    Message = error 
+                });
+            }
+            if (error.Contains("not authorized"))
+            {
+                return Unauthorized(new SoftDeleteResponse 
+                { 
+                    Success = false, 
+                    Message = error 
+                });
+            }
+            return BadRequest(new SoftDeleteResponse 
+            { 
+                Success = false, 
+                Message = error 
+            });
+        }
+
+        return Ok(new SoftDeleteResponse 
+        { 
+            Success = true, 
+            Message = "Instructor permanently deleted successfully" 
+        });
     }
 }

@@ -56,12 +56,6 @@ namespace attendance_monitoring.Services
         /// <returns>A tuple containing the created student (if successful) and an error message (if any)</returns>
         public async Task<(Student?, string?)> CreateStudentAsync(CreateStudent createStudent, ClaimsPrincipal userPrincipal)
         {
-            // Additional validation for defense in depth
-            if (createStudent == null)
-            {
-                return (null, "Create student data is required");
-            }
-
             if (string.IsNullOrWhiteSpace(createStudent.Firstname))
             {
                 return (null, "First name is required");
@@ -127,12 +121,6 @@ namespace attendance_monitoring.Services
         /// <returns>A tuple containing the updated student (if successful) and an error message (if any)</returns>
         public async Task<(Student?, string?)> UpdateStudentAsync(int id, UpdateStudent updateStudent, ClaimsPrincipal userPrincipal)
         {
-            // Additional validation for defense in depth
-            if (updateStudent == null)
-            {
-                return (null, "Update student data is required");
-            }
-
             var userId = await _userContextService.GetUserIdAsync(userPrincipal);
             if (string.IsNullOrEmpty(userId))
             {
@@ -174,5 +162,79 @@ namespace attendance_monitoring.Services
             return (updatedStudent, null);
         }
 
+        /// <summary>
+        /// Soft deletes a student record
+        /// </summary>
+        /// <param name="id">The ID of the student to delete</param>
+        /// <param name="userPrincipal">The claims principal of the current user</param>
+        /// <returns>A message indicating the result of the operation</returns>
+        public async Task<string?> SoftDeleteStudentAsync(int id, ClaimsPrincipal userPrincipal)
+        {
+            if (id <= 0)
+            {
+                return "Invalid student ID";
+            }
+
+            var userId = await _userContextService.GetUserIdAsync(userPrincipal);
+            if (string.IsNullOrEmpty(userId))
+            {
+                return "User ID not found in token";
+            }
+
+            var existingStudent = await _studentRepository.GetStudentByIdAsync(id);
+            if (existingStudent == null)
+            {
+                return "Student not found";
+            }
+
+            var isAuthorized = await _userContextService.IsAuthorizedAsync(userPrincipal, existingStudent.UserId, "Admin", "Teacher");
+            if (!isAuthorized)
+            {
+                return "You are not authorized to delete this student record.";
+            }
+
+            var result = await _studentRepository.SoftDeleteStudentAsync(id);
+            return !result ? "Failed to soft delete student" : null;
+        }
+
+        /// <summary>
+        /// Hard deletes a student record
+        /// </summary>
+        /// <param name="id">The ID of the student to delete</param>
+        /// <param name="userPrincipal">The claims principal of the current user</param>
+        /// <returns>A message indicating the result of the operation</returns>
+        public async Task<string?> HardDeleteStudentAsync(int id, ClaimsPrincipal userPrincipal)
+        {
+            if (id <= 0)
+            {
+                return "Invalid student ID";
+            }
+
+            var userId = await _userContextService.GetUserIdAsync(userPrincipal);
+            if (string.IsNullOrEmpty(userId))
+            {
+                return "User ID not found in token";
+            }
+
+            var existingStudent = await _studentRepository.GetStudentByIdAsync(id);
+            if (existingStudent == null)
+            {
+                return "Student not found";
+            }
+
+            var isAuthorized = await _userContextService.IsAuthorizedAsync(userPrincipal, existingStudent.UserId, "Admin");
+            if (!isAuthorized)
+            {
+                return "You are not authorized to permanently delete this student record.";
+            }
+
+            var result = await _studentRepository.HardDeleteStudentAsync(id);
+            if (!result)
+            {
+                return "Failed to hard delete student";
+            }
+
+            return null;
+        }
     }
 }
