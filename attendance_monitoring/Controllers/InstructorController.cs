@@ -10,20 +10,50 @@ namespace attendance_monitoring.Controllers;
 [Authorize]
 [ApiController]
 [Route("api/[controller]")]
-public class InstructorController : ControllerBase
+public class InstructorController(IInstructorService instructorService) : ControllerBase
 {
-    private readonly IInstructorService _instructorService;
-
-    public InstructorController(IInstructorService instructorService)
+    private ActionResult<SoftDeleteResponse> CreateResponse(string error, string successMessage)
     {
-        _instructorService = instructorService;
+        // Handle success case
+        if (string.IsNullOrEmpty(error))
+        {
+            return Ok(new SoftDeleteResponse
+            {
+                Success = true,
+                Message = successMessage
+            });
+        }
+
+        if (error.Contains("not found"))
+        {
+            return NotFound(new SoftDeleteResponse
+            {
+                Success = false,
+                Message = error
+            });
+        }
+
+        if (error.Contains("not authorized"))
+        {
+            return Unauthorized(new SoftDeleteResponse
+            {
+                Success = false,
+                Message = error
+            });
+        }
+
+        return BadRequest(new SoftDeleteResponse
+        {
+            Success = false,
+            Message = error
+        });
     }
 
     // GET: api/Instructor
     [HttpGet]
     public async Task<ActionResult<IEnumerable<Instructor>>> GetInstructors([FromQuery] PaginationQuery paginationQuery)
     {
-        var instructors = await _instructorService.GetAllInstructorsAsync(paginationQuery);
+        var instructors = await instructorService.GetAllInstructorsAsync(paginationQuery);
         return Ok(instructors);
     }
 
@@ -31,7 +61,7 @@ public class InstructorController : ControllerBase
     [HttpGet("{id}")]
     public async Task<ActionResult<Instructor>> GetInstructor(int id)
     {
-        var instructor = await _instructorService.GetInstructorByIdAsync(id);
+        var instructor = await instructorService.GetInstructorByIdAsync(id);
 
         if (instructor == null)
         {
@@ -77,22 +107,19 @@ public class InstructorController : ControllerBase
             return BadRequest(ModelState);
         }
 
-        var (instructor, error) = await _instructorService.UpdateInstructorAsync(id, updateInstructor, User);
+        var (instructor, error) = await instructorService.UpdateInstructorAsync(id, updateInstructor, User);
 
-        if (error != null)
+        if (error == null) return Ok(instructor);
+        if (error.Contains("not found"))
         {
-            if (error.Contains("not found"))
-            {
-                return NotFound(error);
-            }
-            if (error.Contains("not authorized"))
-            {
-                return Unauthorized(error);
-            }
-            return BadRequest(error);
+            return NotFound(error);
         }
+        if (error.Contains("not authorized"))
+        {
+            return Unauthorized(error);
+        }
+        return BadRequest(error);
 
-        return Ok(instructor);
     }
 
     // PATCH: api/Instructor/{id}/soft-delete
@@ -100,36 +127,8 @@ public class InstructorController : ControllerBase
     [Authorize(Policy = "PrivilegedPolicy")]
     public async Task<ActionResult<SoftDeleteResponse>> SoftDeleteInstructor(int id)
     {
-        var error = await _instructorService.SoftDeleteInstructorAsync(id, User);
-
-        if (error == null)
-            return Ok(new SoftDeleteResponse
-            {
-                Success = true,
-                Message = "Instructor marked as deleted successfully"
-            });
-        if (error.Contains("not found"))
-        {
-            return NotFound(new SoftDeleteResponse 
-            { 
-                Success = false, 
-                Message = error 
-            });
-        }
-        if (error.Contains("not authorized"))
-        {
-            return Unauthorized(new SoftDeleteResponse 
-            { 
-                Success = false, 
-                Message = error 
-            });
-        }
-        return BadRequest(new SoftDeleteResponse 
-        { 
-            Success = false, 
-            Message = error 
-        });
-
+        var error = await instructorService.SoftDeleteInstructorAsync(id, User);
+        return CreateResponse(error ?? string.Empty, "Instructor marked as deleted successfully");
     }
 
     // DELETE: api/Instructor/{id}
@@ -137,37 +136,7 @@ public class InstructorController : ControllerBase
     [Authorize(Policy = "AdminPolicy")]
     public async Task<ActionResult<SoftDeleteResponse>> HardDeleteInstructor(int id)
     {
-        var error = await _instructorService.HardDeleteInstructorAsync(id, User);
-
-        if (error != null)
-        {
-            if (error.Contains("not found"))
-            {
-                return NotFound(new SoftDeleteResponse 
-                { 
-                    Success = false, 
-                    Message = error 
-                });
-            }
-            if (error.Contains("not authorized"))
-            {
-                return Unauthorized(new SoftDeleteResponse 
-                { 
-                    Success = false, 
-                    Message = error 
-                });
-            }
-            return BadRequest(new SoftDeleteResponse 
-            { 
-                Success = false, 
-                Message = error 
-            });
-        }
-
-        return Ok(new SoftDeleteResponse 
-        { 
-            Success = true, 
-            Message = "Instructor permanently deleted successfully" 
-        });
+        var error = await instructorService.HardDeleteInstructorAsync(id, User);
+        return CreateResponse(error ?? string.Empty, "Instructor permanently deleted successfully");
     }
 }

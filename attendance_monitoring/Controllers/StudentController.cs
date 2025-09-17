@@ -22,6 +22,42 @@ public class StudentController : ControllerBase
         _studentService = studentService;
     }
 
+    private ActionResult<SoftDeleteResponse> CreateResponse(string? error, string successMessage)
+    {
+        if (string.IsNullOrEmpty(error))
+        {
+            return Ok(new SoftDeleteResponse
+            {
+                Success = true,
+                Message = successMessage
+            });
+        }
+
+        if (error.Contains("not found"))
+        {
+            return NotFound(new SoftDeleteResponse
+            {
+                Success = false,
+                Message = error
+            });
+        }
+
+        if (error.Contains("not authorized"))
+        {
+            return Unauthorized(new SoftDeleteResponse
+            {
+                Success = false,
+                Message = error
+            });
+        }
+
+        return BadRequest(new SoftDeleteResponse
+        {
+            Success = false,
+            Message = error
+        });
+    }
+
     /// <summary>
     /// Get a list of students with pagination
     /// </summary>
@@ -134,37 +170,7 @@ public class StudentController : ControllerBase
     public async Task<ActionResult<SoftDeleteResponse>> SoftDeleteStudent(int id)
     {
         var error = await _studentService.SoftDeleteStudentAsync(id, User);
-
-        if (error != null)
-        {
-            if (error.Contains("not found"))
-            {
-                return NotFound(new SoftDeleteResponse 
-                { 
-                    Success = false, 
-                    Message = error 
-                });
-            }
-            if (error.Contains("not authorized"))
-            {
-                return Unauthorized(new SoftDeleteResponse 
-                { 
-                    Success = false, 
-                    Message = error 
-                });
-            }
-            return BadRequest(new SoftDeleteResponse 
-            { 
-                Success = false, 
-                Message = error 
-            });
-        }
-
-        return Ok(new SoftDeleteResponse 
-        { 
-            Success = true, 
-            Message = "Student marked as deleted successfully" 
-        });
+        return CreateResponse(error, "Student marked as deleted successfully");
     }
 
     /// <summary>
@@ -181,36 +187,6 @@ public class StudentController : ControllerBase
     public async Task<ActionResult<SoftDeleteResponse>> HardDeleteStudent(int id)
     {
         var error = await _studentService.HardDeleteStudentAsync(id, User);
-
-        if (error != null)
-        {
-            if (error.Contains("not found"))
-            {
-                return NotFound(new SoftDeleteResponse 
-                { 
-                    Success = false, 
-                    Message = error 
-                });
-            }
-            if (error.Contains("not authorized"))
-            {
-                return Unauthorized(new SoftDeleteResponse 
-                { 
-                    Success = false, 
-                    Message = error 
-                });
-            }
-            return BadRequest(new SoftDeleteResponse 
-            { 
-                Success = false, 
-                Message = error 
-            });
-        }
-
-        return Ok(new SoftDeleteResponse 
-        { 
-            Success = true, 
-            Message = "Student permanently deleted successfully" 
-        });
+        return CreateResponse(error, "Student permanently deleted successfully");
     }
 }
