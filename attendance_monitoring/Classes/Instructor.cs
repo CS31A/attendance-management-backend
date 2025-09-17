@@ -2,9 +2,11 @@ using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using Microsoft.AspNetCore.Identity;
 using System.Text.Json.Serialization;
+using Microsoft.EntityFrameworkCore;
 
 namespace attendance_monitoring.Classes;
 
+[Index(nameof(UserId), IsUnique = true)]
 public class Instructor
 {
     [Key]

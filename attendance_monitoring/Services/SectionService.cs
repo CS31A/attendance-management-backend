@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 
 namespace attendance_monitoring.Services
 {
-    public class SectionService(ISectionRepository sectionRepository, ApplicationDbContext context)
+    public class SectionService(ISectionRepository sectionRepository)
         : ISectionService
     {
         public async Task<Section?> GetSectionByIdAsync(int sectionId)
