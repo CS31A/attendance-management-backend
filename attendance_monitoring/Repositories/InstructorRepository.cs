@@ -6,18 +6,12 @@ using Microsoft.EntityFrameworkCore;
 
 namespace attendance_monitoring.Repositories;
 
-public class InstructorRepository : IInstructorRepository
+public class InstructorRepository(ApplicationDbContext context) : IInstructorRepository
 {
-    private readonly ApplicationDbContext _context;
-
-    public InstructorRepository(ApplicationDbContext context)
-    {
-        _context = context;
-    }
-
     public async Task<IEnumerable<Instructor>> GetAllInstructorsAsync(PaginationQuery paginationQuery)
     {
-        return await _context.Instructors
+        return await context.Instructors
+            .Where(i => !i.IsDeleted) // Only return non-deleted instructors
             .OrderBy(i => i.Id)
             .Skip((paginationQuery.PageNumber - 1) * paginationQuery.PageSize)
             .Take(paginationQuery.PageSize)
@@ -26,30 +20,56 @@ public class InstructorRepository : IInstructorRepository
 
     public async Task<Instructor?> GetInstructorByIdAsync(int id)
     {
-        return await _context.Instructors.FindAsync(id);
+        return await context.Instructors.FirstOrDefaultAsync(i => i.Id == id && !i.IsDeleted);
     }
 
     public async Task<Instructor?> GetInstructorByUserIdAsync(string userId)
     {
-        return await _context.Instructors.FirstOrDefaultAsync(i => i.UserId == userId);
+        return await context.Instructors.FirstOrDefaultAsync(i => i.UserId == userId && !i.IsDeleted);
     }
 
     public async Task<Instructor> CreateInstructor(Instructor instructor)
     {
-        var entry = await _context.Instructors.AddAsync(instructor);
+        var entry = await context.Instructors.AddAsync(instructor);
         return entry.Entity;
     }
 
     public async Task<Instructor> UpdateInstructorAsync(Instructor instructor)
     {
         instructor.UpdatedAt = DateTime.UtcNow;
-        var entry = _context.Instructors.Update(instructor);
-        await _context.SaveChangesAsync();
+        var entry = context.Instructors.Update(instructor);
+        await context.SaveChangesAsync();
         return entry.Entity;
+    }
+
+    public async Task<bool> SoftDeleteInstructor(int id)
+    {
+        var instructor = await context.Instructors.FindAsync(id);
+        if (instructor == null)
+            return false;
+
+        instructor.IsDeleted = true;
+        instructor.DeletedAt = DateTime.UtcNow;
+        instructor.UpdatedAt = DateTime.UtcNow;
+        
+        context.Instructors.Update(instructor);
+        await context.SaveChangesAsync();
+        return true;
+    }
+
+    public async Task<bool> HardDeleteInstructor(int id)
+    {
+        var instructor = await context.Instructors.FindAsync(id);
+        if (instructor == null)
+            return false;
+
+        context.Instructors.Remove(instructor);
+        await context.SaveChangesAsync();
+        return true;
     }
 
     public async Task<int> SaveChangesAsync()
     {
-        return await _context.SaveChangesAsync();
+        return await context.SaveChangesAsync();
     }
 }
