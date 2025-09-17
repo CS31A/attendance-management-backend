@@ -1,6 +1,7 @@
 using attendance_monitoring.Classes;
 using attendance_monitoring.IServices;
 using attendance_monitoring.Models.Request;
+using attendance_monitoring.Models.DTO.Response;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -41,7 +42,7 @@ public class StudentController : ControllerBase
     /// <param name="id">The ID of the student to retrieve</param>
     /// <returns>The requested student</returns>
     /// <response code="200">Returns the requested student</response>
-    /// <response code="404">Student not found</response>
+    /// <response code="404"> not found</response>
     // GET: api/Student/5
     [HttpGet("{id}")]
     public async Task<ActionResult<Student>> GetStudent(int id)
@@ -117,5 +118,99 @@ public class StudentController : ControllerBase
         }
 
         return Ok(student);
+    }
+
+    /// <summary>
+    /// Soft delete a student record
+    /// </summary>
+    /// <param name="id">The ID of the student to soft delete</param>
+    /// <returns>Success message</returns>
+    /// <response code="200">Student marked as deleted successfully</response>
+    /// <response code="404">Student not found</response>
+    /// <response code="401">Not authorized to delete this student</response>
+    // PATCH: api/Student/{id}/soft-delete
+    [HttpPatch("{id}/soft-delete")]
+    [Authorize(Policy = "PrivilegedPolicy")]
+    public async Task<ActionResult<SoftDeleteResponse>> SoftDeleteStudent(int id)
+    {
+        var error = await _studentService.SoftDeleteStudentAsync(id, User);
+
+        if (error != null)
+        {
+            if (error.Contains("not found"))
+            {
+                return NotFound(new SoftDeleteResponse 
+                { 
+                    Success = false, 
+                    Message = error 
+                });
+            }
+            if (error.Contains("not authorized"))
+            {
+                return Unauthorized(new SoftDeleteResponse 
+                { 
+                    Success = false, 
+                    Message = error 
+                });
+            }
+            return BadRequest(new SoftDeleteResponse 
+            { 
+                Success = false, 
+                Message = error 
+            });
+        }
+
+        return Ok(new SoftDeleteResponse 
+        { 
+            Success = true, 
+            Message = "Student marked as deleted successfully" 
+        });
+    }
+
+    /// <summary>
+    /// Hard delete a student record
+    /// </summary>
+    /// <param name="id">The ID of the student to hard delete</param>
+    /// <returns>Success message</returns>
+    /// <response code="200">Student permanently deleted successfully</response>
+    /// <response code="404">Student not found</response>
+    /// <response code="401">Not authorized to permanently delete this student</response>
+    // DELETE: api/Student/{id}
+    [HttpDelete("{id}")]
+    [Authorize(Policy = "AdminPolicy")]
+    public async Task<ActionResult<SoftDeleteResponse>> HardDeleteStudent(int id)
+    {
+        var error = await _studentService.HardDeleteStudentAsync(id, User);
+
+        if (error != null)
+        {
+            if (error.Contains("not found"))
+            {
+                return NotFound(new SoftDeleteResponse 
+                { 
+                    Success = false, 
+                    Message = error 
+                });
+            }
+            if (error.Contains("not authorized"))
+            {
+                return Unauthorized(new SoftDeleteResponse 
+                { 
+                    Success = false, 
+                    Message = error 
+                });
+            }
+            return BadRequest(new SoftDeleteResponse 
+            { 
+                Success = false, 
+                Message = error 
+            });
+        }
+
+        return Ok(new SoftDeleteResponse 
+        { 
+            Success = true, 
+            Message = "Student permanently deleted successfully" 
+        });
     }
 }

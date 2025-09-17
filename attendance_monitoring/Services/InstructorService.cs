@@ -53,12 +53,6 @@ namespace attendance_monitoring.Services
         /// <returns>A tuple containing the created instructor (if successful) and an error message (if any)</returns>
         public async Task<(Instructor?, string?)> CreateInstructorAsync(CreateInstructor createInstructor, ClaimsPrincipal userPrincipal)
         {
-            // Additional validation for defense in depth
-            if (createInstructor == null)
-            {
-                return (null, "Create instructor data is required");
-            }
-
             if (string.IsNullOrWhiteSpace(createInstructor.Firstname))
             {
                 return (null, "First name is required");
@@ -111,12 +105,6 @@ namespace attendance_monitoring.Services
         /// <returns>A tuple containing the updated instructor (if successful) and an error message (if any)</returns>
         public async Task<(Instructor?, string?)> UpdateInstructorAsync(int id, UpdateInstructor updateInstructor, ClaimsPrincipal userPrincipal)
         {
-            // Additional validation for defense in depth
-            if (updateInstructor == null)
-            {
-                return (null, "Update instructor data is required");
-            }
-
             var userId = await _userContextService.GetUserIdAsync(userPrincipal);
             if (string.IsNullOrEmpty(userId))
             {
@@ -158,5 +146,74 @@ namespace attendance_monitoring.Services
             return (updatedInstructor, null);
         }
 
+        /// <summary>
+        /// Soft deletes an instructor record
+        /// </summary>
+        /// <param name="id">The ID of the instructor to delete</param>
+        /// <param name="userPrincipal">The claims principal of the current user</param>
+        /// <returns>A message indicating the result of the operation</returns>
+        public async Task<string?> SoftDeleteInstructorAsync(int id, ClaimsPrincipal userPrincipal)
+        {
+            if (id <= 0)
+            {
+                return "Invalid instructor ID";
+            }
+
+            var userId = await _userContextService.GetUserIdAsync(userPrincipal);
+            if (string.IsNullOrEmpty(userId))
+            {
+                return "User ID not found in token";
+            }
+
+            var existingInstructor = await _instructorRepository.GetInstructorByIdAsync(id);
+            if (existingInstructor == null)
+            {
+                return "Instructor not found";
+            }
+
+            var isAuthorized = await _userContextService.IsAuthorizedAsync(userPrincipal, existingInstructor.UserId, "Admin", "Teacher");
+            if (!isAuthorized)
+            {
+                return "You are not authorized to delete this instructor record.";
+            }
+
+            var result = await _instructorRepository.SoftDeleteInstructor(id);
+            return !result ? "Failed to soft delete instructor" : null;
+        }
+
+        /// <summary>
+        /// Hard deletes an instructor record
+        /// </summary>
+        /// <param name="id">The ID of the instructor to delete</param>
+        /// <param name="userPrincipal">The claims principal of the current user</param>
+        /// <returns>A message indicating the result of the operation</returns>
+        public async Task<string?> HardDeleteInstructorAsync(int id, ClaimsPrincipal userPrincipal)
+        {
+            if (id <= 0)
+            {
+                return "Invalid instructor ID";
+            }
+
+            var userId = await _userContextService.GetUserIdAsync(userPrincipal);
+            if (string.IsNullOrEmpty(userId))
+            {
+                return "User ID not found in token";
+            }
+
+            var existingInstructor = await _instructorRepository.GetInstructorByIdAsync(id);
+            if (existingInstructor == null)
+            {
+                return "Instructor not found";
+            }
+
+            var isAuthorized = await _userContextService.IsAuthorizedAsync(userPrincipal, existingInstructor.UserId, "Admin");
+            if (!isAuthorized)
+            {
+                return "You are not authorized to permanently delete this instructor record.";
+            }
+
+            var result = await _instructorRepository.HardDeleteInstructor(id);
+            return !result ? "Failed to hard delete instructor" : null;
+        }
     }
 }
