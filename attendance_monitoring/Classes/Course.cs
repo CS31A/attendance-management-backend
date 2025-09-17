@@ -1,9 +1,11 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Text.Json.Serialization;
+using Microsoft.EntityFrameworkCore;
 
 namespace attendance_monitoring.Classes;
 
+[Index(nameof(Name), IsUnique = true)]
 public class Course
 {
     [Key]
@@ -12,7 +14,6 @@ public class Course
 
     [Required(ErrorMessage = "Course name is required")]
     [StringLength(100, ErrorMessage = "Course name must be between 1 and 100 characters", MinimumLength = 1)]
-    [Index(IsUnique = true)]
     public string Name { get; set; } = string.Empty;
 
     // Navigation property for related Sections

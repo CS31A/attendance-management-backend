@@ -1,9 +1,12 @@
 
 using System.ComponentModel.DataAnnotations.Schema;
 using System.ComponentModel.DataAnnotations;
+using Microsoft.EntityFrameworkCore;
 
 namespace attendance_monitoring.Classes;
 
+[Index(nameof(Name), IsUnique = true)]
+[Index(nameof(Code), IsUnique = true)]
 public class Subject
 {
 
