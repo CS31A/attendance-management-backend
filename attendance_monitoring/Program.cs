@@ -92,6 +92,20 @@ builder.Services.AddAuthentication(options =>
                 context.Token = context.Request.Cookies["accessToken"];
             }
             return Task.CompletedTask;
+        },
+        OnTokenValidated = async context =>
+        {
+            // Check if the token has been blacklisted
+            var tokenValidationService = context.HttpContext.RequestServices.GetRequiredService<ITokenValidationService>();
+            var jti = context.Principal?.Claims.FirstOrDefault(c => c.Type == "jti")?.Value;
+            
+            if (!string.IsNullOrEmpty(jti) && await tokenValidationService.IsTokenBlacklistedAsync(jti))
+            {
+                // Token has been blacklisted
+                context.Fail("Token has been revoked");
+            }
+            
+            await Task.CompletedTask;
         }
     };
 });
@@ -120,6 +134,7 @@ builder.Services.AddScoped<ISectionService, SectionService>();
 builder.Services.AddScoped<ICourseService, CourseService>();
 builder.Services.AddScoped<IRoleInitializationService, RoleInitializationService>();
 builder.Services.AddScoped<UserContextService>();
+builder.Services.AddScoped<ITokenValidationService, TokenValidationService>();
 
 builder.Services.AddEndpointsApiExplorer();
 
@@ -134,6 +149,9 @@ builder.Services.AddCors(options =>
               .AllowCredentials(); // If you need to send cookies or authorization headers
     });
 });
+
+// Register background services
+builder.Services.AddHostedService<BlacklistedTokenCleanupService>();
 
 builder.Logging.ClearProviders();
 builder.Logging.AddConsole();

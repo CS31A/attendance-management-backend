@@ -20,6 +20,7 @@ namespace attendance_monitoring.Data
         public DbSet<Schedules> Schedules { get; set; } = null!;
         public DbSet<Subject> Subjects { get; set; } = null!;
         public DbSet<RefreshToken> RefreshTokens { get; set; } = null!;
+        public DbSet<BlacklistedToken> BlacklistedTokens { get; set; } = null!;
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
@@ -28,6 +29,11 @@ namespace attendance_monitoring.Data
             // Configure index for RefreshToken TokenHash for fast lookups
             builder.Entity<RefreshToken>()
                 .HasIndex(r => r.TokenHash)
+                .IsUnique();
+                
+            // Configure index for BlacklistedToken Jti for fast lookups
+            builder.Entity<BlacklistedToken>()
+                .HasIndex(b => b.Jti)
                 .IsUnique();
         }
     }

@@ -20,7 +20,8 @@ namespace attendance_monitoring.Services
         IRefreshTokenService refreshTokenService,
         ILogger<AccountService> logger,
         IAccountRepository accountRepository,
-        ISectionRepository sectionRepository)
+        ISectionRepository sectionRepository,
+        IServiceProvider serviceProvider)
         : IAccountService
     {
 
@@ -188,6 +189,78 @@ namespace attendance_monitoring.Services
                 return (null, "User not found");
             }
 
+            // Blacklist the old access token if provided
+            if (!string.IsNullOrEmpty(refreshTokenRequest.OldAccessToken))
+            {
+                try
+                {
+                    var tokenHandler = new JwtSecurityTokenHandler();
+                    
+                    // Clone TokenValidationParameters from our JwtBearer configuration
+                    var tokenValidationParameters = new TokenValidationParameters
+                    {
+                        ValidateIssuer = true,
+                        ValidateAudience = true,
+                        ValidateLifetime = true,
+                        ValidateIssuerSigningKey = true,
+                        ValidIssuer = configuration["AppSettings:Issuer"],
+                        ValidAudience = configuration["AppSettings:Audience"],
+                        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(configuration["AppSettings:Token"]!))
+                    };
+                    
+                    // Validate the token
+                    var claimsPrincipal = tokenHandler.ValidateToken(refreshTokenRequest.OldAccessToken, tokenValidationParameters, out var validatedToken);
+                    
+                    // Extract jti and ValidTo only after successful validation
+                    var jti = claimsPrincipal.FindFirst("jti")?.Value;
+                    var expiresAt = validatedToken.ValidTo;
+                    var sub = claimsPrincipal.FindFirst("sub")?.Value;
+
+                    // Only blacklist if all validation checks pass:
+                    // 1. Token is issued by us (signature valid, issuer/audience match) - already validated by ValidateToken
+                    // 2. Subject (sub) matches the user from the refresh token
+                    // 3. It has not expired yet
+                    // 4. jti is not null or empty
+                    
+                    // Testing
+                    // if (!string.IsNullOrEmpty(jti) && sub == user.Id && expiresAt > DateTime.UtcNow)
+                    // {
+                    //     await BlacklistTokenAsync(jti, expiresAt);
+                    //     logger.LogInformation("Old access token blacklisted for user {UserId}.", user.Id);
+                    // }
+                    // else if (!string.IsNullOrEmpty(jti))
+                    // {
+                    //     logger.LogWarning("Old access token not blacklisted - validation failed for user {UserId}.", user.Id);
+                    // }
+                    // else if (jti == null)
+                    // {
+                    //     logger.LogWarning("Old access token not blacklisted - token has no JTI for user {UserId}.", user.Id);
+                    // }
+                    
+                    // toma testing 2.0
+                    switch (jti)
+                    {
+                        case not null when sub == user.Id && expiresAt > DateTime.UtcNow:
+                            await BlacklistTokenAsync(jti, expiresAt);
+                            logger.LogInformation("Old access token blacklisted for user {UserId}.", user.Id);
+                            break;
+
+                        case not null:
+                            logger.LogWarning("Old access token not blacklisted - validation failed for user {UserId}.", user.Id);
+                            break;
+
+                        case null:
+                            logger.LogWarning("Old access token not blacklisted - token has no JTI for user {UserId}.", user.Id);
+                            break;
+                    }
+
+                }
+                catch (Exception ex)
+                {
+                    logger.LogWarning("Failed to validate and blacklist old access token: {Error}", ex.Message);
+                }
+            }
+
             var (newRefreshTokenEntity, newRefreshToken) = await refreshTokenService.RotateRefreshTokenAsync(
                 refreshTokenRequest.RefreshToken,
                 user.Id);
@@ -278,6 +351,33 @@ namespace attendance_monitoring.Services
                 signingCredentials: credentials);
 
             return new JwtSecurityTokenHandler().WriteToken(token);
+        }
+        
+        /// <summary>
+        /// Blacklists a JWT token by its JTI
+        /// </summary>
+        /// <param name="jti">The JTI of the token to blacklist</param>
+        /// <param name="expiresAt">The expiration time of the token</param>
+        private async Task BlacklistTokenAsync(string jti, DateTime expiresAt)
+        {
+            var blacklistedToken = new BlacklistedToken
+            {
+                Jti = jti,
+                BlacklistedAt = DateTime.UtcNow,
+                ExpiresAt = expiresAt
+            };
+            
+            try
+            {
+                context.BlacklistedTokens.Add(blacklistedToken);
+                await context.SaveChangesAsync();
+            }
+            catch (DbUpdateException)
+            {
+                // Token is already blacklisted, treat as idempotent operation
+                // This can happen if the same token is blacklisted multiple times
+                // We simply ignore the exception and continue
+            }
         }
         #endregion
     }
