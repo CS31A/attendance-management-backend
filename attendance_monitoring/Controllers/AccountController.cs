@@ -8,7 +8,7 @@ using attendance_monitoring.Models.DTO.Response;
 namespace attendance_monitoring.Controllers
 {
     [ApiController]
-    [Route("api/[controller]")]
+    [Route("api/account")]
     public class AccountController(IAccountService accountService, ILogger<AccountController> logger, IConfiguration configuration)
         : ControllerBase
     {
@@ -24,7 +24,7 @@ namespace attendance_monitoring.Controllers
         /// <response code="400">Invalid input data</response>
         [HttpPost("register")]
         [ProducesResponseType(typeof(RegisterResponseDto), StatusCodes.Status200OK)]
-        [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(RegisterResponseDto), StatusCodes.Status400BadRequest)]
         public async Task<ActionResult<RegisterResponseDto>> Register(RegisterDto registerDto)
         {
             logger.LogInformation("Registration attempt for username: {Username}", registerDto.Username);
@@ -73,8 +73,8 @@ namespace attendance_monitoring.Controllers
         /// <response code="400">Invalid input data</response>
         [HttpPost("login")]
         [ProducesResponseType(typeof(LoginResponseDto), StatusCodes.Status200OK)]
-        [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status401Unauthorized)]
-        [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(LoginResponseDto), StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(typeof(LoginResponseDto), StatusCodes.Status400BadRequest)]
         public async Task<ActionResult<LoginResponseDto>> Login(LoginDto loginDto)
         {
             logger.LogInformation("Login attempt for identifier: {Identifier}", loginDto.Username);
@@ -115,8 +115,8 @@ namespace attendance_monitoring.Controllers
         /// <response code="400">Invalid input data</response>
         [HttpPost("web/login")]
         [ProducesResponseType(typeof(WebLoginResponseDto), StatusCodes.Status200OK)]
-        [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status401Unauthorized)]
-        [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(WebLoginResponseDto), StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(typeof(WebLoginResponseDto), StatusCodes.Status400BadRequest)]
         public async Task<ActionResult<WebLoginResponseDto>> WebLogin(WebLoginDto webLoginDto)
         {
             logger.LogInformation("Web login attempt for identifier: {Identifier}", webLoginDto.Identifier);
@@ -149,7 +149,8 @@ namespace attendance_monitoring.Controllers
             {
                 HttpOnly = true,
                 Secure = true, // Set to true in production with HTTPS
-                SameSite = SameSiteMode.Strict,
+                // SameSite = SameSiteMode.Strict,
+                SameSite = SameSiteMode.Lax,
                 Expires = DateTime.UtcNow.AddMinutes(accessTokenExpirationMinutes)
             };
 
@@ -159,7 +160,8 @@ namespace attendance_monitoring.Controllers
             {
                 HttpOnly = true,
                 Secure = true, // Set to true in production with HTTPS
-                SameSite = SameSiteMode.Strict,
+                // SameSite = SameSiteMode.Strict,
+                SameSite = SameSiteMode.Lax,
                 Expires = DateTime.UtcNow.AddDays(refreshTokenExpirationDays)
             };
 
@@ -171,8 +173,18 @@ namespace attendance_monitoring.Controllers
         #endregion
 
         #region POST: api/account/refresh
-        // POST: api/account/refresh
+        /// <summary>
+        /// Refresh tokens and optionally revoke the old access token
+        /// </summary>
+        /// <param name="refreshTokenRequest">Refresh token and optional old access token</param>
+        /// <returns>New JWT tokens</returns>
+        /// <response code="200">Tokens refreshed successfully</response>
+        /// <response code="401">Invalid refresh token</response>
+        /// <response code="400">Invalid input data</response>
         [HttpPost("refresh")]
+        [ProducesResponseType(typeof(RefreshResponseDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(RefreshResponseDto), StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(typeof(RefreshResponseDto), StatusCodes.Status400BadRequest)]
         public async Task<ActionResult<RefreshResponseDto>> Refresh(RefreshTokenRequestDto refreshTokenRequest)
         {
             logger.LogInformation("Token refresh attempt.");
@@ -210,7 +222,7 @@ namespace attendance_monitoring.Controllers
         /// <response code="401">Invalid refresh token</response>
         [HttpPost("web/refresh")]
         [ProducesResponseType(typeof(WebRefreshResponseDto), StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(typeof(WebRefreshResponseDto), StatusCodes.Status401Unauthorized)]
         public async Task<ActionResult<WebRefreshResponseDto>> WebRefresh()
         {
             logger.LogInformation("Web token refresh attempt.");
@@ -222,7 +234,13 @@ namespace attendance_monitoring.Controllers
                 return Unauthorized(new WebRefreshResponseDto { Success = false, Message = "Refresh token not found" });
             }
 
-            var refreshTokenRequest = new RefreshTokenRequestDto { RefreshToken = refreshToken };
+            // Get old access token from cookie
+            var oldAccessToken = Request.Cookies.TryGetValue("accessToken", out var accessToken) ? accessToken : null;
+
+            var refreshTokenRequest = new RefreshTokenRequestDto { 
+                RefreshToken = refreshToken,
+                OldAccessToken = oldAccessToken
+            };
             var (tokenResponse, error) = await accountService.RefreshAsync(refreshTokenRequest);
 
             if (tokenResponse == null)
@@ -261,10 +279,19 @@ namespace attendance_monitoring.Controllers
         #endregion
 
         #region POST: api/account/revoke
-        // POST: api/account/revoke
+        /// <summary>
+        /// Revoke a refresh token
+        /// </summary>
+        /// <param name="revokeTokenRequest">Refresh token to revoke</param>
+        /// <returns>Revocation status</returns>
+        /// <response code="200">Token revoked successfully</response>
+        /// <response code="401">Invalid token or user</response>
+        /// <response code="400">Invalid input data</response>
         [HttpPost("revoke")]
         [Authorize]
         [ProducesResponseType(typeof(RevokeResponseDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(RevokeResponseDto), StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(typeof(RevokeResponseDto), StatusCodes.Status400BadRequest)]
         public async Task<ActionResult<RevokeResponseDto>> Revoke(RevokeTokenRequestDto revokeTokenRequest)
         {
             logger.LogInformation("Token revocation attempt.");
@@ -304,7 +331,7 @@ namespace attendance_monitoring.Controllers
         [HttpPost("web/revoke")]
         [Authorize]
         [ProducesResponseType(typeof(WebRevokeResponseDto), StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(typeof(WebRevokeResponseDto), StatusCodes.Status401Unauthorized)]
         public async Task<ActionResult<WebRevokeResponseDto>> WebRevoke()
         {
             logger.LogInformation("Web token revocation attempt.");
@@ -351,7 +378,7 @@ namespace attendance_monitoring.Controllers
         [HttpGet("check")]
         [Authorize]
         [ProducesResponseType(typeof(CheckAuthResponseDto), StatusCodes.Status200OK)]
-        [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(typeof(CheckAuthResponseDto), StatusCodes.Status401Unauthorized)]
         public ActionResult<CheckAuthResponseDto> Check()
         {
             logger.LogInformation("Authentication check for user: {UserId}", GetUserId(User));

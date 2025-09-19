@@ -12,7 +12,7 @@ namespace attendance_monitoring.Controllers;
 /// </summary>
 [Authorize(Policy = "UserPolicy")]
 [ApiController]
-[Route("api/[controller]")]
+[Route("api/students")]
 public class StudentController : ControllerBase
 {
     private readonly IStudentService _studentService;
