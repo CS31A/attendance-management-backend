@@ -36,14 +36,14 @@ namespace attendance_monitoring.Services
                 return (result, null);
             }
 
-            var existingUser = await accountRepository.FindUserByUsernameAsync(registerDto.Username);
+            var existingUser = await accountRepository.FindUserByUsernameAsync(registerDto.Username).ConfigureAwait(false);
             if (existingUser != null)
             {
                 var result = IdentityResult.Failed(new IdentityError { Code = "UsernameExists", Description = "Username already exists" });
                 return (result, null);
             }
 
-            existingUser = await accountRepository.FindUserByEmailAsync(registerDto.Email);
+            existingUser = await accountRepository.FindUserByEmailAsync(registerDto.Email).ConfigureAwait(false);
             if (existingUser != null)
             {
                 var result = IdentityResult.Failed(new IdentityError { Code = "EmailExists", Description = "Email already exists" });
@@ -56,7 +56,7 @@ namespace attendance_monitoring.Services
                 Email = registerDto.Email
             };
 
-            var createResult = await accountRepository.CreateUserAsync(user, registerDto.Password);
+            var createResult = await accountRepository.CreateUserAsync(user, registerDto.Password).ConfigureAwait(false);
             if (!createResult.Succeeded)
             {
                 return (createResult, null);
@@ -70,13 +70,13 @@ namespace attendance_monitoring.Services
                 roleToAssign = registerDto.Role;
             }
 
-            await accountRepository.AddUserToRoleAsync(user, roleToAssign);
+            await accountRepository.AddUserToRoleAsync(user, roleToAssign).ConfigureAwait(false);
             logger.LogInformation("Assigned role {Role} to user {Username}", roleToAssign, user.UserName);
 
             if (roleToAssign.Equals("Student", StringComparison.OrdinalIgnoreCase))
             {
                 // Validate that the SectionId exists
-                var section = await sectionRepository.GetSectionByIdAsync(registerDto.SectionId);
+                var section = await sectionRepository.GetSectionByIdAsync(registerDto.SectionId).ConfigureAwait(false);
                 if (section == null)
                 {
                     logger.LogWarning("Student registration failed for user {Username}: SectionId {SectionId} does not exist", user.UserName, registerDto.SectionId);
@@ -94,7 +94,7 @@ namespace attendance_monitoring.Services
                     CreatedAt = DateTime.UtcNow,
                     UpdatedAt = DateTime.UtcNow
                 };
-                await accountRepository.CreateStudentProfileAsync(student);
+                await accountRepository.CreateStudentProfileAsync(student).ConfigureAwait(false);
                 logger.LogInformation("Created student record for user: {Username}", user.UserName);
             }
             else if (roleToAssign.Equals("Teacher", StringComparison.OrdinalIgnoreCase))
@@ -108,7 +108,7 @@ namespace attendance_monitoring.Services
                     CreatedAt = DateTime.UtcNow,
                     UpdatedAt = DateTime.UtcNow
                 };
-                await accountRepository.CreateInstructorProfileAsync(instructor);
+                await accountRepository.CreateInstructorProfileAsync(instructor).ConfigureAwait(false);
                 logger.LogInformation("Created instructor record for user: {Username}", user.UserName);
             }
 
@@ -128,7 +128,7 @@ namespace attendance_monitoring.Services
             if (loginDto.Username.Contains("@"))
             {
                 // Treat as email
-                user = await accountRepository.FindUserByEmailAsync(loginDto.Username);
+                user = await accountRepository.FindUserByEmailAsync(loginDto.Username).ConfigureAwait(false);
                 if (user != null)
                 {
                     logger.LogInformation("Found user by email: {Email}", loginDto.Username);
@@ -137,7 +137,7 @@ namespace attendance_monitoring.Services
             else
             {
                 // Treat as username
-                user = await accountRepository.FindUserByUsernameAsync(loginDto.Username);
+                user = await accountRepository.FindUserByUsernameAsync(loginDto.Username).ConfigureAwait(false);
                 if (user != null)
                 {
                     logger.LogInformation("Found user by username: {Username}", loginDto.Username);
@@ -150,15 +150,15 @@ namespace attendance_monitoring.Services
                 return (null, "Invalid email or username or password");
             }
 
-            var result = await accountRepository.CheckPasswordAsync(user, loginDto.Password);
+            var result = await accountRepository.CheckPasswordAsync(user, loginDto.Password).ConfigureAwait(false);
             if (!result.Succeeded)
             {
                 logger.LogWarning("Login failed for user {Username}: Invalid password", user.UserName);
                 return (null, "Invalid email or username or password");
             }
 
-            var accessToken = await GenerateJwtToken(user);
-            var (refreshTokenEntity, refreshToken) = await refreshTokenService.CreateRefreshTokenAsync(user.Id);
+            var accessToken = await GenerateJwtToken(user).ConfigureAwait(false);
+            var (refreshTokenEntity, refreshToken) = await refreshTokenService.CreateRefreshTokenAsync(user.Id).ConfigureAwait(false);
 
             logger.LogInformation("User {Username} logged in successfully", user.UserName);
             var tokenResponse = new TokenResponseDto
@@ -175,14 +175,14 @@ namespace attendance_monitoring.Services
         {
             logger.LogInformation("Token refresh attempt.");
 
-            var (refreshTokenEntity, validationError) = await refreshTokenService.ValidateRefreshTokenAsync(refreshTokenRequest.RefreshToken);
+            var (refreshTokenEntity, validationError) = await refreshTokenService.ValidateRefreshTokenAsync(refreshTokenRequest.RefreshToken).ConfigureAwait(false);
             if (refreshTokenEntity == null)
             {
                 logger.LogWarning("Token refresh failed: {ValidationError}", validationError);
                 return (null, validationError);
             }
 
-            var user = await accountRepository.FindUserByIdAsync(refreshTokenEntity.UserId);
+            var user = await accountRepository.FindUserByIdAsync(refreshTokenEntity.UserId).ConfigureAwait(false);
             if (user == null)
             {
                 logger.LogWarning("Token refresh failed: User not found for token.");
@@ -226,31 +226,31 @@ namespace attendance_monitoring.Services
                     // if (!string.IsNullOrEmpty(jti) && sub == user.Id && expiresAt > DateTime.UtcNow)
                     // {
                     //     await BlacklistTokenAsync(jti, expiresAt);
-                    //     logger.LogInformation("Old access token blacklisted for user {UserId}.", user.Id);
+                    //     logger.LogInformation("Old access token blacklisted for user {UserId}.");
                     // }
                     // else if (!string.IsNullOrEmpty(jti))
                     // {
-                    //     logger.LogWarning("Old access token not blacklisted - validation failed for user {UserId}.", user.Id);
+                    //     logger.LogWarning("Old access token not blacklisted - validation failed for user {UserId}.");
                     // }
                     // else if (jti == null)
                     // {
-                    //     logger.LogWarning("Old access token not blacklisted - token has no JTI for user {UserId}.", user.Id);
+                    //     logger.LogWarning("Old access token not blacklisted - token has no JTI for user {UserId}.");
                     // }
                     
                     // toma testing 2.0
                     switch (jti)
                     {
                         case not null when sub == user.Id && expiresAt > DateTime.UtcNow:
-                            await BlacklistTokenAsync(jti, expiresAt);
-                            logger.LogInformation("Old access token blacklisted for user {UserId}.", user.Id);
+                            await BlacklistTokenAsync(jti, expiresAt).ConfigureAwait(false);
+                            logger.LogInformation("Old access token blacklisted for user {UserId}.");
                             break;
 
                         case not null:
-                            logger.LogWarning("Old access token not blacklisted - validation failed for user {UserId}.", user.Id);
+                            logger.LogWarning("Old access token not blacklisted - validation failed for user {UserId}.");
                             break;
 
                         case null:
-                            logger.LogWarning("Old access token not blacklisted - token has no JTI for user {UserId}.", user.Id);
+                            logger.LogWarning("Old access token not blacklisted - token has no JTI for user {UserId}.");
                             break;
                     }
 
@@ -263,7 +263,7 @@ namespace attendance_monitoring.Services
 
             var (newRefreshTokenEntity, newRefreshToken) = await refreshTokenService.RotateRefreshTokenAsync(
                 refreshTokenRequest.RefreshToken,
-                user.Id);
+                user.Id).ConfigureAwait(false);
 
             if (string.IsNullOrEmpty(newRefreshToken))
             {
@@ -271,9 +271,9 @@ namespace attendance_monitoring.Services
                 return (null, "Failed to rotate refresh token");
             }
 
-            var newAccessToken = await GenerateJwtToken(user);
+            var newAccessToken = await GenerateJwtToken(user).ConfigureAwait(false);
 
-            logger.LogInformation("Token refreshed successfully for user {UserId}.", user.Id);
+            logger.LogInformation("Token refreshed successfully for user {UserId}.");
             var tokenResponse = new TokenResponseDto
             {
                 AccessToken = newAccessToken,
@@ -287,7 +287,7 @@ namespace attendance_monitoring.Services
             logger.LogInformation("Token revocation attempt for user {UserId}.", userId);
 
             var tokenHash = refreshTokenService.HashRefreshToken(revokeTokenRequest.RefreshToken);
-            var storedToken = await context.RefreshTokens.FirstOrDefaultAsync(rt => rt.TokenHash == tokenHash);
+            var storedToken = await context.RefreshTokens.FirstOrDefaultAsync(rt => rt.TokenHash == tokenHash).ConfigureAwait(false);
 
             if (storedToken == null)
             {
@@ -315,7 +315,7 @@ namespace attendance_monitoring.Services
 
             storedToken.IsRevoked = true;
             storedToken.RevokedAt = DateTime.UtcNow;
-            await context.SaveChangesAsync();
+            await context.SaveChangesAsync().ConfigureAwait(false);
 
             logger.LogInformation("Refresh token revoked successfully for user {UserId}.", userId);
             var response = new RevokeResponseDto { Message = "Refresh token revoked successfully" };
@@ -334,11 +334,11 @@ namespace attendance_monitoring.Services
                 new Claim(ClaimTypes.Name, user.UserName ?? string.Empty)
             };
 
-            var roles = await accountRepository.GetUserRolesAsync(user);
-            foreach (var role in roles)
-            {
-                claims.Add(new Claim(ClaimTypes.Role, role));
-            }
+            var roles = await accountRepository.GetUserRolesAsync(user).ConfigureAwait(false);
+            // Use LINQ Select expression instead of FOREACH to transform each role string into a Claim object with the Role claim type,
+            // then add all of these Claim objects to the claims collection at once using AddRange 
+            // for improved readability and better performance than adding items individually in a loop.
+            claims.AddRange(roles.Select(role => new Claim(ClaimTypes.Role, role)));
 
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(configuration["AppSettings:Token"] ?? string.Empty));
             var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
@@ -370,7 +370,7 @@ namespace attendance_monitoring.Services
             try
             {
                 context.BlacklistedTokens.Add(blacklistedToken);
-                await context.SaveChangesAsync();
+                await context.SaveChangesAsync().ConfigureAwait(false);
             }
             catch (DbUpdateException)
             {

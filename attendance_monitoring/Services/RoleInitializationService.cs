@@ -21,7 +21,7 @@ namespace attendance_monitoring.Services
             _logger.LogInformation("Initializing roles...");
 
             var validRoles = new[] { "Admin", "Teacher", "Student" };
-            await _accountRepository.EnsureRolesExistAsync(validRoles);
+            await _accountRepository.EnsureRolesExistAsync(validRoles).ConfigureAwait(false);
 
             _logger.LogInformation("Roles initialized successfully.");
         }

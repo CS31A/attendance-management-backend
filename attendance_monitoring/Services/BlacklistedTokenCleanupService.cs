@@ -29,23 +29,23 @@ public class BlacklistedTokenCleanupService : BackgroundService
                 // Remove expired blacklisted tokens
                 var expiredTokens = await context.BlacklistedTokens
                     .Where(bt => bt.ExpiresAt < DateTime.UtcNow)
-                    .ToListAsync(stoppingToken);
+                    .ToListAsync(stoppingToken).ConfigureAwait(false);
 
                 if (expiredTokens.Any())
                 {
                     context.BlacklistedTokens.RemoveRange(expiredTokens);
-                    await context.SaveChangesAsync(stoppingToken);
+                    await context.SaveChangesAsync(stoppingToken).ConfigureAwait(false);
                     _logger.LogInformation("Removed {Count} expired blacklisted tokens.", expiredTokens.Count);
                 }
 
                 // Wait for 1 hour before next cleanup
-                await Task.Delay(TimeSpan.FromHours(1), stoppingToken);
+                await Task.Delay(TimeSpan.FromHours(1), stoppingToken).ConfigureAwait(false);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "An error occurred while cleaning up blacklisted tokens.");
                 // Wait for 1 hour before retrying
-                await Task.Delay(TimeSpan.FromHours(1), stoppingToken);
+                await Task.Delay(TimeSpan.FromHours(1), stoppingToken).ConfigureAwait(false);
             }
         }
 

@@ -19,22 +19,22 @@ public class StudentRepository(ApplicationDbContext context) : IStudentRepositor
             .Where(s => !s.IsDeleted) // Only return non-deleted students
             .Skip((paginationQuery.PageNumber - 1) * paginationQuery.PageSize)
             .Take(paginationQuery.PageSize)
-            .ToListAsync();
+            .ToListAsync().ConfigureAwait(false);
     }
 
     public async Task<Student?> GetStudentByIdAsync(int id)
     {
-        return await context.Students.FirstOrDefaultAsync(s => s.Id == id && !s.IsDeleted);
+        return await context.Students.FirstOrDefaultAsync(s => s.Id == id && !s.IsDeleted).ConfigureAwait(false);
     }
 
     public async Task<Student?> GetStudentByUserIdAsync(string userId)
     {
-        return await context.Students.FirstOrDefaultAsync(s => s.UserId == userId && !s.IsDeleted);
+        return await context.Students.FirstOrDefaultAsync(s => s.UserId == userId && !s.IsDeleted).ConfigureAwait(false);
     }
 
     public async Task<Student> CreateStudent(Student student)
     {
-        var entry = await context.Students.AddAsync(student);
+        var entry = await context.Students.AddAsync(student).ConfigureAwait(false);
         return entry.Entity;
     }
 
@@ -46,7 +46,7 @@ public class StudentRepository(ApplicationDbContext context) : IStudentRepositor
 
     public async Task<bool> SoftDeleteStudentAsync(int id)
     {
-        var student = await context.Students.FindAsync(id);
+        var student = await context.Students.FindAsync(id).ConfigureAwait(false);
         if (student == null)
             return false;
 
@@ -55,23 +55,23 @@ public class StudentRepository(ApplicationDbContext context) : IStudentRepositor
         student.UpdatedAt = DateTime.UtcNow;
         
         context.Students.Update(student);
-        await context.SaveChangesAsync();
+        await context.SaveChangesAsync().ConfigureAwait(false);
         return true;
     }
 
     public async Task<bool> HardDeleteStudentAsync(int id)
     {
-        var student = await context.Students.FindAsync(id);
+        var student = await context.Students.FindAsync(id).ConfigureAwait(false);
         if (student == null)
             return false;
 
         context.Students.Remove(student);
-        await context.SaveChangesAsync();
+        await context.SaveChangesAsync().ConfigureAwait(false);
         return true;
     }
 
     public async Task<int> SaveChangesAsync()
     {
-        return await context.SaveChangesAsync();
+        return await context.SaveChangesAsync().ConfigureAwait(false);
     }
 }

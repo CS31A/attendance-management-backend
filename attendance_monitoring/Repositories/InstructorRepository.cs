@@ -15,22 +15,22 @@ public class InstructorRepository(ApplicationDbContext context) : IInstructorRep
             .OrderBy(i => i.Id)
             .Skip((paginationQuery.PageNumber - 1) * paginationQuery.PageSize)
             .Take(paginationQuery.PageSize)
-            .ToListAsync();
+            .ToListAsync().ConfigureAwait(false);
     }
 
     public async Task<Instructor?> GetInstructorByIdAsync(int id)
     {
-        return await context.Instructors.FirstOrDefaultAsync(i => i.Id == id && !i.IsDeleted);
+        return await context.Instructors.FirstOrDefaultAsync(i => i.Id == id && !i.IsDeleted).ConfigureAwait(false);
     }
 
     public async Task<Instructor?> GetInstructorByUserIdAsync(string userId)
     {
-        return await context.Instructors.FirstOrDefaultAsync(i => i.UserId == userId && !i.IsDeleted);
+        return await context.Instructors.FirstOrDefaultAsync(i => i.UserId == userId && !i.IsDeleted).ConfigureAwait(false);
     }
 
     public async Task<Instructor> CreateInstructorAsync(Instructor instructor)
     {
-        var entry = await context.Instructors.AddAsync(instructor);
+        var entry = await context.Instructors.AddAsync(instructor).ConfigureAwait(false);
         return entry.Entity;
     }
 
@@ -38,13 +38,13 @@ public class InstructorRepository(ApplicationDbContext context) : IInstructorRep
     {
         instructor.UpdatedAt = DateTime.UtcNow;
         var entry = context.Instructors.Update(instructor);
-        await context.SaveChangesAsync();
+        await context.SaveChangesAsync().ConfigureAwait(false);
         return entry.Entity;
     }
 
     public async Task<bool> SoftDeleteInstructorAsync(int id)
     {
-        var instructor = await context.Instructors.FindAsync(id);
+        var instructor = await context.Instructors.FindAsync(id).ConfigureAwait(false);
         if (instructor == null)
             return false;
 
@@ -53,23 +53,23 @@ public class InstructorRepository(ApplicationDbContext context) : IInstructorRep
         instructor.UpdatedAt = DateTime.UtcNow;
         
         context.Instructors.Update(instructor);
-        await context.SaveChangesAsync();
+        await context.SaveChangesAsync().ConfigureAwait(false);
         return true;
     }
 
     public async Task<bool> HardDeleteInstructorAsync(int id)
     {
-        var instructor = await context.Instructors.FindAsync(id);
+        var instructor = await context.Instructors.FindAsync(id).ConfigureAwait(false);
         if (instructor == null)
             return false;
 
         context.Instructors.Remove(instructor);
-        await context.SaveChangesAsync();
+        await context.SaveChangesAsync().ConfigureAwait(false);
         return true;
     }
 
     public async Task<int> SaveChangesAsync()
     {
-        return await context.SaveChangesAsync();
+        return await context.SaveChangesAsync().ConfigureAwait(false);
     }
 }
