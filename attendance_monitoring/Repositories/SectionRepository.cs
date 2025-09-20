@@ -17,12 +17,12 @@ namespace attendance_monitoring.Repositories
 
         public async Task<Section?> GetSectionByIdAsync(int sectionId)
         {
-            return await _context.Sections.FindAsync(sectionId);
+            return await _context.Sections.FindAsync(sectionId).ConfigureAwait(false);
         }
 
         public async Task<IEnumerable<Section>> GetAllSectionsAsync()
         {
-            return await _context.Sections.ToListAsync();
+            return await _context.Sections.ToListAsync().ConfigureAwait(false);
         }
 
         public async Task<Section> CreateSectionAsync(Section section)
@@ -31,14 +31,14 @@ namespace attendance_monitoring.Repositories
             section.UpdatedAt = DateTime.UtcNow;
             
             _context.Sections.Add(section);
-            await _context.SaveChangesAsync();
+            await _context.SaveChangesAsync().ConfigureAwait(false);
             
             return section;
         }
 
         public async Task<Section?> UpdateSectionAsync(int id, Section section)
         {
-            var existingSection = await _context.Sections.FindAsync(id);
+            var existingSection = await _context.Sections.FindAsync(id).ConfigureAwait(false);
             if (existingSection == null)
             {
                 return null;
@@ -49,21 +49,21 @@ namespace attendance_monitoring.Repositories
             existingSection.CourseId = section.CourseId;
             existingSection.UpdatedAt = DateTime.UtcNow;
 
-            await _context.SaveChangesAsync();
+            await _context.SaveChangesAsync().ConfigureAwait(false);
 
             return existingSection;
         }
 
         public async Task<bool> DeleteSectionAsync(int id)
         {
-            var section = await _context.Sections.FindAsync(id);
+            var section = await _context.Sections.FindAsync(id).ConfigureAwait(false);
             if (section == null)
             {
                 return false;
             }
 
             _context.Sections.Remove(section);
-            await _context.SaveChangesAsync();
+            await _context.SaveChangesAsync().ConfigureAwait(false);
             return true;
         }
     }

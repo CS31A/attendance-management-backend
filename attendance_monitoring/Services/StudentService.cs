@@ -35,7 +35,7 @@ namespace attendance_monitoring.Services
         /// <returns>A collection of students</returns>
         public async Task<IEnumerable<Student>> GetAllStudentsAsync(PaginationQuery paginationQuery)
         {
-            return await _studentRepository.GetAllStudentsAsync(paginationQuery);
+            return await _studentRepository.GetAllStudentsAsync(paginationQuery).ConfigureAwait(false);
         }
 
         /// <summary>
@@ -45,7 +45,7 @@ namespace attendance_monitoring.Services
         /// <returns>The student with the specified ID, or null if not found</returns>
         public async Task<Student?> GetStudentByIdAsync(int id)
         {
-            return await _studentRepository.GetStudentByIdAsync(id);
+            return await _studentRepository.GetStudentByIdAsync(id).ConfigureAwait(false);
         }
 
         /// <summary>
@@ -77,19 +77,19 @@ namespace attendance_monitoring.Services
             }
 
             // Validate that the SectionId exists
-            var section = await _sectionRepository.GetSectionByIdAsync(createStudent.SectionId);
+            var section = await _sectionRepository.GetSectionByIdAsync(createStudent.SectionId).ConfigureAwait(false);
             if (section == null)
             {
                 return (null, "The specified section does not exist");
             }
 
-            var userId = await _userContextService.GetUserIdAsync(userPrincipal);
+            var userId = await _userContextService.GetUserIdAsync(userPrincipal).ConfigureAwait(false);
             if (string.IsNullOrEmpty(userId))
             {
                 return (null, "User ID not found in token");
             }
 
-            var existingStudent = await _studentRepository.GetStudentByUserIdAsync(userId);
+            var existingStudent = await _studentRepository.GetStudentByUserIdAsync(userId).ConfigureAwait(false);
             if (existingStudent != null)
             {
                 return (null, "Student record already exists for this user");
@@ -106,8 +106,8 @@ namespace attendance_monitoring.Services
                 UpdatedAt = DateTime.UtcNow
             };
 
-            var createdStudent = await _studentRepository.CreateStudent(student);
-            await _studentRepository.SaveChangesAsync();
+            var createdStudent = await _studentRepository.CreateStudent(student).ConfigureAwait(false);
+            await _studentRepository.SaveChangesAsync().ConfigureAwait(false);
 
             return (createdStudent, null);
         }
@@ -121,19 +121,19 @@ namespace attendance_monitoring.Services
         /// <returns>A tuple containing the updated student (if successful) and an error message (if any)</returns>
         public async Task<(Student?, string?)> UpdateStudentAsync(int id, UpdateStudent updateStudent, ClaimsPrincipal userPrincipal)
         {
-            var userId = await _userContextService.GetUserIdAsync(userPrincipal);
+            var userId = await _userContextService.GetUserIdAsync(userPrincipal).ConfigureAwait(false);
             if (string.IsNullOrEmpty(userId))
             {
                 return (null, "User ID not found in token");
             }
 
-            var existingStudent = await _studentRepository.GetStudentByIdAsync(id);
+            var existingStudent = await _studentRepository.GetStudentByIdAsync(id).ConfigureAwait(false);
             if (existingStudent == null)
             {
                 return (null, "Student not found");
             }
 
-            var isAuthorized = await _userContextService.IsAuthorizedAsync(userPrincipal, existingStudent.UserId, "Admin", "Teacher");
+            var isAuthorized = await _userContextService.IsAuthorizedAsync(userPrincipal, existingStudent.UserId, "Admin", "Teacher").ConfigureAwait(false);
             if (!isAuthorized)
             {
                 return (null, "You are not authorized to update this student record.");
@@ -156,8 +156,8 @@ namespace attendance_monitoring.Services
 
             existingStudent.UpdatedAt = DateTime.UtcNow;
 
-            var updatedStudent = await _studentRepository.UpdateStudentAsync(existingStudent);
-            await _studentRepository.SaveChangesAsync();
+            var updatedStudent = await _studentRepository.UpdateStudentAsync(existingStudent).ConfigureAwait(false);
+            await _studentRepository.SaveChangesAsync().ConfigureAwait(false);
 
             return (updatedStudent, null);
         }
@@ -175,25 +175,25 @@ namespace attendance_monitoring.Services
                 return "Invalid student ID";
             }
 
-            var userId = await _userContextService.GetUserIdAsync(userPrincipal);
+            var userId = await _userContextService.GetUserIdAsync(userPrincipal).ConfigureAwait(false);
             if (string.IsNullOrEmpty(userId))
             {
                 return "User ID not found in token";
             }
 
-            var existingStudent = await _studentRepository.GetStudentByIdAsync(id);
+            var existingStudent = await _studentRepository.GetStudentByIdAsync(id).ConfigureAwait(false);
             if (existingStudent == null)
             {
                 return "Student not found";
             }
 
-            var isAuthorized = await _userContextService.IsAuthorizedAsync(userPrincipal, existingStudent.UserId, "Admin", "Teacher");
+            var isAuthorized = await _userContextService.IsAuthorizedAsync(userPrincipal, existingStudent.UserId, "Admin", "Teacher").ConfigureAwait(false);
             if (!isAuthorized)
             {
                 return "You are not authorized to delete this student record.";
             }
 
-            var result = await _studentRepository.SoftDeleteStudentAsync(id);
+            var result = await _studentRepository.SoftDeleteStudentAsync(id).ConfigureAwait(false);
             return !result ? "Failed to soft delete student" : null;
         }
 
@@ -210,25 +210,25 @@ namespace attendance_monitoring.Services
                 return "Invalid student ID";
             }
 
-            var userId = await _userContextService.GetUserIdAsync(userPrincipal);
+            var userId = await _userContextService.GetUserIdAsync(userPrincipal).ConfigureAwait(false);
             if (string.IsNullOrEmpty(userId))
             {
                 return "User ID not found in token";
             }
 
-            var existingStudent = await _studentRepository.GetStudentByIdAsync(id);
+            var existingStudent = await _studentRepository.GetStudentByIdAsync(id).ConfigureAwait(false);
             if (existingStudent == null)
             {
                 return "Student not found";
             }
 
-            var isAuthorized = await _userContextService.IsAuthorizedAsync(userPrincipal, existingStudent.UserId, "Admin");
+            var isAuthorized = await _userContextService.IsAuthorizedAsync(userPrincipal, existingStudent.UserId, "Admin").ConfigureAwait(false);
             if (!isAuthorized)
             {
                 return "You are not authorized to permanently delete this student record.";
             }
 
-            var result = await _studentRepository.HardDeleteStudentAsync(id);
+            var result = await _studentRepository.HardDeleteStudentAsync(id).ConfigureAwait(false);
             if (!result)
             {
                 return "Failed to hard delete student";

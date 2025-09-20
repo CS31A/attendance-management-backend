@@ -13,12 +13,12 @@ namespace attendance_monitoring.Services
     {
         public async Task<Section?> GetSectionByIdAsync(int sectionId)
         {
-            return await sectionRepository.GetSectionByIdAsync(sectionId);
+            return await sectionRepository.GetSectionByIdAsync(sectionId).ConfigureAwait(false);
         }
 
         public async Task<IEnumerable<SectionResponseDto>> GetAllSectionsAsync()
         {
-            var sections = await sectionRepository.GetAllSectionsAsync();
+            var sections = await sectionRepository.GetAllSectionsAsync().ConfigureAwait(false);
             return sections.Select(s => new SectionResponseDto
             {
                 Id = s.Id,
@@ -32,7 +32,7 @@ namespace attendance_monitoring.Services
 
         public async Task<SectionResponseDto?> CreateSectionAsync(Section section)
         {
-            var createdSection = await sectionRepository.CreateSectionAsync(section);
+            var createdSection = await sectionRepository.CreateSectionAsync(section).ConfigureAwait(false);
             
             return new SectionResponseDto
             {
@@ -47,7 +47,7 @@ namespace attendance_monitoring.Services
 
         public async Task<SectionResponseDto?> UpdateSectionAsync(int id, Section section)
         {
-            var updatedSection = await sectionRepository.UpdateSectionAsync(id, section);
+            var updatedSection = await sectionRepository.UpdateSectionAsync(id, section).ConfigureAwait(false);
             if (updatedSection == null)
             {
                 return null;
@@ -66,7 +66,7 @@ namespace attendance_monitoring.Services
 
         public async Task<bool> DeleteSectionAsync(int id)
         {
-            return await sectionRepository.DeleteSectionAsync(id);
+            return await sectionRepository.DeleteSectionAsync(id).ConfigureAwait(false);
         }
     }
 }

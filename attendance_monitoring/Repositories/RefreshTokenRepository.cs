@@ -19,31 +19,31 @@ public class RefreshTokenRepository : IRefreshTokenRepository
     public async Task<RefreshToken?> GetByTokenHashAsync(string tokenHash)
     {
         return await _context.RefreshTokens
-            .FirstOrDefaultAsync(rt => rt.TokenHash == tokenHash);
+            .FirstOrDefaultAsync(rt => rt.TokenHash == tokenHash).ConfigureAwait(false);
     }
 
     public async Task<RefreshToken?> GetByReplacedTokenHashAsync(string replacedTokenHash)
     {
         return await _context.RefreshTokens
-            .FirstOrDefaultAsync(rt => rt.ReplacedByTokenHash == replacedTokenHash);
+            .FirstOrDefaultAsync(rt => rt.ReplacedByTokenHash == replacedTokenHash).ConfigureAwait(false);
     }
 
     public async Task<RefreshToken> CreateAsync(RefreshToken refreshToken)
     {
-        var entry = await _context.RefreshTokens.AddAsync(refreshToken);
-        await _context.SaveChangesAsync();
+        var entry = await _context.RefreshTokens.AddAsync(refreshToken).ConfigureAwait(false);
+        await _context.SaveChangesAsync().ConfigureAwait(false);
         return entry.Entity;
     }
 
     public async Task UpdateAsync(RefreshToken refreshToken)
     {
         _context.RefreshTokens.Update(refreshToken);
-        await _context.SaveChangesAsync();
+        await _context.SaveChangesAsync().ConfigureAwait(false);
     }
 
     public async Task<bool> ExistsAsync(string tokenHash)
     {
         return await _context.RefreshTokens
-            .AnyAsync(rt => rt.TokenHash == tokenHash);
+            .AnyAsync(rt => rt.TokenHash == tokenHash).ConfigureAwait(false);
     }
 }

@@ -26,60 +26,60 @@ namespace attendance_monitoring.Repositories
 
         public async Task<IdentityUser?> FindUserByIdAsync(string id)
         {
-            return await _userManager.FindByIdAsync(id);
+            return await _userManager.FindByIdAsync(id).ConfigureAwait(false);
         }
 
         public async Task<IdentityUser?> FindUserByUsernameAsync(string username)
         {
-            return await _userManager.FindByNameAsync(username);
+            return await _userManager.FindByNameAsync(username).ConfigureAwait(false);
         }
 
         public async Task<IdentityUser?> FindUserByEmailAsync(string email)
         {
-            return await _userManager.FindByEmailAsync(email);
+            return await _userManager.FindByEmailAsync(email).ConfigureAwait(false);
         }
 
         public async Task<IdentityResult> CreateUserAsync(IdentityUser user, string password)
         {
-            return await _userManager.CreateAsync(user, password);
+            return await _userManager.CreateAsync(user, password).ConfigureAwait(false);
         }
 
         public async Task<SignInResult> CheckPasswordAsync(IdentityUser user, string password)
         {
-            return await _signInManager.CheckPasswordSignInAsync(user, password, false);
+            return await _signInManager.CheckPasswordSignInAsync(user, password, false).ConfigureAwait(false);
         }
 
         public async Task EnsureRolesExistAsync(IEnumerable<string> roles)
         {
             foreach (var role in roles)
             {
-                if (!await _roleManager.RoleExistsAsync(role))
+                if (!await _roleManager.RoleExistsAsync(role).ConfigureAwait(false))
                 {
-                    await _roleManager.CreateAsync(new IdentityRole(role));
+                    await _roleManager.CreateAsync(new IdentityRole(role)).ConfigureAwait(false);
                 }
             }
         }
 
         public async Task AddUserToRoleAsync(IdentityUser user, string role)
         {
-            await _userManager.AddToRoleAsync(user, role);
+            await _userManager.AddToRoleAsync(user, role).ConfigureAwait(false);
         }
 
         public async Task<IList<string>> GetUserRolesAsync(IdentityUser user)
         {
-            return await _userManager.GetRolesAsync(user);
+            return await _userManager.GetRolesAsync(user).ConfigureAwait(false);
         }
 
         public async Task CreateStudentProfileAsync(Student student)
         {
             _context.Students.Add(student);
-            await _context.SaveChangesAsync();
+            await _context.SaveChangesAsync().ConfigureAwait(false);
         }
 
         public async Task CreateInstructorProfileAsync(Instructor instructor)
         {
             _context.Instructors.Add(instructor);
-            await _context.SaveChangesAsync();
+            await _context.SaveChangesAsync().ConfigureAwait(false);
         }
     }
 }

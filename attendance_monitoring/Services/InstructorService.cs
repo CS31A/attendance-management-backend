@@ -32,7 +32,7 @@ namespace attendance_monitoring.Services
         /// <returns>A collection of instructors</returns>
         public async Task<IEnumerable<Instructor>> GetAllInstructorsAsync(PaginationQuery paginationQuery)
         {
-            return await _instructorRepository.GetAllInstructorsAsync(paginationQuery);
+            return await _instructorRepository.GetAllInstructorsAsync(paginationQuery).ConfigureAwait(false);
         }
 
         /// <summary>
@@ -42,7 +42,7 @@ namespace attendance_monitoring.Services
         /// <returns>The instructor with the specified ID, or null if not found</returns>
         public async Task<Instructor?> GetInstructorByIdAsync(int id)
         {
-            return await _instructorRepository.GetInstructorByIdAsync(id);
+            return await _instructorRepository.GetInstructorByIdAsync(id).ConfigureAwait(false);
         }
 
         /// <summary>
@@ -68,13 +68,13 @@ namespace attendance_monitoring.Services
                 return (null, "Email is required");
             }
 
-            var userId = await _userContextService.GetUserIdAsync(userPrincipal);
+            var userId = await _userContextService.GetUserIdAsync(userPrincipal).ConfigureAwait(false);
             if (string.IsNullOrEmpty(userId))
             {
                 return (null, "User ID not found in token");
             }
 
-            var existingInstructor = await _instructorRepository.GetInstructorByUserIdAsync(userId);
+            var existingInstructor = await _instructorRepository.GetInstructorByUserIdAsync(userId).ConfigureAwait(false);
             if (existingInstructor != null)
             {
                 return (null, "Instructor record already exists for this user");
@@ -90,8 +90,8 @@ namespace attendance_monitoring.Services
                 UpdatedAt = DateTime.UtcNow
             };
 
-            var createdInstructor = await _instructorRepository.CreateInstructorAsync(instructor);
-            await _instructorRepository.SaveChangesAsync();
+            var createdInstructor = await _instructorRepository.CreateInstructorAsync(instructor).ConfigureAwait(false);
+            await _instructorRepository.SaveChangesAsync().ConfigureAwait(false);
 
             return (createdInstructor, null);
         }
@@ -105,19 +105,19 @@ namespace attendance_monitoring.Services
         /// <returns>A tuple containing the updated instructor (if successful) and an error message (if any)</returns>
         public async Task<(Instructor?, string?)> UpdateInstructorAsync(int id, UpdateInstructor updateInstructor, ClaimsPrincipal userPrincipal)
         {
-            var userId = await _userContextService.GetUserIdAsync(userPrincipal);
+            var userId = await _userContextService.GetUserIdAsync(userPrincipal).ConfigureAwait(false);
             if (string.IsNullOrEmpty(userId))
             {
                 return (null, "User ID not found in token");
             }
 
-            var existingInstructor = await _instructorRepository.GetInstructorByIdAsync(id);
+            var existingInstructor = await _instructorRepository.GetInstructorByIdAsync(id).ConfigureAwait(false);
             if (existingInstructor == null)
             {
                 return (null, "Instructor not found");
             }
 
-            var isAuthorized = await _userContextService.IsAuthorizedAsync(userPrincipal, existingInstructor.UserId, "Admin", "Teacher");
+            var isAuthorized = await _userContextService.IsAuthorizedAsync(userPrincipal, existingInstructor.UserId, "Admin", "Teacher").ConfigureAwait(false);
             if (!isAuthorized)
             {
                 return (null, "You are not authorized to update this instructor record.");
@@ -140,8 +140,8 @@ namespace attendance_monitoring.Services
 
             existingInstructor.UpdatedAt = DateTime.UtcNow;
 
-            var updatedInstructor = await _instructorRepository.UpdateInstructorAsync(existingInstructor);
-            await _instructorRepository.SaveChangesAsync();
+            var updatedInstructor = await _instructorRepository.UpdateInstructorAsync(existingInstructor).ConfigureAwait(false);
+            await _instructorRepository.SaveChangesAsync().ConfigureAwait(false);
 
             return (updatedInstructor, null);
         }
@@ -159,25 +159,25 @@ namespace attendance_monitoring.Services
                 return "Invalid instructor ID";
             }
 
-            var userId = await _userContextService.GetUserIdAsync(userPrincipal);
+            var userId = await _userContextService.GetUserIdAsync(userPrincipal).ConfigureAwait(false);
             if (string.IsNullOrEmpty(userId))
             {
                 return "User ID not found in token";
             }
 
-            var existingInstructor = await _instructorRepository.GetInstructorByIdAsync(id);
+            var existingInstructor = await _instructorRepository.GetInstructorByIdAsync(id).ConfigureAwait(false);
             if (existingInstructor == null)
             {
                 return "Instructor not found";
             }
 
-            var isAuthorized = await _userContextService.IsAuthorizedAsync(userPrincipal, existingInstructor.UserId, "Admin", "Teacher");
+            var isAuthorized = await _userContextService.IsAuthorizedAsync(userPrincipal, existingInstructor.UserId, "Admin", "Teacher").ConfigureAwait(false);
             if (!isAuthorized)
             {
                 return "You are not authorized to delete this instructor record.";
             }
 
-            var result = await _instructorRepository.SoftDeleteInstructorAsync(id);
+            var result = await _instructorRepository.SoftDeleteInstructorAsync(id).ConfigureAwait(false);
             return !result ? "Failed to soft delete instructor" : null;
         }
 
@@ -194,25 +194,25 @@ namespace attendance_monitoring.Services
                 return "Invalid instructor ID";
             }
 
-            var userId = await _userContextService.GetUserIdAsync(userPrincipal);
+            var userId = await _userContextService.GetUserIdAsync(userPrincipal).ConfigureAwait(false);
             if (string.IsNullOrEmpty(userId))
             {
                 return "User ID not found in token";
             }
 
-            var existingInstructor = await _instructorRepository.GetInstructorByIdAsync(id);
+            var existingInstructor = await _instructorRepository.GetInstructorByIdAsync(id).ConfigureAwait(false);
             if (existingInstructor == null)
             {
                 return "Instructor not found";
             }
 
-            var isAuthorized = await _userContextService.IsAuthorizedAsync(userPrincipal, existingInstructor.UserId, "Admin");
+            var isAuthorized = await _userContextService.IsAuthorizedAsync(userPrincipal, existingInstructor.UserId, "Admin").ConfigureAwait(false);
             if (!isAuthorized)
             {
                 return "You are not authorized to permanently delete this instructor record.";
             }
 
-            var result = await _instructorRepository.HardDeleteInstructorAsync(id);
+            var result = await _instructorRepository.HardDeleteInstructorAsync(id).ConfigureAwait(false);
             return !result ? "Failed to hard delete instructor" : null;
         }
     }

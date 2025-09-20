@@ -16,6 +16,6 @@ public class TokenValidationService : ITokenValidationService
 
     public async Task<bool> IsTokenBlacklistedAsync(string jti)
     {
-        return await _context.BlacklistedTokens.AnyAsync(bt => bt.Jti == jti);
+        return await _context.BlacklistedTokens.AnyAsync(bt => bt.Jti == jti).ConfigureAwait(false);
     }
 }
