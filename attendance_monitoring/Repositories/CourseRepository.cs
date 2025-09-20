@@ -20,17 +20,17 @@ public class CourseRepository : ICourseRepository
         return await _context.Courses
             .Skip((paginationQuery.PageNumber - 1) * paginationQuery.PageSize)
             .Take(paginationQuery.PageSize)
-            .ToListAsync();
+            .ToListAsync().ConfigureAwait(false);
     }
 
     public async Task<Course?> GetCourseByIdAsync(int id)
     {
-        return await _context.Courses.FindAsync(id);
+        return await _context.Courses.FindAsync(id).ConfigureAwait(false);
     }
 
     public async Task<Course> CreateCourse(Course course)
     {
-        var entry = await _context.Courses.AddAsync(course);
+        var entry = await _context.Courses.AddAsync(course).ConfigureAwait(false);
         return entry.Entity;
     }
 
@@ -42,7 +42,7 @@ public class CourseRepository : ICourseRepository
 
     public async Task<bool> DeleteCourseAsync(int id)
     {
-        var course = await _context.Courses.FindAsync(id);
+        var course = await _context.Courses.FindAsync(id).ConfigureAwait(false);
         if (course == null) return false;
         
         _context.Courses.Remove(course);
@@ -51,6 +51,6 @@ public class CourseRepository : ICourseRepository
 
     public async Task<int> SaveChangesAsync()
     {
-        return await _context.SaveChangesAsync();
+        return await _context.SaveChangesAsync().ConfigureAwait(false);
     }
 }

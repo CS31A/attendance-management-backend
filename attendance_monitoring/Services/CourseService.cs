@@ -32,7 +32,7 @@ public class CourseService : ICourseService
     /// <returns>A collection of courses</returns>
     public async Task<IEnumerable<Course>> GetAllCoursesAsync(PaginationQuery paginationQuery)
     {
-        return await _courseRepository.GetAllCoursesAsync(paginationQuery);
+        return await _courseRepository.GetAllCoursesAsync(paginationQuery).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -42,7 +42,7 @@ public class CourseService : ICourseService
     /// <returns>The course with the specified ID, or null if not found</returns>
     public async Task<Course?> GetCourseByIdAsync(int id)
     {
-        return await _courseRepository.GetCourseByIdAsync(id);
+        return await _courseRepository.GetCourseByIdAsync(id).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -59,7 +59,7 @@ public class CourseService : ICourseService
             return (null, "Course name is required");
         }
 
-        var userId = await _userContextService.GetUserIdAsync(user);
+        var userId = await _userContextService.GetUserIdAsync(user).ConfigureAwait(false);
         if (string.IsNullOrEmpty(userId))
         {
             return (null, "User ID not found in token");
@@ -72,8 +72,8 @@ public class CourseService : ICourseService
             UpdatedAt = DateTime.UtcNow
         };
 
-        var createdCourse = await _courseRepository.CreateCourse(course);
-        await _courseRepository.SaveChangesAsync();
+        var createdCourse = await _courseRepository.CreateCourse(course).ConfigureAwait(false);
+        await _courseRepository.SaveChangesAsync().ConfigureAwait(false);
 
         return (createdCourse, null);
     }
@@ -93,13 +93,13 @@ public class CourseService : ICourseService
             return (null, "Update course data is required");
         }
 
-        var userId = await _userContextService.GetUserIdAsync(user);
+        var userId = await _userContextService.GetUserIdAsync(user).ConfigureAwait(false);
         if (string.IsNullOrEmpty(userId))
         {
             return (null, "User ID not found in token");
         }
 
-        var existingCourse = await _courseRepository.GetCourseByIdAsync(id);
+        var existingCourse = await _courseRepository.GetCourseByIdAsync(id).ConfigureAwait(false);
         if (existingCourse == null)
         {
             return (null, "Course not found");
@@ -112,8 +112,8 @@ public class CourseService : ICourseService
 
         existingCourse.UpdatedAt = DateTime.UtcNow;
 
-        var updatedCourse = await _courseRepository.UpdateCourseAsync(existingCourse);
-        await _courseRepository.SaveChangesAsync();
+        var updatedCourse = await _courseRepository.UpdateCourseAsync(existingCourse).ConfigureAwait(false);
+        await _courseRepository.SaveChangesAsync().ConfigureAwait(false);
 
         return (updatedCourse, null);
     }
@@ -126,25 +126,25 @@ public class CourseService : ICourseService
     /// <returns>An error message if deletion fails, null otherwise</returns>
     public async Task<string?> DeleteCourseAsync(int id, ClaimsPrincipal user)
     {
-        var userId = await _userContextService.GetUserIdAsync(user);
+        var userId = await _userContextService.GetUserIdAsync(user).ConfigureAwait(false);
         if (string.IsNullOrEmpty(userId))
         {
             return "User ID not found in token";
         }
 
-        var existingCourse = await _courseRepository.GetCourseByIdAsync(id);
+        var existingCourse = await _courseRepository.GetCourseByIdAsync(id).ConfigureAwait(false);
         if (existingCourse == null)
         {
             return "Course not found";
         }
 
-        var result = await _courseRepository.DeleteCourseAsync(id);
+        var result = await _courseRepository.DeleteCourseAsync(id).ConfigureAwait(false);
         if (!result)
         {
             return "Failed to delete course";
         }
 
-        await _courseRepository.SaveChangesAsync();
+        await _courseRepository.SaveChangesAsync().ConfigureAwait(false);
         return null;
     }
 }
