@@ -8,13 +8,11 @@ namespace attendance_monitoring.Repositories;
 
 public class InstructorRepository(ApplicationDbContext context) : IInstructorRepository
 {
-    public async Task<IEnumerable<Instructor>> GetAllInstructorsAsync(PaginationQuery paginationQuery)
+    public async Task<IEnumerable<Instructor>> GetAllInstructorsAsync()
     {
         return await context.Instructors
             .Where(i => !i.IsDeleted) // Only return non-deleted instructors
             .OrderBy(i => i.Id)
-            .Skip((paginationQuery.PageNumber - 1) * paginationQuery.PageSize)
-            .Take(paginationQuery.PageSize)
             .ToListAsync().ConfigureAwait(false);
     }
 

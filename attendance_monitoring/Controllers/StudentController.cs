@@ -4,6 +4,7 @@ using attendance_monitoring.Models.Request;
 using attendance_monitoring.Models.DTO.Response;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
 
 namespace attendance_monitoring.Controllers;
 
@@ -16,10 +17,12 @@ namespace attendance_monitoring.Controllers;
 public class StudentController : ControllerBase
 {
     private readonly IStudentService _studentService;
+    private readonly ILogger<StudentController> _logger;
 
-    public StudentController(IStudentService studentService)
+    public StudentController(IStudentService studentService, ILogger<StudentController> logger)
     {
         _studentService = studentService;
+        _logger = logger;
     }
 
     private ActionResult<SoftDeleteResponse> CreateResponse(string? error, string successMessage)
@@ -59,16 +62,17 @@ public class StudentController : ControllerBase
     }
 
     /// <summary>
-    /// Get a list of students with pagination
+    /// Get a list of all students
     /// </summary>
-    /// <param name="paginationQuery">Pagination parameters</param>
     /// <returns>A list of students</returns>
     /// <response code="200">Returns the list of students</response>
     // GET: api/Student
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<Student>>> GetStudents([FromQuery] PaginationQuery paginationQuery)
+    public async Task<ActionResult<IEnumerable<Student>>> GetStudents()
     {
-        var students = await _studentService.GetAllStudentsAsync(paginationQuery);
+        _logger.LogInformation("Getting all students");
+        var students = await _studentService.GetAllStudentsAsync();
+        _logger.LogInformation("Successfully retrieved {Count} students", students.ToList().Count);
         return Ok(students);
     }
 
@@ -83,13 +87,16 @@ public class StudentController : ControllerBase
     [HttpGet("{id}")]
     public async Task<ActionResult<Student>> GetStudent(int id)
     {
+        _logger.LogInformation("Getting student with ID: {Id}", id);
         var student = await _studentService.GetStudentByIdAsync(id);
 
         if (student == null)
         {
+            _logger.LogWarning("Student with ID {Id} not found", id);
             return NotFound();
         }
 
+        _logger.LogInformation("Successfully retrieved student with ID: {Id}", id);
         return Ok(student);
     }
     
@@ -133,8 +140,10 @@ public class StudentController : ControllerBase
     [HttpPatch("{id}")]
     public async Task<ActionResult<Student>> PatchStudent(int id, UpdateStudent updateStudent)
     {
+        _logger.LogInformation("Updating student with ID: {Id}", id);
         if (!ModelState.IsValid)
         {
+            _logger.LogWarning("Student update failed due to invalid model state for student ID: {Id}", id);
             return BadRequest(ModelState);
         }
 
@@ -144,15 +153,19 @@ public class StudentController : ControllerBase
         {
             if (error.Contains("not found"))
             {
+                _logger.LogWarning("Student update failed: Student with ID {Id} not found", id);
                 return NotFound(error);
             }
             if (error.Contains("not authorized"))
             {
+                _logger.LogWarning("Student update failed: User not authorized to update student with ID {Id}", id);
                 return Unauthorized(error);
             }
+            _logger.LogWarning("Student update failed for student ID {Id}: {Error}", id, error);
             return BadRequest(error);
         }
 
+        _logger.LogInformation("Successfully updated student with ID: {Id}", id);
         return Ok(student);
     }
 
@@ -169,7 +182,9 @@ public class StudentController : ControllerBase
     [Authorize(Policy = "PrivilegedPolicy")]
     public async Task<ActionResult<SoftDeleteResponse>> SoftDeleteStudent(int id)
     {
+        _logger.LogInformation("Soft deleting student with ID: {Id}", id);
         var error = await _studentService.SoftDeleteStudentAsync(id, User);
+        _logger.LogInformation("Soft delete operation completed for student with ID: {Id}", id);
         return CreateResponse(error, "Student marked as deleted successfully");
     }
 
@@ -186,7 +201,9 @@ public class StudentController : ControllerBase
     [Authorize(Policy = "AdminPolicy")]
     public async Task<ActionResult<SoftDeleteResponse>> HardDeleteStudent(int id)
     {
+        _logger.LogInformation("Hard deleting student with ID: {Id}", id);
         var error = await _studentService.HardDeleteStudentAsync(id, User);
+        _logger.LogInformation("Hard delete operation completed for student with ID: {Id}", id);
         return CreateResponse(error, "Student permanently deleted successfully");
     }
 }

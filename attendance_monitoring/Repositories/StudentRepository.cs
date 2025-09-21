@@ -12,13 +12,11 @@ namespace attendance_monitoring.Repositories;
 
 public class StudentRepository(ApplicationDbContext context) : IStudentRepository
 {
-    public async Task<IEnumerable<Student>> GetAllStudentsAsync(PaginationQuery paginationQuery)
+    public async Task<IEnumerable<Student>> GetAllStudentsAsync()
     {
         // return await _context.Students.ToListAsync();
         return await context.Students
             .Where(s => !s.IsDeleted) // Only return non-deleted students
-            .Skip((paginationQuery.PageNumber - 1) * paginationQuery.PageSize)
-            .Take(paginationQuery.PageSize)
             .ToListAsync().ConfigureAwait(false);
     }
 
