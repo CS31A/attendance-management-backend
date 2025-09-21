@@ -20,8 +20,8 @@ namespace attendance_monitoring.Services
         IRefreshTokenService refreshTokenService,
         ILogger<AccountService> logger,
         IAccountRepository accountRepository,
-        ISectionRepository sectionRepository,
-        IServiceProvider serviceProvider)
+        ISectionRepository sectionRepository
+        )
         : IAccountService
     {
 
@@ -125,7 +125,7 @@ namespace attendance_monitoring.Services
 
             // Check if the identifier is an email or username
             IdentityUser? user = null;
-            if (loginDto.Username.Contains("@"))
+            if (loginDto.Username.Contains('@'))
             {
                 // Treat as email
                 user = await accountRepository.FindUserByEmailAsync(loginDto.Username).ConfigureAwait(false);
@@ -197,15 +197,25 @@ namespace attendance_monitoring.Services
                     var tokenHandler = new JwtSecurityTokenHandler();
                     
                     // Clone TokenValidationParameters from our JwtBearer configuration
+                    var issuer = configuration["AppSettings:Issuer"];
+                    var audience = configuration["AppSettings:Audience"];
+                    var tokenKey = configuration["AppSettings:Token"];
+                    
+                    if (string.IsNullOrEmpty(issuer) || string.IsNullOrEmpty(audience) || string.IsNullOrEmpty(tokenKey))
+                    {
+                        logger.LogWarning("Token validation failed: Missing configuration values for issuer, audience, or token key.");
+                        throw new InvalidOperationException("Token validation configuration is incomplete.");
+                    }
+                    
                     var tokenValidationParameters = new TokenValidationParameters
                     {
                         ValidateIssuer = true,
                         ValidateAudience = true,
                         ValidateLifetime = true,
                         ValidateIssuerSigningKey = true,
-                        ValidIssuer = configuration["AppSettings:Issuer"],
-                        ValidAudience = configuration["AppSettings:Audience"],
-                        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(configuration["AppSettings:Token"]!))
+                        ValidIssuer = issuer,
+                        ValidAudience = audience,
+                        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(tokenKey))
                     };
                     
                     // Validate the token
@@ -237,20 +247,20 @@ namespace attendance_monitoring.Services
                     //     logger.LogWarning("Old access token not blacklisted - token has no JTI for user {UserId}.");
                     // }
                     
-                    // toma testing 2.0
+                    // Simplified switch expression for better readability
                     switch (jti)
                     {
                         case not null when sub == user.Id && expiresAt > DateTime.UtcNow:
                             await BlacklistTokenAsync(jti, expiresAt).ConfigureAwait(false);
-                            logger.LogInformation("Old access token blacklisted for user {UserId}.");
+                            logger.LogInformation("Old access token blacklisted for user {UserId}.", user.Id);
                             break;
 
                         case not null:
-                            logger.LogWarning("Old access token not blacklisted - validation failed for user {UserId}.");
+                            logger.LogWarning("Old access token not blacklisted - validation failed for user {UserId}.", user.Id);
                             break;
 
-                        case null:
-                            logger.LogWarning("Old access token not blacklisted - token has no JTI for user {UserId}.");
+                        default: // case null
+                            logger.LogWarning("Old access token not blacklisted - token has no JTI for user {UserId}.", user.Id);
                             break;
                     }
 
@@ -273,7 +283,7 @@ namespace attendance_monitoring.Services
 
             var newAccessToken = await GenerateJwtToken(user).ConfigureAwait(false);
 
-            logger.LogInformation("Token refreshed successfully for user {UserId}.");
+            logger.LogInformation("Token refreshed successfully for user {UserId}.", user.Id);
             var tokenResponse = new TokenResponseDto
             {
                 AccessToken = newAccessToken,
@@ -340,7 +350,13 @@ namespace attendance_monitoring.Services
             // for improved readability and better performance than adding items individually in a loop.
             claims.AddRange(roles.Select(role => new Claim(ClaimTypes.Role, role)));
 
-            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(configuration["AppSettings:Token"] ?? string.Empty));
+            var tokenKey = configuration["AppSettings:Token"] ?? string.Empty;
+            if (string.IsNullOrEmpty(tokenKey))
+            {
+                throw new InvalidOperationException("Token key is not configured properly in AppSettings.");
+            }
+            
+            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(tokenKey));
             var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
             var token = new JwtSecurityToken(

@@ -3,8 +3,6 @@ using attendance_monitoring.Classes;
 using attendance_monitoring.IRepository;
 using attendance_monitoring.IServices;
 using attendance_monitoring.Models.Request;
-using Microsoft.Extensions.Logging;
-
 namespace attendance_monitoring.Services
 {
     /// <summary>
@@ -76,28 +74,11 @@ namespace attendance_monitoring.Services
             _logger.LogInformation("Creating new student with name: {FirstName} {LastName}", 
                 createStudent.Firstname, createStudent.Lastname);
 
-            if (string.IsNullOrWhiteSpace(createStudent.Firstname))
-            {
-                _logger.LogWarning("Student creation failed: First name is required");
-                return (null, "First name is required");
-            }
-
-            if (string.IsNullOrWhiteSpace(createStudent.Lastname))
-            {
-                _logger.LogWarning("Student creation failed: Last name is required");
-                return (null, "Last name is required");
-            }
-
-            if (string.IsNullOrWhiteSpace(createStudent.Email))
-            {
-                _logger.LogWarning("Student creation failed: Email is required");
-                return (null, "Email is required");
-            }
-
+            // Validate section ID
             if (createStudent.SectionId <= 0)
             {
-                _logger.LogWarning("Student creation failed: Valid SectionId is required");
-                return (null, "Valid SectionId is required");
+                _logger.LogWarning("Student creation failed: Invalid section ID");
+                return (null, "Invalid section ID");
             }
 
             // Validate that the SectionId exists
@@ -118,8 +99,8 @@ namespace attendance_monitoring.Services
             var existingStudent = await _studentRepository.GetStudentByUserIdAsync(userId).ConfigureAwait(false);
             if (existingStudent != null)
             {
-                _logger.LogWarning("Student creation failed: Student record already exists for this user");
-                return (null, "Student record already exists for this user");
+                _logger.LogWarning("Student creation failed: A student record already exists for this user");
+                return (null, "A student record already exists for this user");
             }
 
             var student = new Student
