@@ -6,7 +6,7 @@ namespace attendance_monitoring.IServices;
 
 public interface IInstructorService
 {
-    Task<IEnumerable<Instructor>> GetAllInstructorsAsync(PaginationQuery paginationQuery);
+    Task<IEnumerable<Instructor>> GetAllInstructorsAsync();
     Task<Instructor?> GetInstructorByIdAsync(int id);
     Task<(Instructor?, string?)> CreateInstructorAsync(CreateInstructor createInstructor, ClaimsPrincipal user);
     Task<(Instructor?, string?)> UpdateInstructorAsync(int id, UpdateInstructor updateInstructor, ClaimsPrincipal user);

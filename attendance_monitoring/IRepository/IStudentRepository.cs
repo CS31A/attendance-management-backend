@@ -11,9 +11,8 @@ public interface IStudentRepository
     /// <summary>
     /// Retrieves all students.
     /// </summary>
-    /// <param name="paginationQuery">The pagination query.</param>
     /// <returns>A collection of all students.</returns>
-    Task<IEnumerable<Student>> GetAllStudentsAsync(PaginationQuery paginationQuery);
+    Task<IEnumerable<Student>> GetAllStudentsAsync();
 
     /// <summary>
     /// Retrieves a student by their ID.

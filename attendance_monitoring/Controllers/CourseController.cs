@@ -3,6 +3,7 @@ using attendance_monitoring.IServices;
 using attendance_monitoring.Models.Request;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
 
 namespace attendance_monitoring.Controllers;
 
@@ -12,19 +13,20 @@ namespace attendance_monitoring.Controllers;
 [Authorize]
 [ApiController]
 [Route("api/[controller]")]
-public class CourseController(ICourseService courseService) : ControllerBase
+public class CourseController(ICourseService courseService, ILogger<CourseController> logger) : ControllerBase
 {
     /// <summary>
-    /// Get a list of courses with pagination
+    /// Get a list of all courses
     /// </summary>
-    /// <param name="paginationQuery">Pagination parameters</param>
     /// <returns>A list of courses</returns>
     /// <response code="200">Returns the list of courses</response>
     // GET: api/Course
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<Course>>> GetCourses([FromQuery] PaginationQuery paginationQuery)
+    public async Task<ActionResult<IEnumerable<Course>>> GetCourses()
     {
-        var courses = await courseService.GetAllCoursesAsync(paginationQuery);
+        logger.LogInformation("Getting all courses");
+        var courses = await courseService.GetAllCoursesAsync();
+        logger.LogInformation("Successfully retrieved {Count} courses", courses.ToList().Count);
         return Ok(courses);
     }
 
@@ -39,13 +41,16 @@ public class CourseController(ICourseService courseService) : ControllerBase
     [HttpGet("{id}")]
     public async Task<ActionResult<Course>> GetCourse(int id)
     {
+        logger.LogInformation("Getting course with ID: {Id}", id);
         var course = await courseService.GetCourseByIdAsync(id);
 
         if (course == null)
         {
+            logger.LogWarning("Course with ID {Id} not found", id);
             return NotFound();
         }
 
+        logger.LogInformation("Successfully retrieved course with ID: {Id}", id);
         return Ok(course);
     }
 
@@ -62,8 +67,10 @@ public class CourseController(ICourseService courseService) : ControllerBase
     [Authorize(Policy = "AdminPolicy")]
     public async Task<ActionResult<Course>> CreateCourse(CreateCourse createCourse)
     {
+        logger.LogInformation("Creating new course with name: {CourseName}", createCourse.Name);
         if (!ModelState.IsValid)
         {
+            logger.LogWarning("Course creation failed due to invalid model state");
             return BadRequest(ModelState);
         }
 
@@ -71,14 +78,17 @@ public class CourseController(ICourseService courseService) : ControllerBase
 
         if (error != null)
         {
+            logger.LogWarning("Course creation failed: {Error}", error);
             return BadRequest(error);
         }
         
         if (course == null)
         {
+            logger.LogError("Course creation failed: Unexpected error occurred");
             return BadRequest("An unexpected error occurred while creating the course.");
         }
 
+        logger.LogInformation("Successfully created course with ID: {Id} and name: {CourseName}", course.Id, course.Name);
         return CreatedAtAction(nameof(GetCourse), new { id = course.Id }, course);
     }
 
@@ -97,8 +107,10 @@ public class CourseController(ICourseService courseService) : ControllerBase
     [Authorize(Policy = "AdminPolicy")]
     public async Task<ActionResult<Course>> UpdateCourse(int id, UpdateCourse updateCourse)
     {
+        logger.LogInformation("Updating course with ID: {Id}", id);
         if (!ModelState.IsValid)
         {
+            logger.LogWarning("Course update failed due to invalid model state for course ID: {Id}", id);
             return BadRequest(ModelState);
         }
 
@@ -108,11 +120,14 @@ public class CourseController(ICourseService courseService) : ControllerBase
         {
             if (error.Contains("not found"))
             {
+                logger.LogWarning("Course update failed: Course with ID {Id} not found", id);
                 return NotFound(error);
             }
+            logger.LogWarning("Course update failed for course ID {Id}: {Error}", id, error);
             return BadRequest(error);
         }
 
+        logger.LogInformation("Successfully updated course with ID: {Id}", id);
         return Ok(course);
     }
 
@@ -129,13 +144,20 @@ public class CourseController(ICourseService courseService) : ControllerBase
     [Authorize(Policy = "AdminPolicy")]
     public async Task<ActionResult> DeleteCourse(int id)
     {
+        logger.LogInformation("Deleting course with ID: {Id}", id);
         var error = await courseService.DeleteCourseAsync(id, User);
 
-        if (error == null) return NoContent();
+        if (error == null) 
+        {
+            logger.LogInformation("Successfully deleted course with ID: {Id}", id);
+            return NoContent();
+        }
         if (error.Contains("not found"))
         {
+            logger.LogWarning("Course deletion failed: Course with ID {Id} not found", id);
             return NotFound(error);
         }
+        logger.LogWarning("Course deletion failed for course ID {Id}: {Error}", id, error);
         return BadRequest(error);
 
     }

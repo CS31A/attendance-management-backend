@@ -6,7 +6,7 @@ namespace attendance_monitoring.IServices;
 
 public interface IStudentService
 {
-    Task<IEnumerable<Student>> GetAllStudentsAsync(PaginationQuery paginationQuery);
+    Task<IEnumerable<Student>> GetAllStudentsAsync();
     Task<Student?> GetStudentByIdAsync(int id);
     Task<(Student?, string?)> CreateStudentAsync(CreateStudent createStudent, ClaimsPrincipal user);
     Task<(Student?, string?)> UpdateStudentAsync(int id, UpdateStudent updateStudent, ClaimsPrincipal user);

@@ -11,9 +11,8 @@ public interface IInstructorRepository
     /// <summary>
     /// Retrieves all instructors.
     /// </summary>
-    /// <param name="paginationQuery">The pagination query.</param>
     /// <returns>A collection of all instructors.</returns>
-    Task<IEnumerable<Instructor>> GetAllInstructorsAsync(PaginationQuery paginationQuery);
+    Task<IEnumerable<Instructor>> GetAllInstructorsAsync();
 
     /// <summary>
     /// Retrieves an instructor by their ID.
