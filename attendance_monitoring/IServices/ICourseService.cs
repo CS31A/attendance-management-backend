@@ -6,7 +6,7 @@ namespace attendance_monitoring.IServices;
 
 public interface ICourseService
 {
-    Task<IEnumerable<Course>> GetAllCoursesAsync(PaginationQuery paginationQuery);
+    Task<IEnumerable<Course>> GetAllCoursesAsync();
     Task<Course?> GetCourseByIdAsync(int id);
     Task<(Course?, string?)> CreateCourseAsync(CreateCourse createCourse, ClaimsPrincipal user);
     Task<(Course?, string?)> UpdateCourseAsync(int id, UpdateCourse updateCourse, ClaimsPrincipal user);

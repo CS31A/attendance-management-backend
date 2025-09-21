@@ -11,9 +11,8 @@ public interface ICourseRepository
     /// <summary>
     /// Retrieves all courses.
     /// </summary>
-    /// <param name="paginationQuery">The pagination query.</param>
     /// <returns>A collection of all courses.</returns>
-    Task<IEnumerable<Course>> GetAllCoursesAsync(PaginationQuery paginationQuery);
+    Task<IEnumerable<Course>> GetAllCoursesAsync();
 
     /// <summary>
     /// Retrieves a course by its ID.

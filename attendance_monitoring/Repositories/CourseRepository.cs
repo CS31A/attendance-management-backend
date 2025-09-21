@@ -15,12 +15,9 @@ public class CourseRepository : ICourseRepository
         _context = context;
     }
 
-    public async Task<IEnumerable<Course>> GetAllCoursesAsync(PaginationQuery paginationQuery)
+    public async Task<IEnumerable<Course>> GetAllCoursesAsync()
     {
-        return await _context.Courses
-            .Skip((paginationQuery.PageNumber - 1) * paginationQuery.PageSize)
-            .Take(paginationQuery.PageSize)
-            .ToListAsync().ConfigureAwait(false);
+        return await _context.Courses.ToListAsync().ConfigureAwait(false);
     }
 
     public async Task<Course?> GetCourseByIdAsync(int id)

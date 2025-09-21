@@ -10,7 +10,7 @@ namespace attendance_monitoring.Controllers;
 [Authorize]
 [ApiController]
 [Route("api/[controller]")]
-public class InstructorController(IInstructorService instructorService) : ControllerBase
+public class InstructorController(IInstructorService instructorService, ILogger<InstructorController> logger) : ControllerBase
 {
     private ActionResult<SoftDeleteResponse> CreateResponse(string error, string successMessage)
     {
@@ -51,9 +51,11 @@ public class InstructorController(IInstructorService instructorService) : Contro
 
     // GET: api/Instructor
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<Instructor>>> GetInstructors([FromQuery] PaginationQuery paginationQuery)
+    public async Task<ActionResult<IEnumerable<Instructor>>> GetInstructors()
     {
-        var instructors = await instructorService.GetAllInstructorsAsync(paginationQuery);
+        logger.LogInformation("Getting all instructors");
+        var instructors = await instructorService.GetAllInstructorsAsync();
+        logger.LogInformation("Successfully retrieved {Count} instructors", instructors.ToList().Count);
         return Ok(instructors);
     }
 
@@ -61,13 +63,16 @@ public class InstructorController(IInstructorService instructorService) : Contro
     [HttpGet("{id}")]
     public async Task<ActionResult<Instructor>> GetInstructor(int id)
     {
+        logger.LogInformation("Getting instructor with ID: {Id}", id);
         var instructor = await instructorService.GetInstructorByIdAsync(id);
 
         if (instructor == null)
         {
+            logger.LogWarning("Instructor with ID {Id} not found", id);
             return NotFound();
         }
 
+        logger.LogInformation("Successfully retrieved instructor with ID: {Id}", id);
         return Ok(instructor);
     }
     
@@ -102,22 +107,31 @@ public class InstructorController(IInstructorService instructorService) : Contro
     [Authorize(Policy = "PrivilegedPolicy")]
     public async Task<ActionResult<Instructor>> PatchInstructor(int id, UpdateInstructor updateInstructor)
     {
+        logger.LogInformation("Updating instructor with ID: {Id}", id);
         if (!ModelState.IsValid)
         {
+            logger.LogWarning("Instructor update failed due to invalid model state for instructor ID: {Id}", id);
             return BadRequest(ModelState);
         }
 
         var (instructor, error) = await instructorService.UpdateInstructorAsync(id, updateInstructor, User);
 
-        if (error == null) return Ok(instructor);
+        if (error == null) 
+        {
+            logger.LogInformation("Successfully updated instructor with ID: {Id}", id);
+            return Ok(instructor);
+        }
         if (error.Contains("not found"))
         {
+            logger.LogWarning("Instructor update failed: Instructor with ID {Id} not found", id);
             return NotFound(error);
         }
         if (error.Contains("not authorized"))
         {
+            logger.LogWarning("Instructor update failed: User not authorized to update instructor with ID {Id}", id);
             return Unauthorized(error);
         }
+        logger.LogWarning("Instructor update failed for instructor ID {Id}: {Error}", id, error);
         return BadRequest(error);
 
     }
@@ -127,7 +141,9 @@ public class InstructorController(IInstructorService instructorService) : Contro
     [Authorize(Policy = "PrivilegedPolicy")]
     public async Task<ActionResult<SoftDeleteResponse>> SoftDeleteInstructor(int id)
     {
+        logger.LogInformation("Soft deleting instructor with ID: {Id}", id);
         var error = await instructorService.SoftDeleteInstructorAsync(id, User);
+        logger.LogInformation("Soft delete operation completed for instructor with ID: {Id}", id);
         return CreateResponse(error ?? string.Empty, "Instructor marked as deleted successfully");
     }
 
@@ -136,7 +152,9 @@ public class InstructorController(IInstructorService instructorService) : Contro
     [Authorize(Policy = "AdminPolicy")]
     public async Task<ActionResult<SoftDeleteResponse>> HardDeleteInstructor(int id)
     {
+        logger.LogInformation("Hard deleting instructor with ID: {Id}", id);
         var error = await instructorService.HardDeleteInstructorAsync(id, User);
+        logger.LogInformation("Hard delete operation completed for instructor with ID: {Id}", id);
         return CreateResponse(error ?? string.Empty, "Instructor permanently deleted successfully");
     }
 }
