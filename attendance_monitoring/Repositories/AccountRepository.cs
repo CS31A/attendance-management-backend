@@ -2,6 +2,7 @@ using attendance_monitoring.Classes;
 using attendance_monitoring.Data;
 using attendance_monitoring.IRepository;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 
 namespace attendance_monitoring.Repositories
 {
@@ -80,6 +81,11 @@ namespace attendance_monitoring.Repositories
         {
             _context.Instructors.Add(instructor);
             await _context.SaveChangesAsync().ConfigureAwait(false);
+        }
+        
+        public async Task<RefreshToken?> FindRefreshTokenByHashAsync(string tokenHash)
+        {
+            return await _context.RefreshTokens.FirstOrDefaultAsync(rt => rt.TokenHash == tokenHash).ConfigureAwait(false);
         }
     }
 }
