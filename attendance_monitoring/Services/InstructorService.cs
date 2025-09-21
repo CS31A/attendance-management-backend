@@ -3,7 +3,6 @@ using attendance_monitoring.Classes;
 using attendance_monitoring.IRepository;
 using attendance_monitoring.IServices;
 using attendance_monitoring.Models.Request;
-using Microsoft.Extensions.Logging;
 
 namespace attendance_monitoring.Services
 {
@@ -73,22 +72,20 @@ namespace attendance_monitoring.Services
             _logger.LogInformation("Creating new instructor with name: {FirstName} {LastName}", 
                 createInstructor.Firstname, createInstructor.Lastname);
 
-            if (string.IsNullOrWhiteSpace(createInstructor.Firstname))
+            // Validate basic user information
+            if (string.IsNullOrWhiteSpace(createInstructor.Firstname) || 
+                string.IsNullOrWhiteSpace(createInstructor.Lastname) ||
+                string.IsNullOrWhiteSpace(createInstructor.Email))
             {
-                _logger.LogWarning("Instructor creation failed: First name is required");
-                return (null, "First name is required");
+                _logger.LogWarning("Instructor creation failed: First name, last name, and email are required");
+                return (null, "First name, last name, and email are required");
             }
 
-            if (string.IsNullOrWhiteSpace(createInstructor.Lastname))
+            // Validate email format
+            if (!IsValidEmail(createInstructor.Email))
             {
-                _logger.LogWarning("Instructor creation failed: Last name is required");
-                return (null, "Last name is required");
-            }
-
-            if (string.IsNullOrWhiteSpace(createInstructor.Email))
-            {
-                _logger.LogWarning("Instructor creation failed: Email is required");
-                return (null, "Email is required");
+                _logger.LogWarning("Instructor creation failed: Invalid email format");
+                return (null, "Invalid email format");
             }
 
             var userId = await _userContextService.GetUserIdAsync(userPrincipal).ConfigureAwait(false);
@@ -97,12 +94,13 @@ namespace attendance_monitoring.Services
                 _logger.LogWarning("Instructor creation failed: User ID not found in token");
                 return (null, "User ID not found in token");
             }
-
+            
+            // Check if instructor already exists for this user
             var existingInstructor = await _instructorRepository.GetInstructorByUserIdAsync(userId).ConfigureAwait(false);
             if (existingInstructor != null)
             {
-                _logger.LogWarning("Instructor creation failed: Instructor record already exists for this user");
-                return (null, "Instructor record already exists for this user");
+                _logger.LogWarning("Instructor creation failed: An instructor record already exists for this user");
+                return (null, "An instructor record already exists for this user");
             }
 
             var instructor = new Instructor
@@ -273,6 +271,24 @@ namespace attendance_monitoring.Services
             
             _logger.LogInformation("Successfully hard deleted instructor with ID: {Id}", id);
             return null;
+        }
+        
+        /// <summary>
+        /// Validates email format
+        /// </summary>
+        /// <param name="email">The email to validate</param>
+        /// <returns>True if the email is valid, false otherwise</returns>
+        private bool IsValidEmail(string email)
+        {
+            try
+            {
+                var addr = new System.Net.Mail.MailAddress(email);
+                return addr.Address == email;
+            }
+            catch
+            {
+                return false;
+            }
         }
     }
 }
