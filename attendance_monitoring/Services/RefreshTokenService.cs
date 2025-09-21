@@ -154,9 +154,8 @@ public class RefreshTokenService : IRefreshTokenService
         while (currentToken?.ReplacedByTokenHash != null && !visitedHashes.Contains(currentToken.ReplacedByTokenHash))
         {
             var nextToken = await _refreshTokenRepository.GetByTokenHashAsync(currentToken.ReplacedByTokenHash).ConfigureAwait(false);
-            if (nextToken != null && !visitedHashes.Contains(nextToken.TokenHash))
+            if (nextToken != null && visitedHashes.Add(nextToken.TokenHash))
             {
-                visitedHashes.Add(nextToken.TokenHash);
                 tokensToRevoke.Add(nextToken);
                 currentToken = nextToken;
             }
@@ -169,12 +168,10 @@ public class RefreshTokenService : IRefreshTokenService
         // Revoke all tokens in the family
         foreach (var token in tokensToRevoke)
         {
-            if (!token.IsRevoked)
-            {
-                token.IsRevoked = true;
-                token.RevokedAt = DateTime.UtcNow;
-                await _refreshTokenRepository.UpdateAsync(token).ConfigureAwait(false);
-            }
+            if (token.IsRevoked) continue;
+            token.IsRevoked = true;
+            token.RevokedAt = DateTime.UtcNow;
+            await _refreshTokenRepository.UpdateAsync(token).ConfigureAwait(false);
         }
     }
 }

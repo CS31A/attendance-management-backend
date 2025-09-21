@@ -297,7 +297,7 @@ namespace attendance_monitoring.Services
             logger.LogInformation("Token revocation attempt for user {UserId}.", userId);
 
             var tokenHash = refreshTokenService.HashRefreshToken(revokeTokenRequest.RefreshToken);
-            var storedToken = await context.RefreshTokens.FirstOrDefaultAsync(rt => rt.TokenHash == tokenHash).ConfigureAwait(false);
+            var storedToken = await accountRepository.FindRefreshTokenByHashAsync(tokenHash).ConfigureAwait(false);
 
             if (storedToken == null)
             {

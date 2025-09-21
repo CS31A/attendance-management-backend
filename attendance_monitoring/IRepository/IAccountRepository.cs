@@ -80,5 +80,12 @@ namespace attendance_monitoring.IRepository
         /// <param name="instructor">The instructor profile to create.</param>
         /// <returns>A task representing the asynchronous operation.</returns>
         Task CreateInstructorProfileAsync(Instructor instructor);
+        
+        /// <summary>
+        /// Finds a refresh token by its hash value.
+        /// </summary>
+        /// <param name="tokenHash">The hashed refresh token.</param>
+        /// <returns>The refresh token entity if found; otherwise, null.</returns>
+        Task<RefreshToken?> FindRefreshTokenByHashAsync(string tokenHash);
     }
 }
