@@ -23,11 +23,6 @@ public class UserContextService
     /// <returns>User ID if found, null otherwise</returns>
     public async Task<string?> GetUserIdAsync(ClaimsPrincipal userPrincipal)
     {
-        if (userPrincipal == null)
-        {
-            return null;
-        }
-
         // Try NameIdentifier claim first (most reliable)
         var userId = userPrincipal.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (!string.IsNullOrEmpty(userId))
@@ -44,16 +39,9 @@ public class UserContextService
 
         // Fallback: try to get user ID from username
         var username = userPrincipal.FindFirst(ClaimTypes.Name)?.Value;
-        if (!string.IsNullOrEmpty(username))
-        {
-            var user = await _userManager.FindByNameAsync(username).ConfigureAwait(false);
-            if (user != null)
-            {
-                return user.Id;
-            }
-        }
-
-        return null;
+        if (string.IsNullOrEmpty(username)) return null;
+        var user = await _userManager.FindByNameAsync(username).ConfigureAwait(false);
+        return user?.Id;
     }
 
     /// <summary>

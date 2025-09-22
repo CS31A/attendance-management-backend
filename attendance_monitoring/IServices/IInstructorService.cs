@@ -12,4 +12,5 @@ public interface IInstructorService
     Task<(Instructor?, string?)> UpdateInstructorAsync(int id, UpdateInstructor updateInstructor, ClaimsPrincipal user);
     Task<string?> SoftDeleteInstructorAsync(int id, ClaimsPrincipal user);
     Task<string?> HardDeleteInstructorAsync(int id, ClaimsPrincipal user);
+    Task<string?> RestoreInstructorAsync(int id, ClaimsPrincipal user);
 }
