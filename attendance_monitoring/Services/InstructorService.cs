@@ -9,6 +9,9 @@ namespace attendance_monitoring.Services
     /// <summary>
     /// Service class for managing instructor-related operations
     /// </summary>
+
+    #region Constructor and Dependencies
+
     public class InstructorService : IInstructorService
     {
         private readonly IInstructorRepository _instructorRepository;
@@ -27,6 +30,10 @@ namespace attendance_monitoring.Services
             _userContextService = userContextService ?? throw new ArgumentNullException(nameof(userContextService));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
+
+        #endregion
+
+        #region Read Operations
 
         /// <summary>
         /// Retrieves all instructors
@@ -60,6 +67,10 @@ namespace attendance_monitoring.Services
             }
             return instructor;
         }
+
+        #endregion
+
+        #region Create Operations
 
         /// <summary>
         /// Creates a new instructor record
@@ -121,6 +132,10 @@ namespace attendance_monitoring.Services
             return (createdInstructor, null);
         }
 
+        #endregion
+
+        #region Update Operations
+
         /// <summary>
         /// Updates an existing instructor record
         /// </summary>
@@ -176,6 +191,10 @@ namespace attendance_monitoring.Services
             _logger.LogInformation("Successfully updated instructor with ID: {Id}", id);
             return (updatedInstructor, null);
         }
+
+        #endregion
+
+        #region Delete Operations
 
         /// <summary>
         /// Soft deletes an instructor record
@@ -274,6 +293,65 @@ namespace attendance_monitoring.Services
         }
         
         /// <summary>
+        /// Restores a soft deleted instructor record
+        /// </summary>
+        /// <param name="id">The ID of the instructor to restore</param>
+        /// <param name="userPrincipal">The claims principal of the current user</param>
+        /// <returns>A message indicating the result of the operation</returns>
+        public async Task<string?> RestoreInstructorAsync(int id, ClaimsPrincipal userPrincipal)
+        {
+            _logger.LogInformation("Restoring instructor with ID: {Id}", id);
+            
+            if (id <= 0)
+            {
+                _logger.LogWarning("Instructor restore failed: Invalid instructor ID {Id}", id);
+                return "Invalid instructor ID";
+            }
+
+            var userId = await _userContextService.GetUserIdAsync(userPrincipal).ConfigureAwait(false);
+            if (string.IsNullOrEmpty(userId))
+            {
+                _logger.LogWarning("Instructor restore failed: User ID not found in token");
+                return "User ID not found in token";
+            }
+
+            var existingInstructor = await _instructorRepository.GetInstructorByIdIgnoreDeleteStatus(id).ConfigureAwait(false);
+            if (existingInstructor == null)
+            {
+                _logger.LogWarning("Instructor restore failed: Instructor with ID {Id} not found", id);
+                return "Instructor not found";
+            }
+
+            var isAuthorized = await _userContextService.IsAuthorizedAsync(userPrincipal, existingInstructor.UserId, "Admin", "Teacher").ConfigureAwait(false);
+            if (!isAuthorized)
+            {
+                _logger.LogWarning("Instructor restore failed: User not authorized to restore instructor with ID {Id}", id);
+                return "You are not authorized to restore this instructor record.";
+            }
+
+            // Check if instructor is actually deleted before restoring
+            if (existingInstructor.DeletedAt == null)
+            {
+                _logger.LogWarning("Instructor restore failed: Instructor with ID {Id} is not deleted", id);
+                return "Instructor is not deleted";
+            }
+
+            var result = await _instructorRepository.RestoreInstructorAsync(id).ConfigureAwait(false);
+            if (!result)
+            {
+                _logger.LogError("Instructor restore failed: Failed to restore instructor with ID {Id}", id);
+                return "Failed to restore instructor";
+            }
+            
+            _logger.LogInformation("Successfully restored instructor with ID: {Id}", id);
+            return null;
+        }
+
+        #endregion
+
+        #region Helper Methods
+
+        /// <summary>
         /// Validates email format
         /// </summary>
         /// <param name="email">The email to validate</param>
@@ -290,5 +368,7 @@ namespace attendance_monitoring.Services
                 return false;
             }
         }
+
+        #endregion
     }
 }

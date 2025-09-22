@@ -8,6 +8,9 @@ namespace attendance_monitoring.Repositories;
 
 public class InstructorRepository(ApplicationDbContext context) : IInstructorRepository
 {
+
+    #region Read Operations
+
     public async Task<IEnumerable<Instructor>> GetAllInstructorsAsync()
     {
         return await context.Instructors
@@ -26,11 +29,24 @@ public class InstructorRepository(ApplicationDbContext context) : IInstructorRep
         return await context.Instructors.FirstOrDefaultAsync(i => i.UserId == userId && !i.IsDeleted).ConfigureAwait(false);
     }
 
+    public async Task<Instructor?> GetInstructorByIdIgnoreDeleteStatus(int id)
+    {
+        return await context.Instructors.FirstOrDefaultAsync(i => i.Id == id).ConfigureAwait(false);
+    }
+
+    #endregion
+
+    #region Create Operations
+
     public async Task<Instructor> CreateInstructorAsync(Instructor instructor)
     {
         var entry = await context.Instructors.AddAsync(instructor).ConfigureAwait(false);
         return entry.Entity;
     }
+
+    #endregion
+
+    #region Update Operations
 
     public async Task<Instructor> UpdateInstructorAsync(Instructor instructor)
     {
@@ -39,6 +55,10 @@ public class InstructorRepository(ApplicationDbContext context) : IInstructorRep
         await context.SaveChangesAsync().ConfigureAwait(false);
         return entry.Entity;
     }
+
+    #endregion
+
+    #region Delete Operations
 
     public async Task<bool> SoftDeleteInstructorAsync(int id)
     {
@@ -66,8 +86,29 @@ public class InstructorRepository(ApplicationDbContext context) : IInstructorRep
         return true;
     }
 
+    public async Task<bool> RestoreInstructorAsync(int id)
+    {
+        var instructor = await context.Instructors.FindAsync(id).ConfigureAwait(false);
+        if (instructor == null)
+            return false;
+
+        instructor.IsDeleted = false;
+        instructor.DeletedAt = null;
+        instructor.UpdatedAt = DateTime.UtcNow;
+        
+        context.Instructors.Update(instructor);
+        await context.SaveChangesAsync().ConfigureAwait(false);
+        return true;
+    }
+
+    #endregion
+
+    #region Utility Operations
+
     public async Task<int> SaveChangesAsync()
     {
         return await context.SaveChangesAsync().ConfigureAwait(false);
     }
+
+    #endregion
 }
