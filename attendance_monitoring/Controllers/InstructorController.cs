@@ -9,7 +9,7 @@ namespace attendance_monitoring.Controllers;
 
 [Authorize]
 [ApiController]
-[Route("api/[controller]")]
+[Route("api/instructors")]
 public class InstructorController(IInstructorService instructorService, ILogger<InstructorController> logger) : ControllerBase
 {
     private ActionResult<SoftDeleteResponse> CreateResponse(string error, string successMessage)
@@ -49,6 +49,8 @@ public class InstructorController(IInstructorService instructorService, ILogger<
         });
     }
 
+    #region Read Operations
+
     // GET: api/Instructor
     [HttpGet]
     public async Task<ActionResult<IEnumerable<Instructor>>> GetInstructors()
@@ -60,7 +62,7 @@ public class InstructorController(IInstructorService instructorService, ILogger<
     }
 
     // GET: api/Instructor/5
-    [HttpGet("{id}")]
+    [HttpGet("{id:int}")]
     public async Task<ActionResult<Instructor>> GetInstructor(int id)
     {
         logger.LogInformation("Getting instructor with ID: {Id}", id);
@@ -75,6 +77,10 @@ public class InstructorController(IInstructorService instructorService, ILogger<
         logger.LogInformation("Successfully retrieved instructor with ID: {Id}", id);
         return Ok(instructor);
     }
+
+    #endregion
+
+    #region Update Operations
     
     // POST: api/Instructor/
     // [HttpPost("")]
@@ -103,7 +109,7 @@ public class InstructorController(IInstructorService instructorService, ILogger<
     // potential security vulnerabilities.
     
     // PATCH: api/Instructor/{id}
-    [HttpPatch("{id}")]
+    [HttpPatch("{id:int}")]
     [Authorize(Policy = "PrivilegedPolicy")]
     public async Task<ActionResult<Instructor>> PatchInstructor(int id, UpdateInstructor updateInstructor)
     {
@@ -136,8 +142,12 @@ public class InstructorController(IInstructorService instructorService, ILogger<
 
     }
 
+    #endregion
+
+    #region Delete Operations
+
     // PATCH: api/Instructor/{id}/soft-delete
-    [HttpPatch("{id}/soft-delete")]
+    [HttpPatch("{id:int}/soft-delete")]
     [Authorize(Policy = "PrivilegedPolicy")]
     public async Task<ActionResult<SoftDeleteResponse>> SoftDeleteInstructor(int id)
     {
@@ -148,7 +158,7 @@ public class InstructorController(IInstructorService instructorService, ILogger<
     }
 
     // DELETE: api/Instructor/{id}
-    [HttpDelete("{id}")]
+    [HttpDelete("{id:int}")]
     [Authorize(Policy = "AdminPolicy")]
     public async Task<ActionResult<SoftDeleteResponse>> HardDeleteInstructor(int id)
     {
@@ -157,4 +167,17 @@ public class InstructorController(IInstructorService instructorService, ILogger<
         logger.LogInformation("Hard delete operation completed for instructor with ID: {Id}", id);
         return CreateResponse(error ?? string.Empty, "Instructor permanently deleted successfully");
     }
+    
+    // PATCH: api/Instructor/{id}/restore
+    [HttpPatch("{id:int}/restore")]
+    [Authorize(Policy = "AdminPolicy")]
+    public async Task<ActionResult<SoftDeleteResponse>> RestoreInstructor(int id)
+    {
+        logger.LogInformation("Restoring instructor with ID: {Id}", id);
+        var error = await instructorService.RestoreInstructorAsync(id, User);
+        logger.LogInformation("Restore operation completed for instructor with ID: {Id}", id);
+        return CreateResponse(error ?? string.Empty, "Instructor restored successfully");
+    }
+
+    #endregion
 }

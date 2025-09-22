@@ -20,6 +20,13 @@ public interface IInstructorRepository
     /// <param name="id">The instructor ID.</param>
     /// <returns>The instructor if found; otherwise, null.</returns>
     Task<Instructor?> GetInstructorByIdAsync(int id);
+    
+    /// <summary>
+    /// Retri
+    /// </summary>
+    /// <param name="id"></param>
+    /// <returns></returns>
+    Task<Instructor?> GetInstructorByIdIgnoreDeleteStatus(int id);
 
     /// <summary>
     /// Retrieves an instructor by their user ID.
@@ -55,6 +62,13 @@ public interface IInstructorRepository
     /// <param name="id">The instructor ID.</param>
     /// <returns>True if the instructor was hard deleted; otherwise, false.</returns>
     Task<bool> HardDeleteInstructorAsync(int id);
+
+    /// <summary>
+    /// Restores a soft deleted instructor by their ID.
+    /// </summary>
+    /// <param name="id">The instructor ID.</param>
+    /// <returns>True if the instructor was restored; otherwise, false.</returns>
+    Task<bool> RestoreInstructorAsync(int id);
 
     /// <summary>
     /// Saves changes to the database.
