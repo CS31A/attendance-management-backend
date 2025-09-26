@@ -273,5 +273,60 @@ namespace attendance_monitoring.Services
             _logger.LogInformation("Successfully hard deleted student with ID: {Id}", id);
             return null;
         }
+        
+        /// <summary>
+        /// Restores a soft deleted student record
+        /// </summary>
+        /// <param name="id">The ID of the student to restore</param>
+        /// <param name="userPrincipal">The claims principal of the current user</param>
+        /// <returns>A message indicating the result of the operation</returns>
+        public async Task<string?> RestoreStudentAsync(int id, ClaimsPrincipal userPrincipal)
+        {
+            _logger.LogInformation("Restoring student with ID: {Id}", id);
+            
+            if (id <= 0)
+            {
+                _logger.LogWarning("Student restore failed: Invalid student ID {Id}", id);
+                return "Invalid student ID";
+            }
+
+            var userId = await _userContextService.GetUserIdAsync(userPrincipal).ConfigureAwait(false);
+            if (string.IsNullOrEmpty(userId))
+            {
+                _logger.LogWarning("Student restore failed: User ID not found in token");
+                return "User ID not found in token";
+            }
+
+            var existingStudent = await _studentRepository.GetStudentByIdIgnoreDeleteStatus(id).ConfigureAwait(false);
+            if (existingStudent == null)
+            {
+                _logger.LogWarning("Student restore failed: Student with ID {Id} not found", id);
+                return "Student not found";
+            }
+
+            var isAuthorized = await _userContextService.IsAuthorizedAsync(userPrincipal, existingStudent.UserId, "Admin", "Teacher").ConfigureAwait(false);
+            if (!isAuthorized)
+            {
+                _logger.LogWarning("Student restore failed: User not authorized to restore student with ID {Id}", id);
+                return "You are not authorized to restore this student record.";
+            }
+
+            // Check if student is actually deleted before restoring
+            if (existingStudent.DeletedAt == null)
+            {
+                _logger.LogWarning("Student restore failed: Student with ID {Id} is not deleted", id);
+                return "Student is not deleted";
+            }
+
+            var result = await _studentRepository.RestoreStudentAsync(id).ConfigureAwait(false);
+            if (!result)
+            {
+                _logger.LogError("Student restore failed: Failed to restore student with ID {Id}", id);
+                return "Failed to restore student";
+            }
+            
+            _logger.LogInformation("Successfully restored student with ID: {Id}", id);
+            return null;
+        }
     }
 }

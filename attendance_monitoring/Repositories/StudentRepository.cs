@@ -68,6 +68,26 @@ public class StudentRepository(ApplicationDbContext context) : IStudentRepositor
         return true;
     }
 
+    public async Task<bool> RestoreStudentAsync(int id)
+    {
+        var student = await context.Students.FindAsync(id).ConfigureAwait(false);
+        if (student == null)
+            return false;
+
+        student.IsDeleted = false;
+        student.DeletedAt = null;
+        student.UpdatedAt = DateTime.UtcNow;
+        
+        context.Students.Update(student);
+        await context.SaveChangesAsync().ConfigureAwait(false);
+        return true;
+    }
+
+    public async Task<Student?> GetStudentByIdIgnoreDeleteStatus(int id)
+    {
+        return await context.Students.FirstOrDefaultAsync(s => s.Id == id).ConfigureAwait(false);
+    }
+
     public async Task<int> SaveChangesAsync()
     {
         return await context.SaveChangesAsync().ConfigureAwait(false);
