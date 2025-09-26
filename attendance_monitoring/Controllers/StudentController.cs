@@ -54,17 +54,17 @@ public class StudentController(IStudentService studentService, ILogger<StudentCo
     }
 
     /// <summary>
-    /// Get a list of all students
+    /// Get a list of all non-deleted students
     /// </summary>
-    /// <returns>A list of students</returns>
-    /// <response code="200">Returns the list of students</response>
+    /// <returns>A list of non-deleted students</returns>
+    /// <response code="200">Returns the list of non-deleted students</response>
     // GET: api/Student
     [HttpGet]
     public async Task<ActionResult<IEnumerable<Student>>> GetStudents()
     {
-        logger.LogInformation("Getting all students");
-        var students = await studentService.GetAllStudentsAsync();
-        logger.LogInformation("Successfully retrieved {Count} students", students.ToList().Count);
+        logger.LogInformation("Getting all non-deleted students");
+        var students = await studentService.GetAllNonDeletedStudentsAsync();
+        logger.LogInformation("Successfully retrieved {Count} non-deleted students", students.ToList().Count);
         return Ok(students);
     }
 

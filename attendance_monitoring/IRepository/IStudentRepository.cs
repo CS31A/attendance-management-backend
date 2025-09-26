@@ -15,6 +15,11 @@ public interface IStudentRepository
     Task<IEnumerable<Student>> GetAllStudentsAsync();
 
     /// <summary>
+    /// Retrieves all non-deleted students
+    /// </summary>
+    Task<IEnumerable<Student>> GetAllNonDeletedStudentsAsync();
+
+    /// <summary>
     /// Retrieves a student by their ID.
     /// </summary>
     /// <param name="id">The student ID.</param>
