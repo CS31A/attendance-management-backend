@@ -1,11 +1,11 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace attendance_monitoring.Models.Request
+namespace attendance_monitoring.Models.DTO.Request
 {
     public class CreateSection
     {
         [Required(ErrorMessage = "Section name is required")]
-        [StringLength(100, ErrorMessage = "Section name must be between 1 and 100 characters", MinimumLength = 1)]
+        [StringLength(100, ErrorMessage = "Section name must be between 1 and 100 characters", MinimumLength = 8)]
         public string Name { get; set; } = string.Empty;
 
         [Required(ErrorMessage = "Instructor ID is required")]
