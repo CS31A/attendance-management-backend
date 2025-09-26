@@ -30,11 +30,6 @@ namespace attendance_monitoring.Data
             builder.Entity<RefreshToken>()
                 .HasIndex(r => r.TokenHash)
                 .IsUnique();
-                
-            // Configure index for BlacklistedToken Jti for fast lookups
-            builder.Entity<BlacklistedToken>()
-                .HasIndex(b => b.Jti)
-                .IsUnique();
         }
     }
 }
