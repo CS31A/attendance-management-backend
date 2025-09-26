@@ -57,6 +57,20 @@ public interface IStudentRepository
     Task<bool> HardDeleteStudentAsync(int id);
 
     /// <summary>
+    /// Restores a soft deleted student by their ID.
+    /// </summary>
+    /// <param name="id">The student ID.</param>
+    /// <returns>True if the student was restored; otherwise, false.</returns>
+    Task<bool> RestoreStudentAsync(int id);
+
+    /// <summary>
+    /// Retrieves a student by their ID, ignoring the delete status.
+    /// </summary>
+    /// <param name="id">The student ID.</param>
+    /// <returns>The student if found; otherwise, null.</returns>
+    Task<Student?> GetStudentByIdIgnoreDeleteStatus(int id);
+
+    /// <summary>
     /// Saves changes to the database.
     /// </summary>
     /// <returns>The number of state entries written to the database.</returns>

@@ -198,4 +198,23 @@ public class StudentController(IStudentService studentService, ILogger<StudentCo
         logger.LogInformation("Hard delete operation completed for student with ID: {Id}", id);
         return CreateResponse(error, "Student permanently deleted successfully");
     }
+    
+    /// <summary>
+    /// Restore a soft deleted student record
+    /// </summary>
+    /// <param name="id">The ID of the student to restore</param>
+    /// <returns>Success message</returns>
+    /// <response code="200">Student restored successfully</response>
+    /// <response code="404">Student not found</response>
+    /// <response code="401">Not authorized to restore this student</response>
+    // PATCH: api/Students/{id}/restore
+    [HttpPatch("{id:int}/restore")]
+    [Authorize(Policy = "AdminPolicy")]
+    public async Task<ActionResult<SoftDeleteResponse>> RestoreStudent(int id)
+    {
+        logger.LogInformation("Restoring student with ID: {Id}", id);
+        var error = await studentService.RestoreStudentAsync(id, User);
+        logger.LogInformation("Restore operation completed for student with ID: {Id}", id);
+        return CreateResponse(error, "Student restored successfully");
+    }
 }
