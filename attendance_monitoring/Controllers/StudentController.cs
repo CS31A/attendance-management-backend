@@ -11,7 +11,7 @@ namespace attendance_monitoring.Controllers;
 /// <summary>
 /// Controller for managing student records
 /// </summary>
-[Authorize(Policy = "UserPolicy")]
+[Authorize(Policy = "PrivilegedPolicy")]
 [ApiController]
 [Route("api/students")]
 public class StudentController(IStudentService studentService, ILogger<StudentController> logger)
@@ -164,14 +164,13 @@ public class StudentController(IStudentService studentService, ILogger<StudentCo
     /// <summary>
     /// Soft delete a student record
     /// </summary>
-    /// <param name="id">The ID of the student to soft delete</param>
+    /// <param name="id">The ID of the student to softly delete</param>
     /// <returns>Success message</returns>
     /// <response code="200">Student marked as deleted successfully</response>
     /// <response code="404">Student not found</response>
     /// <response code="401">Not authorized to delete this student</response>
     // PATCH: api/Student/{id}/soft-delete
     [HttpPatch("{id:int}/soft-delete")]
-    [Authorize(Policy = "PrivilegedPolicy")]
     public async Task<ActionResult<SoftDeleteResponse>> SoftDeleteStudent(int id)
     {
         logger.LogInformation("Soft deleting student with ID: {Id}", id);
