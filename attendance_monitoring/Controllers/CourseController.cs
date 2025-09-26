@@ -1,6 +1,6 @@
 using attendance_monitoring.Classes;
 using attendance_monitoring.IServices;
-using attendance_monitoring.Models.Request;
+using attendance_monitoring.Models.DTO.Request;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
