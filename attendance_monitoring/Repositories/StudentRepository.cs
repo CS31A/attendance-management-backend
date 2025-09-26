@@ -1,12 +1,7 @@
 using attendance_monitoring.Classes;
 using attendance_monitoring.Data;
-using attendance_monitoring.Repositories;
 using Microsoft.EntityFrameworkCore;
-using System;
-using System.Collections.Generic;
-using System.Threading.Tasks;
 using attendance_monitoring.IRepository;
-using attendance_monitoring.Models.Request;
 
 namespace attendance_monitoring.Repositories;
 
@@ -14,10 +9,12 @@ public class StudentRepository(ApplicationDbContext context) : IStudentRepositor
 {
     public async Task<IEnumerable<Student>> GetAllStudentsAsync()
     {
-        // return await _context.Students.ToListAsync();
-        return await context.Students
-            .Where(s => !s.IsDeleted) // Only return non-deleted students
-            .ToListAsync().ConfigureAwait(false);
+        return await context.Students.ToListAsync();
+    }
+
+    public async Task<IEnumerable<Student>> GetAllNonDeletedStudentsAsync()
+    {
+        return await context.Students.Where(student => !student.IsDeleted).ToListAsync().ConfigureAwait(false);
     }
 
     public async Task<Student?> GetStudentByIdAsync(int id)

@@ -7,6 +7,7 @@ using Microsoft.EntityFrameworkCore;
 namespace attendance_monitoring.Classes;
 
 [Index(nameof(UserId), IsUnique = true)]
+[Index(nameof(IsDeleted))]
 public class Student
 {
     [Key]
