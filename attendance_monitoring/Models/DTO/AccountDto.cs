@@ -46,15 +46,14 @@ public class RegisterDto
 
     /// <summary>
     /// User role - valid values are: "Student", "Teacher", "Admin"
-    /// Defaults to "Student" if not provided or invalid
     /// </summary>
+    [RegularExpression("^(Student|Teacher|Instructor|Admin)$", ErrorMessage = "Invalid role specified. Valid roles are: Student, Teacher, Instructor, Admin")]
     public string? Role { get; set; }
 
     /// <summary>
-    /// Section ID for student registration (required for students)
+    /// Section ID for student registration (required only for students)
     /// </summary>
-    [Required(ErrorMessage = "SectionId is required for student registration")]
-    public int SectionId { get; set; }
+    public int? SectionId { get; set; }
 }
 
 public class LoginDto

@@ -6,86 +6,85 @@ using Microsoft.EntityFrameworkCore;
 
 namespace attendance_monitoring.Repositories
 {
-    public class AccountRepository : IAccountRepository
+    public class AccountRepository(
+        UserManager<IdentityUser> userManager,
+        SignInManager<IdentityUser> signInManager,
+        RoleManager<IdentityRole> roleManager,
+        ApplicationDbContext context)
+        : IAccountRepository
     {
-        private readonly UserManager<IdentityUser> _userManager;
-        private readonly SignInManager<IdentityUser> _signInManager;
-        private readonly RoleManager<IdentityRole> _roleManager;
-        private readonly ApplicationDbContext _context;
-
-        public AccountRepository(
-            UserManager<IdentityUser> userManager,
-            SignInManager<IdentityUser> signInManager,
-            RoleManager<IdentityRole> roleManager,
-            ApplicationDbContext context)
-        {
-            _userManager = userManager;
-            _signInManager = signInManager;
-            _roleManager = roleManager;
-            _context = context;
-        }
-
         public async Task<IdentityUser?> FindUserByIdAsync(string id)
         {
-            return await _userManager.FindByIdAsync(id).ConfigureAwait(false);
+            return await userManager.FindByIdAsync(id).ConfigureAwait(false);
         }
 
         public async Task<IdentityUser?> FindUserByUsernameAsync(string username)
         {
-            return await _userManager.FindByNameAsync(username).ConfigureAwait(false);
+            return await userManager.FindByNameAsync(username).ConfigureAwait(false);
         }
 
         public async Task<IdentityUser?> FindUserByEmailAsync(string email)
         {
-            return await _userManager.FindByEmailAsync(email).ConfigureAwait(false);
+            return await userManager.FindByEmailAsync(email).ConfigureAwait(false);
         }
 
         public async Task<IdentityResult> CreateUserAsync(IdentityUser user, string password)
         {
-            return await _userManager.CreateAsync(user, password).ConfigureAwait(false);
+            return await userManager.CreateAsync(user, password).ConfigureAwait(false);
         }
 
         public async Task<SignInResult> CheckPasswordAsync(IdentityUser user, string password)
         {
-            return await _signInManager.CheckPasswordSignInAsync(user, password, false).ConfigureAwait(false);
+            return await signInManager.CheckPasswordSignInAsync(user, password, false).ConfigureAwait(false);
         }
 
         public async Task EnsureRolesExistAsync(IEnumerable<string> roles)
         {
             foreach (var role in roles)
             {
-                if (!await _roleManager.RoleExistsAsync(role).ConfigureAwait(false))
+                if (!await roleManager.RoleExistsAsync(role).ConfigureAwait(false))
                 {
-                    await _roleManager.CreateAsync(new IdentityRole(role)).ConfigureAwait(false);
+                    await roleManager.CreateAsync(new IdentityRole(role)).ConfigureAwait(false);
                 }
             }
         }
 
         public async Task AddUserToRoleAsync(IdentityUser user, string role)
         {
-            await _userManager.AddToRoleAsync(user, role).ConfigureAwait(false);
+            await userManager.AddToRoleAsync(user, role).ConfigureAwait(false);
         }
 
         public async Task<IList<string>> GetUserRolesAsync(IdentityUser user)
         {
-            return await _userManager.GetRolesAsync(user).ConfigureAwait(false);
+            return await userManager.GetRolesAsync(user).ConfigureAwait(false);
         }
 
         public async Task CreateStudentProfileAsync(Student student)
         {
-            _context.Students.Add(student);
-            await _context.SaveChangesAsync().ConfigureAwait(false);
+            context.Students.Add(student);
+            await context.SaveChangesAsync().ConfigureAwait(false);
         }
 
         public async Task CreateInstructorProfileAsync(Instructor instructor)
         {
-            _context.Instructors.Add(instructor);
-            await _context.SaveChangesAsync().ConfigureAwait(false);
+            context.Instructors.Add(instructor);
+            await context.SaveChangesAsync().ConfigureAwait(false);
+        }
+
+        public async Task CreateAdminProfileAsync(Admin admin)
+        {
+            context.Admins.Add(admin);
+            await context.SaveChangesAsync().ConfigureAwait(false);
+        }
+        
+        public async Task<IdentityResult> DeleteUserAsync(IdentityUser user)
+        {
+            return await userManager.DeleteAsync(user).ConfigureAwait(false);
         }
         
         public async Task<RefreshToken?> FindRefreshTokenByHashAsync(string tokenHash)
         {
-            return await _context.RefreshTokens.FirstOrDefaultAsync(rt => rt.TokenHash == tokenHash).ConfigureAwait(false);
+            return await context.RefreshTokens.FirstOrDefaultAsync(rt => rt.TokenHash == tokenHash).ConfigureAwait(false);
         }
     }
 }
