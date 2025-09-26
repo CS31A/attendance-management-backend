@@ -12,12 +12,12 @@ public interface IStudentRepository
     /// Retrieves all students.
     /// </summary>
     /// <returns>A collection of all students.</returns>
-    Task<IEnumerable<Student>> GetAllStudentsAsync();
+    Task<IList<Student>> GetAllStudentsAsync();
 
     /// <summary>
     /// Retrieves all non-deleted students
     /// </summary>
-    Task<IEnumerable<Student>> GetAllNonDeletedStudentsAsync();
+    Task<IList<Student>> GetAllNonDeletedStudentsAsync();
 
     /// <summary>
     /// Retrieves a student by their ID.
