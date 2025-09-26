@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 namespace attendance_monitoring.Classes;
 
 [Index(nameof(Jti), IsUnique = true)]
+[Index(nameof(ExpiresAt))]
 public class BlacklistedToken
 {
     [Key]
