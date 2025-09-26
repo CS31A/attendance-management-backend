@@ -44,6 +44,19 @@ namespace attendance_monitoring.Services
         }
 
         /// <summary>
+        /// Retrieves all non-deleted students
+        /// </summary>
+        /// <returns>A collection of non-deleted students</returns>
+        public async Task<IEnumerable<Student>> GetAllNonDeletedStudentsAsync()
+        {
+            _logger.LogInformation("Retrieving all non-deleted students");
+
+            var students = (await _studentRepository.GetAllNonDeletedStudentsAsync().ConfigureAwait(false)).ToList();
+            _logger.LogInformation("Successfully retrieved {Count} non-deleted students", students.Count);
+            return students;
+        }
+
+        /// <summary>
         /// Retrieves a specific student by ID
         /// </summary>
         /// <param name="id">The ID of the student to retrieve</param>
