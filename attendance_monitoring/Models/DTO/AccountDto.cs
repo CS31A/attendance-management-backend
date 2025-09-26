@@ -3,7 +3,7 @@ using attendance_monitoring.Attributes;
 
 namespace attendance_monitoring.Models.DTO;
 
-public class RegisterDto
+public class RegisterDto : IValidatableObject
 {
     /// <summary>
     /// Username for the new account
@@ -47,13 +47,21 @@ public class RegisterDto
     /// <summary>
     /// User role - valid values are: "Student", "Teacher", "Admin"
     /// </summary>
-    [RegularExpression("^(Student|Teacher|Instructor|Admin)$", ErrorMessage = "Invalid role specified. Valid roles are: Student, Teacher, Instructor, Admin")]
+    [RegularExpression("^(?i)(Student|Teacher|Instructor|Admin)$", ErrorMessage = "Invalid role specified. Valid roles are: Student, Teacher, Instructor, Admin")]
     public string? Role { get; set; }
 
     /// <summary>
     /// Section ID for student registration (required only for students)
     /// </summary>
     public int? SectionId { get; set; }
+
+    public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+    {
+        if (string.Equals(Role, "Student", StringComparison.OrdinalIgnoreCase) && (SectionId is null or <= 0))
+        {
+            yield return new ValidationResult("SectionId is required for student registration", new[] { nameof(SectionId) });
+        }
+    }
 }
 
 public class LoginDto
