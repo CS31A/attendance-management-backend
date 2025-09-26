@@ -7,12 +7,12 @@ namespace attendance_monitoring.Repositories;
 
 public class StudentRepository(ApplicationDbContext context) : IStudentRepository
 {
-    public async Task<IEnumerable<Student>> GetAllStudentsAsync()
+    public async Task<IList<Student>> GetAllStudentsAsync()
     {
         return await context.Students.ToListAsync();
     }
 
-    public async Task<IEnumerable<Student>> GetAllNonDeletedStudentsAsync()
+    public async Task<IList<Student>> GetAllNonDeletedStudentsAsync()
     {
         return await context.Students.Where(student => !student.IsDeleted).ToListAsync().ConfigureAwait(false);
     }
