@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace attendance_monitoring.Models.Request;
+namespace attendance_monitoring.Models.DTO.Request;
 
 public class PaginationQuery
 {
