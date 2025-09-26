@@ -12,4 +12,5 @@ public interface IStudentService
     Task<(Student?, string?)> UpdateStudentAsync(int id, UpdateStudent updateStudent, ClaimsPrincipal user);
     Task<string?> SoftDeleteStudentAsync(int id, ClaimsPrincipal user);
     Task<string?> HardDeleteStudentAsync(int id, ClaimsPrincipal user);
+    Task<string?> RestoreStudentAsync(int id, ClaimsPrincipal user);
 }
