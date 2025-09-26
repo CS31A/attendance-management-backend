@@ -60,11 +60,11 @@ public class StudentController(IStudentService studentService, ILogger<StudentCo
     /// <response code="200">Returns the list of non-deleted students</response>
     // GET: api/Student
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<Student>>> GetStudents()
+    public async Task<ActionResult<IList<Student>>> GetStudents()
     {
         logger.LogInformation("Getting all non-deleted students");
         var students = await studentService.GetAllNonDeletedStudentsAsync();
-        logger.LogInformation("Successfully retrieved {Count} non-deleted students", students.ToList().Count);
+        logger.LogInformation("Successfully retrieved {Count} non-deleted students", students.Count);
         return Ok(students);
     }
 

@@ -30,15 +30,11 @@ namespace attendance_monitoring.Services
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
-        /// <summary>
-        /// Retrieves all students
-        /// </summary>
-        /// <returns>A collection of students</returns>
-        public async Task<IEnumerable<Student>> GetAllStudentsAsync()
+        public async Task<IList<Student>> GetAllStudentsAsync()
         {
             _logger.LogInformation("Retrieving all students");
 
-            var students = (await _studentRepository.GetAllStudentsAsync().ConfigureAwait(false)).ToList();
+            var students = await _studentRepository.GetAllStudentsAsync().ConfigureAwait(false);
             _logger.LogInformation("Successfully retrieved {Count} students", students.Count);
             return students;
         }
@@ -47,11 +43,11 @@ namespace attendance_monitoring.Services
         /// Retrieves all non-deleted students
         /// </summary>
         /// <returns>A collection of non-deleted students</returns>
-        public async Task<IEnumerable<Student>> GetAllNonDeletedStudentsAsync()
+        public async Task<IList<Student>> GetAllNonDeletedStudentsAsync()
         {
             _logger.LogInformation("Retrieving all non-deleted students");
 
-            var students = (await _studentRepository.GetAllNonDeletedStudentsAsync().ConfigureAwait(false)).ToList();
+            var students = await _studentRepository.GetAllNonDeletedStudentsAsync().ConfigureAwait(false);
             _logger.LogInformation("Successfully retrieved {Count} non-deleted students", students.Count);
             return students;
         }
