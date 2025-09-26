@@ -20,7 +20,8 @@ namespace attendance_monitoring.Services
         IRefreshTokenService refreshTokenService,
         ILogger<AccountService> logger,
         IAccountRepository accountRepository,
-        ISectionRepository sectionRepository
+        ISectionRepository sectionRepository,
+        IUserFactory userFactory
         )
         : IAccountService
     {
@@ -50,18 +51,6 @@ namespace attendance_monitoring.Services
                 return (result, null);
             }
 
-            var user = new IdentityUser
-            {
-                UserName = registerDto.Username,
-                Email = registerDto.Email
-            };
-
-            var createResult = await accountRepository.CreateUserAsync(user, registerDto.Password).ConfigureAwait(false);
-            if (!createResult.Succeeded)
-            {
-                return (createResult, null);
-            }
-
             var validRoles = new[] { "Admin", "Teacher", "Student" };
             // Role assignment logic (roles are now ensured to exist at application startup)
             var roleToAssign = "Student";
@@ -70,49 +59,46 @@ namespace attendance_monitoring.Services
                 roleToAssign = registerDto.Role;
             }
 
-            await accountRepository.AddUserToRoleAsync(user, roleToAssign).ConfigureAwait(false);
-            logger.LogInformation("Assigned role {Role} to user {Username}", roleToAssign, user.UserName);
-
+            // For students, validate that the SectionId exists before attempting user creation
             if (roleToAssign.Equals("Student", StringComparison.OrdinalIgnoreCase))
             {
-                // Validate that the SectionId exists
-                var section = await sectionRepository.GetSectionByIdAsync(registerDto.SectionId).ConfigureAwait(false);
-                if (section == null)
+                // Check if SectionId is provided for students
+                if (!registerDto.SectionId.HasValue)
                 {
-                    logger.LogWarning("Student registration failed for user {Username}: SectionId {SectionId} does not exist", user.UserName, registerDto.SectionId);
-                    var result = IdentityResult.Failed(new IdentityError { Code = "InvalidSection", Description = "The specified section does not exist" });
+                    logger.LogWarning("Student registration failed for username {Username}: SectionId is required for students", registerDto.Username);
+                    var result = IdentityResult.Failed(new IdentityError { Code = "InvalidSection", Description = "SectionId is required for student registration" });
                     return (result, null);
                 }
 
-                var student = new Student
+                var section = await sectionRepository.GetSectionByIdAsync(registerDto.SectionId.Value).ConfigureAwait(false);
+                if (section == null)
                 {
-                    Firstname = registerDto.Firstname ?? "",
-                    Lastname = registerDto.Lastname ?? "",
-                    Email = registerDto.Email,
-                    UserId = user.Id,
-                    SectionId = registerDto.SectionId,
-                    CreatedAt = DateTime.UtcNow,
-                    UpdatedAt = DateTime.UtcNow
-                };
-                await accountRepository.CreateStudentProfileAsync(student).ConfigureAwait(false);
-                logger.LogInformation("Created student record for user: {Username}", user.UserName);
-            }
-            else if (roleToAssign.Equals("Teacher", StringComparison.OrdinalIgnoreCase))
-            {
-                var instructor = new Instructor
-                {
-                    Firstname = registerDto.Firstname ?? "",
-                    Lastname = registerDto.Lastname ?? "",
-                    Email = registerDto.Email,
-                    UserId = user.Id,
-                    CreatedAt = DateTime.UtcNow,
-                    UpdatedAt = DateTime.UtcNow
-                };
-                await accountRepository.CreateInstructorProfileAsync(instructor).ConfigureAwait(false);
-                logger.LogInformation("Created instructor record for user: {Username}", user.UserName);
+                    logger.LogWarning("Student registration failed for username {Username}: SectionId {SectionId} does not exist", registerDto.Username, registerDto.SectionId);
+                    var result = IdentityResult.Failed(new IdentityError { Code = "InvalidSection", Description = "The specified section does not exist" });
+                    return (result, null);
+                }
             }
 
-            logger.LogInformation("User registered successfully: {Username} with role {Role}", user.UserName, roleToAssign);
+            // Use UserFactory to create the user with appropriate role and profile
+            var userCreationResult = await userFactory.CreateUserAsync(
+                registerDto.Username,
+                registerDto.Email,
+                registerDto.Password,
+                roleToAssign,
+                registerDto.Firstname,
+                registerDto.Lastname,
+                roleToAssign.Equals("Student", StringComparison.OrdinalIgnoreCase) ? registerDto.SectionId : null
+            ).ConfigureAwait(false);
+
+            if (!userCreationResult.Success)
+            {
+                var errors = userCreationResult.Errors.Select(error => new IdentityError { Description = error }).ToArray();
+                var result = IdentityResult.Failed(errors);
+                logger.LogWarning("User registration failed for username {Username}: {Errors}", registerDto.Username, string.Join(", ", userCreationResult.Errors));
+                return (result, null);
+            }
+
+            logger.LogInformation("User registered successfully: {Username} with role {Role}", registerDto.Username, roleToAssign);
             var response = new RegisterResponseDto { Message = $"User registered successfully with {roleToAssign} role" };
             return (IdentityResult.Success, response);
         }
