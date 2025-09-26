@@ -1,7 +1,6 @@
 using attendance_monitoring.Classes;
 using attendance_monitoring.Data;
 using attendance_monitoring.IRepository;
-using attendance_monitoring.Models.Request;
 using Microsoft.EntityFrameworkCore;
 
 namespace attendance_monitoring.Repositories;
