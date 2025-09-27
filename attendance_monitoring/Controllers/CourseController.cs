@@ -3,7 +3,6 @@ using attendance_monitoring.IServices;
 using attendance_monitoring.Models.DTO.Request;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Logging;
 
 namespace attendance_monitoring.Controllers;
 
@@ -36,7 +35,7 @@ public class CourseController(ICourseService courseService, ILogger<CourseContro
     /// <param name="id">The ID of the course to retrieve</param>
     /// <returns>The requested course</returns>
     /// <response code="200">Returns the requested course</response>
-    /// <response code="404">Course not found</response>
+    /// <response code="404"> not found</response>
     // GET: api/Course/5
     [HttpGet("{id}")]
     public async Task<ActionResult<Course>> GetCourse(int id)
