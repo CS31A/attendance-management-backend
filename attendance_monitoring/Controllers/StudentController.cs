@@ -4,7 +4,6 @@ using attendance_monitoring.Models.DTO.Request;
 using attendance_monitoring.Models.DTO.Response;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Logging;
 
 namespace attendance_monitoring.Controllers;
 

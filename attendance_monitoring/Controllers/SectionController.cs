@@ -4,7 +4,6 @@ using attendance_monitoring.Models.DTO.Request;
 using attendance_monitoring.Models.DTO.Response;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Logging;
 
 namespace attendance_monitoring.Controllers
 {
@@ -20,21 +19,20 @@ namespace attendance_monitoring.Controllers
             try
             {
                 var section = await sectionService.GetSectionByIdAsync(id);
-                
-                if (section == null)
-                {
-                    logger.LogWarning("Section with ID {SectionId} not found.", id);
-                    return NotFound($"Section with ID {id} not found.");
-                }
 
-                return Ok(new SectionResponseDto{
-                    Id = section.Id,
-                    Name = section.Name,
-                    InstructorId = section.InstructorId,
-                    CourseId = section.CourseId,
-                    CreatedAt = section.CreatedAt,
-                    UpdatedAt = section.UpdatedAt
-                });
+                if (section != null)
+                    return Ok(new SectionResponseDto
+                    {
+                        Id = section.Id,
+                        Name = section.Name,
+                        InstructorId = section.InstructorId,
+                        CourseId = section.CourseId,
+                        CreatedAt = section.CreatedAt,
+                        UpdatedAt = section.UpdatedAt
+                    });
+                
+                logger.LogWarning("Section with ID {SectionId} not found.", id);
+                return NotFound($"Section with ID {id} not found.");
             }
             catch (Exception ex)
             {
@@ -77,14 +75,12 @@ namespace attendance_monitoring.Controllers
                 };
 
                 var createdSection = await sectionService.CreateSectionAsync(section);
-                
-                if (createdSection == null)
-                {
-                    logger.LogWarning("Unable to create section with name {SectionName}.", section.Name);
-                    return BadRequest("Unable to create section.");
-                }
 
-                return CreatedAtAction(nameof(GetSection), new { id = createdSection.Id }, createdSection);
+                if (createdSection != null)
+                    return CreatedAtAction(nameof(GetSection), new { id = createdSection.Id }, createdSection);
+                
+                logger.LogWarning("Unable to create section with name {SectionName}.", section.Name);
+                return BadRequest("Unable to create section.");
             }
             catch (Exception ex)
             {
@@ -111,14 +107,11 @@ namespace attendance_monitoring.Controllers
                 };
 
                 var updatedSection = await sectionService.UpdateSectionAsync(id, section);
-                
-                if (updatedSection == null)
-                {
-                    logger.LogWarning("Section with ID {SectionId} not found for update.", id);
-                    return NotFound($"Section with ID {id} not found.");
-                }
 
-                return Ok(updatedSection);
+                if (updatedSection != null) return Ok(updatedSection);
+                
+                logger.LogWarning("Section with ID {SectionId} not found for update.", id);
+                return NotFound($"Section with ID {id} not found.");
             }
             catch (Exception ex)
             {
@@ -133,14 +126,11 @@ namespace attendance_monitoring.Controllers
             try
             {
                 var result = await sectionService.DeleteSectionAsync(id);
-                
-                if (!result)
-                {
-                    logger.LogWarning("Section with ID {SectionId} not found for deletion.", id);
-                    return NotFound($"Section with ID {id} not found.");
-                }
 
-                return NoContent();
+                if (result) return NoContent();
+                
+                logger.LogWarning("Section with ID {SectionId} not found for deletion.", id);
+                return NotFound($"Section with ID {id} not found.");
             }
             catch (Exception ex)
             {
@@ -162,14 +152,11 @@ namespace attendance_monitoring.Controllers
                 }
                 
                 var students = await sectionService.GetActiveStudentsBySectionIdAsync(sectionId);
-                
-                if (!students.Any())
-                {
-                    logger.LogWarning("No active students found for section with ID {SectionId}.", sectionId);
-                    return NotFound($"No active students found for section with ID {sectionId}.");
-                }
 
-                return Ok(students);
+                if (students.Any()) return Ok(students);
+                
+                logger.LogWarning("No active students found for section with ID {SectionId}.", sectionId);
+                return NotFound($"No active students found for section with ID {sectionId}.");
             }
             catch (Exception ex)
             {
@@ -191,14 +178,11 @@ namespace attendance_monitoring.Controllers
                 }
                 
                 var students = await sectionService.GetAllStudentsBySectionIdAsync(sectionId);
-                
-                if (!students.Any())
-                {
-                    logger.LogWarning("No students found for section with ID {SectionId}.", sectionId);
-                    return NotFound($"No students found for section with ID {sectionId}.");
-                }
 
-                return Ok(students);
+                if (students.Any()) return Ok(students);
+                
+                logger.LogWarning("No students found for section with ID {SectionId}.", sectionId);
+                return NotFound($"No students found for section with ID {sectionId}.");
             }
             catch (Exception ex)
             {
