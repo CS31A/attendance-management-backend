@@ -15,11 +15,11 @@ public class Subject
     public int Id { get; set; }
 
     [Required]
-    [StringLength(100)]
+    [StringLength(100, MinimumLength = 2, ErrorMessage = "Subject name must be greater than or equal to 2 characters")]
     public string Name { get; set; } = string.Empty;
     
     [Required]
-    [StringLength(20)]
+    [StringLength(30, MinimumLength = 5, ErrorMessage = "Subject code must be greater than 5 characters")]
     public string Code { get; set; } = string.Empty;
 
     public DateTime CreatedAt { get; set; }
