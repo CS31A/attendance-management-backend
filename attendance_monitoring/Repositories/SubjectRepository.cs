@@ -26,9 +26,15 @@ public class SubjectRepository(ApplicationDbContext context) : ISubjectRepositor
     public async Task<Subject> UpdateSubjectAsync(Subject subject)
     {
         subject.UpdatedAt = DateTime.UtcNow;
-        var entry = context.Subjects.Update(subject);
-        await context.SaveChangesAsync().ConfigureAwait(false);
-        return entry.Entity;
+        context.Subjects.Update(subject);
+        var rowsAffected = await context.SaveChangesAsync().ConfigureAwait(false);
+        
+        if (rowsAffected == 0)
+        {
+            throw new ArgumentException($"Subject with ID {subject.Id} does not exist or may have been updated by another process.");
+        }
+        
+        return subject;
     }
 
     public async Task<bool> DeleteSubjectAsync(int id)
@@ -39,6 +45,11 @@ public class SubjectRepository(ApplicationDbContext context) : ISubjectRepositor
         context.Subjects.Remove(subject);
         await context.SaveChangesAsync().ConfigureAwait(false);
         return true;
+    }
+
+    public async Task<Subject?> GetSubjectByCodeAsync(string code)
+    {
+        return await context.Subjects.FirstOrDefaultAsync(s => s.Code == code).ConfigureAwait(false);
     }
 
     public async Task<int> SaveChangesAsync()
