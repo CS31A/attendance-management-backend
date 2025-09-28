@@ -212,7 +212,11 @@ public class SubjectController(ISubjectService subjectService, ILogger<SubjectCo
         catch (SubjectServiceException ex)
         {
             logger.LogError(ex, "Error occurred while updating subject with ID {Id}", id);
-            return StatusCode(500, "An error occurred while updating the subject");
+            return Problem(
+                detail: "An error occurred while updating the subject",
+                statusCode: 500,
+                title: "Internal Server Error"
+            );
         }
         catch (Exception ex)
         {
@@ -265,7 +269,11 @@ public class SubjectController(ISubjectService subjectService, ILogger<SubjectCo
         catch (SubjectServiceException ex)
         {
             logger.LogError(ex, "Error occurred while deleting subject with ID {Id}", id);
-            return StatusCode(500, "An error occurred while deleting the subject");
+            return Problem(
+                detail: "An error occurred while deleting the subject",
+                statusCode: 500,
+                title: "Internal Server Error"
+            );
         }
         catch (Exception ex)
         {
