@@ -42,6 +42,13 @@ public interface ISubjectRepository
     Task<bool> DeleteSubjectAsync(int id);
 
     /// <summary>
+    /// Gets a subject by its code.
+    /// </summary>
+    /// <param name="code">The subject code.</param>
+    /// <returns>The subject if found; otherwise, null.</returns>
+    Task<Subject?> GetSubjectByCodeAsync(string code);
+
+    /// <summary>
     /// Saves changes to the database.
     /// </summary>
     /// <returns>The number of state entries written to the database.</returns>

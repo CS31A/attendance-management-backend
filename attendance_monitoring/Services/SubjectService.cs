@@ -1,9 +1,8 @@
-using System.Security.Claims;
 using attendance_monitoring.Classes;
+using attendance_monitoring.Exceptions;
 using attendance_monitoring.IRepository;
 using attendance_monitoring.IServices;
 using attendance_monitoring.Models.DTO.Request;
-using Microsoft.Extensions.Logging;
 
 namespace attendance_monitoring.Services;
 
@@ -13,21 +12,20 @@ namespace attendance_monitoring.Services;
 public class SubjectService : ISubjectService
 {
     private readonly ISubjectRepository _subjectRepository;
-    private readonly UserContextService _userContextService;
     private readonly ILogger<SubjectService> _logger;
 
     /// <summary>
     /// Initializes a new instance of the SubjectService class
     /// </summary>
     /// <param name="subjectRepository">Repository for subject data operations</param>
-    /// <param name="userContextService">Service for managing user context and authorization</param>
     /// <param name="logger">Logger for logging operations</param>
-    public SubjectService(ISubjectRepository subjectRepository, UserContextService userContextService, ILogger<SubjectService> logger)
+    public SubjectService(ISubjectRepository subjectRepository, ILogger<SubjectService> logger)
     {
         _subjectRepository = subjectRepository ?? throw new ArgumentNullException(nameof(subjectRepository));
-        _userContextService = userContextService ?? throw new ArgumentNullException(nameof(userContextService));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
+
+    #region Get Operations
 
     /// <summary>
     /// Retrieves all subjects
@@ -36,10 +34,18 @@ public class SubjectService : ISubjectService
     public async Task<IEnumerable<Subject>> GetAllSubjectsAsync()
     {
         _logger.LogInformation("Retrieving all subjects");
-        var subjects = await _subjectRepository.GetAllSubjectsAsync().ConfigureAwait(false);
-        var allSubjects = subjects.ToList();
-        _logger.LogInformation("Successfully retrieved {Count} subjects", allSubjects.Count);
-        return allSubjects;
+        try
+        {
+            var subjects = await _subjectRepository.GetAllSubjectsAsync().ConfigureAwait(false);
+            var allSubjects = subjects.ToList();
+            _logger.LogInformation("Successfully retrieved {Count} subjects", allSubjects.Count);
+            return allSubjects;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error occurred while retrieving all subjects");
+            throw new SubjectServiceException("GetAllSubjects", "An error occurred while retrieving subjects", ex);
+        }
     }
 
     /// <summary>
@@ -50,146 +56,195 @@ public class SubjectService : ISubjectService
     public async Task<Subject?> GetSubjectByIdAsync(int id)
     {
         _logger.LogInformation("Retrieving subject by ID: {Id}", id);
-        var subject = await _subjectRepository.GetSubjectByIdAsync(id).ConfigureAwait(false);
-        if (subject == null)
+        try
         {
-            _logger.LogWarning("Subject with ID {Id} not found", id);
-        }
-        else
-        {
+            var subject = await _subjectRepository.GetSubjectByIdAsync(id).ConfigureAwait(false);
+            if (subject == null)
+            {
+                _logger.LogWarning("Subject with ID {Id} not found", id);
+                throw new SubjectNotFoundException(id);
+            }
+
             _logger.LogInformation("Successfully retrieved subject with ID: {Id}", id);
+            return subject;
         }
-        return subject;
+        catch (SubjectNotFoundException)
+        {
+            // Re-throw the specific exception for the controller to handle
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error occurred while retrieving subject with ID {Id}", id);
+            throw new SubjectServiceException($"GetSubjectById: {id}", "An error occurred while retrieving the subject", ex);
+        }
     }
+
+    #endregion
+
+    #region Create Operations
 
     /// <summary>
     /// Creates a new subject record
     /// </summary>
     /// <param name="createSubject">The subject data to create</param>
-    /// <param name="user">The claims principal of the current user</param>
     /// <returns>A tuple containing the created subject (if successful) and an error message (if any)</returns>
-    public async Task<(Subject?, string?)> CreateSubjectAsync(CreateSubject createSubject, ClaimsPrincipal user)
+    public async Task<(Subject?, string?)> CreateSubjectAsync(CreateSubject createSubject)
     {
         _logger.LogInformation("Creating new subject with name: {SubjectName}", createSubject.Name);
 
-        if (string.IsNullOrWhiteSpace(createSubject.Name))
+        try
         {
-            _logger.LogWarning("Subject creation failed: Subject name is required");
-            return (null, "Subject name is required");
+            if (string.IsNullOrWhiteSpace(createSubject.Name))
+            {
+                _logger.LogWarning("Subject creation failed: Subject name is required");
+                return (null, "Subject name is required");
+            }
+
+            if (string.IsNullOrWhiteSpace(createSubject.Code))
+            {
+                _logger.LogWarning("Subject creation failed: Subject code is required");
+                return (null, "Subject code is required");
+            }
+
+            // Check if a subject with the same code already exists
+            var existingSubject = await _subjectRepository.GetSubjectByCodeAsync(createSubject.Code);
+            if (existingSubject != null)
+            {
+                _logger.LogWarning("Subject creation failed: Subject with code {Code} already exists", createSubject.Code);
+                return (null, $"A subject with code {createSubject.Code} already exists");
+            }
+
+            var subject = new Subject
+            {
+                Name = createSubject.Name,
+                Code = createSubject.Code,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+
+            var createdSubject = await _subjectRepository.CreateSubject(subject).ConfigureAwait(false);
+            await _subjectRepository.SaveChangesAsync().ConfigureAwait(false);
+
+            _logger.LogInformation("Successfully created subject with ID: {Id} and name: {SubjectName}", createdSubject.Id, createdSubject.Name);
+            return (createdSubject, null);
         }
-
-        if (string.IsNullOrWhiteSpace(createSubject.Code))
+        catch (Exception ex)
         {
-            _logger.LogWarning("Subject creation failed: Subject code is required");
-            return (null, "Subject code is required");
+            _logger.LogError(ex, "Error occurred while creating subject with name: {SubjectName}", createSubject.Name);
+            throw new SubjectServiceException("CreateSubject", "An error occurred while creating the subject", ex);
         }
-
-        var userId = await _userContextService.GetUserIdAsync(user).ConfigureAwait(false);
-        if (string.IsNullOrEmpty(userId))
-        {
-            _logger.LogWarning("Subject creation failed: User ID not found in token");
-            return (null, "User ID not found in token");
-        }
-
-        var subject = new Subject
-        {
-            Name = createSubject.Name,
-            Code = createSubject.Code,
-            CreatedAt = DateTime.UtcNow,
-            UpdatedAt = DateTime.UtcNow
-        };
-
-        var createdSubject = await _subjectRepository.CreateSubject(subject).ConfigureAwait(false);
-        await _subjectRepository.SaveChangesAsync().ConfigureAwait(false);
-
-        _logger.LogInformation("Successfully created subject with ID: {Id} and name: {SubjectName}", createdSubject.Id, createdSubject.Name);
-        return (createdSubject, null);
     }
+
+    #endregion
+
+    #region Update Operations
 
     /// <summary>
     /// Updates an existing subject record
     /// </summary>
     /// <param name="id">The ID of the subject to update</param>
     /// <param name="updateSubject">The updated subject data</param>
-    /// <param name="user">The claims principal of the current user</param>
     /// <returns>A tuple containing the updated subject (if successful) and an error message (if any)</returns>
-    public async Task<(Subject?, string?)> UpdateSubjectAsync(int id, UpdateSubject updateSubject, ClaimsPrincipal user)
+    public async Task<(Subject?, string?)> UpdateSubjectAsync(int id, UpdateSubject updateSubject)
     {
         _logger.LogInformation("Updating subject with ID: {Id}", id);
         
-        // Additional validation for defense in depth
-        if (updateSubject == null)
+        try
         {
-            _logger.LogWarning("Subject update failed: Update subject data is required");
-            return (null, "Update subject data is required");
-        }
 
-        var userId = await _userContextService.GetUserIdAsync(user).ConfigureAwait(false);
-        if (string.IsNullOrEmpty(userId))
+            var existingSubject = await _subjectRepository.GetSubjectByIdAsync(id).ConfigureAwait(false);
+            if (existingSubject == null)
+            {
+                _logger.LogWarning("Subject update failed: Subject with ID {Id} not found", id);
+                throw new SubjectNotFoundException(id);
+            }
+
+            // Check if the new code already exists for another subject
+            if (!string.IsNullOrEmpty(updateSubject.Code) && !updateSubject.Code.Equals(existingSubject.Code))
+            {
+                var duplicateSubject = await _subjectRepository.GetSubjectByCodeAsync(updateSubject.Code);
+                if (duplicateSubject != null && duplicateSubject.Id != id)
+                {
+                    _logger.LogWarning("Subject update failed: Subject with code {Code} already exists", updateSubject.Code);
+                    return (null, $"A subject with code {updateSubject.Code} already exists");
+                }
+            }
+
+            if (!string.IsNullOrEmpty(updateSubject.Name))
+            {
+                existingSubject.Name = updateSubject.Name;
+            }
+
+            if (!string.IsNullOrEmpty(updateSubject.Code))
+            {
+                existingSubject.Code = updateSubject.Code;
+            }
+
+            existingSubject.UpdatedAt = DateTime.UtcNow;
+
+            var updatedSubject = await _subjectRepository.UpdateSubjectAsync(existingSubject).ConfigureAwait(false);
+            await _subjectRepository.SaveChangesAsync().ConfigureAwait(false);
+
+            _logger.LogInformation("Successfully updated subject with ID: {Id}", id);
+            return (updatedSubject, null);
+        }
+        catch (SubjectNotFoundException)
         {
-            _logger.LogWarning("Subject update failed: User ID not found in token");
-            return (null, "User ID not found in token");
+            // Re-throw the specific exception for the controller to handle
+            throw;
         }
-
-        var existingSubject = await _subjectRepository.GetSubjectByIdAsync(id).ConfigureAwait(false);
-        if (existingSubject == null)
+        catch (Exception ex)
         {
-            _logger.LogWarning("Subject update failed: Subject with ID {Id} not found", id);
-            return (null, "Subject not found");
+            _logger.LogError(ex, "Error occurred while updating subject with ID {Id}", id);
+            throw new SubjectServiceException($"UpdateSubject: {id}", "An error occurred while updating the subject", ex);
         }
-
-        if (!string.IsNullOrEmpty(updateSubject.Name))
-        {
-            existingSubject.Name = updateSubject.Name;
-        }
-
-        if (!string.IsNullOrEmpty(updateSubject.Code))
-        {
-            existingSubject.Code = updateSubject.Code;
-        }
-
-        existingSubject.UpdatedAt = DateTime.UtcNow;
-
-        var updatedSubject = await _subjectRepository.UpdateSubjectAsync(existingSubject).ConfigureAwait(false);
-        await _subjectRepository.SaveChangesAsync().ConfigureAwait(false);
-
-        _logger.LogInformation("Successfully updated subject with ID: {Id}", id);
-        return (updatedSubject, null);
     }
+
+    #endregion
+
+    #region Delete Operations
 
     /// <summary>
     /// Deletes a subject by ID
     /// </summary>
     /// <param name="id">The ID of the subject to delete</param>
-    /// <param name="user">The claims principal of the current user</param>
     /// <returns>An error message if deletion fails, null otherwise</returns>
-    public async Task<string?> DeleteSubjectAsync(int id, ClaimsPrincipal user)
+    public async Task<string?> DeleteSubjectAsync(int id)
     {
         _logger.LogInformation("Deleting subject with ID: {Id}", id);
         
-        var userId = await _userContextService.GetUserIdAsync(user).ConfigureAwait(false);
-        if (string.IsNullOrEmpty(userId))
+        try
         {
-            _logger.LogWarning("Subject deletion failed: User ID not found in token");
-            return "User ID not found in token";
-        }
+            var existingSubject = await _subjectRepository.GetSubjectByIdAsync(id).ConfigureAwait(false);
+            if (existingSubject == null)
+            {
+                _logger.LogWarning("Subject deletion failed: Subject with ID {Id} not found", id);
+                throw new SubjectNotFoundException(id);
+            }
 
-        var existingSubject = await _subjectRepository.GetSubjectByIdAsync(id).ConfigureAwait(false);
-        if (existingSubject == null)
+            var result = await _subjectRepository.DeleteSubjectAsync(id).ConfigureAwait(false);
+            if (!result)
+            {
+                _logger.LogError("Subject deletion failed: Failed to delete subject with ID {Id}", id);
+                return "Failed to delete subject";
+            }
+
+            await _subjectRepository.SaveChangesAsync().ConfigureAwait(false);
+            _logger.LogInformation("Successfully deleted subject with ID: {Id}", id);
+            return null;
+        }
+        catch (SubjectNotFoundException)
         {
-            _logger.LogWarning("Subject deletion failed: Subject with ID {Id} not found", id);
-            return "Subject not found";
+            // Re-throw the specific exception for the controller to handle
+            throw;
         }
-
-        var result = await _subjectRepository.DeleteSubjectAsync(id).ConfigureAwait(false);
-        if (!result)
+        catch (Exception ex)
         {
-            _logger.LogError("Subject deletion failed: Failed to delete subject with ID {Id}", id);
-            return "Failed to delete subject";
+            _logger.LogError(ex, "Error occurred while deleting subject with ID {Id}", id);
+            throw new SubjectServiceException($"DeleteSubject: {id}", "An error occurred while deleting the subject", ex);
         }
-
-        await _subjectRepository.SaveChangesAsync().ConfigureAwait(false);
-        _logger.LogInformation("Successfully deleted subject with ID: {Id}", id);
-        return null;
     }
+
+    #endregion
 }
