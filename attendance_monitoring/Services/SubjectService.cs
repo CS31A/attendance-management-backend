@@ -3,6 +3,7 @@ using attendance_monitoring.Exceptions;
 using attendance_monitoring.IRepository;
 using attendance_monitoring.IServices;
 using attendance_monitoring.Models.DTO.Request;
+using Microsoft.EntityFrameworkCore;
 
 namespace attendance_monitoring.Services;
 
@@ -107,7 +108,7 @@ public class SubjectService : ISubjectService
                 return (null, "Subject code is required");
             }
 
-            // Check if a subject with the same code already exists
+            // Check if a subject with the same code already exists (first check)
             var existingSubject = await _subjectRepository.GetSubjectByCodeAsync(createSubject.Code);
             if (existingSubject != null)
             {
@@ -123,11 +124,19 @@ public class SubjectService : ISubjectService
                 UpdatedAt = DateTime.UtcNow
             };
 
-            var createdSubject = await _subjectRepository.CreateSubject(subject).ConfigureAwait(false);
-            await _subjectRepository.SaveChangesAsync().ConfigureAwait(false);
+            try
+            {
+                var createdSubject = await _subjectRepository.CreateSubject(subject).ConfigureAwait(false);
+                await _subjectRepository.SaveChangesAsync().ConfigureAwait(false);
 
-            _logger.LogInformation("Successfully created subject with ID: {Id} and name: {SubjectName}", createdSubject.Id, createdSubject.Name);
-            return (createdSubject, null);
+                _logger.LogInformation("Successfully created subject with ID: {Id} and name: {SubjectName}", createdSubject.Id, createdSubject.Name);
+                return (createdSubject, null);
+            }
+            catch (DbUpdateException ex) when (IsUniqueConstraintViolation(ex))
+            {
+                _logger.LogWarning("Subject creation failed due to unique constraint violation: Subject with code {Code} already exists", createSubject.Code);
+                return (null, $"A subject with code {createSubject.Code} already exists");
+            }
         }
         catch (Exception ex)
         {
@@ -160,7 +169,7 @@ public class SubjectService : ISubjectService
                 throw new SubjectNotFoundException(id);
             }
 
-            // Check if the new code already exists for another subject
+            // Check if the new code already exists for another subject (first check)
             if (!string.IsNullOrEmpty(updateSubject.Code) && !updateSubject.Code.Equals(existingSubject.Code))
             {
                 var duplicateSubject = await _subjectRepository.GetSubjectByCodeAsync(updateSubject.Code);
@@ -183,11 +192,25 @@ public class SubjectService : ISubjectService
 
             existingSubject.UpdatedAt = DateTime.UtcNow;
 
-            var updatedSubject = await _subjectRepository.UpdateSubjectAsync(existingSubject).ConfigureAwait(false);
-            await _subjectRepository.SaveChangesAsync().ConfigureAwait(false);
+            try
+            {
+                var updatedSubject = await _subjectRepository.UpdateSubjectAsync(existingSubject).ConfigureAwait(false);
+                var rowsAffected = await _subjectRepository.SaveChangesAsync().ConfigureAwait(false);
+                
+                if (rowsAffected == 0)
+                {
+                    _logger.LogWarning("Subject update failed: Subject with ID {Id} may have been updated by another process", id);
+                    return (null, "Subject may have been updated by another process. Please try again.");
+                }
 
-            _logger.LogInformation("Successfully updated subject with ID: {Id}", id);
-            return (updatedSubject, null);
+                _logger.LogInformation("Successfully updated subject with ID: {Id}", id);
+                return (updatedSubject, null);
+            }
+            catch (DbUpdateException ex) when (IsUniqueConstraintViolation(ex))
+            {
+                _logger.LogWarning("Subject update failed due to unique constraint violation: Subject with code {Code} already exists", updateSubject.Code);
+                return (null, $"A subject with code {updateSubject.Code} already exists");
+            }
         }
         catch (SubjectNotFoundException)
         {
@@ -230,7 +253,12 @@ public class SubjectService : ISubjectService
                 return "Failed to delete subject";
             }
 
-            await _subjectRepository.SaveChangesAsync().ConfigureAwait(false);
+            var rowsAffected = await _subjectRepository.SaveChangesAsync().ConfigureAwait(false);
+            if (rowsAffected == 0)
+            {
+                _logger.LogWarning("Subject deletion failed: Subject with ID {Id} may have been deleted by another process", id);
+                return "Subject may have been deleted by another process.";
+            }
             _logger.LogInformation("Successfully deleted subject with ID: {Id}", id);
             return null;
         }
@@ -244,6 +272,30 @@ public class SubjectService : ISubjectService
             _logger.LogError(ex, "Error occurred while deleting subject with ID {Id}", id);
             throw new SubjectServiceException($"DeleteSubject: {id}", "An error occurred while deleting the subject", ex);
         }
+    }
+
+    #endregion
+
+    #region Private Helper Methods
+
+    /// <summary>
+    /// Determines if a DbUpdateException is caused by a unique constraint violation
+    /// </summary>
+    /// <param name="ex">The DbUpdateException to check</param>
+    /// <returns>True if the exception is caused by a unique constraint violation</returns>
+    private static bool IsUniqueConstraintViolation(DbUpdateException ex)
+    {
+        // Check for SQL Server unique constraint violations
+        var innerException = ex.InnerException;
+        if (innerException == null) return false;
+        var message = innerException.Message.ToLowerInvariant();
+        
+        return message.Contains("unique constraint") ||
+               message.Contains("duplicate key") ||
+               message.Contains("cannot insert duplicate key") ||
+               message.Contains("unique index") ||
+               message.Contains("violation of unique key constraint");
+
     }
 
     #endregion

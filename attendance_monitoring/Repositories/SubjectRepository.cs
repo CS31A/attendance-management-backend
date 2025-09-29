@@ -27,13 +27,7 @@ public class SubjectRepository(ApplicationDbContext context) : ISubjectRepositor
     {
         subject.UpdatedAt = DateTime.UtcNow;
         context.Subjects.Update(subject);
-        var rowsAffected = await context.SaveChangesAsync().ConfigureAwait(false);
-        
-        if (rowsAffected == 0)
-        {
-            throw new ArgumentException($"Subject with ID {subject.Id} does not exist or may have been updated by another process.");
-        }
-        
+        await context.SaveChangesAsync().ConfigureAwait(false);
         return subject;
     }
 
@@ -43,7 +37,6 @@ public class SubjectRepository(ApplicationDbContext context) : ISubjectRepositor
         if (subject == null) return false;
         
         context.Subjects.Remove(subject);
-        await context.SaveChangesAsync().ConfigureAwait(false);
         return true;
     }
 
