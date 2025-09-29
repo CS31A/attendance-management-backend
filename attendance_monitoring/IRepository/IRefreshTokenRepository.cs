@@ -43,4 +43,21 @@ public interface IRefreshTokenRepository
     /// <param name="tokenHash">The hash of the refresh token.</param>
     /// <returns>True if the refresh token exists; otherwise, false.</returns>
     Task<bool> ExistsAsync(string tokenHash);
+
+    /// <summary>
+    /// Gets expired refresh tokens for cleanup in batches.
+    /// </summary>
+    /// <param name="currentDateTime">Current UTC date time for comparison.</param>
+    /// <param name="batchSize">Number of tokens to retrieve in this batch.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>List of expired refresh tokens.</returns>
+    Task<List<RefreshToken>> GetExpiredTokensAsync(DateTime currentDateTime, int batchSize, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Removes multiple refresh tokens efficiently.
+    /// </summary>
+    /// <param name="tokens">The refresh tokens to remove.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>Number of tokens removed.</returns>
+    Task<int> RemoveTokensAsync(IEnumerable<RefreshToken> tokens, CancellationToken cancellationToken = default);
 }

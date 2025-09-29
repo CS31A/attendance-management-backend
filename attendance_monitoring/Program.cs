@@ -155,6 +155,7 @@ builder.Services.AddCors(options =>
 
 // Register background services
 builder.Services.AddHostedService<BlacklistedTokenCleanupService>();
+builder.Services.AddHostedService<TokenCleanupBackgroundService>();
 
 builder.Logging.ClearProviders();
 builder.Logging.AddConsole();
