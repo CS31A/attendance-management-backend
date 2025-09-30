@@ -150,7 +150,8 @@ namespace attendance_monitoring.Controllers
                 HttpOnly = true,
                 Secure = true, // Set to true in production with HTTPS
                 // SameSite = SameSiteMode.Strict,
-                SameSite = SameSiteMode.Lax,
+                //SameSite = SameSiteMode.Lax,
+                SameSite = SameSiteMode.None,
                 Expires = DateTime.UtcNow.AddMinutes(accessTokenExpirationMinutes)
             };
 
@@ -160,8 +161,9 @@ namespace attendance_monitoring.Controllers
             {
                 HttpOnly = true,
                 Secure = true, // Set to true in production with HTTPS
-                // SameSite = SameSiteMode.Strict,
-                SameSite = SameSiteMode.Lax,
+                               // SameSite = SameSiteMode.Strict,
+                               //SameSite = SameSiteMode.Lax,
+                SameSite = SameSiteMode.None,
                 Expires = DateTime.UtcNow.AddDays(refreshTokenExpirationDays)
             };
 
@@ -237,7 +239,8 @@ namespace attendance_monitoring.Controllers
             // Get old access token from cookie
             var oldAccessToken = Request.Cookies.TryGetValue("accessToken", out var accessToken) ? accessToken : null;
 
-            var refreshTokenRequest = new RefreshTokenRequestDto { 
+            var refreshTokenRequest = new RefreshTokenRequestDto
+            {
                 RefreshToken = refreshToken,
                 OldAccessToken = oldAccessToken
             };
@@ -257,7 +260,8 @@ namespace attendance_monitoring.Controllers
             {
                 HttpOnly = true,
                 Secure = true, // Set to true in production with HTTPS
-                SameSite = SameSiteMode.Lax, // Changed this from strict breh
+                               // SameSite = SameSiteMode.Lax, // Changed this from strict breh
+                SameSite = SameSiteMode.None,
                 Expires = DateTime.UtcNow.AddMinutes(accessTokenExpirationMinutes)
             };
 
@@ -267,7 +271,8 @@ namespace attendance_monitoring.Controllers
             {
                 HttpOnly = true,
                 Secure = true, // Set to true in production with HTTPS
-                SameSite = SameSiteMode.Lax,
+                //SameSite = SameSiteMode.Lax,
+                SameSite = SameSiteMode.None,
                 Expires = DateTime.UtcNow.AddDays(refreshTokenExpirationDays)
             };
 
