@@ -37,7 +37,7 @@ public class CourseController(ICourseService courseService, ILogger<CourseContro
     /// <response code="200">Returns the requested course</response>
     /// <response code="404"> not found</response>
     // GET: api/Course/5
-    [HttpGet("{id}")]
+    [HttpGet("{id:int}")]
     public async Task<ActionResult<Course>> GetCourse(int id)
     {
         logger.LogInformation("Getting course with ID: {Id}", id);
