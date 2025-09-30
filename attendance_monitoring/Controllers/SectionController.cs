@@ -63,9 +63,7 @@ namespace attendance_monitoring.Controllers
             try
             {
                 if (!ModelState.IsValid)
-                {
                     return BadRequest(ModelState);
-                }
 
                 var section = new Section
                 {
@@ -95,9 +93,7 @@ namespace attendance_monitoring.Controllers
             try
             {
                 if (!ModelState.IsValid)
-                {
                     return BadRequest(ModelState);
-                }
 
                 var section = new Section
                 {

@@ -142,8 +142,8 @@ namespace attendance_monitoring.Controllers
             }
 
             // Set HTTP-only cookies for access and refresh tokens
-            var accessTokenExpirationMinutes = configuration.GetValue<int>("CookieSettings:AccessTokenExpirationMinutes", 15);
-            var refreshTokenExpirationDays = configuration.GetValue<int>("CookieSettings:RefreshTokenExpirationDays", 7);
+            var accessTokenExpirationMinutes = configuration.GetValue("CookieSettings:AccessTokenExpirationMinutes", 15);
+            var refreshTokenExpirationDays = configuration.GetValue("CookieSettings:RefreshTokenExpirationDays", 7);
 
             var cookieOptions = new CookieOptions
             {
@@ -253,8 +253,8 @@ namespace attendance_monitoring.Controllers
             }
 
             // Update HTTP-only cookies with new tokens
-            var accessTokenExpirationMinutes = configuration.GetValue<int>("CookieSettings:AccessTokenExpirationMinutes", 15);
-            var refreshTokenExpirationDays = configuration.GetValue<int>("CookieSettings:RefreshTokenExpirationDays", 7);
+            var accessTokenExpirationMinutes = configuration.GetValue("CookieSettings:AccessTokenExpirationMinutes", 15);
+            var refreshTokenExpirationDays = configuration.GetValue("CookieSettings:RefreshTokenExpirationDays", 7);
 
             var cookieOptions = new CookieOptions
             {
