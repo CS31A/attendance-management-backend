@@ -210,33 +210,21 @@ namespace attendance_monitoring.Services
                     // Extract jti and ValidTo only after successful validation
                     var jti = claimsPrincipal.FindFirst("jti")?.Value;
                     var expiresAt = validatedToken.ValidTo;
-                    var sub = claimsPrincipal.FindFirst("sub")?.Value;
-
+                    // var sub = claimsPrincipal.FindFirst("sub")?.Value;
+                    var userIdClaim = claimsPrincipal.FindFirst(ClaimTypes.NameIdentifier)?.Value;
                     // Only blacklist if all validation checks pass:
                     // 1. Token is issued by us (signature valid, issuer/audience match) - already validated by ValidateToken
-                    // 2. Subject (sub) matches the user from the refresh token
+                    // 2. Subject (userIdClaim) matches the user from the refresh token
                     // 3. It has not expired yet
                     // 4. jti is not null or empty
-                    
-                    // Testing
-                    // if (!string.IsNullOrEmpty(jti) && sub == user.Id && expiresAt > DateTime.UtcNow)
-                    // {
-                    //     await BlacklistTokenAsync(jti, expiresAt);
-                    //     logger.LogInformation("Old access token blacklisted for user {UserId}.");
-                    // }
-                    // else if (!string.IsNullOrEmpty(jti))
-                    // {
-                    //     logger.LogWarning("Old access token not blacklisted - validation failed for user {UserId}.");
-                    // }
-                    // else if (jti == null)
-                    // {
-                    //     logger.LogWarning("Old access token not blacklisted - token has no JTI for user {UserId}.");
-                    // }
                     
                     // Simplified switch expression for better readability
                     switch (jti)
                     {
-                        case not null when sub == user.Id && expiresAt > DateTime.UtcNow:
+                        // Used NameIdentifier for this validation for now because of sub claim issue in aspnetcore
+                        // I hate jwt
+                        // case not null when sub == user.Id && expiresAt > DateTime.UtcNow:
+                        case not null when userIdClaim == user.Id && expiresAt > DateTime.UtcNow:
                             await BlacklistTokenAsync(jti, expiresAt).ConfigureAwait(false);
                             logger.LogInformation("Old access token blacklisted for user {UserId}.", user.Id);
                             break;
@@ -360,7 +348,7 @@ namespace attendance_monitoring.Services
         /// </summary>
         /// <param name="jti">The JTI of the token to blacklist</param>
         /// <param name="expiresAt">The expiration time of the token</param>
-        private async Task BlacklistTokenAsync(string jti, DateTime expiresAt)
+        public async Task BlacklistTokenAsync(string jti, DateTime expiresAt)
         {
             var blacklistedToken = new BlacklistedToken
             {
