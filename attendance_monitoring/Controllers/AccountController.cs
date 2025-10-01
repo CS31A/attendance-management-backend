@@ -399,7 +399,7 @@ namespace attendance_monitoring.Controllers
         /// <returns>Logout status</returns>
         /// <response code="200">User logged out successfully</response>
         [HttpPost("web/logout")]
-        [Authorize]
+        [Authorize(Policy = "UserPolicy")]
         [ProducesResponseType(typeof(WebLoginResponseDto), StatusCodes.Status200OK)]
         public ActionResult<WebLoginResponseDto> WebLogout()
         {
