@@ -394,20 +394,58 @@ namespace attendance_monitoring.Controllers
 
         #region POST: api/account/web/logout
         /// <summary>
-        /// Logout user by clearing HTTP-only cookies
+        /// Logout user by clearing HTTP-only cookies and blacklisting the access token
         /// </summary>
         /// <returns>Logout status</returns>
         /// <response code="200">User logged out successfully</response>
         [HttpPost("web/logout")]
         [Authorize(Policy = "UserPolicy")]
         [ProducesResponseType(typeof(WebLoginResponseDto), StatusCodes.Status200OK)]
-        public ActionResult<WebLoginResponseDto> WebLogout()
+        public async Task<ActionResult<WebLoginResponseDto>> WebLogout()
         {
+            var userId = GetUserId(User);
+            if (string.IsNullOrEmpty(userId))
+            {
+                logger.LogWarning("Logout failed: User not found from claims.");
+                return BadRequest(new WebLoginResponseDto { Success = false, Message = "User not found" });
+            }
+
+            // Get access token from cookie for blacklisting
+            if (Request.Cookies.TryGetValue("accessToken", out var accessToken) && !string.IsNullOrEmpty(accessToken))
+            {
+                try
+                {
+                    // Extract JTI and expiration from the access token and blacklist it
+                    var tokenHandler = new System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler();
+                    var jsonToken = tokenHandler.ReadJwtToken(accessToken);
+                    
+                    var jti = jsonToken.Claims.FirstOrDefault(c => c.Type == "jti")?.Value;
+                    var sub = jsonToken.Claims.FirstOrDefault(c => c.Type == "sub")?.Value;
+                    var expiresAt = jsonToken.ValidTo;
+
+                    // Only blacklist if token has JTI, belongs to current user, and hasn't expired
+                    if (!string.IsNullOrEmpty(jti) && sub == userId && expiresAt > DateTime.UtcNow)
+                    {
+                        await accountService.BlacklistTokenAsync(jti, expiresAt);
+                        logger.LogInformation("Access token blacklisted during logout for user {UserId}", userId);
+                    }
+                    else
+                    {
+                        logger.LogWarning("Access token not blacklisted during logout - validation failed for user {UserId}", userId);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    logger.LogWarning("Failed to blacklist access token during logout for user {UserId}: {Error}", userId, ex.Message);
+                    // Continue with logout even if blacklisting fails
+                }
+            }
+
             // Clear cookies
             Response.Cookies.Delete("accessToken");
             Response.Cookies.Delete("refreshToken");
 
-            logger.LogInformation("User logged out successfully");
+            logger.LogInformation("User logged out successfully: {UserId}", userId);
             return Ok(new WebLoginResponseDto { Success = true, Message = "Logged out successfully" });
         }
         #endregion
