@@ -450,6 +450,52 @@ namespace attendance_monitoring.Controllers
         }
         #endregion
 
+        #region POST: api/account/logout
+        /// <summary>
+        /// Logout user by blacklisting the access token and revoking all refresh tokens
+        /// </summary>
+        /// <returns>Logout status</returns>
+        /// <response code="200">User logged out successfully</response>
+        /// <response code="401">User not authenticated</response>
+        [HttpPost("logout")]
+        [Authorize]
+        [ProducesResponseType(typeof(RevokeResponseDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(RevokeResponseDto), StatusCodes.Status401Unauthorized)]
+        public async Task<ActionResult<RevokeResponseDto>> Logout()
+        {
+            logger.LogInformation("JWT logout attempt.");
+
+            var userId = GetUserId(User);
+            if (string.IsNullOrEmpty(userId))
+            {
+                logger.LogWarning("Logout failed: User not found from claims.");
+                return Unauthorized(new RevokeResponseDto { Success = false, Message = "User not found" });
+            }
+
+            // Get access token from Authorization header
+            string? accessToken = null;
+            if (Request.Headers.TryGetValue("Authorization", out var authHeader))
+            {
+                var headerValue = authHeader.ToString();
+                if (headerValue.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+                {
+                    accessToken = headerValue["Bearer ".Length..].Trim();
+                }
+            }
+
+            var (response, error) = await accountService.LogoutAsync(userId, accessToken);
+
+            if (response == null)
+            {
+                logger.LogWarning("Logout failed for user {UserId}: {Error}", userId, error);
+                return Unauthorized(new RevokeResponseDto { Success = false, Message = error ?? "Logout failed" });
+            }
+
+            logger.LogInformation("User logged out successfully: {UserId}", userId);
+            return Ok(new RevokeResponseDto { Success = true, Message = response.Message });
+        }
+        #endregion
+
         #endregion
 
         #region Private Methods

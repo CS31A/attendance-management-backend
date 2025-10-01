@@ -110,7 +110,7 @@ namespace attendance_monitoring.Services
             logger.LogInformation("Login attempt for identifier: {Identifier}", loginDto.Username);
 
             // Check if the identifier is an email or username
-            IdentityUser? user = null;
+            IdentityUser? user;
             if (loginDto.Username.Contains('@'))
             {
                 // Treat as email
@@ -144,7 +144,7 @@ namespace attendance_monitoring.Services
             }
 
             var accessToken = await GenerateJwtToken(user).ConfigureAwait(false);
-            var (refreshTokenEntity, refreshToken) = await refreshTokenService.CreateRefreshTokenAsync(user.Id).ConfigureAwait(false);
+            var (_, refreshToken) = await refreshTokenService.CreateRefreshTokenAsync(user.Id).ConfigureAwait(false);
 
             logger.LogInformation("User {Username} logged in successfully", user.UserName);
             var tokenResponse = new TokenResponseDto
@@ -223,7 +223,7 @@ namespace attendance_monitoring.Services
                     {
                         // Used NameIdentifier for this validation for now because of sub claim issue in aspnetcore
                         // I hate jwt
-                        // case not null when sub == user.Id && expiresAt > DateTime.UtcNow:
+                        // case not null when sub == user.ID && expiresAt > DateTime.UtcNow:
                         case not null when userIdClaim == user.Id && expiresAt > DateTime.UtcNow:
                             await BlacklistTokenAsync(jti, expiresAt).ConfigureAwait(false);
                             logger.LogInformation("Old access token blacklisted for user {UserId}.", user.Id);
@@ -245,7 +245,7 @@ namespace attendance_monitoring.Services
                 }
             }
 
-            var (newRefreshTokenEntity, newRefreshToken) = await refreshTokenService.RotateRefreshTokenAsync(
+            var (_, newRefreshToken) = await refreshTokenService.RotateRefreshTokenAsync(
                 refreshTokenRequest.RefreshToken,
                 user.Id).ConfigureAwait(false);
 
@@ -303,6 +303,85 @@ namespace attendance_monitoring.Services
 
             logger.LogInformation("Refresh token revoked successfully for user {UserId}.", userId);
             var response = new RevokeResponseDto { Message = "Refresh token revoked successfully" };
+            return (response, null);
+        }
+
+        public async Task<(RevokeResponseDto?, string?)> LogoutAsync(string userId, string? accessToken)
+        {
+            logger.LogInformation("Logout attempt for user {UserId}.", userId);
+
+            // Blacklist the access token if provided
+            if (!string.IsNullOrEmpty(accessToken))
+            {
+                try
+                {
+                    var tokenHandler = new JwtSecurityTokenHandler();
+                    
+                    var issuer = configuration["AppSettings:Issuer"];
+                    var audience = configuration["AppSettings:Audience"];
+                    var tokenKey = configuration["AppSettings:Token"];
+                    
+                    if (string.IsNullOrEmpty(issuer) || string.IsNullOrEmpty(audience) || string.IsNullOrEmpty(tokenKey))
+                    {
+                        logger.LogWarning("Token validation failed: Missing configuration values for issuer, audience, or token key.");
+                        throw new InvalidOperationException("Token validation configuration is incomplete.");
+                    }
+                    
+                    var tokenValidationParameters = new TokenValidationParameters
+                    {
+                        ValidateIssuer = true,
+                        ValidateAudience = true,
+                        ValidateLifetime = true,
+                        ValidateIssuerSigningKey = true,
+                        ValidIssuer = issuer,
+                        ValidAudience = audience,
+                        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(tokenKey))
+                    };
+                    
+                    // Validate the token
+                    var claimsPrincipal = tokenHandler.ValidateToken(accessToken, tokenValidationParameters, out var validatedToken);
+                    
+                    var jti = claimsPrincipal.FindFirst("jti")?.Value;
+                    var expiresAt = validatedToken.ValidTo;
+                    var userIdClaim = claimsPrincipal.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+                    // Only blacklist if token is valid, has JTI, belongs to current user, and hasn't expired
+                    if (!string.IsNullOrEmpty(jti) && userIdClaim == userId && expiresAt > DateTime.UtcNow)
+                    {
+                        await BlacklistTokenAsync(jti, expiresAt).ConfigureAwait(false);
+                        logger.LogInformation("Access token blacklisted during logout for user {UserId}", userId);
+                    }
+                    else
+                    {
+                        logger.LogWarning("Access token not blacklisted during logout - validation failed for user {UserId}", userId);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    logger.LogWarning("Failed to validate and blacklist access token during logout for user {UserId}: {Error}", userId, ex.Message);
+                    // Continue
+                }
+            }
+
+            // Revoke all active refresh tokens for the user
+            var activeRefreshTokens = await context.RefreshTokens
+                .Where(rt => rt.UserId == userId && !rt.IsRevoked && rt.ExpiresAt > DateTime.UtcNow)
+                .ToListAsync().ConfigureAwait(false);
+
+            foreach (var token in activeRefreshTokens)
+            {
+                token.IsRevoked = true;
+                token.RevokedAt = DateTime.UtcNow;
+            }
+
+            if (activeRefreshTokens.Count > 0)
+            {
+                await context.SaveChangesAsync().ConfigureAwait(false);
+                logger.LogInformation("Revoked {TokenCount} active refresh tokens during logout for user {UserId}.", activeRefreshTokens.Count, userId);
+            }
+
+            logger.LogInformation("User logged out successfully: {UserId}", userId);
+            var response = new RevokeResponseDto { Message = "Logged out successfully" };
             return (response, null);
         }
         #endregion
