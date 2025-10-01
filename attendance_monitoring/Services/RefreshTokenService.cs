@@ -10,18 +10,16 @@ using Microsoft.Extensions.Logging;
 
 namespace attendance_monitoring.Services;
 
-public class RefreshTokenService : IRefreshTokenService
+public class RefreshTokenService(
+    IRefreshTokenRepository refreshTokenRepository,
+    UserManager<IdentityUser> userManager,
+    ILogger<RefreshTokenService> logger)
+    : IRefreshTokenService
 {
-    private readonly IRefreshTokenRepository _refreshTokenRepository;
-    private readonly UserManager<IdentityUser> _userManager;
-    private readonly ILogger<RefreshTokenService> _logger;
+    
+    private readonly UserManager<IdentityUser> _userManager = userManager;
 
-    public RefreshTokenService(IRefreshTokenRepository refreshTokenRepository, UserManager<IdentityUser> userManager, ILogger<RefreshTokenService> logger)
-    {
-        _refreshTokenRepository = refreshTokenRepository;
-        _userManager = userManager;
-        _logger = logger;
-    }
+    #region Token Generation Methods
 
     public Task<string> GenerateRefreshTokenAsync()
     {
@@ -52,15 +50,19 @@ public class RefreshTokenService : IRefreshTokenService
             IsRevoked = false
         };
 
-        await _refreshTokenRepository.CreateAsync(refreshTokenEntity).ConfigureAwait(false);
+        await refreshTokenRepository.CreateAsync(refreshTokenEntity).ConfigureAwait(false);
 
         return (refreshTokenEntity, refreshToken);
     }
 
+    #endregion
+
+    #region Token Validation Methods
+
     public async Task<(RefreshToken?, string?)> ValidateRefreshTokenAsync(string refreshToken)
     {
         var tokenHash = HashRefreshToken(refreshToken);
-        var storedToken = await _refreshTokenRepository.GetByTokenHashAsync(tokenHash).ConfigureAwait(false);
+        var storedToken = await refreshTokenRepository.GetByTokenHashAsync(tokenHash).ConfigureAwait(false);
 
         if (storedToken == null)
         {
@@ -83,20 +85,21 @@ public class RefreshTokenService : IRefreshTokenService
         return (storedToken, null);
     }
 
+    #endregion
+
+    #region Token Management Methods
+
     public async Task<bool> RevokeRefreshTokenAsync(string refreshToken, string userId)
     {
         var tokenHash = HashRefreshToken(refreshToken);
-        var storedToken = await _refreshTokenRepository.GetByTokenHashAsync(tokenHash).ConfigureAwait(false);
+        var storedToken = await refreshTokenRepository.GetByTokenHashAsync(tokenHash).ConfigureAwait(false);
 
-        if (storedToken != null && storedToken.UserId == userId)
-        {
-            storedToken.IsRevoked = true;
-            storedToken.RevokedAt = DateTime.UtcNow;
-            await _refreshTokenRepository.UpdateAsync(storedToken).ConfigureAwait(false);
-            return true;
-        }
+        if (storedToken == null || storedToken.UserId != userId) return false;
+        storedToken.IsRevoked = true;
+        storedToken.RevokedAt = DateTime.UtcNow;
+        await refreshTokenRepository.UpdateAsync(storedToken).ConfigureAwait(false);
+        return true;
 
-        return false;
     }
 
     public async Task<(RefreshToken?, string?)> RotateRefreshTokenAsync(string oldRefreshToken, string userId)
@@ -120,10 +123,14 @@ public class RefreshTokenService : IRefreshTokenService
         storedToken.ReplacedByTokenHash = newRefreshTokenEntity.TokenHash;
 
         // Update the old token
-        await _refreshTokenRepository.UpdateAsync(storedToken).ConfigureAwait(false);
+        await refreshTokenRepository.UpdateAsync(storedToken).ConfigureAwait(false);
 
         return (newRefreshTokenEntity, newRefreshToken);
     }
+
+    #endregion
+
+    #region Security Methods
 
     /// <summary>
     /// Revokes an entire token family when token reuse is detected
@@ -131,7 +138,7 @@ public class RefreshTokenService : IRefreshTokenService
     /// </summary>
     private async Task RevokeTokenFamilyAsync(RefreshToken compromisedToken)
     {
-        _logger.LogWarning("Security Alert: Refresh token reuse detected. Revoking entire token family for User ID: {UserId}", compromisedToken.UserId);
+        logger.LogWarning("Security Alert: Refresh token reuse detected. Revoking entire token family for User ID: {UserId}", compromisedToken.UserId);
         var tokensToRevoke = new List<RefreshToken>();
 
         // Find the root of the token family by following the chain backwards
@@ -145,7 +152,7 @@ public class RefreshTokenService : IRefreshTokenService
             tokensToRevoke.Add(currentToken);
 
             // Find the token that was replaced by this one (going backwards)
-            var previousToken = await _refreshTokenRepository.GetByReplacedTokenHashAsync(currentToken.TokenHash).ConfigureAwait(false);
+            var previousToken = await refreshTokenRepository.GetByReplacedTokenHashAsync(currentToken.TokenHash).ConfigureAwait(false);
             currentToken = previousToken;
         }
 
@@ -153,7 +160,7 @@ public class RefreshTokenService : IRefreshTokenService
         currentToken = compromisedToken;
         while (currentToken?.ReplacedByTokenHash != null && !visitedHashes.Contains(currentToken.ReplacedByTokenHash))
         {
-            var nextToken = await _refreshTokenRepository.GetByTokenHashAsync(currentToken.ReplacedByTokenHash).ConfigureAwait(false);
+            var nextToken = await refreshTokenRepository.GetByTokenHashAsync(currentToken.ReplacedByTokenHash).ConfigureAwait(false);
             if (nextToken != null && visitedHashes.Add(nextToken.TokenHash))
             {
                 tokensToRevoke.Add(nextToken);
@@ -171,7 +178,9 @@ public class RefreshTokenService : IRefreshTokenService
             if (token.IsRevoked) continue;
             token.IsRevoked = true;
             token.RevokedAt = DateTime.UtcNow;
-            await _refreshTokenRepository.UpdateAsync(token).ConfigureAwait(false);
+            await refreshTokenRepository.UpdateAsync(token).ConfigureAwait(false);
         }
     }
+
+    #endregion
 }
