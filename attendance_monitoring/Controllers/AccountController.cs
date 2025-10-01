@@ -1,9 +1,11 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
+using System.Text;
 using attendance_monitoring.Models.DTO;
 using attendance_monitoring.IServices;
 using attendance_monitoring.Models.DTO.Response;
+using Microsoft.IdentityModel.Tokens;
 
 namespace attendance_monitoring.Controllers
 {
@@ -417,14 +419,38 @@ namespace attendance_monitoring.Controllers
                 {
                     // Extract JTI and expiration from the access token and blacklist it
                     var tokenHandler = new System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler();
-                    var jsonToken = tokenHandler.ReadJwtToken(accessToken);
                     
-                    var jti = jsonToken.Claims.FirstOrDefault(c => c.Type == "jti")?.Value;
-                    var sub = jsonToken.Claims.FirstOrDefault(c => c.Type == "sub")?.Value;
-                    var expiresAt = jsonToken.ValidTo;
+                    var issuer = configuration["AppSettings:Issuer"];
+                    var audience = configuration["AppSettings:Audience"];
+                    var tokenKey = configuration["AppSettings:Token"];
+                    
+                    if (string.IsNullOrEmpty(issuer) || string.IsNullOrEmpty(audience) || string.IsNullOrEmpty(tokenKey))
+                    {
+                        logger.LogWarning("Token validation failed: Missing configuration values for issuer, audience, or token key.");
+                        throw new InvalidOperationException("Token validation configuration is incomplete.");
+                    }
+                    
+                    var tokenValidationParameters = new TokenValidationParameters
+                    {
+                        ValidateIssuer = true,
+                        ValidateAudience = true,
+                        ValidateLifetime = true,
+                        ValidateIssuerSigningKey = true,
+                        ValidIssuer = issuer,
+                        ValidAudience = audience,
+                        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(tokenKey))
+                    };
+                    
+                    // Validate the token
+                    var claimsPrincipal = tokenHandler.ValidateToken(accessToken, tokenValidationParameters, out var validatedToken);
+                    
+                    // Extract jti and ValidTo only after successful validation
+                    var jti = claimsPrincipal.FindFirst("jti")?.Value;
+                    var expiresAt = validatedToken.ValidTo;
+                    var userIdClaim = claimsPrincipal.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
-                    // Only blacklist if token has JTI, belongs to current user, and hasn't expired
-                    if (!string.IsNullOrEmpty(jti) && sub == userId && expiresAt > DateTime.UtcNow)
+                    // Only blacklist if token is valid, has JTI, belongs to current user, and hasn't expired
+                    if (!string.IsNullOrEmpty(jti) && userIdClaim == userId && expiresAt > DateTime.UtcNow)
                     {
                         await accountService.BlacklistTokenAsync(jti, expiresAt);
                         logger.LogInformation("Access token blacklisted during logout for user {UserId}", userId);
@@ -436,7 +462,7 @@ namespace attendance_monitoring.Controllers
                 }
                 catch (Exception ex)
                 {
-                    logger.LogWarning("Failed to blacklist access token during logout for user {UserId}: {Error}", userId, ex.Message);
+                    logger.LogWarning("Failed to validate and blacklist access token during logout for user {UserId}: {Error}", userId, ex.Message);
                     // Continue with logout even if blacklisting fails
                 }
             }
