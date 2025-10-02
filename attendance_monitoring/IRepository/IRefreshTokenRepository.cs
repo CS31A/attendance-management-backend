@@ -43,4 +43,10 @@ public interface IRefreshTokenRepository
     /// <param name="tokenHash">The hash of the refresh token.</param>
     /// <returns>True if the refresh token exists; otherwise, false.</returns>
     Task<bool> ExistsAsync(string tokenHash);
+
+    /// <summary>
+    /// Saves changes to the database.
+    /// </summary>
+    /// <returns>The number of state entries written to the database.</returns>
+    Task<int> SaveChangesAsync();
 }

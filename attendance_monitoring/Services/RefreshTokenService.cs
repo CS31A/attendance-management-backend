@@ -51,6 +51,7 @@ public class RefreshTokenService(
         };
 
         await refreshTokenRepository.CreateAsync(refreshTokenEntity).ConfigureAwait(false);
+        await refreshTokenRepository.SaveChangesAsync().ConfigureAwait(false);
 
         return (refreshTokenEntity, refreshToken);
     }
@@ -98,6 +99,7 @@ public class RefreshTokenService(
         storedToken.IsRevoked = true;
         storedToken.RevokedAt = DateTime.UtcNow;
         await refreshTokenRepository.UpdateAsync(storedToken).ConfigureAwait(false);
+        await refreshTokenRepository.SaveChangesAsync().ConfigureAwait(false);
         return true;
 
     }
@@ -124,6 +126,7 @@ public class RefreshTokenService(
 
         // Update the old token
         await refreshTokenRepository.UpdateAsync(storedToken).ConfigureAwait(false);
+        await refreshTokenRepository.SaveChangesAsync().ConfigureAwait(false);
 
         return (newRefreshTokenEntity, newRefreshToken);
     }
@@ -179,6 +182,7 @@ public class RefreshTokenService(
             token.IsRevoked = true;
             token.RevokedAt = DateTime.UtcNow;
             await refreshTokenRepository.UpdateAsync(token).ConfigureAwait(false);
+            await refreshTokenRepository.SaveChangesAsync().ConfigureAwait(false);
         }
     }
 

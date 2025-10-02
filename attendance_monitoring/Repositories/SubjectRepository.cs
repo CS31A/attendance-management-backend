@@ -27,7 +27,6 @@ public class SubjectRepository(ApplicationDbContext context) : ISubjectRepositor
     {
         subject.UpdatedAt = DateTime.UtcNow;
         context.Subjects.Update(subject);
-        await context.SaveChangesAsync().ConfigureAwait(false);
         return subject;
     }
 

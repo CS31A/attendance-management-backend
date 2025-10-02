@@ -65,54 +65,16 @@ namespace attendance_monitoring.Repositories
         public async Task CreateStudentProfileAsync(Student student)
         {
             context.Students.Add(student);
-            try
-            {
-                await context.SaveChangesAsync().ConfigureAwait(false);
-            }
-            catch (DbUpdateConcurrencyException ex)
-            {
-                // Rare for inserts; log as warning
-                logger.LogWarning(ex, "Concurrency issue while creating student profile for user {UserId}", student.UserId);
-            }
-            catch (DbUpdateException ex)
-            {
-                // Likely constraint violation, log as error
-                logger.LogError(ex, "Database update failed while creating student profile for user {UserId}", student.UserId);
-            }
         }
 
         public async Task CreateInstructorProfileAsync(Instructor instructor)
         {
             context.Instructors.Add(instructor);
-            try
-            {
-                await context.SaveChangesAsync().ConfigureAwait(false);
-            }
-            catch (DbUpdateConcurrencyException ex)
-            {
-                logger.LogWarning(ex, "Concurrency issue while creating instructor profile for user {UserId}", instructor.UserId);
-            }
-            catch (DbUpdateException ex)
-            {
-                logger.LogError(ex, "Database update failed while creating instructor profile for user {UserId}", instructor.UserId);
-            }
         }
 
         public async Task CreateAdminProfileAsync(Admin admin)
         {
             context.Admins.Add(admin);
-            try
-            {
-                await context.SaveChangesAsync().ConfigureAwait(false);
-            }
-            catch (DbUpdateConcurrencyException ex)
-            {
-                logger.LogWarning(ex, "Concurrency issue while creating admin profile for user {UserId}", admin.UserId);
-            }
-            catch (DbUpdateException ex)
-            {
-                logger.LogError(ex, "Database update failed while creating admin profile for user {UserId}", admin.UserId);
-            }
         }
         
         public async Task<IdentityResult> DeleteUserAsync(IdentityUser user)
@@ -123,6 +85,11 @@ namespace attendance_monitoring.Repositories
         public async Task<RefreshToken?> FindRefreshTokenByHashAsync(string tokenHash)
         {
             return await context.RefreshTokens.FirstOrDefaultAsync(rt => rt.TokenHash == tokenHash).ConfigureAwait(false);
+        }
+        
+        public async Task<int> SaveChangesAsync()
+        {
+            return await context.SaveChangesAsync().ConfigureAwait(false);
         }
     }
 }

@@ -235,7 +235,7 @@ namespace attendance_monitoring.Services
 
             storedToken.IsRevoked = true;
             storedToken.RevokedAt = DateTime.UtcNow;
-            await context.SaveChangesAsync().ConfigureAwait(false);
+            await accountRepository.SaveChangesAsync().ConfigureAwait(false);
 
             logger.LogInformation("Refresh token revoked successfully for user {UserId}.", userId);
             var response = new RevokeResponseDto { Message = "Refresh token revoked successfully" };
@@ -267,7 +267,7 @@ namespace attendance_monitoring.Services
 
                 if (activeRefreshTokens.Count > 0)
                 {
-                    await context.SaveChangesAsync().ConfigureAwait(false);
+                    await accountRepository.SaveChangesAsync().ConfigureAwait(false);
                     logger.LogInformation("Revoked {TokenCount} active refresh tokens during logout for user {UserId}.", activeRefreshTokens.Count, userId);
                 }
 
@@ -314,7 +314,7 @@ namespace attendance_monitoring.Services
 
                 if (activeRefreshTokens.Count > 0)
                 {
-                    await context.SaveChangesAsync().ConfigureAwait(false);
+                    await accountRepository.SaveChangesAsync().ConfigureAwait(false);
                     logger.LogInformation("Revoked {TokenCount} active refresh tokens during web logout for user {UserId}.", activeRefreshTokens.Count, userId);
                 }
 
@@ -447,7 +447,7 @@ namespace attendance_monitoring.Services
             try
             {
                 context.BlacklistedTokens.Add(blacklistedToken);
-                await context.SaveChangesAsync().ConfigureAwait(false);
+                await accountRepository.SaveChangesAsync().ConfigureAwait(false);
             }
             catch (DbUpdateConcurrencyException ex)
             {

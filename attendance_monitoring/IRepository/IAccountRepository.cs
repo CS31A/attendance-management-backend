@@ -96,5 +96,11 @@ namespace attendance_monitoring.IRepository
         /// <param name="tokenHash">The hashed refresh token.</param>
         /// <returns>The refresh token entity if found; otherwise, null.</returns>
         Task<RefreshToken?> FindRefreshTokenByHashAsync(string tokenHash);
+
+        /// <summary>
+        /// Saves changes to the database.
+        /// </summary>
+        /// <returns>The number of state entries written to the database.</returns>
+        Task<int> SaveChangesAsync();
     }
 }

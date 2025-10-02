@@ -240,6 +240,8 @@ namespace attendance_monitoring.Services
                 return "Failed to soft delete instructor";
             }
             
+            await _instructorRepository.SaveChangesAsync().ConfigureAwait(false);
+            
             _logger.LogInformation("Successfully soft deleted instructor with ID: {Id}", id);
             return null;
         }
@@ -287,6 +289,8 @@ namespace attendance_monitoring.Services
                 _logger.LogError("Instructor hard delete failed: Failed to hard delete instructor with ID {Id}", id);
                 return "Failed to hard delete instructor";
             }
+            
+            await _instructorRepository.SaveChangesAsync().ConfigureAwait(false);
             
             _logger.LogInformation("Successfully hard deleted instructor with ID: {Id}", id);
             return null;
@@ -342,6 +346,8 @@ namespace attendance_monitoring.Services
                 _logger.LogError("Instructor restore failed: Failed to restore instructor with ID {Id}", id);
                 return "Failed to restore instructor";
             }
+            
+            await _instructorRepository.SaveChangesAsync().ConfigureAwait(false);
             
             _logger.LogInformation("Successfully restored instructor with ID: {Id}", id);
             return null;

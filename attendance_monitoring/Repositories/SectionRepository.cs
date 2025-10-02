@@ -44,7 +44,6 @@ namespace attendance_monitoring.Repositories
                 section.UpdatedAt = DateTime.UtcNow;
                 
                 context.Sections.Add(section);
-                await context.SaveChangesAsync().ConfigureAwait(false);
                 
                 return section;
             }
@@ -71,8 +70,6 @@ namespace attendance_monitoring.Repositories
                 existingSection.CourseId = section.CourseId;
                 existingSection.UpdatedAt = DateTime.UtcNow;
 
-                await context.SaveChangesAsync().ConfigureAwait(false);
-
                 return existingSection;
             }
             catch (Exception ex)
@@ -94,7 +91,6 @@ namespace attendance_monitoring.Repositories
                 }
 
                 context.Sections.Remove(section);
-                await context.SaveChangesAsync().ConfigureAwait(false);
                 return true;
             }
             catch (Exception ex)
@@ -132,6 +128,11 @@ namespace attendance_monitoring.Repositories
                 logger.LogError(ex, "An error occurred while retrieving all students for section with ID {SectionId} from database.", sectionId);
                 throw;
             }
+        }
+
+        public async Task<int> SaveChangesAsync()
+        {
+            return await context.SaveChangesAsync().ConfigureAwait(false);
         }
     }
 }
