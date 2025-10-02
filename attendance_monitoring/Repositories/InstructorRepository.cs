@@ -51,7 +51,6 @@ public class InstructorRepository(ApplicationDbContext context) : IInstructorRep
     {
         instructor.UpdatedAt = DateTime.UtcNow;
         var entry = context.Instructors.Update(instructor);
-        await context.SaveChangesAsync().ConfigureAwait(false);
         return entry.Entity;
     }
 
@@ -70,7 +69,6 @@ public class InstructorRepository(ApplicationDbContext context) : IInstructorRep
         instructor.UpdatedAt = DateTime.UtcNow;
         
         context.Instructors.Update(instructor);
-        await context.SaveChangesAsync().ConfigureAwait(false);
         return true;
     }
 
@@ -81,7 +79,6 @@ public class InstructorRepository(ApplicationDbContext context) : IInstructorRep
             return false;
 
         context.Instructors.Remove(instructor);
-        await context.SaveChangesAsync().ConfigureAwait(false);
         return true;
     }
 
@@ -96,7 +93,6 @@ public class InstructorRepository(ApplicationDbContext context) : IInstructorRep
         instructor.UpdatedAt = DateTime.UtcNow;
         
         context.Instructors.Update(instructor);
-        await context.SaveChangesAsync().ConfigureAwait(false);
         return true;
     }
 
