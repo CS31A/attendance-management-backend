@@ -178,71 +178,7 @@ namespace attendance_monitoring.Services
             // Blacklist the old access token if provided
             if (!string.IsNullOrEmpty(refreshTokenRequest.OldAccessToken))
             {
-                try
-                {
-                    var tokenHandler = new JwtSecurityTokenHandler();
-                    
-                    // Clone TokenValidationParameters from our JwtBearer configuration
-                    var issuer = configuration["AppSettings:Issuer"];
-                    var audience = configuration["AppSettings:Audience"];
-                    var tokenKey = configuration["AppSettings:Token"];
-                    
-                    if (string.IsNullOrEmpty(issuer) || string.IsNullOrEmpty(audience) || string.IsNullOrEmpty(tokenKey))
-                    {
-                        logger.LogWarning("Token validation failed: Missing configuration values for issuer, audience, or token key.");
-                        throw new InvalidOperationException("Token validation configuration is incomplete.");
-                    }
-                    
-                    var tokenValidationParameters = new TokenValidationParameters
-                    {
-                        ValidateIssuer = true,
-                        ValidateAudience = true,
-                        ValidateLifetime = true,
-                        ValidateIssuerSigningKey = true,
-                        ValidIssuer = issuer,
-                        ValidAudience = audience,
-                        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(tokenKey))
-                    };
-                    
-                    // Validate the token
-                    var claimsPrincipal = tokenHandler.ValidateToken(refreshTokenRequest.OldAccessToken, tokenValidationParameters, out var validatedToken);
-                    
-                    // Extract jti and ValidTo only after successful validation
-                    var jti = claimsPrincipal.FindFirst("jti")?.Value;
-                    var expiresAt = validatedToken.ValidTo;
-                    // var sub = claimsPrincipal.FindFirst("sub")?.Value;
-                    var userIdClaim = claimsPrincipal.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-                    // Only blacklist if all validation checks pass:
-                    // 1. Token is issued by us (signature valid, issuer/audience match) - already validated by ValidateToken
-                    // 2. Subject (userIdClaim) matches the user from the refresh token
-                    // 3. It has not expired yet
-                    // 4. jti is not null or empty
-                    
-                    // Simplified switch expression for better readability
-                    switch (jti)
-                    {
-                        // Used NameIdentifier for this validation for now because of sub claim issue in aspnetcore
-                        // I hate jwt
-                        // case not null when sub == user.ID && expiresAt > DateTime.UtcNow:
-                        case not null when userIdClaim == user.Id && expiresAt > DateTime.UtcNow:
-                            await BlacklistTokenAsync(jti, expiresAt).ConfigureAwait(false);
-                            logger.LogInformation("Old access token blacklisted for user {UserId}.", user.Id);
-                            break;
-
-                        case not null:
-                            logger.LogWarning("Old access token not blacklisted - validation failed for user {UserId}.", user.Id);
-                            break;
-
-                        default: // case null
-                            logger.LogWarning("Old access token not blacklisted - token has no JTI for user {UserId}.", user.Id);
-                            break;
-                    }
-
-                }
-                catch (Exception ex)
-                {
-                    logger.LogWarning("Failed to validate and blacklist old access token: {Error}", ex.Message);
-                }
+                 await ValidateAndBlacklistTokenAsync(refreshTokenRequest.OldAccessToken, user.Id, "token refresh");
             }
 
             var (_, newRefreshToken) = await refreshTokenService.RotateRefreshTokenAsync(
@@ -313,54 +249,7 @@ namespace attendance_monitoring.Services
             // Blacklist the access token if provided
             if (!string.IsNullOrEmpty(accessToken))
             {
-                try
-                {
-                    var tokenHandler = new JwtSecurityTokenHandler();
-                    
-                    var issuer = configuration["AppSettings:Issuer"];
-                    var audience = configuration["AppSettings:Audience"];
-                    var tokenKey = configuration["AppSettings:Token"];
-                    
-                    if (string.IsNullOrEmpty(issuer) || string.IsNullOrEmpty(audience) || string.IsNullOrEmpty(tokenKey))
-                    {
-                        logger.LogWarning("Token validation failed: Missing configuration values for issuer, audience, or token key.");
-                        throw new InvalidOperationException("Token validation configuration is incomplete.");
-                    }
-                    
-                    var tokenValidationParameters = new TokenValidationParameters
-                    {
-                        ValidateIssuer = true,
-                        ValidateAudience = true,
-                        ValidateLifetime = true,
-                        ValidateIssuerSigningKey = true,
-                        ValidIssuer = issuer,
-                        ValidAudience = audience,
-                        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(tokenKey))
-                    };
-                    
-                    // Validate the token
-                    var claimsPrincipal = tokenHandler.ValidateToken(accessToken, tokenValidationParameters, out var validatedToken);
-                    
-                    var jti = claimsPrincipal.FindFirst("jti")?.Value;
-                    var expiresAt = validatedToken.ValidTo;
-                    var userIdClaim = claimsPrincipal.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-
-                    // Only blacklist if token is valid, has JTI, belongs to current user, and hasn't expired
-                    if (!string.IsNullOrEmpty(jti) && userIdClaim == userId && expiresAt > DateTime.UtcNow)
-                    {
-                        await BlacklistTokenAsync(jti, expiresAt).ConfigureAwait(false);
-                        logger.LogInformation("Access token blacklisted during logout for user {UserId}", userId);
-                    }
-                    else
-                    {
-                        logger.LogWarning("Access token not blacklisted during logout - validation failed for user {UserId}", userId);
-                    }
-                }
-                catch (Exception ex)
-                {
-                    logger.LogWarning("Failed to validate and blacklist access token during logout for user {UserId}: {Error}", userId, ex.Message);
-                    // Continue
-                }
+                await ValidateAndBlacklistTokenAsync(accessToken, userId, "logout");
             }
 
             // Revoke all active refresh tokens for the user
@@ -384,9 +273,98 @@ namespace attendance_monitoring.Services
             var response = new RevokeResponseDto { Message = "Logged out successfully" };
             return (response, null);
         }
+
+        public async Task<(LogoutResponseDto?, string?)> WebLogoutAsync(string userId, string? accessToken)
+        {
+            logger.LogInformation("Web logout attempt for user {UserId}.", userId);
+
+            // Blacklist the access token if provided (same logic as regular logout)
+            if (!string.IsNullOrEmpty(accessToken))
+            {
+                await ValidateAndBlacklistTokenAsync(accessToken, userId, "web logout");
+            }
+
+            // Revoke all active refresh tokens for the user (consistent with JWT logout)
+            var activeRefreshTokens = await context.RefreshTokens
+                .Where(rt => rt.UserId == userId && !rt.IsRevoked && rt.ExpiresAt > DateTime.UtcNow)
+                .ToListAsync().ConfigureAwait(false);
+
+            foreach (var token in activeRefreshTokens)
+            {
+                token.IsRevoked = true;
+                token.RevokedAt = DateTime.UtcNow;
+            }
+
+            if (activeRefreshTokens.Count > 0)
+            {
+                await context.SaveChangesAsync().ConfigureAwait(false);
+                logger.LogInformation("Revoked {TokenCount} active refresh tokens during web logout for user {UserId}.", activeRefreshTokens.Count, userId);
+            }
+
+            logger.LogInformation("User web logout completed successfully: {UserId}", userId);
+            var response = new LogoutResponseDto { Message = "Logged out successfully" };
+            return (response, null);
+        }
         #endregion
 
         #region Helper Methods
+        
+        /// <summary>
+        /// Validates and blacklists an access token if it's valid and belongs to the specified user
+        /// </summary>
+        /// <param name="accessToken">The access token to validate and blacklist</param>
+        /// <param name="userId">The user ID that should own the token</param>
+        /// <param name="operationType">Type of operation for logging purposes</param>
+        private async Task ValidateAndBlacklistTokenAsync(string accessToken, string userId, string operationType)
+        {
+            try
+            {
+                var tokenHandler = new JwtSecurityTokenHandler();
+                
+                var issuer = configuration["AppSettings:Issuer"];
+                var audience = configuration["AppSettings:Audience"];
+                var tokenKey = configuration["AppSettings:Token"];
+                
+                if (string.IsNullOrEmpty(issuer) || string.IsNullOrEmpty(audience) || string.IsNullOrEmpty(tokenKey))
+                {
+                    logger.LogWarning("Token validation failed: Missing configuration values for issuer, audience, or token key.");
+                    throw new InvalidOperationException("Token validation configuration is incomplete.");
+                }
+                
+                var tokenValidationParameters = new TokenValidationParameters
+                {
+                    ValidateIssuer = true,
+                    ValidateAudience = true,
+                    ValidateLifetime = true,
+                    ValidateIssuerSigningKey = true,
+                    ValidIssuer = issuer,
+                    ValidAudience = audience,
+                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(tokenKey))
+                };
+                
+                // Validate the token
+                var claimsPrincipal = tokenHandler.ValidateToken(accessToken, tokenValidationParameters, out var validatedToken);
+                
+                var jti = claimsPrincipal.FindFirst("jti")?.Value;
+                var expiresAt = validatedToken.ValidTo;
+                var userIdClaim = claimsPrincipal.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+                // Only blacklist if token is valid, has JTI, belongs to current user, and hasn't expired
+                if (!string.IsNullOrEmpty(jti) && userIdClaim == userId && expiresAt > DateTime.UtcNow)
+                {
+                    await BlacklistTokenAsync(jti, expiresAt).ConfigureAwait(false);
+                    logger.LogInformation("Access token blacklisted during {OperationType} for user {UserId}", operationType, userId);
+                }
+                else
+                    logger.LogWarning("Access token not blacklisted during {OperationType} - validation failed for user {UserId}", operationType, userId);
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning("Failed to validate and blacklist access token during {OperationType} for user {UserId}: {Error}", operationType, userId, ex.Message);
+                // Continue with operation even if blacklisting fails
+            }
+        }
+
         private async Task<string> GenerateJwtToken(IdentityUser user)
         {
             var claims = new List<Claim>
