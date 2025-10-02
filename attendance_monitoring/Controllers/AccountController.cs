@@ -399,54 +399,72 @@ namespace attendance_monitoring.Controllers
         /// <returns>Logout status</returns>
         /// <response code="200">User logged out successfully</response>
         [HttpPost("web/logout")]
-        [Authorize(Policy = "UserPolicy")]
-        [ProducesResponseType(typeof(WebLoginResponseDto), StatusCodes.Status200OK)]
-        public async Task<ActionResult<WebLoginResponseDto>> WebLogout()
+        [Authorize]
+        [ProducesResponseType(typeof(LogoutResponseDto), StatusCodes.Status200OK)]
+        public async Task<ActionResult<LogoutResponseDto>> WebLogout()
         {
             var userId = GetUserId(User);
             if (string.IsNullOrEmpty(userId))
             {
                 logger.LogWarning("Logout failed: User not found from claims.");
-                return BadRequest(new WebLoginResponseDto { Success = false, Message = "User not found" });
+                // Always clear cookies and return success to prevent timing attacks
+                Response.Cookies.Delete("accessToken");
+                Response.Cookies.Delete("refreshToken");
+                return Ok(new LogoutResponseDto { Success = true, Message = "Logged out successfully" });
             }
 
-            // Get access token from cookie for blacklisting
-            if (Request.Cookies.TryGetValue("accessToken", out var accessToken) && !string.IsNullOrEmpty(accessToken))
-            {
-                try
-                {
-                    // Extract JTI and expiration from the access token and blacklist it
-                    var tokenHandler = new System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler();
-                    var jsonToken = tokenHandler.ReadJwtToken(accessToken);
-                    
-                    var jti = jsonToken.Claims.FirstOrDefault(c => c.Type == "jti")?.Value;
-                    var sub = jsonToken.Claims.FirstOrDefault(c => c.Type == "sub")?.Value;
-                    var expiresAt = jsonToken.ValidTo;
+            // Get access token from cookie
+            var accessToken = Request.Cookies.TryGetValue("accessToken", out var token) ? token : null;
+            
+            // Always perform logout operations regardless of token validity to prevent timing attacks
+            await accountService.WebLogoutAsync(userId, accessToken);
 
-                    // Only blacklist if token has JTI, belongs to current user, and hasn't expired
-                    if (!string.IsNullOrEmpty(jti) && sub == userId && expiresAt > DateTime.UtcNow)
-                    {
-                        await accountService.BlacklistTokenAsync(jti, expiresAt);
-                        logger.LogInformation("Access token blacklisted during logout for user {UserId}", userId);
-                    }
-                    else
-                    {
-                        logger.LogWarning("Access token not blacklisted during logout - validation failed for user {UserId}", userId);
-                    }
-                }
-                catch (Exception ex)
-                {
-                    logger.LogWarning("Failed to blacklist access token during logout for user {UserId}: {Error}", userId, ex.Message);
-                    // Continue with logout even if blacklisting fails
-                }
-            }
-
-            // Clear cookies
+            // Always clear cookies
             Response.Cookies.Delete("accessToken");
             Response.Cookies.Delete("refreshToken");
 
             logger.LogInformation("User logged out successfully: {UserId}", userId);
-            return Ok(new WebLoginResponseDto { Success = true, Message = "Logged out successfully" });
+            return Ok(new LogoutResponseDto { Success = true, Message = "Logged out successfully" });
+        }
+        #endregion
+
+        #region POST: api/account/logout
+        /// <summary>
+        /// Logout user by blacklisting the access token and revoking all refresh tokens
+        /// </summary>
+        /// <returns>Logout status</returns>
+        /// <response code="200">User logged out successfully</response>
+        [HttpPost("logout")]
+        [Authorize]
+        [ProducesResponseType(typeof(LogoutResponseDto), StatusCodes.Status200OK)]
+        public async Task<ActionResult<LogoutResponseDto>> Logout()
+        {
+            logger.LogInformation("JWT logout attempt.");
+
+            var userId = GetUserId(User);
+            if (string.IsNullOrEmpty(userId))
+            {
+                logger.LogWarning("Logout failed: User not found from claims.");
+                // Always return success to prevent timing attacks
+                return Ok(new LogoutResponseDto { Success = true, Message = "Logged out successfully" });
+            }
+
+            // Get access token from Authorization header
+            string? accessToken = null;
+            if (Request.Headers.TryGetValue("Authorization", out var authHeader))
+            {
+                var headerValue = authHeader.ToString();
+                if (headerValue.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+                {
+                    accessToken = headerValue["Bearer ".Length..].Trim();
+                }
+            }
+
+            // Always perform logout operations regardless of token validity to prevent timing attacks
+            await accountService.LogoutAsync(userId, accessToken);
+
+            logger.LogInformation("User logged out successfully: {UserId}", userId);
+            return Ok(new LogoutResponseDto { Success = true, Message = "Logged out successfully" });
         }
         #endregion
 
