@@ -419,7 +419,7 @@ namespace attendance_monitoring.Controllers
             var accessToken = Request.Cookies.TryGetValue("accessToken", out var token) ? token : null;
             
             // Always perform logout operations regardless of token validity to prevent timing attacks
-            var (response, _) = await accountService.WebLogoutAsync(userId, accessToken);
+122            await accountService.WebLogoutAsync(userId, accessToken);
 
             // Always clear cookies
             Response.Cookies.Delete("accessToken");
@@ -463,7 +463,7 @@ namespace attendance_monitoring.Controllers
             }
 
             // Always perform logout operations regardless of token validity to prevent timing attacks
-            var (response, _) = await accountService.LogoutAsync(userId, accessToken);
+            await accountService.LogoutAsync(userId, accessToken);
 
             logger.LogInformation("User logged out successfully: {UserId}", userId);
             return Ok(new LogoutResponseDto { Success = true, Message = "Logged out successfully" });
