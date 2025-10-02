@@ -242,68 +242,82 @@ namespace attendance_monitoring.Services
             return (response, null);
         }
 
-        public async Task<(RevokeResponseDto?, string?)> LogoutAsync(string userId, string? accessToken)
+        public async Task<LogoutResponseDto> LogoutAsync(string userId, string? accessToken)
         {
             logger.LogInformation("Logout attempt for user {UserId}.", userId);
 
-            // Blacklist the access token if provided
-            if (!string.IsNullOrEmpty(accessToken))
+            try
             {
-                await ValidateAndBlacklistTokenAsync(accessToken, userId, "logout");
+                // Blacklist the access token if provided
+                if (!string.IsNullOrEmpty(accessToken))
+                {
+                    await ValidateAndBlacklistTokenAsync(accessToken, userId, "logout");
+                }
+
+                // Revoke all active refresh tokens for the user
+                var activeRefreshTokens = await context.RefreshTokens
+                    .Where(rt => rt.UserId == userId && !rt.IsRevoked && rt.ExpiresAt > DateTime.UtcNow)
+                    .ToListAsync().ConfigureAwait(false);
+
+                foreach (var token in activeRefreshTokens)
+                {
+                    token.IsRevoked = true;
+                    token.RevokedAt = DateTime.UtcNow;
+                }
+
+                if (activeRefreshTokens.Count > 0)
+                {
+                    await context.SaveChangesAsync().ConfigureAwait(false);
+                    logger.LogInformation("Revoked {TokenCount} active refresh tokens during logout for user {UserId}.", activeRefreshTokens.Count, userId);
+                }
+
+                logger.LogInformation("User logged out successfully: {UserId}", userId);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Logout operation failed for user {UserId}", userId);
             }
 
-            // Revoke all active refresh tokens for the user
-            var activeRefreshTokens = await context.RefreshTokens
-                .Where(rt => rt.UserId == userId && !rt.IsRevoked && rt.ExpiresAt > DateTime.UtcNow)
-                .ToListAsync().ConfigureAwait(false);
-
-            foreach (var token in activeRefreshTokens)
-            {
-                token.IsRevoked = true;
-                token.RevokedAt = DateTime.UtcNow;
-            }
-
-            if (activeRefreshTokens.Count > 0)
-            {
-                await context.SaveChangesAsync().ConfigureAwait(false);
-                logger.LogInformation("Revoked {TokenCount} active refresh tokens during logout for user {UserId}.", activeRefreshTokens.Count, userId);
-            }
-
-            logger.LogInformation("User logged out successfully: {UserId}", userId);
-            var response = new RevokeResponseDto { Message = "Logged out successfully" };
-            return (response, null);
+            return new LogoutResponseDto { Success = true, Message = "Logged out successfully" };
         }
 
-        public async Task<(LogoutResponseDto?, string?)> WebLogoutAsync(string userId, string? accessToken)
+        public async Task<LogoutResponseDto> WebLogoutAsync(string userId, string? accessToken)
         {
             logger.LogInformation("Web logout attempt for user {UserId}.", userId);
 
-            // Blacklist the access token if provided (same logic as regular logout)
-            if (!string.IsNullOrEmpty(accessToken))
+            try
             {
-                await ValidateAndBlacklistTokenAsync(accessToken, userId, "web logout");
+                // Blacklist the access token if provided (same logic as regular logout)
+                if (!string.IsNullOrEmpty(accessToken))
+                {
+                    await ValidateAndBlacklistTokenAsync(accessToken, userId, "web logout");
+                }
+
+                // Revoke all active refresh tokens for the user (consistent with JWT logout)
+                var activeRefreshTokens = await context.RefreshTokens
+                    .Where(rt => rt.UserId == userId && !rt.IsRevoked && rt.ExpiresAt > DateTime.UtcNow)
+                    .ToListAsync().ConfigureAwait(false);
+
+                foreach (var token in activeRefreshTokens)
+                {
+                    token.IsRevoked = true;
+                    token.RevokedAt = DateTime.UtcNow;
+                }
+
+                if (activeRefreshTokens.Count > 0)
+                {
+                    await context.SaveChangesAsync().ConfigureAwait(false);
+                    logger.LogInformation("Revoked {TokenCount} active refresh tokens during web logout for user {UserId}.", activeRefreshTokens.Count, userId);
+                }
+
+                logger.LogInformation("User web logout completed successfully: {UserId}", userId);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Web logout operation failed for user {UserId}", userId);
             }
 
-            // Revoke all active refresh tokens for the user (consistent with JWT logout)
-            var activeRefreshTokens = await context.RefreshTokens
-                .Where(rt => rt.UserId == userId && !rt.IsRevoked && rt.ExpiresAt > DateTime.UtcNow)
-                .ToListAsync().ConfigureAwait(false);
-
-            foreach (var token in activeRefreshTokens)
-            {
-                token.IsRevoked = true;
-                token.RevokedAt = DateTime.UtcNow;
-            }
-
-            if (activeRefreshTokens.Count > 0)
-            {
-                await context.SaveChangesAsync().ConfigureAwait(false);
-                logger.LogInformation("Revoked {TokenCount} active refresh tokens during web logout for user {UserId}.", activeRefreshTokens.Count, userId);
-            }
-
-            logger.LogInformation("User web logout completed successfully: {UserId}", userId);
-            var response = new LogoutResponseDto { Message = "Logged out successfully" };
-            return (response, null);
+            return new LogoutResponseDto { Success = true, Message = "Logged out successfully" };
         }
         #endregion
 
