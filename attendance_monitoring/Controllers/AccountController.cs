@@ -419,7 +419,7 @@ namespace attendance_monitoring.Controllers
             var accessToken = Request.Cookies.TryGetValue("accessToken", out var token) ? token : null;
             
             // Always perform logout operations regardless of token validity to prevent timing attacks
-122            await accountService.WebLogoutAsync(userId, accessToken);
+            await accountService.WebLogoutAsync(userId, accessToken);
 
             // Always clear cookies
             Response.Cookies.Delete("accessToken");
