@@ -12,6 +12,8 @@ namespace attendance_monitoring.IServices
         Task<(TokenResponseDto?, string?)> LoginAsync(LoginDto loginDto);
         Task<(TokenResponseDto?, string?)> RefreshAsync(RefreshTokenRequestDto refreshTokenRequest);
         Task<(RevokeResponseDto?, string?)> RevokeAsync(RevokeTokenRequestDto revokeTokenRequest, string userId);
+        Task<LogoutResponseDto> LogoutAsync(string userId, string? accessToken);
+        Task<LogoutResponseDto> WebLogoutAsync(string userId, string? accessToken);
         Task BlacklistTokenAsync(string jti, DateTime expiresAt);
     }
 }
