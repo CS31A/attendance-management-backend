@@ -1,11 +1,9 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
-using System.Text;
 using attendance_monitoring.Models.DTO;
 using attendance_monitoring.IServices;
 using attendance_monitoring.Models.DTO.Response;
-using Microsoft.IdentityModel.Tokens;
 
 namespace attendance_monitoring.Controllers
 {

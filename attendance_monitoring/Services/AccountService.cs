@@ -273,6 +273,14 @@ namespace attendance_monitoring.Services
 
                 logger.LogInformation("User logged out successfully: {UserId}", userId);
             }
+            catch (DbUpdateConcurrencyException ex)
+            {
+                logger.LogWarning(ex, "Logout concurrency issue for user {UserId}", userId);
+            }
+            catch (DbUpdateException ex)
+            {
+                logger.LogError(ex, "Logout database update failed for user {UserId}", userId);
+            }
             catch (Exception ex)
             {
                 logger.LogError(ex, "Logout operation failed for user {UserId}", userId);
@@ -311,6 +319,14 @@ namespace attendance_monitoring.Services
                 }
 
                 logger.LogInformation("User web logout completed successfully: {UserId}", userId);
+            }
+            catch (DbUpdateConcurrencyException ex)
+            {
+                logger.LogWarning(ex, "Web logout concurrency issue for user {UserId}", userId);
+            }
+            catch (DbUpdateException ex)
+            {
+                logger.LogError(ex, "Web logout database update failed for user {UserId}", userId);
             }
             catch (Exception ex)
             {
@@ -433,11 +449,14 @@ namespace attendance_monitoring.Services
                 context.BlacklistedTokens.Add(blacklistedToken);
                 await context.SaveChangesAsync().ConfigureAwait(false);
             }
-            catch (DbUpdateException)
+            catch (DbUpdateConcurrencyException ex)
             {
-                // Token is already blacklisted, treat as idempotent operation
-                // This can happen if the same token is blacklisted multiple times
-                // We simply ignore the exception and continue
+                logger.LogWarning(ex, "Concurrency issue while blacklisting token {Jti}.", jti);
+            }
+            catch (DbUpdateException ex)
+            {
+                // Token is already blacklisted or other DB update issue; treat duplicate as idempotent
+                logger.LogWarning(ex, "Blacklisting token {Jti} may have already occurred. Treating as idempotent.", jti);
             }
         }
         #endregion
