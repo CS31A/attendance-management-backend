@@ -55,5 +55,11 @@ namespace attendance_monitoring.IRepository
         /// <param name="id">The section ID.</param>
         /// <returns>True if the section was deleted; otherwise, false.</returns>
         Task<bool> DeleteSectionAsync(int id);
+
+        /// <summary>
+        /// Saves changes to the database.
+        /// </summary>
+        /// <returns>The number of state entries written to the database.</returns>
+        Task<int> SaveChangesAsync();
     }
 }

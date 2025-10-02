@@ -232,6 +232,8 @@ namespace attendance_monitoring.Services
                 return "Failed to soft delete student";
             }
             
+            await _studentRepository.SaveChangesAsync().ConfigureAwait(false);
+            
             _logger.LogInformation("Successfully soft deleted student with ID: {Id}", id);
             return null;
         }
@@ -280,6 +282,8 @@ namespace attendance_monitoring.Services
                 return "Failed to hard delete student";
             }
 
+            await _studentRepository.SaveChangesAsync().ConfigureAwait(false);
+            
             _logger.LogInformation("Successfully hard deleted student with ID: {Id}", id);
             return null;
         }
@@ -334,6 +338,8 @@ namespace attendance_monitoring.Services
                 _logger.LogError("Student restore failed: Failed to restore student with ID {Id}", id);
                 return "Failed to restore student";
             }
+            
+            await _studentRepository.SaveChangesAsync().ConfigureAwait(false);
             
             _logger.LogInformation("Successfully restored student with ID: {Id}", id);
             return null;

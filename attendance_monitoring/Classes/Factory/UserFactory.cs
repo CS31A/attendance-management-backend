@@ -106,6 +106,7 @@ public class UserFactory(IAccountRepository accountRepository) : IUserFactory
         try
         {
             await accountRepository.CreateStudentProfileAsync(student).ConfigureAwait(false);
+            await accountRepository.SaveChangesAsync().ConfigureAwait(false);
         }
         catch (Exception ex)
         {
@@ -134,6 +135,7 @@ public class UserFactory(IAccountRepository accountRepository) : IUserFactory
         try
         {
             await accountRepository.CreateInstructorProfileAsync(instructor).ConfigureAwait(false);
+            await accountRepository.SaveChangesAsync().ConfigureAwait(false);
         }
         catch (Exception ex)
         {
@@ -162,6 +164,7 @@ public class UserFactory(IAccountRepository accountRepository) : IUserFactory
         try
         {
             await accountRepository.CreateAdminProfileAsync(admin).ConfigureAwait(false);
+            await accountRepository.SaveChangesAsync().ConfigureAwait(false);
         }
         catch (Exception ex)
         {

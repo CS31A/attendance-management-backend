@@ -50,7 +50,6 @@ public class StudentRepository(ApplicationDbContext context) : IStudentRepositor
         student.UpdatedAt = DateTime.UtcNow;
         
         context.Students.Update(student);
-        await context.SaveChangesAsync().ConfigureAwait(false);
         return true;
     }
 
@@ -61,7 +60,6 @@ public class StudentRepository(ApplicationDbContext context) : IStudentRepositor
             return false;
 
         context.Students.Remove(student);
-        await context.SaveChangesAsync().ConfigureAwait(false);
         return true;
     }
 
@@ -76,7 +74,6 @@ public class StudentRepository(ApplicationDbContext context) : IStudentRepositor
         student.UpdatedAt = DateTime.UtcNow;
         
         context.Students.Update(student);
-        await context.SaveChangesAsync().ConfigureAwait(false);
         return true;
     }
 

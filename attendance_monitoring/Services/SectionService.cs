@@ -49,6 +49,7 @@ namespace attendance_monitoring.Services
             try
             {
                 var createdSection = await sectionRepository.CreateSectionAsync(section).ConfigureAwait(false);
+                await sectionRepository.SaveChangesAsync().ConfigureAwait(false);
                 
                 return new SectionResponseDto
                 {
@@ -78,6 +79,8 @@ namespace attendance_monitoring.Services
                     return null;
                 }
 
+                await sectionRepository.SaveChangesAsync().ConfigureAwait(false);
+
                 return new SectionResponseDto
                 {
                     Id = updatedSection.Id,
@@ -99,7 +102,12 @@ namespace attendance_monitoring.Services
         {
             try
             {
-                return await sectionRepository.DeleteSectionAsync(id).ConfigureAwait(false);
+                var result = await sectionRepository.DeleteSectionAsync(id).ConfigureAwait(false);
+                if (result)
+                {
+                    await sectionRepository.SaveChangesAsync().ConfigureAwait(false);
+                }
+                return result;
             }
             catch (Exception ex)
             {
