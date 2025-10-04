@@ -124,12 +124,21 @@ namespace attendance_monitoring.Services
                 UpdatedAt = DateTime.UtcNow
             };
 
-            var createdStudent = await _studentRepository.CreateStudent(student).ConfigureAwait(false);
-            await _studentRepository.SaveChangesAsync().ConfigureAwait(false);
+            try
+            {
+                var createdStudent = await _studentRepository.CreateStudent(student).ConfigureAwait(false);
+                await _studentRepository.SaveChangesAsync().ConfigureAwait(false);
 
-            _logger.LogInformation("Successfully created student with ID: {Id} and name: {FirstName} {LastName}", 
-                createdStudent.Id, createdStudent.Firstname, createdStudent.Lastname);
-            return (createdStudent, null);
+                _logger.LogInformation("Successfully created student with ID: {Id} and name: {FirstName} {LastName}", 
+                    createdStudent.Id, createdStudent.Firstname, createdStudent.Lastname);
+                return (createdStudent, null);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error occurred while creating student with name: {FirstName} {LastName}", 
+                    createStudent.Firstname, createStudent.Lastname);
+                return (null, "An error occurred while creating the student. Please try again later.");
+            }
         }
 
         /// <summary>
@@ -181,11 +190,19 @@ namespace attendance_monitoring.Services
 
             existingStudent.UpdatedAt = DateTime.UtcNow;
 
-            var updatedStudent = await _studentRepository.UpdateStudentAsync(existingStudent).ConfigureAwait(false);
-            await _studentRepository.SaveChangesAsync().ConfigureAwait(false);
+            try
+            {
+                var updatedStudent = await _studentRepository.UpdateStudentAsync(existingStudent).ConfigureAwait(false);
+                await _studentRepository.SaveChangesAsync().ConfigureAwait(false);
 
-            _logger.LogInformation("Successfully updated student with ID: {Id}", id);
-            return (updatedStudent, null);
+                _logger.LogInformation("Successfully updated student with ID: {Id}", id);
+                return (updatedStudent, null);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error occurred while updating student with ID: {Id}", id);
+                return (null, "An error occurred while updating the student. Please try again later.");
+            }
         }
 
         /// <summary>
@@ -232,10 +249,18 @@ namespace attendance_monitoring.Services
                 return "Failed to soft delete student";
             }
             
-            await _studentRepository.SaveChangesAsync().ConfigureAwait(false);
-            
-            _logger.LogInformation("Successfully soft deleted student with ID: {Id}", id);
-            return null;
+            try
+            {
+                await _studentRepository.SaveChangesAsync().ConfigureAwait(false);
+                
+                _logger.LogInformation("Successfully soft deleted student with ID: {Id}", id);
+                return null;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error occurred while soft deleting student with ID: {Id}", id);
+                return "An error occurred while soft deleting the student. Please try again later.";
+            }
         }
 
         /// <summary>
@@ -282,10 +307,18 @@ namespace attendance_monitoring.Services
                 return "Failed to hard delete student";
             }
 
-            await _studentRepository.SaveChangesAsync().ConfigureAwait(false);
-            
-            _logger.LogInformation("Successfully hard deleted student with ID: {Id}", id);
-            return null;
+            try
+            {
+                await _studentRepository.SaveChangesAsync().ConfigureAwait(false);
+                
+                _logger.LogInformation("Successfully hard deleted student with ID: {Id}", id);
+                return null;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error occurred while hard deleting student with ID: {Id}", id);
+                return "An error occurred while hard deleting the student. Please try again later.";
+            }
         }
         
         /// <summary>
@@ -339,10 +372,18 @@ namespace attendance_monitoring.Services
                 return "Failed to restore student";
             }
             
-            await _studentRepository.SaveChangesAsync().ConfigureAwait(false);
-            
-            _logger.LogInformation("Successfully restored student with ID: {Id}", id);
-            return null;
+            try
+            {
+                await _studentRepository.SaveChangesAsync().ConfigureAwait(false);
+                
+                _logger.LogInformation("Successfully restored student with ID: {Id}", id);
+                return null;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error occurred while restoring student with ID: {Id}", id);
+                return "An error occurred while restoring the student. Please try again later.";
+            }
         }
     }
 }
