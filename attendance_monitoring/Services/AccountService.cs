@@ -206,40 +206,58 @@ namespace attendance_monitoring.Services
         {
             logger.LogInformation("Token revocation attempt for user {UserId}.", userId);
 
-            var tokenHash = refreshTokenService.HashRefreshToken(revokeTokenRequest.RefreshToken);
-            var storedToken = await accountRepository.FindRefreshTokenByHashAsync(tokenHash).ConfigureAwait(false);
-
-            if (storedToken == null)
+            try
             {
-                logger.LogWarning("Token revocation failed: Refresh token not found.");
-                return (null, "Refresh token not found");
-            }
+                var tokenHash = refreshTokenService.HashRefreshToken(revokeTokenRequest.RefreshToken);
+                var storedToken = await accountRepository.FindRefreshTokenByHashAsync(tokenHash).ConfigureAwait(false);
 
-            if (storedToken.UserId != userId)
+                if (storedToken == null)
+                {
+                    logger.LogWarning("Token revocation failed: Refresh token not found.");
+                    return (null, "Refresh token not found");
+                }
+
+                if (storedToken.UserId != userId)
+                {
+                    logger.LogWarning("Token revocation failed: Refresh token does not belong to the current user {UserId}.", userId);
+                    return (null, "Refresh token does not belong to the current user");
+                }
+
+                if (storedToken.IsRevoked)
+                {
+                    logger.LogWarning("Token revocation failed: Refresh token has already been revoked.");
+                    return (null, "Refresh token has already been revoked");
+                }
+
+                if (storedToken.ExpiresAt < DateTime.UtcNow)
+                {
+                    logger.LogWarning("Token revocation failed: Refresh token has expired.");
+                    return (null, "Refresh token has expired");
+                }
+
+                storedToken.IsRevoked = true;
+                storedToken.RevokedAt = DateTime.UtcNow;
+                await accountRepository.SaveChangesAsync().ConfigureAwait(false);
+
+                logger.LogInformation("Refresh token revoked successfully for user {UserId}.", userId);
+                var response = new RevokeResponseDto { Message = "Refresh token revoked successfully" };
+                return (response, null);
+            }
+            catch (DbUpdateConcurrencyException ex)
             {
-                logger.LogWarning("Token revocation failed: Refresh token does not belong to the current user {UserId}.", userId);
-                return (null, "Refresh token does not belong to the current user");
+                logger.LogWarning(ex, "Token revocation concurrency issue for user {UserId}", userId);
+                return (null, "Token revocation failed due to a concurrency issue");
             }
-
-            if (storedToken.IsRevoked)
+            catch (DbUpdateException ex)
             {
-                logger.LogWarning("Token revocation failed: Refresh token has already been revoked.");
-                return (null, "Refresh token has already been revoked");
+                logger.LogError(ex, "Token revocation database update failed for user {UserId}", userId);
+                return (null, "Token revocation failed due to a database error");
             }
-
-            if (storedToken.ExpiresAt < DateTime.UtcNow)
+            catch (Exception ex)
             {
-                logger.LogWarning("Token revocation failed: Refresh token has expired.");
-                return (null, "Refresh token has expired");
+                logger.LogError(ex, "Token revocation operation failed for user {UserId}", userId);
+                return (null, "Token revocation failed due to an unexpected error");
             }
-
-            storedToken.IsRevoked = true;
-            storedToken.RevokedAt = DateTime.UtcNow;
-            await accountRepository.SaveChangesAsync().ConfigureAwait(false);
-
-            logger.LogInformation("Refresh token revoked successfully for user {UserId}.", userId);
-            var response = new RevokeResponseDto { Message = "Refresh token revoked successfully" };
-            return (response, null);
         }
 
         public async Task<LogoutResponseDto> LogoutAsync(string userId, string? accessToken)
