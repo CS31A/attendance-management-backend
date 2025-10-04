@@ -1,6 +1,7 @@
 using attendance_monitoring.IRepository;
 using attendance_monitoring.IServices;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 
 namespace attendance_monitoring.Classes.Factory;
 
@@ -55,9 +56,21 @@ public class UserFactory(IAccountRepository accountRepository) : IUserFactory
             // Add user to the appropriate role
             await accountRepository.AddUserToRoleAsync(identityUser, role).ConfigureAwait(false);
         }
+        catch (DbUpdateConcurrencyException ex)
+        {
+            // If role assignment fails due to concurrency issues, delete the user to avoid orphaned accounts
+            await accountRepository.DeleteUserAsync(identityUser).ConfigureAwait(false);
+            return new UserCreationResult { Success = false, Errors = [$"Role assignment failed due to a concurrency issue: {ex.Message}"] };
+        }
+        catch (DbUpdateException ex)
+        {
+            // If role assignment fails due to database issues, delete the user to avoid orphaned accounts
+            await accountRepository.DeleteUserAsync(identityUser).ConfigureAwait(false);
+            return new UserCreationResult { Success = false, Errors = [$"Role assignment failed due to a database error: {ex.Message}"] };
+        }
         catch (Exception ex)
         {
-            // If role assignment fails, delete the user to avoid orphaned accounts
+            // If role assignment fails due to any other reason, delete the user to avoid orphaned accounts
             await accountRepository.DeleteUserAsync(identityUser).ConfigureAwait(false);
             return new UserCreationResult { Success = false, Errors = [$"Role assignment failed: {ex.Message}"] };
         }
@@ -108,13 +121,23 @@ public class UserFactory(IAccountRepository accountRepository) : IUserFactory
             await accountRepository.CreateStudentProfileAsync(student).ConfigureAwait(false);
             await accountRepository.SaveChangesAsync().ConfigureAwait(false);
         }
+        catch (DbUpdateConcurrencyException ex)
+        {
+            // If student profile creation fails due to concurrency issues, delete the user to maintain consistency
+            await accountRepository.DeleteUserAsync(identityUser).ConfigureAwait(false);
+            return new UserCreationResult { Success = false, Errors = [$"Student profile creation failed due to a concurrency issue: {ex.Message}"] };
+        }
+        catch (DbUpdateException ex)
+        {
+            // If student profile creation fails due to database issues, delete the user to maintain consistency
+            await accountRepository.DeleteUserAsync(identityUser).ConfigureAwait(false);
+            return new UserCreationResult { Success = false, Errors = [$"Student profile creation failed due to a database error: {ex.Message}"] };
+        }
         catch (Exception ex)
         {
-            // If student profile creation fails, delete the user to maintain consistency
+            // If student profile creation fails due to any other reason, delete the user to maintain consistency
             await accountRepository.DeleteUserAsync(identityUser).ConfigureAwait(false);
-            return new UserCreationResult { Success = false, Errors = [$"Student profile creation failed: {ex.Message}"
-                ]
-            };
+            return new UserCreationResult { Success = false, Errors = [$"Student profile creation failed: {ex.Message}"] };
         }
 
         return new UserCreationResult { Success = true, UserId = identityUser.Id };
@@ -137,13 +160,23 @@ public class UserFactory(IAccountRepository accountRepository) : IUserFactory
             await accountRepository.CreateInstructorProfileAsync(instructor).ConfigureAwait(false);
             await accountRepository.SaveChangesAsync().ConfigureAwait(false);
         }
+        catch (DbUpdateConcurrencyException ex)
+        {
+            // If instructor profile creation fails due to concurrency issues, delete the user to maintain consistency
+            await accountRepository.DeleteUserAsync(identityUser).ConfigureAwait(false);
+            return new UserCreationResult { Success = false, Errors = [$"Instructor profile creation failed due to a concurrency issue: {ex.Message}"] };
+        }
+        catch (DbUpdateException ex)
+        {
+            // If instructor profile creation fails due to database issues, delete the user to maintain consistency
+            await accountRepository.DeleteUserAsync(identityUser).ConfigureAwait(false);
+            return new UserCreationResult { Success = false, Errors = [$"Instructor profile creation failed due to a database error: {ex.Message}"] };
+        }
         catch (Exception ex)
         {
-            // If instructor profile creation fails, delete the user to maintain consistency
+            // If instructor profile creation fails due to any other reason, delete the user to maintain consistency
             await accountRepository.DeleteUserAsync(identityUser).ConfigureAwait(false);
-            return new UserCreationResult { Success = false, Errors = [$"Instructor profile creation failed: {ex.Message}"
-                ]
-            };
+            return new UserCreationResult { Success = false, Errors = [$"Instructor profile creation failed: {ex.Message}"] };
         }
 
         return new UserCreationResult { Success = true, UserId = identityUser.Id };
@@ -166,13 +199,23 @@ public class UserFactory(IAccountRepository accountRepository) : IUserFactory
             await accountRepository.CreateAdminProfileAsync(admin).ConfigureAwait(false);
             await accountRepository.SaveChangesAsync().ConfigureAwait(false);
         }
+        catch (DbUpdateConcurrencyException ex)
+        {
+            // If admin profile creation fails due to concurrency issues, delete the user to maintain consistency
+            await accountRepository.DeleteUserAsync(identityUser).ConfigureAwait(false);
+            return new UserCreationResult { Success = false, Errors = [$"Admin profile creation failed due to a concurrency issue: {ex.Message}"] };
+        }
+        catch (DbUpdateException ex)
+        {
+            // If admin profile creation fails due to database issues, delete the user to maintain consistency
+            await accountRepository.DeleteUserAsync(identityUser).ConfigureAwait(false);
+            return new UserCreationResult { Success = false, Errors = [$"Admin profile creation failed due to a database error: {ex.Message}"] };
+        }
         catch (Exception ex)
         {
-            // If admin profile creation fails, delete the user to maintain consistency
+            // If admin profile creation fails due to any other reason, delete the user to maintain consistency
             await accountRepository.DeleteUserAsync(identityUser).ConfigureAwait(false);
-            return new UserCreationResult { Success = false, Errors = [$"Admin profile creation failed: {ex.Message}"
-                ]
-            };
+            return new UserCreationResult { Success = false, Errors = [$"Admin profile creation failed: {ex.Message}"] };
         }
 
         return new UserCreationResult { Success = true, UserId = identityUser.Id };

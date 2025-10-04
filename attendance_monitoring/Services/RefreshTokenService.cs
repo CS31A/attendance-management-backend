@@ -50,10 +50,18 @@ public class RefreshTokenService(
             IsRevoked = false
         };
 
-        await refreshTokenRepository.CreateAsync(refreshTokenEntity).ConfigureAwait(false);
-        await refreshTokenRepository.SaveChangesAsync().ConfigureAwait(false);
+        try
+        {
+            await refreshTokenRepository.CreateAsync(refreshTokenEntity).ConfigureAwait(false);
+            await refreshTokenRepository.SaveChangesAsync().ConfigureAwait(false);
 
-        return (refreshTokenEntity, refreshToken);
+            return (refreshTokenEntity, refreshToken);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error occurred while creating refresh token for user ID: {UserId}", userId);
+            throw; // Re-throw the exception to maintain the existing behavior while logging it
+        }
     }
 
     #endregion
@@ -96,12 +104,20 @@ public class RefreshTokenService(
         var storedToken = await refreshTokenRepository.GetByTokenHashAsync(tokenHash).ConfigureAwait(false);
 
         if (storedToken == null || storedToken.UserId != userId) return false;
-        storedToken.IsRevoked = true;
-        storedToken.RevokedAt = DateTime.UtcNow;
-        await refreshTokenRepository.UpdateAsync(storedToken).ConfigureAwait(false);
-        await refreshTokenRepository.SaveChangesAsync().ConfigureAwait(false);
-        return true;
-
+        
+        try
+        {
+            storedToken.IsRevoked = true;
+            storedToken.RevokedAt = DateTime.UtcNow;
+            await refreshTokenRepository.UpdateAsync(storedToken).ConfigureAwait(false);
+            await refreshTokenRepository.SaveChangesAsync().ConfigureAwait(false);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error occurred while revoking refresh token for user ID: {UserId}", userId);
+            return false;
+        }
     }
 
     public async Task<(RefreshToken?, string?)> RotateRefreshTokenAsync(string oldRefreshToken, string userId)
@@ -114,21 +130,29 @@ public class RefreshTokenService(
             return (null, validationError);
         }
 
-        // Mark the old token as revoked
-        storedToken.IsRevoked = true;
-        storedToken.RevokedAt = DateTime.UtcNow;
+        try
+        {
+            // Mark the old token as revoked
+            storedToken.IsRevoked = true;
+            storedToken.RevokedAt = DateTime.UtcNow;
 
-        // Create a new refresh token
-        var (newRefreshTokenEntity, newRefreshToken) = await CreateRefreshTokenAsync(userId).ConfigureAwait(false);
+            // Create a new refresh token
+            var (newRefreshTokenEntity, newRefreshToken) = await CreateRefreshTokenAsync(userId).ConfigureAwait(false);
 
-        // Link the old token to the new one
-        storedToken.ReplacedByTokenHash = newRefreshTokenEntity.TokenHash;
+            // Link the old token to the new one
+            storedToken.ReplacedByTokenHash = newRefreshTokenEntity.TokenHash;
 
-        // Update the old token
-        await refreshTokenRepository.UpdateAsync(storedToken).ConfigureAwait(false);
-        await refreshTokenRepository.SaveChangesAsync().ConfigureAwait(false);
+            // Update the old token
+            await refreshTokenRepository.UpdateAsync(storedToken).ConfigureAwait(false);
+            await refreshTokenRepository.SaveChangesAsync().ConfigureAwait(false);
 
-        return (newRefreshTokenEntity, newRefreshToken);
+            return (newRefreshTokenEntity, newRefreshToken);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error occurred while rotating refresh token for user ID: {UserId}", userId);
+            return (null, "An error occurred while rotating the refresh token. Please try again later.");
+        }
     }
 
     #endregion
@@ -144,45 +168,53 @@ public class RefreshTokenService(
         logger.LogWarning("Security Alert: Refresh token reuse detected. Revoking entire token family for User ID: {UserId}", compromisedToken.UserId);
         var tokensToRevoke = new List<RefreshToken>();
 
-        // Find the root of the token family by following the chain backwards
-        var currentToken = compromisedToken;
-        var visitedHashes = new HashSet<string>();
-
-        // Traverse backwards to find all tokens in the family
-        while (currentToken != null && !visitedHashes.Contains(currentToken.TokenHash))
+        try
         {
-            visitedHashes.Add(currentToken.TokenHash);
-            tokensToRevoke.Add(currentToken);
+            // Find the root of the token family by following the chain backwards
+            var currentToken = compromisedToken;
+            var visitedHashes = new HashSet<string>();
 
-            // Find the token that was replaced by this one (going backwards)
-            var previousToken = await refreshTokenRepository.GetByReplacedTokenHashAsync(currentToken.TokenHash).ConfigureAwait(false);
-            currentToken = previousToken;
-        }
-
-        // Traverse forwards to find all tokens that replaced this one
-        currentToken = compromisedToken;
-        while (currentToken?.ReplacedByTokenHash != null && !visitedHashes.Contains(currentToken.ReplacedByTokenHash))
-        {
-            var nextToken = await refreshTokenRepository.GetByTokenHashAsync(currentToken.ReplacedByTokenHash).ConfigureAwait(false);
-            if (nextToken != null && visitedHashes.Add(nextToken.TokenHash))
+            // Traverse backwards to find all tokens in the family
+            while (currentToken != null && !visitedHashes.Contains(currentToken.TokenHash))
             {
-                tokensToRevoke.Add(nextToken);
-                currentToken = nextToken;
+                visitedHashes.Add(currentToken.TokenHash);
+                tokensToRevoke.Add(currentToken);
+
+                // Find the token that was replaced by this one (going backwards)
+                var previousToken = await refreshTokenRepository.GetByReplacedTokenHashAsync(currentToken.TokenHash).ConfigureAwait(false);
+                currentToken = previousToken;
             }
-            else
+
+            // Traverse forwards to find all tokens that replaced this one
+            currentToken = compromisedToken;
+            while (currentToken?.ReplacedByTokenHash != null && !visitedHashes.Contains(currentToken.ReplacedByTokenHash))
             {
-                break;
+                var nextToken = await refreshTokenRepository.GetByTokenHashAsync(currentToken.ReplacedByTokenHash).ConfigureAwait(false);
+                if (nextToken != null && visitedHashes.Add(nextToken.TokenHash))
+                {
+                    tokensToRevoke.Add(nextToken);
+                    currentToken = nextToken;
+                }
+                else
+                {
+                    break;
+                }
+            }
+
+            // Revoke all tokens in the family
+            foreach (var token in tokensToRevoke)
+            {
+                if (token.IsRevoked) continue;
+                token.IsRevoked = true;
+                token.RevokedAt = DateTime.UtcNow;
+                await refreshTokenRepository.UpdateAsync(token).ConfigureAwait(false);
+                await refreshTokenRepository.SaveChangesAsync().ConfigureAwait(false);
             }
         }
-
-        // Revoke all tokens in the family
-        foreach (var token in tokensToRevoke)
+        catch (Exception ex)
         {
-            if (token.IsRevoked) continue;
-            token.IsRevoked = true;
-            token.RevokedAt = DateTime.UtcNow;
-            await refreshTokenRepository.UpdateAsync(token).ConfigureAwait(false);
-            await refreshTokenRepository.SaveChangesAsync().ConfigureAwait(false);
+            logger.LogError(ex, "Error occurred while revoking token family for user ID: {UserId}", compromisedToken.UserId);
+            throw; // Re-throw to maintain the existing behavior while logging it
         }
     }
 

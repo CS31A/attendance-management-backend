@@ -124,12 +124,21 @@ namespace attendance_monitoring.Services
                 UpdatedAt = DateTime.UtcNow
             };
 
-            var createdInstructor = await _instructorRepository.CreateInstructorAsync(instructor).ConfigureAwait(false);
-            await _instructorRepository.SaveChangesAsync().ConfigureAwait(false);
+            try
+            {
+                var createdInstructor = await _instructorRepository.CreateInstructorAsync(instructor).ConfigureAwait(false);
+                await _instructorRepository.SaveChangesAsync().ConfigureAwait(false);
 
-            _logger.LogInformation("Successfully created instructor with ID: {Id} and name: {FirstName} {LastName}", 
-                createdInstructor.Id, createdInstructor.Firstname, createdInstructor.Lastname);
-            return (createdInstructor, null);
+                _logger.LogInformation("Successfully created instructor with ID: {Id} and name: {FirstName} {LastName}", 
+                    createdInstructor.Id, createdInstructor.Firstname, createdInstructor.Lastname);
+                return (createdInstructor, null);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error occurred while creating instructor with name: {FirstName} {LastName}", 
+                    createInstructor.Firstname, createInstructor.Lastname);
+                return (null, "An error occurred while creating the instructor. Please try again later.");
+            }
         }
 
         #endregion
@@ -185,11 +194,19 @@ namespace attendance_monitoring.Services
 
             existingInstructor.UpdatedAt = DateTime.UtcNow;
 
-            var updatedInstructor = await _instructorRepository.UpdateInstructorAsync(existingInstructor).ConfigureAwait(false);
-            await _instructorRepository.SaveChangesAsync().ConfigureAwait(false);
+            try
+            {
+                var updatedInstructor = await _instructorRepository.UpdateInstructorAsync(existingInstructor).ConfigureAwait(false);
+                await _instructorRepository.SaveChangesAsync().ConfigureAwait(false);
 
-            _logger.LogInformation("Successfully updated instructor with ID: {Id}", id);
-            return (updatedInstructor, null);
+                _logger.LogInformation("Successfully updated instructor with ID: {Id}", id);
+                return (updatedInstructor, null);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error occurred while updating instructor with ID: {Id}", id);
+                return (null, "An error occurred while updating the instructor. Please try again later.");
+            }
         }
 
         #endregion
@@ -240,10 +257,18 @@ namespace attendance_monitoring.Services
                 return "Failed to soft delete instructor";
             }
             
-            await _instructorRepository.SaveChangesAsync().ConfigureAwait(false);
-            
-            _logger.LogInformation("Successfully soft deleted instructor with ID: {Id}", id);
-            return null;
+            try
+            {
+                await _instructorRepository.SaveChangesAsync().ConfigureAwait(false);
+                
+                _logger.LogInformation("Successfully soft deleted instructor with ID: {Id}", id);
+                return null;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error occurred while soft deleting instructor with ID: {Id}", id);
+                return "An error occurred while soft deleting the instructor. Please try again later.";
+            }
         }
 
         /// <summary>
@@ -290,10 +315,18 @@ namespace attendance_monitoring.Services
                 return "Failed to hard delete instructor";
             }
             
-            await _instructorRepository.SaveChangesAsync().ConfigureAwait(false);
-            
-            _logger.LogInformation("Successfully hard deleted instructor with ID: {Id}", id);
-            return null;
+            try
+            {
+                await _instructorRepository.SaveChangesAsync().ConfigureAwait(false);
+                
+                _logger.LogInformation("Successfully hard deleted instructor with ID: {Id}", id);
+                return null;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error occurred while hard deleting instructor with ID: {Id}", id);
+                return "An error occurred while hard deleting the instructor. Please try again later.";
+            }
         }
         
         /// <summary>
@@ -347,10 +380,18 @@ namespace attendance_monitoring.Services
                 return "Failed to restore instructor";
             }
             
-            await _instructorRepository.SaveChangesAsync().ConfigureAwait(false);
-            
-            _logger.LogInformation("Successfully restored instructor with ID: {Id}", id);
-            return null;
+            try
+            {
+                await _instructorRepository.SaveChangesAsync().ConfigureAwait(false);
+                
+                _logger.LogInformation("Successfully restored instructor with ID: {Id}", id);
+                return null;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error occurred while restoring instructor with ID: {Id}", id);
+                return "An error occurred while restoring the instructor. Please try again later.";
+            }
         }
 
         #endregion

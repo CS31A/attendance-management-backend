@@ -92,11 +92,19 @@ public class CourseService : ICourseService
             UpdatedAt = DateTime.UtcNow
         };
 
-        var createdCourse = await _courseRepository.CreateCourse(course).ConfigureAwait(false);
-        await _courseRepository.SaveChangesAsync().ConfigureAwait(false);
+        try
+        {
+            var createdCourse = await _courseRepository.CreateCourse(course).ConfigureAwait(false);
+            await _courseRepository.SaveChangesAsync().ConfigureAwait(false);
 
-        _logger.LogInformation("Successfully created course with ID: {Id} and name: {CourseName}", createdCourse.Id, createdCourse.Name);
-        return (createdCourse, null);
+            _logger.LogInformation("Successfully created course with ID: {Id} and name: {CourseName}", createdCourse.Id, createdCourse.Name);
+            return (createdCourse, null);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error occurred while creating course with name: {CourseName}", createCourse.Name);
+            return (null, "An error occurred while creating the course. Please try again later.");
+        }
     }
 
     /// <summary>
@@ -138,11 +146,19 @@ public class CourseService : ICourseService
 
         existingCourse.UpdatedAt = DateTime.UtcNow;
 
-        var updatedCourse = await _courseRepository.UpdateCourseAsync(existingCourse).ConfigureAwait(false);
-        await _courseRepository.SaveChangesAsync().ConfigureAwait(false);
+        try
+        {
+            var updatedCourse = await _courseRepository.UpdateCourseAsync(existingCourse).ConfigureAwait(false);
+            await _courseRepository.SaveChangesAsync().ConfigureAwait(false);
 
-        _logger.LogInformation("Successfully updated course with ID: {Id}", id);
-        return (updatedCourse, null);
+            _logger.LogInformation("Successfully updated course with ID: {Id}", id);
+            return (updatedCourse, null);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error occurred while updating course with ID: {Id}", id);
+            return (null, "An error occurred while updating the course. Please try again later.");
+        }
     }
 
     /// <summary>
@@ -176,8 +192,16 @@ public class CourseService : ICourseService
             return "Failed to delete course";
         }
 
-        await _courseRepository.SaveChangesAsync().ConfigureAwait(false);
-        _logger.LogInformation("Successfully deleted course with ID: {Id}", id);
-        return null;
+        try
+        {
+            await _courseRepository.SaveChangesAsync().ConfigureAwait(false);
+            _logger.LogInformation("Successfully deleted course with ID: {Id}", id);
+            return null;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error occurred while deleting course with ID: {Id}", id);
+            return "An error occurred while deleting the course. Please try again later.";
+        }
     }
 }
