@@ -1,6 +1,5 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using System.Text.Json.Serialization;
 
 namespace attendance_monitoring.Classes;
 
@@ -11,10 +10,10 @@ public class Schedules
     public int Id { get; set; }
 
     [Required]
-    public DateTime TimeIn { get; set; }
+    public TimeOnly TimeIn { get; set; }
     
     [Required]
-    public DateTime TimeOut { get; set; }
+    public TimeOnly TimeOut { get; set; }
     
     [Required]
     [StringLength(20)]
