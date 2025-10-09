@@ -126,6 +126,7 @@ builder.Services.AddScoped<ISectionRepository, SectionRepository>();
 builder.Services.AddScoped<ICourseRepository, CourseRepository>();
 builder.Services.AddScoped<ISubjectRepository, SubjectRepository>();
 builder.Services.AddScoped<IClassroomRepository, ClassroomRepository>();
+builder.Services.AddScoped<IScheduleRepository, ScheduleRepository>();
 
 // Register services
 builder.Services.AddScoped<IStudentService, StudentService>();
@@ -137,6 +138,7 @@ builder.Services.AddScoped<ISectionService, SectionService>();
 builder.Services.AddScoped<ICourseService, CourseService>();
 builder.Services.AddScoped<ISubjectService, SubjectService>();
 builder.Services.AddScoped<IClassroomService, ClassroomService>();
+builder.Services.AddScoped<IScheduleService, ScheduleService>();
 builder.Services.AddScoped<IRoleInitializationService, RoleInitializationService>();
 builder.Services.AddScoped<UserContextService>();
 builder.Services.AddScoped<ITokenValidationService, TokenValidationService>();
