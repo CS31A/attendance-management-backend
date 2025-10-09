@@ -63,12 +63,12 @@ namespace attendance_monitoring.Controllers
                 logger.LogInformation("Successfully retrieved schedule with ID: {Id}", id);
                 return Ok(schedule);
             }
-            catch (ScheduleNotFoundException ex)
+            catch (EntityNotFoundException<int> ex)
             {
                 logger.LogWarning("Schedule with ID {Id} not found", id);
                 return NotFound(ex.Message);
             }
-            catch (ScheduleServiceException ex)
+            catch (EntityServiceException ex)
             {
                 logger.LogError(ex, "Error occurred while retrieving schedule with ID {Id}", id);
                 return Problem(
@@ -132,7 +132,7 @@ namespace attendance_monitoring.Controllers
                 logger.LogInformation("Successfully created schedule with ID: {Id} and TimeIn: {TimeIn}, TimeOut: {TimeOut}", schedule.Id, schedule.TimeIn, schedule.TimeOut);
                 return CreatedAtAction(nameof(GetSchedule), new { id = schedule.Id }, schedule);
             }
-            catch (ScheduleServiceException ex)
+            catch (EntityServiceException ex)
             {
                 logger.LogError(ex, "Error occurred while creating schedule with TimeIn: {TimeIn}, TimeOut: {TimeOut}", createSchedule.TimeIn, createSchedule.TimeOut);
                 return Problem(
@@ -192,12 +192,12 @@ namespace attendance_monitoring.Controllers
                 logger.LogInformation("Successfully updated schedule with ID: {Id}", id);
                 return Ok(schedule);
             }
-            catch (ScheduleNotFoundException ex)
+            catch (EntityNotFoundException<int> ex)
             {
                 logger.LogWarning("Schedule update failed: Schedule with ID {Id} not found", id);
                 return NotFound(ex.Message);
             }
-            catch (ScheduleServiceException ex)
+            catch (EntityServiceException ex)
             {
                 logger.LogError(ex, "Error occurred while updating schedule with ID {Id}", id);
                 return Problem(
@@ -248,12 +248,12 @@ namespace attendance_monitoring.Controllers
                 logger.LogWarning("Schedule deletion failed for schedule ID {Id}: {Error}", id, error);
                 return BadRequest(error);
             }
-            catch (ScheduleNotFoundException ex)
+            catch (EntityNotFoundException<int> ex)
             {
                 logger.LogWarning("Schedule deletion failed: Schedule with ID {Id} not found", id);
                 return NotFound(ex.Message);
             }
-            catch (ScheduleServiceException ex)
+            catch (EntityServiceException ex)
             {
                 logger.LogError(ex, "Error occurred while deleting schedule with ID {Id}", id);
                 return Problem(

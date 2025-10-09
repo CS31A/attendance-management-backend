@@ -45,7 +45,7 @@ public class SubjectService : ISubjectService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error occurred while retrieving all subjects");
-            throw new SubjectServiceException("GetAllSubjects", "An error occurred while retrieving subjects", ex);
+            throw new EntityServiceException("Subject", "GetAllSubjects", "An error occurred while retrieving subjects", ex);
         }
     }
 
@@ -63,13 +63,13 @@ public class SubjectService : ISubjectService
             if (subject == null)
             {
                 _logger.LogWarning("Subject with ID {Id} not found", id);
-                throw new SubjectNotFoundException(id);
+                throw new EntityNotFoundException<int>("Subject", id);
             }
 
             _logger.LogInformation("Successfully retrieved subject with ID: {Id}", id);
             return subject;
         }
-        catch (SubjectNotFoundException)
+        catch (EntityNotFoundException<int>)
         {
             // Re-throw the specific exception for the controller to handle
             throw;
@@ -77,7 +77,7 @@ public class SubjectService : ISubjectService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error occurred while retrieving subject with ID {Id}", id);
-            throw new SubjectServiceException($"GetSubjectById: {id}", "An error occurred while retrieving the subject", ex);
+            throw new EntityServiceException("Subject", $"GetSubjectById: {id}", "An error occurred while retrieving the subject", ex);
         }
     }
 
@@ -141,7 +141,7 @@ public class SubjectService : ISubjectService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error occurred while creating subject with name: {SubjectName}", createSubject.Name);
-            throw new SubjectServiceException("CreateSubject", "An error occurred while creating the subject", ex);
+            throw new EntityServiceException("Subject", "CreateSubject", "An error occurred while creating the subject", ex);
         }
     }
 
@@ -166,7 +166,7 @@ public class SubjectService : ISubjectService
             if (existingSubject == null)
             {
                 _logger.LogWarning("Subject update failed: Subject with ID {Id} not found", id);
-                throw new SubjectNotFoundException(id);
+                throw new EntityNotFoundException<int>("Subject", id);
             }
 
             // Check if the new code already exists for another subject (first check)
@@ -212,7 +212,7 @@ public class SubjectService : ISubjectService
                 return (null, $"A subject with code {updateSubject.Code} already exists");
             }
         }
-        catch (SubjectNotFoundException)
+        catch (EntityNotFoundException<int>)
         {
             // Re-throw the specific exception for the controller to handle
             throw;
@@ -220,7 +220,7 @@ public class SubjectService : ISubjectService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error occurred while updating subject with ID {Id}", id);
-            throw new SubjectServiceException($"UpdateSubject: {id}", "An error occurred while updating the subject", ex);
+            throw new EntityServiceException("Subject", $"UpdateSubject: {id}", "An error occurred while updating the subject", ex);
         }
     }
 
@@ -243,7 +243,7 @@ public class SubjectService : ISubjectService
             if (existingSubject == null)
             {
                 _logger.LogWarning("Subject deletion failed: Subject with ID {Id} not found", id);
-                throw new SubjectNotFoundException(id);
+                throw new EntityNotFoundException<int>("Subject", id);
             }
 
             var result = await _subjectRepository.DeleteSubjectAsync(id).ConfigureAwait(false);
@@ -262,7 +262,7 @@ public class SubjectService : ISubjectService
             _logger.LogInformation("Successfully deleted subject with ID: {Id}", id);
             return null;
         }
-        catch (SubjectNotFoundException)
+        catch (EntityNotFoundException<int>)
         {
             // Re-throw the specific exception for the controller to handle
             throw;
@@ -270,7 +270,7 @@ public class SubjectService : ISubjectService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error occurred while deleting subject with ID {Id}", id);
-            throw new SubjectServiceException($"DeleteSubject: {id}", "An error occurred while deleting the subject", ex);
+            throw new EntityServiceException("Subject", $"DeleteSubject: {id}", "An error occurred while deleting the subject", ex);
         }
     }
 

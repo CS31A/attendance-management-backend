@@ -34,7 +34,7 @@ public class SubjectController(ISubjectService subjectService, ILogger<SubjectCo
             logger.LogInformation("Successfully retrieved {Count} subjects", subjects.Count());
             return Ok(subjects);
         }
-        catch (SubjectServiceException ex)
+        catch (EntityServiceException ex)
         {
             logger.LogError(ex, "Error occurred while retrieving all subjects");
             return Problem(
@@ -73,12 +73,12 @@ public class SubjectController(ISubjectService subjectService, ILogger<SubjectCo
             logger.LogInformation("Successfully retrieved subject with ID: {Id}", id);
             return Ok(subject);
         }
-        catch (SubjectNotFoundException ex)
+        catch (EntityNotFoundException<int> ex)
         {
             logger.LogWarning("Subject with ID {Id} not found", id);
             return NotFound(ex.Message);
         }
-        catch (SubjectServiceException ex)
+        catch (EntityServiceException ex)
         {
             logger.LogError(ex, "Error occurred while retrieving subject with ID {Id}", id);
             return Problem(
@@ -143,7 +143,7 @@ public class SubjectController(ISubjectService subjectService, ILogger<SubjectCo
                 subject.Name);
             return CreatedAtAction(nameof(GetSubject), new { id = subject.Id }, subject);
         }
-        catch (SubjectServiceException ex)
+        catch (EntityServiceException ex)
         {
             logger.LogError(ex, "Error occurred while creating subject with name: {SubjectName}", createSubject.Name);
             return Problem(
@@ -204,12 +204,12 @@ public class SubjectController(ISubjectService subjectService, ILogger<SubjectCo
             logger.LogInformation("Successfully updated subject with ID: {Id}", id);
             return Ok(subject);
         }
-        catch (SubjectNotFoundException ex)
+        catch (EntityNotFoundException<int> ex)
         {
             logger.LogWarning("Subject update failed: Subject with ID {Id} not found", id);
             return NotFound(ex.Message);
         }
-        catch (SubjectServiceException ex)
+        catch (EntityServiceException ex)
         {
             logger.LogError(ex, "Error occurred while updating subject with ID {Id}", id);
             return Problem(
@@ -261,12 +261,12 @@ public class SubjectController(ISubjectService subjectService, ILogger<SubjectCo
             logger.LogWarning("Subject deletion failed for subject ID {Id}: {Error}", id, error);
             return BadRequest(error);
         }
-        catch (SubjectNotFoundException ex)
+        catch (EntityNotFoundException<int> ex)
         {
             logger.LogWarning("Subject deletion failed: Subject with ID {Id} not found", id);
             return NotFound(ex.Message);
         }
-        catch (SubjectServiceException ex)
+        catch (EntityServiceException ex)
         {
             logger.LogError(ex, "Error occurred while deleting subject with ID {Id}", id);
             return Problem(
