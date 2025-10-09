@@ -29,7 +29,7 @@ namespace attendance_monitoring.Services
             catch (Exception ex)
             {
                 logger.LogError(ex, "Error occurred while retrieving all schedules");
-                throw new ScheduleServiceException("GetAllSchedules", "An error occurred while retrieving schedules", ex);
+                throw new EntityServiceException("Schedule", "GetAllSchedules", "An error occurred while retrieving schedules", ex);
             }
         }
 
@@ -51,7 +51,7 @@ namespace attendance_monitoring.Services
             catch (Exception ex)
             {
                 logger.LogError(ex, "Error occurred while retrieving schedule with ID {Id}", id);
-                throw new ScheduleServiceException($"GetScheduleById: {id}", "An error occurred while retrieving the schedule", ex);
+                throw new EntityServiceException("Schedule", $"GetScheduleById: {id}", "An error occurred while retrieving the schedule", ex);
             }
         }
 
@@ -106,7 +106,7 @@ namespace attendance_monitoring.Services
             catch (Exception ex)
             {
                 logger.LogError(ex, "Error occurred while creating schedule");
-                throw new ScheduleServiceException("CreateSchedule", "An error occurred while creating the schedule", ex);
+                throw new EntityServiceException("Schedule", "CreateSchedule", "An error occurred while creating the schedule", ex);
             }
         }
 
@@ -170,7 +170,7 @@ namespace attendance_monitoring.Services
             catch (Exception ex)
             {
                 logger.LogError(ex, "Error occurred while updating schedule with ID: {Id}", id);
-                throw new ScheduleServiceException($"UpdateSchedule: {id}", "An error occurred while updating the schedule", ex);
+                throw new EntityServiceException("Schedule", $"UpdateSchedule: {id}", "An error occurred while updating the schedule", ex);
             }
         }
 
@@ -211,7 +211,7 @@ namespace attendance_monitoring.Services
             catch (Exception ex)
             {
                 logger.LogError(ex, "Error occurred while deleting schedule with ID: {Id}", id);
-                throw new ScheduleServiceException($"DeleteSchedule: {id}", "An error occurred while deleting the schedule", ex);
+                throw new EntityServiceException("Schedule", $"DeleteSchedule: {id}", "An error occurred while deleting the schedule", ex);
             }
         }
         
