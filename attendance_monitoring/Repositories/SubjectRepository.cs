@@ -43,11 +43,11 @@ public class SubjectRepository(ApplicationDbContext context) : ISubjectRepositor
     #endregion
 
     #region UpdateSubjectAsync
-    public async Task<Subject> UpdateSubjectAsync(Subject subject)
+    public Task<Subject> UpdateSubjectAsync(Subject subject)
     {
         subject.UpdatedAt = DateTime.UtcNow;
         context.Subjects.Update(subject);
-        return subject;
+        return Task.FromResult(subject);
     }
     #endregion
 

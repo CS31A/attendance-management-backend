@@ -59,11 +59,11 @@ public class InstructorRepository(ApplicationDbContext context) : IInstructorRep
     #region Update Operations
 
     #region UpdateInstructorAsync
-    public async Task<Instructor> UpdateInstructorAsync(Instructor instructor)
+    public Task<Instructor> UpdateInstructorAsync(Instructor instructor)
     {
         instructor.UpdatedAt = DateTime.UtcNow;
         var entry = context.Instructors.Update(instructor);
-        return entry.Entity;
+        return Task.FromResult(entry.Entity);
     }
     #endregion
 

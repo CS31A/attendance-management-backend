@@ -5,28 +5,21 @@ using Microsoft.EntityFrameworkCore;
 
 namespace attendance_monitoring.Repositories;
 
-public class CourseRepository : ICourseRepository
+public class CourseRepository(ApplicationDbContext context) : ICourseRepository
 {
-    private readonly ApplicationDbContext _context;
-
-    public CourseRepository(ApplicationDbContext context)
-    {
-        _context = context;
-    }
-
     #region Read Operations
 
     #region GetAllCoursesAsync
     public async Task<IEnumerable<Course>> GetAllCoursesAsync()
     {
-        return await _context.Courses.ToListAsync().ConfigureAwait(false);
+        return await context.Courses.ToListAsync().ConfigureAwait(false);
     }
     #endregion
 
     #region GetCourseByIdAsync
     public async Task<Course?> GetCourseByIdAsync(int id)
     {
-        return await _context.Courses.FindAsync(id).ConfigureAwait(false);
+        return await context.Courses.FindAsync(id).ConfigureAwait(false);
     }
     #endregion
 
@@ -37,7 +30,7 @@ public class CourseRepository : ICourseRepository
     #region CreateCourse
     public async Task<Course> CreateCourse(Course course)
     {
-        var entry = await _context.Courses.AddAsync(course).ConfigureAwait(false);
+        var entry = await context.Courses.AddAsync(course).ConfigureAwait(false);
         return entry.Entity;
     }
     #endregion
@@ -45,7 +38,7 @@ public class CourseRepository : ICourseRepository
     #region UpdateCourseAsync
     public Task<Course> UpdateCourseAsync(Course course)
     {
-        var entry = _context.Courses.Update(course);
+        var entry = context.Courses.Update(course);
         return Task.FromResult(entry.Entity);
     }
     #endregion
@@ -53,10 +46,10 @@ public class CourseRepository : ICourseRepository
     #region DeleteCourseAsync
     public async Task<bool> DeleteCourseAsync(int id)
     {
-        var course = await _context.Courses.FindAsync(id).ConfigureAwait(false);
+        var course = await context.Courses.FindAsync(id).ConfigureAwait(false);
         if (course == null) return false;
         
-        _context.Courses.Remove(course);
+        context.Courses.Remove(course);
         return true;
     }
     #endregion
@@ -68,7 +61,7 @@ public class CourseRepository : ICourseRepository
     #region SaveChangesAsync
     public async Task<int> SaveChangesAsync()
     {
-        return await _context.SaveChangesAsync().ConfigureAwait(false);
+        return await context.SaveChangesAsync().ConfigureAwait(false);
     }
     #endregion
 
