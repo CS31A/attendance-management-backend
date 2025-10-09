@@ -2,7 +2,6 @@ using attendance_monitoring.Classes;
 using attendance_monitoring.Exceptions;
 using attendance_monitoring.IServices;
 using attendance_monitoring.Models.DTO.Request;
-using attendance_monitoring.Models.DTO.Response;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -17,42 +16,6 @@ namespace attendance_monitoring.Controllers
     public class ScheduleController(IScheduleService scheduleService, ILogger<ScheduleController> logger)
         : ControllerBase
     {
-        private ActionResult<SoftDeleteResponse> CreateResponse(string? error, string successMessage)
-        {
-            if (string.IsNullOrEmpty(error))
-            {
-                return Ok(new SoftDeleteResponse
-                {
-                    Success = true,
-                    Message = successMessage
-                });
-            }
-
-            if (error.Contains("not found"))
-            {
-                return NotFound(new SoftDeleteResponse
-                {
-                    Success = false,
-                    Message = error
-                });
-            }
-
-            if (error.Contains("not authorized"))
-            {
-                return Unauthorized(new SoftDeleteResponse
-                {
-                    Success = false,
-                    Message = error
-                });
-            }
-
-            return BadRequest(new SoftDeleteResponse
-            {
-                Success = false,
-                Message = error
-            });
-        }
-
         #region Get Operations
 
         /// <summary>
@@ -88,7 +51,7 @@ namespace attendance_monitoring.Controllers
         /// <param name="id">The ID of the schedule to retrieve</param>
         /// <returns>The requested schedule</returns>
         /// <response code="200">Returns the requested schedule</response>
-        /// <response code="404">Schedule not found</response>
+        /// <response code="404"> not found</response>
         /// <response code="500">Internal server error</response>
         [HttpGet("{id:int}")]
         public async Task<ActionResult<Schedules>> GetSchedule(int id)
@@ -274,7 +237,7 @@ namespace attendance_monitoring.Controllers
             logger.LogInformation("Deleting schedule with ID: {Id}", id);
             try
             {
-                var error = await scheduleService.HardDeleteScheduleAsync(id, User);
+                var error = await scheduleService.DeleteScheduleAsync(id, User);
 
                 if (error == null)
                 {
