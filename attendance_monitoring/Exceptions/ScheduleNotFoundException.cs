@@ -1,5 +1,3 @@
-using System.Runtime.Serialization;
-
 namespace attendance_monitoring.Exceptions
 {
     public class ScheduleNotFoundException : Exception
@@ -23,10 +21,6 @@ namespace attendance_monitoring.Exceptions
         public ScheduleNotFoundException(int scheduleId, string? message, Exception? innerException) : base(message, innerException)
         {
             ScheduleId = scheduleId;
-        }
-
-        protected ScheduleNotFoundException(SerializationInfo info, StreamingContext context) : base(info, context)
-        {
         }
     }
 }
