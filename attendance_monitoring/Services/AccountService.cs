@@ -27,6 +27,7 @@ namespace attendance_monitoring.Services
     {
 
         #region Registration Methods
+        #region RegisterAsync
         public async Task<(IdentityResult, RegisterResponseDto?)> RegisterAsync(RegisterDto registerDto)
         {
             logger.LogInformation("Registration attempt for username: {Username}", registerDto.Username);
@@ -103,8 +104,10 @@ namespace attendance_monitoring.Services
             return (IdentityResult.Success, response);
         }
         #endregion
+        #endregion
 
         #region Login Methods
+        #region LoginAsync
         public async Task<(TokenResponseDto?, string?)> LoginAsync(LoginDto loginDto)
         {
             logger.LogInformation("Login attempt for identifier: {Identifier}", loginDto.Username);
@@ -155,8 +158,10 @@ namespace attendance_monitoring.Services
             return (tokenResponse, null);
         }
         #endregion
+        #endregion
 
         #region Token Management Methods
+        #region RefreshAsync
         public async Task<(TokenResponseDto?, string?)> RefreshAsync(RefreshTokenRequestDto refreshTokenRequest)
         {
             logger.LogInformation("Token refresh attempt.");
@@ -201,7 +206,9 @@ namespace attendance_monitoring.Services
             };
             return (tokenResponse, null);
         }
+        #endregion
 
+        #region RevokeAsync
         public async Task<(RevokeResponseDto?, string?)> RevokeAsync(RevokeTokenRequestDto revokeTokenRequest, string userId)
         {
             logger.LogInformation("Token revocation attempt for user {UserId}.", userId);
@@ -259,7 +266,9 @@ namespace attendance_monitoring.Services
                 return (null, "Token revocation failed due to an unexpected error");
             }
         }
+        #endregion
 
+        #region LogoutAsync
         public async Task<LogoutResponseDto> LogoutAsync(string userId, string? accessToken)
         {
             logger.LogInformation("Logout attempt for user {UserId}.", userId);
@@ -306,7 +315,9 @@ namespace attendance_monitoring.Services
 
             return new LogoutResponseDto { Success = true, Message = "Logged out successfully" };
         }
+        #endregion
 
+        #region WebLogoutAsync
         public async Task<LogoutResponseDto> WebLogoutAsync(string userId, string? accessToken)
         {
             logger.LogInformation("Web logout attempt for user {UserId}.", userId);
@@ -354,9 +365,11 @@ namespace attendance_monitoring.Services
             return new LogoutResponseDto { Success = true, Message = "Logged out successfully" };
         }
         #endregion
+        #endregion
 
         #region Helper Methods
         
+        #region ValidateAndBlacklistTokenAsync
         /// <summary>
         /// Validates and blacklists an access token if it's valid and belongs to the specified user
         /// </summary>
@@ -412,7 +425,9 @@ namespace attendance_monitoring.Services
                 // Continue with operation even if blacklisting fails
             }
         }
+        #endregion
 
+        #region GenerateJwtToken
         private async Task<string> GenerateJwtToken(IdentityUser user)
         {
             var claims = new List<Claim>
@@ -447,7 +462,9 @@ namespace attendance_monitoring.Services
 
             return new JwtSecurityTokenHandler().WriteToken(token);
         }
+        #endregion
         
+        #region BlacklistTokenAsync
         /// <summary>
         /// Blacklists a JWT token by its JTI
         /// </summary>
@@ -477,6 +494,7 @@ namespace attendance_monitoring.Services
                 logger.LogWarning(ex, "Blacklisting token {Jti} may have already occurred. Treating as idempotent.", jti);
             }
         }
+        #endregion
         #endregion
     }
 }
