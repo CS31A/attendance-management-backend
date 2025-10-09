@@ -1,8 +1,14 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using Microsoft.EntityFrameworkCore;
 
 namespace attendance_monitoring.Classes;
 
+[Index(nameof(ClassroomId))]
+[Index(nameof(DayOfWeek))]
+[Index(nameof(TimeIn))]
+[Index(nameof(TimeOut))]
+[Index(nameof(TimeIn), nameof(TimeOut), IsUnique = true)]
 public class Schedules
 {
     [Key]
