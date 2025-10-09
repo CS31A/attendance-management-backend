@@ -10,6 +10,9 @@ namespace attendance_monitoring.Repositories
 {
     public class SectionRepository(ApplicationDbContext context, ILogger<SectionRepository> logger) : ISectionRepository
     {
+        #region Read Operations
+
+        #region GetSectionByIdAsync
         public async Task<Section?> GetSectionByIdAsync(int sectionId)
         {
             try
@@ -22,7 +25,9 @@ namespace attendance_monitoring.Repositories
                 throw;
             }
         }
+        #endregion
 
+        #region GetAllSectionsAsync
         public async Task<IEnumerable<Section>> GetAllSectionsAsync()
         {
             try
@@ -35,7 +40,47 @@ namespace attendance_monitoring.Repositories
                 throw;
             }
         }
+        #endregion
 
+        #region GetActiveStudentsBySectionIdAsync
+        public async Task<IEnumerable<Student>> GetActiveStudentsBySectionIdAsync(int sectionId)
+        {
+            try
+            {
+                return await context.Students
+                    .Where(s => s.SectionId == sectionId && !s.IsDeleted)
+                    .ToListAsync().ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "An error occurred while retrieving active students for section with ID {SectionId} from database.", sectionId);
+                throw;
+            }
+        }
+        #endregion
+
+        #region GetAllStudentsBySectionIdAsync
+        public async Task<IEnumerable<Student>> GetAllStudentsBySectionIdAsync(int sectionId)
+        {
+            try
+            {
+                return await context.Students
+                    .Where(s => s.SectionId == sectionId)
+                    .ToListAsync().ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "An error occurred while retrieving all students for section with ID {SectionId} from database.", sectionId);
+                throw;
+            }
+        }
+        #endregion
+
+        #endregion
+
+        #region Write Operations
+
+        #region CreateSectionAsync
         public async Task<Section> CreateSectionAsync(Section section)
         {
             try
@@ -53,7 +98,9 @@ namespace attendance_monitoring.Repositories
                 throw;
             }
         }
+        #endregion
 
+        #region UpdateSectionAsync
         public async Task<Section?> UpdateSectionAsync(int id, Section section)
         {
             try
@@ -78,7 +125,9 @@ namespace attendance_monitoring.Repositories
                 throw;
             }
         }
+        #endregion
 
+        #region DeleteSectionAsync
         public async Task<bool> DeleteSectionAsync(int id)
         {
             try
@@ -99,40 +148,19 @@ namespace attendance_monitoring.Repositories
                 throw;
             }
         }
+        #endregion
 
-        public async Task<IEnumerable<Student>> GetActiveStudentsBySectionIdAsync(int sectionId)
-        {
-            try
-            {
-                return await context.Students
-                    .Where(s => s.SectionId == sectionId && !s.IsDeleted)
-                    .ToListAsync().ConfigureAwait(false);
-            }
-            catch (Exception ex)
-            {
-                logger.LogError(ex, "An error occurred while retrieving active students for section with ID {SectionId} from database.", sectionId);
-                throw;
-            }
-        }
+        #endregion
 
-        public async Task<IEnumerable<Student>> GetAllStudentsBySectionIdAsync(int sectionId)
-        {
-            try
-            {
-                return await context.Students
-                    .Where(s => s.SectionId == sectionId)
-                    .ToListAsync().ConfigureAwait(false);
-            }
-            catch (Exception ex)
-            {
-                logger.LogError(ex, "An error occurred while retrieving all students for section with ID {SectionId} from database.", sectionId);
-                throw;
-            }
-        }
+        #region Utility Operations
 
+        #region SaveChangesAsync
         public async Task<int> SaveChangesAsync()
         {
             return await context.SaveChangesAsync().ConfigureAwait(false);
         }
+        #endregion
+
+        #endregion
     }
 }
