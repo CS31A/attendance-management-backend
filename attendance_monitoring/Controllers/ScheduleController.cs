@@ -89,7 +89,7 @@ namespace attendance_monitoring.Controllers
         /// <returns>The requested schedule</returns>
         /// <response code="200">Returns the requested schedule</response>
         /// <response code="404">Schedule not found</response>
-        /// <response code="500\">Internal server error</response>
+        /// <response code="500">Internal server error</response>
         [HttpGet("{id:int}")]
         public async Task<ActionResult<Schedules>> GetSchedule(int id)
         {
@@ -97,19 +97,17 @@ namespace attendance_monitoring.Controllers
             try
             {
                 var schedule = await scheduleService.GetScheduleByIdAsync(id);
-                
-                if (schedule == null)
-                {
-                    logger.LogWarning("Schedule with ID {Id} not found", id);
-                    return NotFound($"Schedule with ID {id} not found.");
-                }
-                
                 logger.LogInformation("Successfully retrieved schedule with ID: {Id}", id);
                 return Ok(schedule);
             }
+            catch (ScheduleNotFoundException ex)
+            {
+                logger.LogWarning("Schedule with ID {Id} not found", id);
+                return NotFound(ex.Message);
+            }
             catch (ScheduleServiceException ex)
             {
-                logger.LogError(ex, "Service error occurred while retrieving schedule with ID {Id}", id);
+                logger.LogError(ex, "Error occurred while retrieving schedule with ID {Id}", id);
                 return Problem(
                     detail: "An error occurred while retrieving the schedule",
                     statusCode: 500,
@@ -139,7 +137,7 @@ namespace attendance_monitoring.Controllers
         /// <response code="201">Returns the created schedule</response>
         /// <response code="400">Invalid input data</response>
         /// <response code="401">Not authorized to create schedules</response>
-        /// <response code="500\">Internal server error</response>
+        /// <response code="500">Internal server error</response>
         [HttpPost]
         [Authorize(Policy = "AdminPolicy")]
         public async Task<ActionResult<Schedules>> PostSchedule(CreateSchedule createSchedule)
@@ -171,9 +169,18 @@ namespace attendance_monitoring.Controllers
                 logger.LogInformation("Successfully created schedule with ID: {Id} and TimeIn: {TimeIn}, TimeOut: {TimeOut}", schedule.Id, schedule.TimeIn, schedule.TimeOut);
                 return CreatedAtAction(nameof(GetSchedule), new { id = schedule.Id }, schedule);
             }
+            catch (ScheduleServiceException ex)
+            {
+                logger.LogError(ex, "Error occurred while creating schedule with TimeIn: {TimeIn}, TimeOut: {TimeOut}", createSchedule.TimeIn, createSchedule.TimeOut);
+                return Problem(
+                    detail: "An error occurred while creating the schedule",
+                    statusCode: 500,
+                    title: "Internal Server Error"
+                );
+            }
             catch (Exception ex)
             {
-                logger.LogError(ex, "Unexpected error occurred while creating schedule with TimeIn: {TimeIn}, TimeOut: {TimeOut}", 
+                logger.LogError(ex, "Unexpected error occurred while creating schedule with TimeIn: {TimeIn}, TimeOut: {TimeOut}",
                     createSchedule.TimeIn, createSchedule.TimeOut);
                 return Problem(
                     detail: "An unexpected error occurred",
@@ -197,7 +204,7 @@ namespace attendance_monitoring.Controllers
         /// <response code="400">Invalid input data</response>
         /// <response code="404">Schedule not found</response>
         /// <response code="401">Not authorized to update this schedule</response>
-        /// <response code="500\">Internal server error</response>
+        /// <response code="500">Internal server error</response>
         [HttpPatch("{id:int}")]
         [Authorize(Policy = "AdminPolicy")]
         public async Task<ActionResult<Schedules>> UpdateSchedule(int id, UpdateSchedule updateSchedule)
@@ -227,6 +234,15 @@ namespace attendance_monitoring.Controllers
                 logger.LogWarning("Schedule update failed: Schedule with ID {Id} not found", id);
                 return NotFound(ex.Message);
             }
+            catch (ScheduleServiceException ex)
+            {
+                logger.LogError(ex, "Error occurred while updating schedule with ID {Id}", id);
+                return Problem(
+                    detail: "An error occurred while updating the schedule",
+                    statusCode: 500,
+                    title: "Internal Server Error"
+                );
+            }
             catch (Exception ex)
             {
                 logger.LogError(ex, "Unexpected error occurred while updating schedule with ID {Id}", id);
@@ -250,7 +266,7 @@ namespace attendance_monitoring.Controllers
         /// <response code="204">Schedule deleted successfully</response>
         /// <response code="404">Schedule not found</response>
         /// <response code="401">Not authorized to delete schedules</response>
-        /// <response code="500\">Internal server error</response>
+        /// <response code="500">Internal server error</response>
         [HttpDelete("{id:int}")]
         [Authorize(Policy = "AdminPolicy")]
         public async Task<ActionResult> DeleteSchedule(int id)
@@ -276,7 +292,7 @@ namespace attendance_monitoring.Controllers
             }
             catch (ScheduleServiceException ex)
             {
-                logger.LogError(ex, "Service error occurred while deleting schedule with ID {Id}", id);
+                logger.LogError(ex, "Error occurred while deleting schedule with ID {Id}", id);
                 return Problem(
                     detail: "An error occurred while deleting the schedule",
                     statusCode: 500,
