@@ -8,6 +8,10 @@ namespace attendance_monitoring.Services
         ILogger<RoleInitializationService> logger)
         : IRoleInitializationService
     {
+
+        #region Initialization Methods
+
+        #region InitializeRolesAsync
         public async Task InitializeRolesAsync()
         {
             logger.LogInformation("Initializing roles...");
@@ -17,5 +21,8 @@ namespace attendance_monitoring.Services
 
             logger.LogInformation("Roles initialized successfully.");
         }
+        #endregion
+
+        #endregion
     }
 }

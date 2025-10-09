@@ -9,6 +9,7 @@ namespace attendance_monitoring.Services
     public class SectionService(ISectionRepository sectionRepository, ILogger<SectionService> logger)
         : ISectionService
     {
+        #region Get Operations
         public async Task<Section?> GetSectionByIdAsync(int sectionId)
         {
             try
@@ -44,6 +45,9 @@ namespace attendance_monitoring.Services
             }
         }
 
+        #endregion
+
+        #region Create Operations
         public async Task<SectionResponseDto?> CreateSectionAsync(Section section)
         {
             try
@@ -68,6 +72,9 @@ namespace attendance_monitoring.Services
             }
         }
 
+        #endregion
+
+        #region Update Operations
         public async Task<SectionResponseDto?> UpdateSectionAsync(int id, Section section)
         {
             try
@@ -98,6 +105,9 @@ namespace attendance_monitoring.Services
             }
         }
 
+        #endregion
+
+        #region Delete Operations
         public async Task<bool> DeleteSectionAsync(int id)
         {
             try
@@ -116,6 +126,9 @@ namespace attendance_monitoring.Services
             }
         }
 
+        #endregion
+
+        #region Get Operations (Additional)
         public async Task<IEnumerable<Student>> GetActiveStudentsBySectionIdAsync(int sectionId)
         {
             try
@@ -141,5 +154,6 @@ namespace attendance_monitoring.Services
                 throw;
             }
         }
+        #endregion
     }
 }

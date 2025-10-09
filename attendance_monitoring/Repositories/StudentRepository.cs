@@ -7,7 +7,6 @@ namespace attendance_monitoring.Repositories;
 
 public class StudentRepository(ApplicationDbContext context) : IStudentRepository
 {
-    #region Read Operations
 
     #region GetAllStudentsAsync
     public async Task<IList<Student>> GetAllStudentsAsync()
@@ -44,12 +43,6 @@ public class StudentRepository(ApplicationDbContext context) : IStudentRepositor
     }
     #endregion
 
-    #endregion
-
-    #region Write Operations
-
-    #region Create Operations
-
     #region CreateStudent
     public async Task<Student> CreateStudent(Student student)
     {
@@ -58,10 +51,6 @@ public class StudentRepository(ApplicationDbContext context) : IStudentRepositor
     }
     #endregion
 
-    #endregion
-
-    #region Update Operations
-
     #region UpdateStudentAsync
     public Task<Student> UpdateStudentAsync(Student student)
     {
@@ -69,10 +58,6 @@ public class StudentRepository(ApplicationDbContext context) : IStudentRepositor
         return Task.FromResult(entry.Entity);
     }
     #endregion
-
-    #endregion
-
-    #region Delete Operations
 
     #region SoftDeleteStudentAsync
     public async Task<bool> SoftDeleteStudentAsync(int id)
@@ -118,18 +103,10 @@ public class StudentRepository(ApplicationDbContext context) : IStudentRepositor
     }
     #endregion
 
-    #endregion
-
-    #endregion
-
-    #region Utility Operations
-
     #region SaveChangesAsync
     public async Task<int> SaveChangesAsync()
     {
         return await context.SaveChangesAsync().ConfigureAwait(false);
     }
-    #endregion
-
     #endregion
 }

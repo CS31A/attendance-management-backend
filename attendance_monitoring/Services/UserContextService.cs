@@ -22,6 +22,7 @@ public class UserContextService(UserManager<IdentityUser> userManager)
     //     "Student", "Teacher", "Admin"
     // };
 
+    #region User Information Operations
     /// <summary>
     /// Extracts user ID from ClaimsPrincipal with multiple fallback strategies
     /// </summary>
@@ -60,6 +61,9 @@ public class UserContextService(UserManager<IdentityUser> userManager)
         return userPrincipal?.FindFirst(ClaimTypes.Role)?.Value;
     }
 
+    #endregion
+
+    #region Authorization Operations
     /// <summary>
     /// Checks if the user is authorized to perform an action on a resource
     /// </summary>
@@ -94,4 +98,5 @@ public class UserContextService(UserManager<IdentityUser> userManager)
         var userRole = GetUserRole(userPrincipal);
         return !string.IsNullOrEmpty(userRole) && allowedRoles.Contains(userRole, StringComparer.OrdinalIgnoreCase);
     }
+    #endregion
 }
