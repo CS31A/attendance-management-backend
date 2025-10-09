@@ -34,7 +34,7 @@ public class ClassroomController(IClassroomService classroomService, ILogger<Cla
             logger.LogInformation("Successfully retrieved {Count} classrooms", classrooms.Count());
             return Ok(classrooms);
         }
-        catch (ClassroomServiceException ex)
+        catch (EntityServiceException ex)
         {
             logger.LogError(ex, "Error occurred while retrieving all classrooms");
             return Problem(
@@ -73,12 +73,12 @@ public class ClassroomController(IClassroomService classroomService, ILogger<Cla
             logger.LogInformation("Successfully retrieved classroom with ID: {Id}", id);
             return Ok(classroom);
         }
-        catch (ClassroomNotFoundException ex)
+        catch (EntityNotFoundException<int> ex)
         {
             logger.LogWarning("Classroom with ID {Id} not found", id);
             return NotFound(ex.Message);
         }
-        catch (ClassroomServiceException ex)
+        catch (EntityServiceException ex)
         {
             logger.LogError(ex, "Error occurred while retrieving classroom with ID {Id}", id);
             return Problem(
@@ -143,7 +143,7 @@ public class ClassroomController(IClassroomService classroomService, ILogger<Cla
                 classroom.Name);
             return CreatedAtAction(nameof(GetClassroom), new { id = classroom.Id }, classroom);
         }
-        catch (ClassroomServiceException ex)
+        catch (EntityServiceException ex)
         {
             logger.LogError(ex, "Error occurred while creating classroom with name: {ClassroomName}", createClassroom.Name);
             return Problem(
@@ -204,12 +204,12 @@ public class ClassroomController(IClassroomService classroomService, ILogger<Cla
             logger.LogInformation("Successfully updated classroom with ID: {Id}", id);
             return Ok(classroom);
         }
-        catch (ClassroomNotFoundException ex)
+        catch (EntityNotFoundException<int> ex)
         {
             logger.LogWarning("Classroom update failed: Classroom with ID {Id} not found", id);
             return NotFound(ex.Message);
         }
-        catch (ClassroomServiceException ex)
+        catch (EntityServiceException ex)
         {
             logger.LogError(ex, "Error occurred while updating classroom with ID {Id}", id);
             return Problem(
@@ -261,12 +261,12 @@ public class ClassroomController(IClassroomService classroomService, ILogger<Cla
             logger.LogWarning("Classroom deletion failed for classroom ID {Id}: {Error}", id, error);
             return BadRequest(error);
         }
-        catch (ClassroomNotFoundException ex)
+        catch (EntityNotFoundException<int> ex)
         {
             logger.LogWarning("Classroom deletion failed: Classroom with ID {Id} not found", id);
             return NotFound(ex.Message);
         }
-        catch (ClassroomServiceException ex)
+        catch (EntityServiceException ex)
         {
             logger.LogError(ex, "Error occurred while deleting classroom with ID {Id}", id);
             return Problem(
