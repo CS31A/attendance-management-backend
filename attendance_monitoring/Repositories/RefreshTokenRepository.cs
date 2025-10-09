@@ -46,9 +46,10 @@ public class RefreshTokenRepository(ApplicationDbContext context) : IRefreshToke
     #endregion
 
     #region UpdateAsync
-    public async Task UpdateAsync(RefreshToken refreshToken)
+    public Task UpdateAsync(RefreshToken refreshToken)
     {
         context.RefreshTokens.Update(refreshToken);
+        return Task.CompletedTask;
     }
     #endregion
 

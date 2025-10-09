@@ -43,11 +43,11 @@ public class ClassroomRepository(ApplicationDbContext context) : IClassroomRepos
     #endregion
 
     #region UpdateClassroomAsync
-    public async Task<Classroom> UpdateClassroomAsync(Classroom classroom)
+    public Task<Classroom> UpdateClassroomAsync(Classroom classroom)
     {
         classroom.UpdatedAt = DateTime.UtcNow;
         context.Classrooms.Update(classroom);
-        return classroom;
+        return Task.FromResult(classroom);
     }
     #endregion
 
