@@ -33,8 +33,7 @@ namespace attendance_monitoring.Services
 
         #endregion
 
-        #region Read Operations
-
+        #region GetAllInstructorsAsync
         /// <summary>
         /// Retrieves all instructors
         /// </summary>
@@ -47,7 +46,9 @@ namespace attendance_monitoring.Services
             _logger.LogInformation("Successfully retrieved {Count} instructors", allInstructorsAsync.ToList().Count);
             return allInstructorsAsync;
         }
+        #endregion
 
+        #region GetInstructorByIdAsync
         /// <summary>
         /// Retrieves a specific instructor by ID
         /// </summary>
@@ -67,11 +68,9 @@ namespace attendance_monitoring.Services
             }
             return instructor;
         }
-
         #endregion
 
-        #region Create Operations
-
+        #region CreateInstructorAsync
         /// <summary>
         /// Creates a new instructor record
         /// </summary>
@@ -140,11 +139,9 @@ namespace attendance_monitoring.Services
                 return (null, "An error occurred while creating the instructor. Please try again later.");
             }
         }
-
         #endregion
 
-        #region Update Operations
-
+        #region UpdateInstructorAsync
         /// <summary>
         /// Updates an existing instructor record
         /// </summary>
@@ -208,11 +205,9 @@ namespace attendance_monitoring.Services
                 return (null, "An error occurred while updating the instructor. Please try again later.");
             }
         }
-
         #endregion
 
-        #region Delete Operations
-
+        #region SoftDeleteInstructorAsync
         /// <summary>
         /// Soft deletes an instructor record
         /// </summary>
@@ -270,7 +265,9 @@ namespace attendance_monitoring.Services
                 return "An error occurred while soft deleting the instructor. Please try again later.";
             }
         }
+        #endregion
 
+        #region HardDeleteInstructorAsync
         /// <summary>
         /// Hard deletes an instructor record
         /// </summary>
@@ -328,7 +325,9 @@ namespace attendance_monitoring.Services
                 return "An error occurred while hard deleting the instructor. Please try again later.";
             }
         }
+        #endregion
         
+        #region RestoreInstructorAsync
         /// <summary>
         /// Restores a soft deleted instructor record
         /// </summary>
@@ -393,11 +392,11 @@ namespace attendance_monitoring.Services
                 return "An error occurred while restoring the instructor. Please try again later.";
             }
         }
-
         #endregion
 
         #region Helper Methods
 
+        #region IsValidEmail
         /// <summary>
         /// Validates email format
         /// </summary>
@@ -415,6 +414,7 @@ namespace attendance_monitoring.Services
                 return false;
             }
         }
+        #endregion
 
         #endregion
     }

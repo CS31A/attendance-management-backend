@@ -21,6 +21,7 @@ public class RefreshTokenService(
 
     #region Token Generation Methods
 
+    #region GenerateRefreshTokenAsync
     public Task<string> GenerateRefreshTokenAsync()
     {
         var randomNumber = new byte[TokenConstants.RefreshTokenLength];
@@ -28,14 +29,18 @@ public class RefreshTokenService(
         rng.GetBytes(randomNumber);
         return Task.FromResult(Convert.ToBase64String(randomNumber));
     }
+    #endregion
 
+    #region HashRefreshToken
     public string HashRefreshToken(string refreshToken)
     {
         using var sha256 = SHA256.Create();
         var hashedBytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(refreshToken));
         return Convert.ToBase64String(hashedBytes);
     }
+    #endregion
 
+    #region CreateRefreshTokenAsync
     public async Task<(RefreshToken, string)> CreateRefreshTokenAsync(string userId)
     {
         var refreshToken = await GenerateRefreshTokenAsync();
@@ -63,11 +68,13 @@ public class RefreshTokenService(
             throw; // Re-throw the exception to maintain the existing behavior while logging it
         }
     }
+    #endregion
 
     #endregion
 
     #region Token Validation Methods
 
+    #region ValidateRefreshTokenAsync
     public async Task<(RefreshToken?, string?)> ValidateRefreshTokenAsync(string refreshToken)
     {
         var tokenHash = HashRefreshToken(refreshToken);
@@ -93,6 +100,7 @@ public class RefreshTokenService(
 
         return (storedToken, null);
     }
+    #endregion
 
     #endregion
 

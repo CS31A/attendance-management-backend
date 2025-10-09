@@ -25,9 +25,8 @@ public class ClassroomService : IClassroomService
         _classroomRepository = classroomRepository ?? throw new ArgumentNullException(nameof(classroomRepository));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
-
-    #region Get Operations
-
+    
+    #region GetAllClassroomsAsync
     /// <summary>
     /// Retrieves all classrooms
     /// </summary>
@@ -48,7 +47,9 @@ public class ClassroomService : IClassroomService
             throw new ClassroomServiceException("GetAllClassrooms", "An error occurred while retrieving classrooms", ex);
         }
     }
+    #endregion
 
+    #region GetClassroomByIdAsync
     /// <summary>
     /// Retrieves a specific classroom by ID
     /// </summary>
@@ -80,11 +81,9 @@ public class ClassroomService : IClassroomService
             throw new ClassroomServiceException($"GetClassroomById: {id}", "An error occurred while retrieving the classroom", ex);
         }
     }
-
     #endregion
 
-    #region Create Operations
-
+    #region CreateClassroomAsync
     /// <summary>
     /// Creates a new classroom record
     /// </summary>
@@ -137,11 +136,9 @@ public class ClassroomService : IClassroomService
             throw new ClassroomServiceException("CreateClassroom", "An error occurred while creating the classroom", ex);
         }
     }
-
     #endregion
 
-    #region Update Operations
-
+    #region UpdateClassroomAsync
     /// <summary>
     /// Updates an existing classroom record
     /// </summary>
@@ -210,11 +207,9 @@ public class ClassroomService : IClassroomService
             throw new ClassroomServiceException($"UpdateClassroom: {id}", "An error occurred while updating the classroom", ex);
         }
     }
-
     #endregion
 
-    #region Delete Operations
-
+    #region DeleteClassroomAsync
     /// <summary>
     /// Deletes a classroom by ID
     /// </summary>
@@ -260,11 +255,9 @@ public class ClassroomService : IClassroomService
             throw new ClassroomServiceException($"DeleteClassroom: {id}", "An error occurred while deleting the classroom", ex);
         }
     }
-
     #endregion
 
-    #region Private Helper Methods
-
+    #region IsUniqueConstraintViolation
     /// <summary>
     /// Determines if a DbUpdateException is caused by a unique constraint violation
     /// </summary>
@@ -284,6 +277,5 @@ public class ClassroomService : IClassroomService
         }
         return false;
     }
-
     #endregion
 }

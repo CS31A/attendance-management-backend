@@ -29,6 +29,8 @@ public class CourseService : ICourseService
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
+    #region Get Operations
+    #region GetAllCoursesAsync
     /// <summary>
     /// Retrieves all courses
     /// </summary>
@@ -41,7 +43,9 @@ public class CourseService : ICourseService
         _logger.LogInformation("Successfully retrieved {Count} courses", allCoursesAsync.ToList().Count);
         return allCoursesAsync;
     }
+    #endregion
 
+    #region GetCourseByIdAsync
     /// <summary>
     /// Retrieves a specific course by ID
     /// </summary>
@@ -61,7 +65,12 @@ public class CourseService : ICourseService
         }
         return course;
     }
+    #endregion
 
+    #endregion
+
+    #region Create Operations
+    #region CreateCourseAsync
     /// <summary>
     /// Creates a new course record
     /// </summary>
@@ -106,7 +115,12 @@ public class CourseService : ICourseService
             return (null, "An error occurred while creating the course. Please try again later.");
         }
     }
+    #endregion
 
+    #endregion
+
+    #region Update Operations
+    #region UpdateCourseAsync
     /// <summary>
     /// Updates an existing course record
     /// </summary>
@@ -160,7 +174,12 @@ public class CourseService : ICourseService
             return (null, "An error occurred while updating the course. Please try again later.");
         }
     }
+    #endregion
 
+    #endregion
+
+    #region Delete Operations
+    #region DeleteCourseAsync
     /// <summary>
     /// Deletes a course by ID
     /// </summary>
@@ -204,4 +223,7 @@ public class CourseService : ICourseService
             return "An error occurred while deleting the course. Please try again later.";
         }
     }
+    #endregion
+
+    #endregion
 }
