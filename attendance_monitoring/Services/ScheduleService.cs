@@ -21,6 +21,8 @@ namespace attendance_monitoring.Services
             _context = context;
             _logger = logger;
         }
+
+        #region Get Operations
         public async Task<IEnumerable<Schedules>> GetAllSchedulesAsync()
         {
             _logger.LogInformation("Retrieving all schedules");
@@ -60,6 +62,9 @@ namespace attendance_monitoring.Services
             }
         }
 
+        #endregion
+
+        #region Create Operations
         public async Task<(Schedules?, string?)> CreateScheduleAsync(CreateSchedule createSchedule)
         {
             _logger.LogInformation("Creating new schedule with TimeIn: {TimeIn} and TimeOut: {TimeOut}", 
@@ -112,6 +117,9 @@ namespace attendance_monitoring.Services
             }
         }
 
+        #endregion
+
+        #region Update Operations
         public async Task<(Schedules?, string?)> UpdateScheduleAsync(int id, UpdateSchedule updateSchedule)
         {
             _logger.LogInformation("Updating schedule with ID: {Id}", id);
@@ -173,6 +181,9 @@ namespace attendance_monitoring.Services
             }
         }
 
+        #endregion
+
+        #region Delete Operations
         public async Task<string?> SoftDeleteScheduleAsync(int id, ClaimsPrincipal user)
         {
             // Soft delete is currently not implemented for schedules
@@ -221,6 +232,6 @@ namespace attendance_monitoring.Services
             // Restore is currently not implemented for schedules
             return "Restore functionality not applicable without soft delete implementation";
         }
-        
+        #endregion
     }
 }

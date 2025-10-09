@@ -31,6 +31,7 @@ namespace attendance_monitoring.Services
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
+        #region Get Operations
         public async Task<IList<Student>> GetAllStudentsAsync()
         {
             _logger.LogInformation("Retrieving all students");
@@ -73,6 +74,9 @@ namespace attendance_monitoring.Services
             return student;
         }
 
+        #endregion
+
+        #region Create Operations
         /// <summary>
         /// Creates a new student record
         /// </summary>
@@ -141,6 +145,9 @@ namespace attendance_monitoring.Services
             }
         }
 
+        #endregion
+
+        #region Update Operations
         /// <summary>
         /// Updates an existing student record
         /// </summary>
@@ -205,6 +212,9 @@ namespace attendance_monitoring.Services
             }
         }
 
+        #endregion
+
+        #region Delete Operations
         /// <summary>
         /// Soft deletes a student record
         /// </summary>
@@ -385,5 +395,7 @@ namespace attendance_monitoring.Services
                 return "An error occurred while restoring the student. Please try again later.";
             }
         }
+
+        #endregion
     }
 }
