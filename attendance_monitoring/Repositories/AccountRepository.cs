@@ -10,8 +10,8 @@ namespace attendance_monitoring.Repositories
         UserManager<IdentityUser> userManager,
         SignInManager<IdentityUser> signInManager,
         RoleManager<IdentityRole> roleManager,
-        ApplicationDbContext context,
-        ILogger<AccountRepository> logger)
+        ApplicationDbContext context
+        )
         : IAccountRepository
     {
         #region User Lookup Methods
@@ -94,23 +94,26 @@ namespace attendance_monitoring.Repositories
         #region Profile Creation Methods
 
         #region CreateStudentProfileAsync
-        public async Task CreateStudentProfileAsync(Student student)
+        public Task CreateStudentProfileAsync(Student student)
         {
             context.Students.Add(student);
+            return Task.CompletedTask;
         }
         #endregion
 
         #region CreateInstructorProfileAsync
-        public async Task CreateInstructorProfileAsync(Instructor instructor)
+        public Task CreateInstructorProfileAsync(Instructor instructor)
         {
             context.Instructors.Add(instructor);
+            return Task.CompletedTask;
         }
         #endregion
 
         #region CreateAdminProfileAsync
-        public async Task CreateAdminProfileAsync(Admin admin)
+        public Task CreateAdminProfileAsync(Admin admin)
         {
             context.Admins.Add(admin);
+            return Task.CompletedTask;
         }
         #endregion
 

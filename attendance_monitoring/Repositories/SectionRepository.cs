@@ -2,9 +2,6 @@ using attendance_monitoring.Classes;
 using attendance_monitoring.Data;
 using attendance_monitoring.IRepository;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
-using System.Linq;
-using System.Threading.Tasks;
 
 namespace attendance_monitoring.Repositories
 {
@@ -81,7 +78,7 @@ namespace attendance_monitoring.Repositories
         #region Write Operations
 
         #region CreateSectionAsync
-        public async Task<Section> CreateSectionAsync(Section section)
+        public Task<Section> CreateSectionAsync(Section section)
         {
             try
             {
@@ -90,7 +87,7 @@ namespace attendance_monitoring.Repositories
                 
                 context.Sections.Add(section);
                 
-                return section;
+                return Task.FromResult(section);
             }
             catch (Exception ex)
             {

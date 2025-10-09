@@ -5,28 +5,21 @@ using Microsoft.EntityFrameworkCore;
 
 namespace attendance_monitoring.Repositories
 {
-    public class ScheduleRepository : IScheduleRepository
+    public class ScheduleRepository(ApplicationDbContext context) : IScheduleRepository
     {
-        private readonly ApplicationDbContext _context;
-
-        public ScheduleRepository(ApplicationDbContext context)
-        {
-            _context = context;
-        }
-
         #region Read Operations
 
         #region GetAllSchedulesAsync
         public async Task<IEnumerable<Schedules>> GetAllSchedulesAsync()
         {
-            return await _context.Schedules.ToListAsync();
+            return await context.Schedules.ToListAsync();
         }
         #endregion
 
         #region GetScheduleByIdAsync
         public async Task<Schedules?> GetScheduleByIdAsync(int id)
         {
-            return await _context.Schedules.FindAsync(id);
+            return await context.Schedules.FindAsync(id);
         }
         #endregion
 
@@ -37,8 +30,8 @@ namespace attendance_monitoring.Repositories
         #region AddScheduleAsync
         public async Task<Schedules> AddScheduleAsync(Schedules schedule)
         {
-            _context.Schedules.Add(schedule);
-            await _context.SaveChangesAsync();
+            context.Schedules.Add(schedule);
+            await context.SaveChangesAsync();
             return schedule;
         }
         #endregion
@@ -46,14 +39,14 @@ namespace attendance_monitoring.Repositories
         #region UpdateScheduleAsync
         public async Task<Schedules?> UpdateScheduleAsync(Schedules schedule)
         {
-            var existingSchedule = await _context.Schedules.FindAsync(schedule.Id);
+            var existingSchedule = await context.Schedules.FindAsync(schedule.Id);
             if (existingSchedule == null)
             {
                 return null;
             }
 
-            _context.Entry(existingSchedule).CurrentValues.SetValues(schedule);
-            await _context.SaveChangesAsync();
+            context.Entry(existingSchedule).CurrentValues.SetValues(schedule);
+            await context.SaveChangesAsync();
             return existingSchedule;
         }
         #endregion
@@ -61,13 +54,13 @@ namespace attendance_monitoring.Repositories
         #region DeleteScheduleAsync
         public async Task<bool> DeleteScheduleAsync(int id)
         {
-            var schedule = await _context.Schedules.FindAsync(id);
+            var schedule = await context.Schedules.FindAsync(id);
             if (schedule == null)
             {
                 return false;
             }
 
-            _context.Schedules.Remove(schedule);
+            context.Schedules.Remove(schedule);
             return true;
         }
         #endregion
@@ -79,7 +72,7 @@ namespace attendance_monitoring.Repositories
         #region SaveChangesAsync
         public async Task<int> SaveChangesAsync()
         {
-            return await _context.SaveChangesAsync();
+            return await context.SaveChangesAsync();
         }
         #endregion
 
