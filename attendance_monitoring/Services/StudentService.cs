@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using attendance_monitoring.Classes;
+using attendance_monitoring.Exceptions;
 using attendance_monitoring.IRepository;
 using attendance_monitoring.IServices;
 using attendance_monitoring.Models.DTO.Request;
@@ -34,11 +35,19 @@ namespace attendance_monitoring.Services
         #region Get Operations
         public async Task<IList<Student>> GetAllStudentsAsync()
         {
-            _logger.LogInformation("Retrieving all students");
+            try
+            {
+                _logger.LogInformation("Retrieving all students");
 
-            var students = await _studentRepository.GetAllStudentsAsync().ConfigureAwait(false);
-            _logger.LogInformation("Successfully retrieved {Count} students", students.Count);
-            return students;
+                var students = await _studentRepository.GetAllStudentsAsync().ConfigureAwait(false);
+                _logger.LogInformation("Successfully retrieved {Count} students", students.Count);
+                return students;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error occurred while retrieving students");
+                throw new EntityServiceException("Student", "GetAllStudents", "An error occurred while retrieving students", ex);
+            }
         }
 
         /// <summary>
@@ -47,31 +56,53 @@ namespace attendance_monitoring.Services
         /// <returns>A collection of non-deleted students</returns>
         public async Task<IList<Student>> GetAllNonDeletedStudentsAsync()
         {
-            _logger.LogInformation("Retrieving all non-deleted students");
+            try
+            {
+                _logger.LogInformation("Retrieving all non-deleted students");
 
-            var students = await _studentRepository.GetAllNonDeletedStudentsAsync().ConfigureAwait(false);
-            _logger.LogInformation("Successfully retrieved {Count} non-deleted students", students.Count);
-            return students;
+                var students = await _studentRepository.GetAllNonDeletedStudentsAsync().ConfigureAwait(false);
+                _logger.LogInformation("Successfully retrieved {Count} non-deleted students", students.Count);
+                return students;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error occurred while retrieving non-deleted students");
+                throw new EntityServiceException("Student", "GetAllNonDeletedStudents", "An error occurred while retrieving non-deleted students", ex);
+            }
         }
 
         /// <summary>
         /// Retrieves a specific student by ID
         /// </summary>
         /// <param name="id">The ID of the student to retrieve</param>
-        /// <returns>The student with the specified ID, or null if not found</returns>
-        public async Task<Student?> GetStudentByIdAsync(int id)
+        /// <returns>The student with the specified ID</returns>
+        /// <exception cref="EntityNotFoundException{int}">Thrown when the student is not found</exception>
+        /// <exception cref="EntityServiceException">Thrown when an error occurs during retrieval</exception>
+        public async Task<Student> GetStudentByIdAsync(int id)
         {
-            _logger.LogInformation("Retrieving student by ID: {Id}", id);
-            var student = await _studentRepository.GetStudentByIdAsync(id).ConfigureAwait(false);
-            if (student == null)
+            try
             {
-                _logger.LogWarning("Student with ID {Id} not found", id);
-            }
-            else
-            {
+                _logger.LogInformation("Retrieving student by ID: {Id}", id);
+                var student = await _studentRepository.GetStudentByIdAsync(id).ConfigureAwait(false);
+                if (student == null)
+                {
+                    _logger.LogWarning("Student with ID {Id} not found", id);
+                    throw new EntityNotFoundException<int>("Student", id);
+                }
+
                 _logger.LogInformation("Successfully retrieved student with ID: {Id}", id);
+                return student;
             }
-            return student;
+            catch (EntityNotFoundException<int>)
+            {
+                // Re-throw EntityNotFoundException as-is
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error occurred while retrieving student with ID: {Id}", id);
+                throw new EntityServiceException("Student", $"GetStudentById: {id}", "An error occurred while retrieving the student", ex);
+            }
         }
 
         #endregion
@@ -82,66 +113,78 @@ namespace attendance_monitoring.Services
         /// </summary>
         /// <param name="createStudent">The student data to create</param>
         /// <param name="userPrincipal">The claims principal of the current user</param>
-        /// <returns>A tuple containing the created student (if successful) and an error message (if any)</returns>
-        public async Task<(Student?, string?)> CreateStudentAsync(CreateStudent createStudent, ClaimsPrincipal userPrincipal)
+        /// <returns>The created student</returns>
+        /// <exception cref="EntityAlreadyExistsException{T}">Thrown when a student record already exists for the user</exception>
+        /// <exception cref="EntityServiceException">Thrown when student creation fails</exception>
+        public async Task<Student> CreateStudentAsync(CreateStudent createStudent, ClaimsPrincipal userPrincipal)
         {
-            _logger.LogInformation("Creating new student with name: {FirstName} {LastName}", 
-                createStudent.Firstname, createStudent.Lastname);
-
-            // Validate section ID
-            if (createStudent.SectionId <= 0)
-            {
-                _logger.LogWarning("Student creation failed: Invalid section ID");
-                return (null, "Invalid section ID");
-            }
-
-            // Validate that the SectionId exists
-            var section = await _sectionRepository.GetSectionByIdAsync(createStudent.SectionId).ConfigureAwait(false);
-            if (section == null)
-            {
-                _logger.LogWarning("Student creation failed: The specified section does not exist");
-                return (null, "The specified section does not exist");
-            }
-
-            var userId = await _userContextService.GetUserIdAsync(userPrincipal).ConfigureAwait(false);
-            if (string.IsNullOrEmpty(userId))
-            {
-                _logger.LogWarning("Student creation failed: User ID not found in token");
-                return (null, "User ID not found in token");
-            }
-
-            var existingStudent = await _studentRepository.GetStudentByUserIdAsync(userId).ConfigureAwait(false);
-            if (existingStudent != null)
-            {
-                _logger.LogWarning("Student creation failed: A student record already exists for this user");
-                return (null, "A student record already exists for this user");
-            }
-
-            var student = new Student
-            {
-                Firstname = createStudent.Firstname,
-                Lastname = createStudent.Lastname,
-                Email = createStudent.Email,
-                UserId = userId,
-                SectionId = createStudent.SectionId,
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
-            };
-
             try
             {
+                _logger.LogInformation("Creating new student with name: {FirstName} {LastName}", 
+                    createStudent.Firstname, createStudent.Lastname);
+
+                // Validate section ID
+                if (createStudent.SectionId <= 0)
+                {
+                    _logger.LogWarning("Student creation failed: Invalid section ID");
+                    throw new EntityServiceException("Student", "CreateStudent", "Invalid section ID");
+                }
+
+                // Validate that the SectionId exists
+                var section = await _sectionRepository.GetSectionByIdAsync(createStudent.SectionId).ConfigureAwait(false);
+                if (section == null)
+                {
+                    _logger.LogWarning("Student creation failed: The specified section does not exist");
+                    throw new EntityServiceException("Student", "CreateStudent", "The specified section does not exist");
+                }
+
+                var userId = await _userContextService.GetUserIdAsync(userPrincipal).ConfigureAwait(false);
+                if (string.IsNullOrEmpty(userId))
+                {
+                    _logger.LogWarning("Student creation failed: User ID not found in token");
+                    throw new EntityServiceException("Student", "CreateStudent", "User ID not found in token");
+                }
+
+                var existingStudent = await _studentRepository.GetStudentByUserIdAsync(userId).ConfigureAwait(false);
+                if (existingStudent != null)
+                {
+                    _logger.LogWarning("Student creation failed: A student record already exists for this user");
+                    throw new EntityAlreadyExistsException<string>("Student", "UserId", userId);
+                }
+
+                var student = new Student
+                {
+                    Firstname = createStudent.Firstname,
+                    Lastname = createStudent.Lastname,
+                    Email = createStudent.Email,
+                    UserId = userId,
+                    SectionId = createStudent.SectionId,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                };
+
                 var createdStudent = await _studentRepository.CreateStudent(student).ConfigureAwait(false);
                 await _studentRepository.SaveChangesAsync().ConfigureAwait(false);
 
                 _logger.LogInformation("Successfully created student with ID: {Id} and name: {FirstName} {LastName}", 
                     createdStudent.Id, createdStudent.Firstname, createdStudent.Lastname);
-                return (createdStudent, null);
+                return createdStudent;
+            }
+            catch (EntityAlreadyExistsException<string>)
+            {
+                // Re-throw EntityAlreadyExistsException as-is
+                throw;
+            }
+            catch (EntityServiceException)
+            {
+                // Re-throw EntityServiceException as-is
+                throw;
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error occurred while creating student with name: {FirstName} {LastName}", 
                     createStudent.Firstname, createStudent.Lastname);
-                return (null, "An error occurred while creating the student. Please try again later.");
+                throw new EntityServiceException("Student", "CreateStudent", "An error occurred while creating the student", ex);
             }
         }
 
@@ -154,61 +197,79 @@ namespace attendance_monitoring.Services
         /// <param name="id">The ID of the student to update</param>
         /// <param name="updateStudent">The updated student data</param>
         /// <param name="userPrincipal">The claims principal of the current user</param>
-        /// <returns>A tuple containing the updated student (if successful) and an error message (if any)</returns>
-        public async Task<(Student?, string?)> UpdateStudentAsync(int id, UpdateStudent updateStudent, ClaimsPrincipal userPrincipal)
+        /// <returns>The updated student</returns>
+        /// <exception cref="EntityNotFoundException{int}">Thrown when the student is not found</exception>
+        /// <exception cref="EntityUnauthorizedException">Thrown when the user is not authorized to update the student</exception>
+        /// <exception cref="EntityServiceException">Thrown when student update fails</exception>
+        public async Task<Student> UpdateStudentAsync(int id, UpdateStudent updateStudent, ClaimsPrincipal userPrincipal)
         {
-            _logger.LogInformation("Updating student with ID: {Id}", id);
-            
-            var userId = await _userContextService.GetUserIdAsync(userPrincipal).ConfigureAwait(false);
-            if (string.IsNullOrEmpty(userId))
-            {
-                _logger.LogWarning("Student update failed: User ID not found in token");
-                return (null, "User ID not found in token");
-            }
-
-            var existingStudent = await _studentRepository.GetStudentByIdAsync(id).ConfigureAwait(false);
-            if (existingStudent == null)
-            {
-                _logger.LogWarning("Student update failed: Student with ID {Id} not found", id);
-                return (null, "Student not found");
-            }
-
-            var isAuthorized = await _userContextService.IsAuthorizedAsync(userPrincipal, existingStudent.UserId, "Admin", "Teacher").ConfigureAwait(false);
-            if (!isAuthorized)
-            {
-                _logger.LogWarning("Student update failed: User not authorized to update student with ID {Id}", id);
-                return (null, "You are not authorized to update this student record.");
-            }
-
-            if (!string.IsNullOrEmpty(updateStudent.Firstname))
-            {
-                existingStudent.Firstname = updateStudent.Firstname;
-            }
-
-            if (!string.IsNullOrEmpty(updateStudent.Lastname))
-            {
-                existingStudent.Lastname = updateStudent.Lastname;
-            }
-
-            if (!string.IsNullOrEmpty(updateStudent.Email))
-            {
-                existingStudent.Email = updateStudent.Email;
-            }
-
-            existingStudent.UpdatedAt = DateTime.UtcNow;
-
             try
             {
+                _logger.LogInformation("Updating student with ID: {Id}", id);
+                
+                var userId = await _userContextService.GetUserIdAsync(userPrincipal).ConfigureAwait(false);
+                if (string.IsNullOrEmpty(userId))
+                {
+                    _logger.LogWarning("Student update failed: User ID not found in token");
+                    throw new EntityServiceException("Student", $"UpdateStudent: {id}", "User ID not found in token");
+                }
+
+                var existingStudent = await _studentRepository.GetStudentByIdAsync(id).ConfigureAwait(false);
+                if (existingStudent == null)
+                {
+                    _logger.LogWarning("Student update failed: Student with ID {Id} not found", id);
+                    throw new EntityNotFoundException<int>("Student", id);
+                }
+
+                var isAuthorized = await _userContextService.IsAuthorizedAsync(userPrincipal, existingStudent.UserId, "Admin", "Teacher").ConfigureAwait(false);
+                if (!isAuthorized)
+                {
+                    _logger.LogWarning("Student update failed: User not authorized to update student with ID {Id}", id);
+                    throw new EntityUnauthorizedException("Student", $"Update student with ID {id}", "You are not authorized to update this student record");
+                }
+
+                if (!string.IsNullOrEmpty(updateStudent.Firstname))
+                {
+                    existingStudent.Firstname = updateStudent.Firstname;
+                }
+
+                if (!string.IsNullOrEmpty(updateStudent.Lastname))
+                {
+                    existingStudent.Lastname = updateStudent.Lastname;
+                }
+
+                if (!string.IsNullOrEmpty(updateStudent.Email))
+                {
+                    existingStudent.Email = updateStudent.Email;
+                }
+
+                existingStudent.UpdatedAt = DateTime.UtcNow;
+
                 var updatedStudent = await _studentRepository.UpdateStudentAsync(existingStudent).ConfigureAwait(false);
                 await _studentRepository.SaveChangesAsync().ConfigureAwait(false);
 
                 _logger.LogInformation("Successfully updated student with ID: {Id}", id);
-                return (updatedStudent, null);
+                return updatedStudent;
+            }
+            catch (EntityNotFoundException<int>)
+            {
+                // Re-throw EntityNotFoundException as-is
+                throw;
+            }
+            catch (EntityUnauthorizedException)
+            {
+                // Re-throw EntityUnauthorizedException as-is
+                throw;
+            }
+            catch (EntityServiceException)
+            {
+                // Re-throw EntityServiceException as-is
+                throw;
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error occurred while updating student with ID: {Id}", id);
-                return (null, "An error occurred while updating the student. Please try again later.");
+                throw new EntityServiceException("Student", $"UpdateStudent: {id}", "An error occurred while updating the student", ex);
             }
         }
 
@@ -220,56 +281,71 @@ namespace attendance_monitoring.Services
         /// </summary>
         /// <param name="id">The ID of the student to delete</param>
         /// <param name="userPrincipal">The claims principal of the current user</param>
-        /// <returns>A message indicating the result of the operation</returns>
-        public async Task<string?> SoftDeleteStudentAsync(int id, ClaimsPrincipal userPrincipal)
+        /// <exception cref="EntityNotFoundException{int}">Thrown when the student is not found</exception>
+        /// <exception cref="EntityUnauthorizedException">Thrown when the user is not authorized to delete the student</exception>
+        /// <exception cref="EntityServiceException">Thrown when student deletion fails</exception>
+        public async Task SoftDeleteStudentAsync(int id, ClaimsPrincipal userPrincipal)
         {
-            _logger.LogInformation("Soft deleting student with ID: {Id}", id);
-            
-            if (id <= 0)
-            {
-                _logger.LogWarning("Student soft delete failed: Invalid student ID {Id}", id);
-                return "Invalid student ID";
-            }
-
-            var userId = await _userContextService.GetUserIdAsync(userPrincipal).ConfigureAwait(false);
-            if (string.IsNullOrEmpty(userId))
-            {
-                _logger.LogWarning("Student soft delete failed: User ID not found in token");
-                return "User ID not found in token";
-            }
-
-            var existingStudent = await _studentRepository.GetStudentByIdAsync(id).ConfigureAwait(false);
-            if (existingStudent == null)
-            {
-                _logger.LogWarning("Student soft delete failed: Student with ID {Id} not found", id);
-                return "Student not found";
-            }
-
-            var isAuthorized = await _userContextService.IsAuthorizedAsync(userPrincipal, existingStudent.UserId, "Admin", "Teacher").ConfigureAwait(false);
-            if (!isAuthorized)
-            {
-                _logger.LogWarning("Student soft delete failed: User not authorized to delete student with ID {Id}", id);
-                return "You are not authorized to delete this student record.";
-            }
-
-            var result = await _studentRepository.SoftDeleteStudentAsync(id).ConfigureAwait(false);
-            if (!result)
-            {
-                _logger.LogError("Student soft delete failed: Failed to soft delete student with ID {Id}", id);
-                return "Failed to soft delete student";
-            }
-            
             try
             {
-                await _studentRepository.SaveChangesAsync().ConfigureAwait(false);
+                _logger.LogInformation("Soft deleting student with ID: {Id}", id);
                 
+                if (id <= 0)
+                {
+                    _logger.LogWarning("Student soft delete failed: Invalid student ID {Id}", id);
+                    throw new EntityServiceException("Student", $"SoftDeleteStudent: {id}", "Invalid student ID");
+                }
+
+                var userId = await _userContextService.GetUserIdAsync(userPrincipal).ConfigureAwait(false);
+                if (string.IsNullOrEmpty(userId))
+                {
+                    _logger.LogWarning("Student soft delete failed: User ID not found in token");
+                    throw new EntityServiceException("Student", $"SoftDeleteStudent: {id}", "User ID not found in token");
+                }
+
+                var existingStudent = await _studentRepository.GetStudentByIdAsync(id).ConfigureAwait(false);
+                if (existingStudent == null)
+                {
+                    _logger.LogWarning("Student soft delete failed: Student with ID {Id} not found", id);
+                    throw new EntityNotFoundException<int>("Student", id);
+                }
+
+                var isAuthorized = await _userContextService.IsAuthorizedAsync(userPrincipal, existingStudent.UserId, "Admin", "Teacher").ConfigureAwait(false);
+                if (!isAuthorized)
+                {
+                    _logger.LogWarning("Student soft delete failed: User not authorized to delete student with ID {Id}", id);
+                    throw new EntityUnauthorizedException("Student", $"Soft delete student with ID {id}", "You are not authorized to delete this student record");
+                }
+
+                var result = await _studentRepository.SoftDeleteStudentAsync(id).ConfigureAwait(false);
+                if (!result)
+                {
+                    _logger.LogError("Student soft delete failed: Failed to soft delete student with ID {Id}", id);
+                    throw new EntityServiceException("Student", $"SoftDeleteStudent: {id}", "Failed to soft delete student");
+                }
+                
+                await _studentRepository.SaveChangesAsync().ConfigureAwait(false);
                 _logger.LogInformation("Successfully soft deleted student with ID: {Id}", id);
-                return null;
+            }
+            catch (EntityNotFoundException<int>)
+            {
+                // Re-throw EntityNotFoundException as-is
+                throw;
+            }
+            catch (EntityUnauthorizedException)
+            {
+                // Re-throw EntityUnauthorizedException as-is
+                throw;
+            }
+            catch (EntityServiceException)
+            {
+                // Re-throw EntityServiceException as-is
+                throw;
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error occurred while soft deleting student with ID: {Id}", id);
-                return "An error occurred while soft deleting the student. Please try again later.";
+                throw new EntityServiceException("Student", $"SoftDeleteStudent: {id}", "An error occurred while soft deleting the student", ex);
             }
         }
 
