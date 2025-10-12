@@ -7,8 +7,8 @@ namespace attendance_monitoring.IServices;
 public interface ICourseService
 {
     Task<IEnumerable<Course>> GetAllCoursesAsync();
-    Task<Course?> GetCourseByIdAsync(int id);
-    Task<(Course?, string?)> CreateCourseAsync(CreateCourse createCourse, ClaimsPrincipal user);
-    Task<(Course?, string?)> UpdateCourseAsync(int id, UpdateCourse updateCourse, ClaimsPrincipal user);
-    Task<string?> DeleteCourseAsync(int id, ClaimsPrincipal user);
+    Task<Course> GetCourseByIdAsync(int id);
+    Task<Course> CreateCourseAsync(CreateCourse createCourse, ClaimsPrincipal user);
+    Task<Course> UpdateCourseAsync(int id, UpdateCourse updateCourse, ClaimsPrincipal user);
+    Task DeleteCourseAsync(int id, ClaimsPrincipal user);
 }

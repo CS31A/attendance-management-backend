@@ -44,7 +44,7 @@ public class ClassroomService : IClassroomService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error occurred while retrieving all classrooms");
-            throw new ClassroomServiceException("GetAllClassrooms", "An error occurred while retrieving classrooms", ex);
+            throw new EntityServiceException("Classroom", "GetAllClassrooms", "An error occurred while retrieving classrooms", ex);
         }
     }
     #endregion
@@ -64,13 +64,13 @@ public class ClassroomService : IClassroomService
             if (classroom == null)
             {
                 _logger.LogWarning("Classroom with ID {Id} not found", id);
-                throw new ClassroomNotFoundException(id);
+                throw new EntityNotFoundException<int>("Classroom", id);
             }
 
             _logger.LogInformation("Successfully retrieved classroom with ID: {Id}", id);
             return classroom;
         }
-        catch (ClassroomNotFoundException)
+        catch (EntityNotFoundException<int>)
         {
             // Re-throw the specific exception for the controller to handle
             throw;
@@ -78,7 +78,7 @@ public class ClassroomService : IClassroomService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error occurred while retrieving classroom with ID {Id}", id);
-            throw new ClassroomServiceException($"GetClassroomById: {id}", "An error occurred while retrieving the classroom", ex);
+            throw new EntityServiceException("Classroom", $"GetClassroomById: {id}", "An error occurred while retrieving the classroom", ex);
         }
     }
     #endregion
@@ -133,7 +133,7 @@ public class ClassroomService : IClassroomService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error occurred while creating classroom with name: {ClassroomName}", createClassroom.Name);
-            throw new ClassroomServiceException("CreateClassroom", "An error occurred while creating the classroom", ex);
+            throw new EntityServiceException("Classroom", "CreateClassroom", "An error occurred while creating the classroom", ex);
         }
     }
     #endregion
@@ -155,7 +155,7 @@ public class ClassroomService : IClassroomService
             if (existingClassroom == null)
             {
                 _logger.LogWarning("Classroom update failed: Classroom with ID {Id} not found", id);
-                throw new ClassroomNotFoundException(id);
+                throw new EntityNotFoundException<int>("Classroom", id);
             }
 
             // Check if the new name already exists for another classroom (first check)
@@ -196,7 +196,7 @@ public class ClassroomService : IClassroomService
                 return (null, $"A classroom with name {updateClassroom.Name} already exists");
             }
         }
-        catch (ClassroomNotFoundException)
+        catch (EntityNotFoundException<int>)
         {
             // Re-throw the specific exception for the controller to handle
             throw;
@@ -204,7 +204,7 @@ public class ClassroomService : IClassroomService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error occurred while updating classroom with ID {Id}", id);
-            throw new ClassroomServiceException($"UpdateClassroom: {id}", "An error occurred while updating the classroom", ex);
+            throw new EntityServiceException("Classroom", $"UpdateClassroom: {id}", "An error occurred while updating the classroom", ex);
         }
     }
     #endregion
@@ -225,7 +225,7 @@ public class ClassroomService : IClassroomService
             if (existingClassroom == null)
             {
                 _logger.LogWarning("Classroom deletion failed: Classroom with ID {Id} not found", id);
-                throw new ClassroomNotFoundException(id);
+                throw new EntityNotFoundException<int>("Classroom", id);
             }
 
             var result = await _classroomRepository.DeleteClassroomAsync(id).ConfigureAwait(false);
@@ -244,7 +244,7 @@ public class ClassroomService : IClassroomService
             _logger.LogInformation("Successfully deleted classroom with ID: {Id}", id);
             return null;
         }
-        catch (ClassroomNotFoundException)
+        catch (EntityNotFoundException<int>)
         {
             // Re-throw the specific exception for the controller to handle
             throw;
@@ -252,7 +252,7 @@ public class ClassroomService : IClassroomService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error occurred while deleting classroom with ID {Id}", id);
-            throw new ClassroomServiceException($"DeleteClassroom: {id}", "An error occurred while deleting the classroom", ex);
+            throw new EntityServiceException("Classroom", $"DeleteClassroom: {id}", "An error occurred while deleting the classroom", ex);
         }
     }
     #endregion
