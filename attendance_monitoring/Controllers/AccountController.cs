@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
+using attendance_monitoring.Exceptions;
 using attendance_monitoring.Models.DTO;
 using attendance_monitoring.IServices;
 using attendance_monitoring.Models.DTO.Response;

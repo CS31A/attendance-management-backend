@@ -4,6 +4,7 @@ using System.Text;
 using attendance_monitoring.Classes;
 using attendance_monitoring.Constants;
 using attendance_monitoring.Data;
+using attendance_monitoring.Exceptions;
 using attendance_monitoring.IRepository;
 using attendance_monitoring.IServices;
 using attendance_monitoring.Models.DTO;
