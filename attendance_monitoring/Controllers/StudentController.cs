@@ -1,4 +1,5 @@
 using attendance_monitoring.Classes;
+using attendance_monitoring.Exceptions;
 using attendance_monitoring.IServices;
 using attendance_monitoring.Models.DTO.Request;
 using attendance_monitoring.Models.DTO.Response;
@@ -57,14 +58,23 @@ public class StudentController(IStudentService studentService, ILogger<StudentCo
     /// </summary>
     /// <returns>A list of non-deleted students</returns>
     /// <response code="200">Returns the list of non-deleted students</response>
+    /// <response code="500">Internal server error</response>
     // GET: api/Student
     [HttpGet]
     public async Task<ActionResult<IList<Student>>> GetStudents()
     {
-        logger.LogInformation("Getting all non-deleted students");
-        var students = await studentService.GetAllNonDeletedStudentsAsync();
-        logger.LogInformation("Successfully retrieved {Count} non-deleted students", students.Count);
-        return Ok(students);
+        try
+        {
+            logger.LogInformation("Getting all non-deleted students");
+            var students = await studentService.GetAllNonDeletedStudentsAsync();
+            logger.LogInformation("Successfully retrieved {Count} non-deleted students", students.Count);
+            return Ok(students);
+        }
+        catch (EntityServiceException ex)
+        {
+            logger.LogError(ex, "Service error occurred while retrieving students");
+            return StatusCode(500, "An error occurred while retrieving students");
+        }
     }
 
     /// <summary>
@@ -73,22 +83,29 @@ public class StudentController(IStudentService studentService, ILogger<StudentCo
     /// <param name="id">The ID of the student to retrieve</param>
     /// <returns>The requested student</returns>
     /// <response code="200">Returns the requested student</response>
-    /// <response code="404"> not found</response>
+    /// <response code="404">Student not found</response>
+    /// <response code="500">Internal server error</response>
     // GET: api/Student/5
     [HttpGet("{id:int}")]
     public async Task<ActionResult<Student>> GetStudent(int id)
     {
-        logger.LogInformation("Getting student with ID: {Id}", id);
-        var student = await studentService.GetStudentByIdAsync(id);
-
-        if (student == null)
+        try
         {
-            logger.LogWarning("Student with ID {Id} not found", id);
-            return NotFound();
+            logger.LogInformation("Getting student with ID: {Id}", id);
+            var student = await studentService.GetStudentByIdAsync(id);
+            logger.LogInformation("Successfully retrieved student with ID: {Id}", id);
+            return Ok(student);
         }
-
-        logger.LogInformation("Successfully retrieved student with ID: {Id}", id);
-        return Ok(student);
+        catch (EntityNotFoundException<int> ex)
+        {
+            logger.LogWarning(ex, "Student with ID {Id} not found", id);
+            return NotFound($"Student with ID {id} not found");
+        }
+        catch (EntityServiceException ex)
+        {
+            logger.LogError(ex, "Service error occurred while retrieving student with ID: {Id}", id);
+            return StatusCode(500, "An error occurred while retrieving the student");
+        }
     }
     
     // POST: api/Students/
@@ -127,37 +144,39 @@ public class StudentController(IStudentService studentService, ILogger<StudentCo
     /// <response code="400">Invalid input data</response>
     /// <response code="404">Student not found</response>
     /// <response code="401">Not authorized to update this student</response>
+    /// <response code="500">Internal server error</response>
     // PATCH: api/Student/{id}
     [HttpPatch("{id:int}")]
     public async Task<ActionResult<Student>> PatchStudent(int id, UpdateStudent updateStudent)
     {
-        logger.LogInformation("Updating student with ID: {Id}", id);
-        if (!ModelState.IsValid)
+        try
         {
-            logger.LogWarning("Student update failed due to invalid model state for student ID: {Id}", id);
-            return BadRequest(ModelState);
+            logger.LogInformation("Updating student with ID: {Id}", id);
+            if (!ModelState.IsValid)
+            {
+                logger.LogWarning("Student update failed due to invalid model state for student ID: {Id}", id);
+                return BadRequest(ModelState);
+            }
+
+            var student = await studentService.UpdateStudentAsync(id, updateStudent, User);
+            logger.LogInformation("Successfully updated student with ID: {Id}", id);
+            return Ok(student);
         }
-
-        var (student, error) = await studentService.UpdateStudentAsync(id, updateStudent, User);
-
-        if (error != null)
+        catch (EntityNotFoundException<int> ex)
         {
-            if (error.Contains("not found"))
-            {
-                logger.LogWarning("Student update failed: Student with ID {Id} not found", id);
-                return NotFound(error);
-            }
-            if (error.Contains("not authorized"))
-            {
-                logger.LogWarning("Student update failed: User not authorized to update student with ID {Id}", id);
-                return Unauthorized(error);
-            }
-            logger.LogWarning("Student update failed for student ID {Id}: {Error}", id, error);
-            return BadRequest(error);
+            logger.LogWarning(ex, "Student with ID {Id} not found", id);
+            return NotFound($"Student with ID {id} not found");
         }
-
-        logger.LogInformation("Successfully updated student with ID: {Id}", id);
-        return Ok(student);
+        catch (EntityUnauthorizedException ex)
+        {
+            logger.LogWarning(ex, "User not authorized to update student with ID {Id}", id);
+            return Unauthorized(ex.Message);
+        }
+        catch (EntityServiceException ex)
+        {
+            logger.LogError(ex, "Service error occurred while updating student with ID: {Id}", id);
+            return BadRequest(ex.Message);
+        }
     }
 
     /// <summary>
@@ -168,14 +187,49 @@ public class StudentController(IStudentService studentService, ILogger<StudentCo
     /// <response code="200">Student marked as deleted successfully</response>
     /// <response code="404">Student not found</response>
     /// <response code="401">Not authorized to delete this student</response>
+    /// <response code="500">Internal server error</response>
     // PATCH: api/Student/{id}/soft-delete
     [HttpPatch("{id:int}/soft-delete")]
     public async Task<ActionResult<SoftDeleteResponse>> SoftDeleteStudent(int id)
     {
-        logger.LogInformation("Soft deleting student with ID: {Id}", id);
-        var error = await studentService.SoftDeleteStudentAsync(id, User);
-        logger.LogInformation("Soft delete operation completed for student with ID: {Id}", id);
-        return CreateResponse(error, "Student marked as deleted successfully");
+        try
+        {
+            logger.LogInformation("Soft deleting student with ID: {Id}", id);
+            await studentService.SoftDeleteStudentAsync(id, User);
+            logger.LogInformation("Soft delete operation completed for student with ID: {Id}", id);
+            return Ok(new SoftDeleteResponse
+            {
+                Success = true,
+                Message = "Student marked as deleted successfully"
+            });
+        }
+        catch (EntityNotFoundException<int> ex)
+        {
+            logger.LogWarning(ex, "Student with ID {Id} not found", id);
+            return NotFound(new SoftDeleteResponse
+            {
+                Success = false,
+                Message = $"Student with ID {id} not found"
+            });
+        }
+        catch (EntityUnauthorizedException ex)
+        {
+            logger.LogWarning(ex, "User not authorized to delete student with ID {Id}", id);
+            return Unauthorized(new SoftDeleteResponse
+            {
+                Success = false,
+                Message = ex.Message
+            });
+        }
+        catch (EntityServiceException ex)
+        {
+            logger.LogError(ex, "Service error occurred while soft deleting student with ID: {Id}", id);
+            return BadRequest(new SoftDeleteResponse
+            {
+                Success = false,
+                Message = ex.Message
+            });
+        }
     }
 
     /// <summary>
