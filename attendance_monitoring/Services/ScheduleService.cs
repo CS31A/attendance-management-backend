@@ -86,6 +86,13 @@ namespace attendance_monitoring.Services
                     return (null, "Section not found");
                 }
 
+                var instructorExists = await context.Instructors.AnyAsync(i => i.Id == createSchedule.InstructorId);
+                if (!instructorExists)
+                {
+                    logger.LogWarning("Schedule creation failed: Instructor with ID {InstructorId} not found", createSchedule.InstructorId);
+                    return (null, "Instructor not found");
+                }
+
                 var schedule = new Schedules
                 {
                     TimeIn = createSchedule.TimeIn,
@@ -94,6 +101,7 @@ namespace attendance_monitoring.Services
                     SubjectId = createSchedule.SubjectId,
                     ClassroomId = createSchedule.ClassroomId,
                     SectionId = createSchedule.SectionId,
+                    InstructorId = createSchedule.InstructorId,
                     CreatedAt = DateTime.UtcNow,
                     UpdatedAt = DateTime.UtcNow
                 };
@@ -148,12 +156,20 @@ namespace attendance_monitoring.Services
                     return (null, "Section not found");
                 }
 
+                var instructorExists = await context.Instructors.AnyAsync(i => i.Id == updateSchedule.InstructorId);
+                if (!instructorExists)
+                {
+                    logger.LogWarning("Schedule update failed: Instructor with ID {InstructorId} not found", updateSchedule.InstructorId);
+                    return (null, "Instructor not found");
+                }
+
                 existingSchedule.TimeIn = updateSchedule.TimeIn;
                 existingSchedule.TimeOut = updateSchedule.TimeOut;
                 existingSchedule.DayOfWeek = updateSchedule.DayOfWeek;
                 existingSchedule.SubjectId = updateSchedule.SubjectId;
                 existingSchedule.ClassroomId = updateSchedule.ClassroomId;
                 existingSchedule.SectionId = updateSchedule.SectionId;
+                existingSchedule.InstructorId = updateSchedule.InstructorId;
                 existingSchedule.UpdatedAt = DateTime.UtcNow;
 
                 var updatedSchedule = await scheduleRepository.UpdateScheduleAsync(existingSchedule);
