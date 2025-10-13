@@ -22,5 +22,8 @@ namespace attendance_monitoring.Models.DTO.Request
         
         [Required] 
         public int SectionId { get; set; }
+        
+        [Required]
+        public int InstructorId { get; set; }
     }
 }
