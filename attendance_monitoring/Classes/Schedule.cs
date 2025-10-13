@@ -36,6 +36,16 @@ public class Schedules
     [Required] 
     public int SectionId { get; set; }
 
+    // foreign key to instructor id
+    [Required]
+    public int InstructorId { get; set; }
+
+    // Navigation properties
+    public Subject Subject { get; set; } = null!;
+    public Classroom Classroom { get; set; } = null!;
+    public Section Section { get; set; } = null!;
+    public Instructor Instructor { get; set; } = null!;
+
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
 }

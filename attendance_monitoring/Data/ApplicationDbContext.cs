@@ -30,6 +30,31 @@ namespace attendance_monitoring.Data
             builder.Entity<RefreshToken>()
                 .HasIndex(r => r.TokenHash)
                 .IsUnique();
+
+            // Configure Schedules relationships
+            builder.Entity<Schedules>()
+                .HasOne(s => s.Subject)
+                .WithMany()
+                .HasForeignKey(s => s.SubjectId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            builder.Entity<Schedules>()
+                .HasOne(s => s.Section)
+                .WithMany()
+                .HasForeignKey(s => s.SectionId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            builder.Entity<Schedules>()
+                .HasOne(s => s.Classroom)
+                .WithMany()
+                .HasForeignKey(s => s.ClassroomId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            builder.Entity<Schedules>()
+                .HasOne(s => s.Instructor)
+                .WithMany()
+                .HasForeignKey(s => s.InstructorId)
+                .OnDelete(DeleteBehavior.Restrict);
         }
     }
 }
