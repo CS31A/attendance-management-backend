@@ -5,7 +5,7 @@ namespace attendance_monitoring.IRepository;
 /// <summary>
 /// Represents the repository for managing courses.
 /// </summary>
-public interface ICourseRepository
+public interface ICourseRepository : ISaveableRepository
 {
     /// <summary>
     /// Retrieves all courses.
@@ -41,9 +41,4 @@ public interface ICourseRepository
     /// <returns>True if the course was deleted; otherwise, false.</returns>
     Task<bool> DeleteCourseAsync(int id);
 
-    /// <summary>
-    /// Saves changes to the database.
-    /// </summary>
-    /// <returns>The number of state entries written to the database.</returns>
-    Task<int> SaveChangesAsync();
 }

@@ -5,7 +5,7 @@ namespace attendance_monitoring.IRepository;
 /// <summary>
 /// Represents the repository for managing students.
 /// </summary>
-public interface IStudentRepository
+public interface IStudentRepository : ISaveableRepository
 {
     /// <summary>
     /// Retrieves all students.
@@ -74,9 +74,4 @@ public interface IStudentRepository
     /// <returns>The student if found; otherwise, null.</returns>
     Task<Student?> GetStudentByIdIgnoreDeleteStatus(int id);
 
-    /// <summary>
-    /// Saves changes to the database.
-    /// </summary>
-    /// <returns>The number of state entries written to the database.</returns>
-    Task<int> SaveChangesAsync();
 }

@@ -5,7 +5,7 @@ namespace attendance_monitoring.IRepository;
 /// <summary>
 /// Represents the repository for managing classrooms.
 /// </summary>
-public interface IClassroomRepository
+public interface IClassroomRepository : ISaveableRepository
 {
     /// <summary>
     /// Retrieves all classrooms.
@@ -48,9 +48,4 @@ public interface IClassroomRepository
     /// <returns>The classroom if found; otherwise, null.</returns>
     Task<Classroom?> GetClassroomByNameAsync(string name);
 
-    /// <summary>
-    /// Saves changes to the database.
-    /// </summary>
-    /// <returns>The number of state entries written to the database.</returns>
-    Task<int> SaveChangesAsync();
 }
