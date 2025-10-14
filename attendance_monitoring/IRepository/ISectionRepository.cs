@@ -5,7 +5,7 @@ namespace attendance_monitoring.IRepository
     /// <summary>
     /// Represents the repository for managing sections.
     /// </summary>
-    public interface ISectionRepository
+    public interface ISectionRepository : ISaveableRepository
     {
         /// <summary>
         /// Retrieves a section by its ID.
@@ -56,10 +56,5 @@ namespace attendance_monitoring.IRepository
         /// <returns>True if the section was deleted; otherwise, false.</returns>
         Task<bool> DeleteSectionAsync(int id);
 
-        /// <summary>
-        /// Saves changes to the database.
-        /// </summary>
-        /// <returns>The number of state entries written to the database.</returns>
-        Task<int> SaveChangesAsync();
     }
 }
