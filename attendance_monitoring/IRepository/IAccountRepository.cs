@@ -6,7 +6,7 @@ namespace attendance_monitoring.IRepository
     /// <summary>
     /// Represents the repository for managing user accounts.
     /// </summary>
-    public interface IAccountRepository
+    public interface IAccountRepository : ISaveableRepository
     {
         /// <summary>
         /// Finds a user by their ID.
@@ -97,10 +97,5 @@ namespace attendance_monitoring.IRepository
         /// <returns>The refresh token entity if found; otherwise, null.</returns>
         Task<RefreshToken?> FindRefreshTokenByHashAsync(string tokenHash);
 
-        /// <summary>
-        /// Saves changes to the database.
-        /// </summary>
-        /// <returns>The number of state entries written to the database.</returns>
-        Task<int> SaveChangesAsync();
     }
 }
