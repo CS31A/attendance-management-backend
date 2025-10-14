@@ -1,4 +1,3 @@
-using System;
 
 namespace attendance_monitoring.Exceptions
 {
