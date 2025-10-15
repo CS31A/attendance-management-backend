@@ -5,12 +5,13 @@ using attendance_monitoring.Exceptions;
 using attendance_monitoring.Models.DTO;
 using attendance_monitoring.IServices;
 using attendance_monitoring.Models.DTO.Response;
+using attendance_monitoring.Services;
 
 namespace attendance_monitoring.Controllers
 {
     [ApiController]
     [Route("api/account")]
-    public class AccountController(IAccountService accountService, ILogger<AccountController> logger, IConfiguration configuration)
+    public class AccountController(IAccountService accountService, ILogger<AccountController> logger, IConfiguration configuration, ICookieOptionsService cookieOptionsService)
         : ControllerBase
     {
         #region Endpoints
@@ -143,32 +144,7 @@ namespace attendance_monitoring.Controllers
             }
 
             // Set HTTP-only cookies for access and refresh tokens
-            var accessTokenExpirationMinutes = configuration.GetValue("CookieSettings:AccessTokenExpirationMinutes", 15);
-            var refreshTokenExpirationDays = configuration.GetValue("CookieSettings:RefreshTokenExpirationDays", 7);
-
-            var cookieOptions = new CookieOptions
-            {
-                HttpOnly = true,
-                Secure = true, // Set to true in production with HTTPS
-                // SameSite = SameSiteMode.Strict,
-                //SameSite = SameSiteMode.Lax,
-                SameSite = SameSiteMode.None,
-                Expires = DateTime.UtcNow.AddMinutes(accessTokenExpirationMinutes)
-            };
-
-            Response.Cookies.Append("accessToken", tokenResponse.AccessToken, cookieOptions);
-
-            var refreshCookieOptions = new CookieOptions
-            {
-                HttpOnly = true,
-                Secure = true, // Set to true in production with HTTPS
-                               // SameSite = SameSiteMode.Strict,
-                               //SameSite = SameSiteMode.Lax,
-                SameSite = SameSiteMode.None,
-                Expires = DateTime.UtcNow.AddDays(refreshTokenExpirationDays)
-            };
-
-            Response.Cookies.Append("refreshToken", tokenResponse.RefreshToken, refreshCookieOptions);
+            cookieOptionsService.SetTokenCookies(Response, tokenResponse.AccessToken, tokenResponse.RefreshToken);
 
             logger.LogInformation("User logged in successfully via web login");
             return Ok(new WebLoginResponseDto { Success = true, Message = "Login successful" });
@@ -254,30 +230,7 @@ namespace attendance_monitoring.Controllers
             }
 
             // Update HTTP-only cookies with new tokens
-            var accessTokenExpirationMinutes = configuration.GetValue("CookieSettings:AccessTokenExpirationMinutes", 15);
-            var refreshTokenExpirationDays = configuration.GetValue("CookieSettings:RefreshTokenExpirationDays", 7);
-
-            var cookieOptions = new CookieOptions
-            {
-                HttpOnly = true,
-                Secure = true, // Set to true in production with HTTPS
-                               // SameSite = SameSiteMode.Lax, // Changed this from strict breh
-                SameSite = SameSiteMode.None,
-                Expires = DateTime.UtcNow.AddMinutes(accessTokenExpirationMinutes)
-            };
-
-            Response.Cookies.Append("accessToken", tokenResponse.AccessToken, cookieOptions);
-
-            var refreshCookieOptions = new CookieOptions
-            {
-                HttpOnly = true,
-                Secure = true, // Set to true in production with HTTPS
-                //SameSite = SameSiteMode.Lax,
-                SameSite = SameSiteMode.None,
-                Expires = DateTime.UtcNow.AddDays(refreshTokenExpirationDays)
-            };
-
-            Response.Cookies.Append("refreshToken", tokenResponse.RefreshToken, refreshCookieOptions);
+            cookieOptionsService.SetTokenCookies(Response, tokenResponse.AccessToken, tokenResponse.RefreshToken);
 
             logger.LogInformation("Web tokens refreshed successfully.");
             return Ok(new WebRefreshResponseDto { Success = true, Message = "Tokens refreshed successfully" });
@@ -366,8 +319,7 @@ namespace attendance_monitoring.Controllers
             }
 
             // Clear cookies after revocation
-            Response.Cookies.Delete("accessToken");
-            Response.Cookies.Delete("refreshToken");
+            cookieOptionsService.ClearTokenCookies(Response);
 
             logger.LogInformation("Refresh token revoked successfully for user {UserId}.", userId);
             return Ok(new WebRevokeResponseDto { Success = true, Message = "Token revoked successfully" });
@@ -409,8 +361,7 @@ namespace attendance_monitoring.Controllers
             {
                 logger.LogWarning("Logout failed: User not found from claims.");
                 // Always clear cookies and return success to prevent timing attacks
-                Response.Cookies.Delete("accessToken");
-                Response.Cookies.Delete("refreshToken");
+                cookieOptionsService.ClearTokenCookies(Response);
                 return Ok(new LogoutResponseDto { Success = true, Message = "Logged out successfully" });
             }
 
@@ -421,8 +372,7 @@ namespace attendance_monitoring.Controllers
             await accountService.WebLogoutAsync(userId, accessToken);
 
             // Always clear cookies
-            Response.Cookies.Delete("accessToken");
-            Response.Cookies.Delete("refreshToken");
+            cookieOptionsService.ClearTokenCookies(Response);
 
             logger.LogInformation("User logged out successfully: {UserId}", userId);
             return Ok(new LogoutResponseDto { Success = true, Message = "Logged out successfully" });

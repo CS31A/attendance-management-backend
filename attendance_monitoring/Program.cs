@@ -142,6 +142,7 @@ builder.Services.AddScoped<IScheduleService, ScheduleService>();
 builder.Services.AddScoped<IRoleInitializationService, RoleInitializationService>();
 builder.Services.AddScoped<UserContextService>();
 builder.Services.AddScoped<ITokenValidationService, TokenValidationService>();
+builder.Services.AddScoped<ICookieOptionsService, CookieOptionsService>();
 
 builder.Services.AddEndpointsApiExplorer();
 
