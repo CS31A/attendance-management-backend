@@ -19,5 +19,8 @@ public class CreateStudent
     public string Email { get; set; } = string.Empty;
     
     [Required]
+    public bool IsRegular { get; set; } = true;
+    
+    [Required]
     public int SectionId { get; set; }
 }

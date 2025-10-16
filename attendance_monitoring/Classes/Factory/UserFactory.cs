@@ -8,12 +8,12 @@ namespace attendance_monitoring.Classes.Factory;
 public class UserFactory(IAccountRepository accountRepository) : IUserFactory
 {
     public async Task<UserCreationResult> CreateUserAsync(
-        string username, 
-        string email, 
-        string password, 
-        string role, 
-        string? firstName = null, 
-        string? lastName = null, 
+        string username,
+        string email,
+        string password,
+        string role,
+        string? firstName = null,
+        string? lastName = null,
         int? sectionId = null)
     {
         // Validate inputs at the factory level for additional security
@@ -21,17 +21,17 @@ public class UserFactory(IAccountRepository accountRepository) : IUserFactory
         {
             return new UserCreationResult { Success = false, Errors = ["Username is required"] };
         }
-        
+
         if (string.IsNullOrWhiteSpace(email))
         {
             return new UserCreationResult { Success = false, Errors = ["Email is required"] };
         }
-        
+
         if (string.IsNullOrWhiteSpace(password))
         {
             return new UserCreationResult { Success = false, Errors = ["Password is required"] };
         }
-        
+
         if (string.IsNullOrWhiteSpace(role))
         {
             return new UserCreationResult { Success = false, Errors = ["Role is required"] };
@@ -89,7 +89,10 @@ public class UserFactory(IAccountRepository accountRepository) : IUserFactory
                 return await CreateAdminProfileAsync(identityUser, firstName, lastName, email);
 
             default:
-                return new UserCreationResult { Success = false, Errors =
+                return new UserCreationResult
+                {
+                    Success = false,
+                    Errors =
                     ["Invalid role specified. Valid roles are: Student, Instructor, Admin"]
                 };
         }
@@ -100,7 +103,10 @@ public class UserFactory(IAccountRepository accountRepository) : IUserFactory
         if (sectionId is null or <= 0)
         {
             // If sectionId is not provided for student, return an error
-            return new UserCreationResult { Success = false, Errors =
+            return new UserCreationResult
+            {
+                Success = false,
+                Errors =
                 ["SectionId is required for student registration"]
             };
         }
@@ -111,6 +117,7 @@ public class UserFactory(IAccountRepository accountRepository) : IUserFactory
             Firstname = firstName,
             Lastname = lastName,
             Email = email,
+            IsRegular = true,
             SectionId = sectionId.Value,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
