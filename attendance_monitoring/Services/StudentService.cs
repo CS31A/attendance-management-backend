@@ -157,6 +157,7 @@ namespace attendance_monitoring.Services
                     Firstname = createStudent.Firstname,
                     Lastname = createStudent.Lastname,
                     Email = createStudent.Email,
+                    IsRegular = createStudent.IsRegular,
                     UserId = userId,
                     SectionId = createStudent.SectionId,
                     CreatedAt = DateTime.UtcNow,
@@ -241,6 +242,11 @@ namespace attendance_monitoring.Services
                 if (!string.IsNullOrEmpty(updateStudent.Email))
                 {
                     existingStudent.Email = updateStudent.Email;
+                }
+
+                if (updateStudent.IsRegular.HasValue)
+                {
+                    existingStudent.IsRegular = updateStudent.IsRegular.Value;
                 }
 
                 existingStudent.UpdatedAt = DateTime.UtcNow;
