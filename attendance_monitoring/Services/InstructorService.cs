@@ -149,6 +149,59 @@ namespace attendance_monitoring.Services
         }
         #endregion
 
+        #region GetInstructorProfileAsync
+        /// <summary>
+        /// Retrieves the instructor profile for the current authenticated user
+        /// </summary>
+        /// <param name="userPrincipal">The claims principal of the current user</param>
+        /// <returns>The instructor profile if found, null otherwise</returns>
+        /// <exception cref="EntityServiceException">Thrown when an error occurs during retrieval</exception>
+        public async Task<InstructorProfileResponseDto?> GetInstructorProfileAsync(ClaimsPrincipal userPrincipal)
+        {
+            try
+            {
+                _logger.LogInformation("Retrieving instructor profile for authenticated user");
+                
+                // Extract user ID from JWT claims
+                var userId = await _userContextService.GetUserIdAsync(userPrincipal).ConfigureAwait(false);
+                if (string.IsNullOrEmpty(userId))
+                {
+                    _logger.LogWarning("User ID not found in JWT claims");
+                    return null;
+                }
+
+                // Get instructor by user ID
+                var instructor = await _instructorRepository.GetInstructorByUserIdAsync(userId).ConfigureAwait(false);
+                if (instructor == null)
+                {
+                    _logger.LogWarning("No instructor record found for user ID: {UserId}", userId);
+                    return null;
+                }
+
+                // Map to response DTO
+                var profileDto = new InstructorProfileResponseDto
+                {
+                    Id = instructor.Id,
+                    Firstname = instructor.Firstname,
+                    Lastname = instructor.Lastname,
+                    Email = instructor.Email,
+                    CreatedAt = instructor.CreatedAt,
+                    UpdatedAt = instructor.UpdatedAt
+                };
+
+                _logger.LogInformation("Successfully retrieved instructor profile for user ID: {UserId}, instructor ID: {InstructorId}", 
+                    userId, instructor.Id);
+                return profileDto;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error occurred while retrieving instructor profile");
+                throw new EntityServiceException("Instructor", "GetInstructorProfile", 
+                    "An error occurred while retrieving the instructor profile", ex);
+            }
+        }
+        #endregion
+
         #region CreateInstructorAsync
         /// <summary>
         /// Creates a new instructor record
