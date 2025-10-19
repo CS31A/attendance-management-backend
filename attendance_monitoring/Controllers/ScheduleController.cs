@@ -88,6 +88,44 @@ namespace attendance_monitoring.Controllers
             }
         }
 
+        /// <summary>
+        /// Get all schedules assigned to a specific instructor
+        /// </summary>
+        /// <param name="instructorId">The ID of the instructor</param>
+        /// <returns>A list of schedules assigned to the instructor</returns>
+        /// <response code="200">Returns the list of schedules for the instructor</response>
+        /// <response code="500">Internal server error</response>
+        [HttpGet("{instructorId:int}/all")]
+        public async Task<ActionResult<IEnumerable<Schedules>>> GetSchedulesByInstructor(int instructorId)
+        {
+            logger.LogInformation("Getting schedules for instructor ID: {InstructorId}", instructorId);
+            try
+            {
+                var schedules = await scheduleService.GetSchedulesByInstructorIdAsync(instructorId);
+                logger.LogInformation("Successfully retrieved {Count} schedules for instructor ID: {InstructorId}", 
+                    schedules.Count(), instructorId);
+                return Ok(schedules);
+            }
+            catch (EntityServiceException ex)
+            {
+                logger.LogError(ex, "Error occurred while retrieving schedules for instructor ID {InstructorId}", instructorId);
+                return Problem(
+                    detail: "An error occurred while retrieving schedules for the instructor",
+                    statusCode: 500,
+                    title: "Internal Server Error"
+                );
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Unexpected error occurred while retrieving schedules for instructor ID {InstructorId}", instructorId);
+                return Problem(
+                    detail: "An unexpected error occurred",
+                    statusCode: 500,
+                    title: "Internal Server Error"
+                );
+            }
+        }
+
         #endregion
 
         #region Create Operations
