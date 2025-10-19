@@ -23,6 +23,15 @@ namespace attendance_monitoring.Repositories
         }
         #endregion
 
+        #region GetSchedulesByInstructorIdAsync
+        public async Task<IEnumerable<Schedules>> GetSchedulesByInstructorIdAsync(int instructorId)
+        {
+            return await context.Schedules
+                .Where(s => s.InstructorId == instructorId)
+                .ToListAsync();
+        }
+        #endregion
+
         #endregion
 
         #region Write Operations
