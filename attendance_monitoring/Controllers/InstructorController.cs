@@ -116,6 +116,31 @@ public class InstructorController(IInstructorService instructorService, ILogger<
         }
     }
 
+    // GET: api/instructors/profile
+    [HttpGet("profile")]
+    public async Task<ActionResult<InstructorProfileResponseDto>> GetInstructorProfile()
+    {
+        try
+        {
+            logger.LogInformation("Getting instructor profile for authenticated user");
+            var profile = await instructorService.GetInstructorProfileAsync(User);
+            
+            if (profile == null)
+            {
+                logger.LogWarning("No instructor profile found for authenticated user");
+                return NotFound("No instructor profile found for the current user");
+            }
+
+            logger.LogInformation("Successfully retrieved instructor profile with ID: {InstructorId}", profile.Id);
+            return Ok(profile);
+        }
+        catch (EntityServiceException ex)
+        {
+            logger.LogError(ex, "Service error occurred while retrieving instructor profile");
+            return StatusCode(500, "An error occurred while retrieving the instructor profile");
+        }
+    }
+
     #endregion
 
     #region Update Operations
