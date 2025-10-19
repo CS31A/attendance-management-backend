@@ -59,7 +59,6 @@ namespace attendance_monitoring.Services
                 {
                     Id = s.Id,
                     Name = s.Name,
-                    InstructorId = s.InstructorId,
                     CourseId = s.CourseId,
                     CreatedAt = s.CreatedAt,
                     UpdatedAt = s.UpdatedAt
@@ -96,7 +95,6 @@ namespace attendance_monitoring.Services
                 {
                     Id = createdSection.Id,
                     Name = createdSection.Name,
-                    InstructorId = createdSection.InstructorId,
                     CourseId = createdSection.CourseId,
                     CreatedAt = createdSection.CreatedAt,
                     UpdatedAt = createdSection.UpdatedAt
@@ -141,7 +139,6 @@ namespace attendance_monitoring.Services
                 {
                     Id = updatedSection.Id,
                     Name = updatedSection.Name,
-                    InstructorId = updatedSection.InstructorId,
                     CourseId = updatedSection.CourseId,
                     CreatedAt = updatedSection.CreatedAt,
                     UpdatedAt = updatedSection.UpdatedAt

@@ -110,7 +110,6 @@ namespace attendance_monitoring.Repositories
                 }
 
                 existingSection.Name = section.Name;
-                existingSection.InstructorId = section.InstructorId;
                 existingSection.CourseId = section.CourseId;
                 existingSection.UpdatedAt = DateTime.UtcNow;
 
