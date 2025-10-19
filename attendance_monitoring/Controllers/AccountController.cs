@@ -32,10 +32,17 @@ namespace attendance_monitoring.Controllers
             logger.LogInformation("Registration attempt for username: {Username}", registerDto.Username);
 
             // Validate that SectionId is provided for student registrations
-            if ((string.IsNullOrEmpty(registerDto.Role) ||
-                registerDto.Role.Equals("Student", StringComparison.OrdinalIgnoreCase)))
+            // Only check for students (default role is Student if not specified)
+            // Instructor is an alias for Teacher, so treat it as such
+            var roleToCheck = string.IsNullOrEmpty(registerDto.Role) ? "Student" : registerDto.Role;
+            if (roleToCheck.Equals("Instructor", StringComparison.OrdinalIgnoreCase))
             {
-                if (registerDto.SectionId <= 0)
+                roleToCheck = "Teacher";
+            }
+            
+            if (roleToCheck.Equals("Student", StringComparison.OrdinalIgnoreCase))
+            {
+                if (!registerDto.SectionId.HasValue || registerDto.SectionId <= 0)
                 {
                     logger.LogWarning("Student registration failed for username: {Username}: Valid SectionId is required", registerDto.Username);
                     return BadRequest(new RegisterResponseDto { Success = false, Message = "Valid SectionId is required for student registration" });
