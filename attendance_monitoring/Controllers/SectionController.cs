@@ -24,7 +24,6 @@ namespace attendance_monitoring.Controllers
                 {
                     Id = section.Id,
                     Name = section.Name,
-                    InstructorId = section.InstructorId,
                     CourseId = section.CourseId,
                     CreatedAt = section.CreatedAt,
                     UpdatedAt = section.UpdatedAt
@@ -69,7 +68,6 @@ namespace attendance_monitoring.Controllers
                 var section = new Section
                 {
                     Name = createSection.Name,
-                    InstructorId = createSection.InstructorId,
                     CourseId = createSection.CourseId
                 };
 
@@ -94,7 +92,6 @@ namespace attendance_monitoring.Controllers
                 var section = new Section
                 {
                     Name = updateSection.Name,
-                    InstructorId = updateSection.InstructorId,
                     CourseId = updateSection.CourseId
                 };
 

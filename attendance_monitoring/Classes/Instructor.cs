@@ -25,10 +25,6 @@ public class Instructor
     [JsonIgnore]
     public IdentityUser User { get; set; } = null!;
 
-    // Navigation property for related Sections
-    [JsonIgnore]
-    public ICollection<Section> Sections { get; set; } = new List<Section>();
-
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
     
