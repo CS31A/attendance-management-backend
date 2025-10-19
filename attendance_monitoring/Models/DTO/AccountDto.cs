@@ -45,9 +45,9 @@ public class RegisterDto : IValidatableObject
     public string RepeatedPassword { get; set; } = string.Empty;
 
     /// <summary>
-    /// User role - valid values are: "Student", "Teacher", "Admin"
+    /// User role - valid values are: "Student", "Teacher", "Instructor", "Admin"
     /// </summary>
-    [RegularExpression("^(?i)(Student|Teacher|Instructor|Admin)$", ErrorMessage = "Invalid role specified. Valid roles are: Student, Teacher, Instructor, Admin")]
+    [RegularExpression("^(Student|Teacher|Instructor|Admin|student|teacher|instructor|admin)$", ErrorMessage = "Invalid role specified. Valid roles are: Student, Teacher, Instructor, Admin")]
     public string? Role { get; set; }
 
     /// <summary>
@@ -57,7 +57,15 @@ public class RegisterDto : IValidatableObject
 
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
     {
-        if (string.Equals(Role, "Student", StringComparison.OrdinalIgnoreCase) && (SectionId is null or <= 0))
+        // Only require SectionId for Student role (role defaults to Student if null/empty)
+        // Instructor is an alias for Teacher, so treat it as such
+        var effectiveRole = string.IsNullOrEmpty(Role) ? "Student" : Role;
+        if (effectiveRole.Equals("Instructor", StringComparison.OrdinalIgnoreCase))
+        {
+            effectiveRole = "Teacher";
+        }
+        
+        if (string.Equals(effectiveRole, "Student", StringComparison.OrdinalIgnoreCase) && (SectionId is null or <= 0))
         {
             yield return new ValidationResult("SectionId is required for student registration", new[] { nameof(SectionId) });
         }
