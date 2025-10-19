@@ -4,6 +4,7 @@ using attendance_monitoring.Exceptions;
 using attendance_monitoring.IRepository;
 using attendance_monitoring.IServices;
 using attendance_monitoring.Models.DTO.Request;
+using attendance_monitoring.Models.DTO.Response;
 
 namespace attendance_monitoring.Services
 {
@@ -16,6 +17,7 @@ namespace attendance_monitoring.Services
     public class InstructorService : IInstructorService
     {
         private readonly IInstructorRepository _instructorRepository;
+        private readonly IScheduleRepository _scheduleRepository;
         private readonly UserContextService _userContextService;
         private readonly ILogger<InstructorService> _logger;
 
@@ -23,11 +25,13 @@ namespace attendance_monitoring.Services
         /// Initializes a new instance of the InstructorService class
         /// </summary>
         /// <param name="instructorRepository">Repository for instructor data operations</param>
+        /// <param name="scheduleRepository">Repository for schedule data operations</param>
         /// <param name="userContextService">Service for managing user context and authorization</param>
         /// <param name="logger">Logger for logging operations</param>
-        public InstructorService(IInstructorRepository instructorRepository, UserContextService userContextService, ILogger<InstructorService> logger)
+        public InstructorService(IInstructorRepository instructorRepository, IScheduleRepository scheduleRepository, UserContextService userContextService, ILogger<InstructorService> logger)
         {
             _instructorRepository = instructorRepository ?? throw new ArgumentNullException(nameof(instructorRepository));
+            _scheduleRepository = scheduleRepository ?? throw new ArgumentNullException(nameof(scheduleRepository));
             _userContextService = userContextService ?? throw new ArgumentNullException(nameof(userContextService));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
@@ -90,6 +94,57 @@ namespace attendance_monitoring.Services
             {
                 _logger.LogError(ex, "Error occurred while retrieving instructor with ID: {Id}", id);
                 throw new EntityServiceException("Instructor", $"GetInstructorById: {id}", "An error occurred while retrieving the instructor", ex);
+            }
+        }
+        #endregion
+
+        #region GetSubjectsByInstructorIdAsync
+        /// <summary>
+        /// Retrieves all subjects taught by a specific instructor
+        /// </summary>
+        /// <param name="instructorId">The ID of the instructor</param>
+        /// <returns>A collection of subjects taught by the instructor</returns>
+        /// <exception cref="EntityNotFoundException{int}">Thrown when the instructor is not found</exception>
+        /// <exception cref="EntityServiceException">Thrown when an error occurs during retrieval</exception>
+        public async Task<IEnumerable<SubjectResponseDto>> GetSubjectsByInstructorIdAsync(int instructorId)
+        {
+            try
+            {
+                _logger.LogInformation("Retrieving subjects for instructor ID: {InstructorId}", instructorId);
+                
+                // Verify instructor exists
+                var instructor = await _instructorRepository.GetInstructorByIdAsync(instructorId).ConfigureAwait(false);
+                if (instructor == null)
+                {
+                    _logger.LogWarning("Instructor with ID {InstructorId} not found", instructorId);
+                    throw new EntityNotFoundException<int>("Instructor", instructorId);
+                }
+
+                // Get subjects from schedules
+                var subjects = await _scheduleRepository.GetSubjectsByInstructorIdAsync(instructorId).ConfigureAwait(false);
+                var subjectDtos = subjects.Select(s => new SubjectResponseDto
+                {
+                    Id = s.Id,
+                    Name = s.Name,
+                    Code = s.Code,
+                    CreatedAt = s.CreatedAt,
+                    UpdatedAt = s.UpdatedAt
+                }).ToList();
+
+                _logger.LogInformation("Successfully retrieved {Count} subjects for instructor ID: {InstructorId}", 
+                    subjectDtos.Count, instructorId);
+                return subjectDtos;
+            }
+            catch (EntityNotFoundException<int>)
+            {
+                // Re-throw EntityNotFoundException as-is
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error occurred while retrieving subjects for instructor ID: {InstructorId}", instructorId);
+                throw new EntityServiceException("Instructor", $"GetSubjectsByInstructorId: {instructorId}", 
+                    "An error occurred while retrieving instructor subjects", ex);
             }
         }
         #endregion

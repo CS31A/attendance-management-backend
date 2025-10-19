@@ -32,6 +32,18 @@ namespace attendance_monitoring.Repositories
         }
         #endregion
 
+        #region GetSubjectsByInstructorIdAsync
+        public async Task<IEnumerable<Subject>> GetSubjectsByInstructorIdAsync(int instructorId)
+        {
+            return await context.Schedules
+                .Where(s => s.InstructorId == instructorId)
+                .Select(s => s.Subject)
+                .Distinct()
+                .OrderBy(subject => subject.Name)
+                .ToListAsync();
+        }
+        #endregion
+
         #endregion
 
         #region Write Operations
