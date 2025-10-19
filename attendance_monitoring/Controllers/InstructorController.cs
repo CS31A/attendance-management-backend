@@ -93,6 +93,29 @@ public class InstructorController(IInstructorService instructorService, ILogger<
         }
     }
 
+    // GET: api/instructors/{instructorId}/subjects
+    [HttpGet("{instructorId:int}/subjects")]
+    public async Task<ActionResult<IEnumerable<SubjectResponseDto>>> GetInstructorSubjects(int instructorId)
+    {
+        try
+        {
+            logger.LogInformation("Getting subjects for instructor ID: {InstructorId}", instructorId);
+            var subjects = await instructorService.GetSubjectsByInstructorIdAsync(instructorId);
+            logger.LogInformation("Successfully retrieved subjects for instructor ID: {InstructorId}", instructorId);
+            return Ok(subjects);
+        }
+        catch (EntityNotFoundException<int> ex)
+        {
+            logger.LogWarning(ex, "Instructor with ID {InstructorId} not found", instructorId);
+            return NotFound($"Instructor with ID {instructorId} not found");
+        }
+        catch (EntityServiceException ex)
+        {
+            logger.LogError(ex, "Service error occurred while retrieving subjects for instructor ID: {InstructorId}", instructorId);
+            return StatusCode(500, "An error occurred while retrieving the subjects");
+        }
+    }
+
     #endregion
 
     #region Update Operations
