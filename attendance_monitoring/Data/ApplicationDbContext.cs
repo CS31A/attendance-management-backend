@@ -21,6 +21,7 @@ namespace attendance_monitoring.Data
         public DbSet<Subject> Subjects { get; set; } = null!;
         public DbSet<RefreshToken> RefreshTokens { get; set; } = null!;
         public DbSet<BlacklistedToken> BlacklistedTokens { get; set; } = null!;
+        public DbSet<QrCode> QrCodes { get; set; } = null!;
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
