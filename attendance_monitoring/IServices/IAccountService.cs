@@ -15,5 +15,6 @@ namespace attendance_monitoring.IServices
         Task<LogoutResponseDto> LogoutAsync(string userId, string? accessToken);
         Task<LogoutResponseDto> WebLogoutAsync(string userId, string? accessToken);
         Task BlacklistTokenAsync(string jti, DateTime expiresAt);
+        Task<(UserProfileResponseDto?, string?)> GetUserProfileAsync(string userId);
     }
 }
