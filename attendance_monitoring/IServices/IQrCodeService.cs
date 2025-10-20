@@ -164,10 +164,11 @@ public interface IQrCodeService
     #region Utility Operations
 
     /// <summary>
-    /// Generates a unique QR code hash.
+    /// Generates a unique QR code hash, optionally combining with client-provided hash.
     /// </summary>
+    /// <param name="clientHash">Optional client-provided hash for additional uniqueness.</param>
     /// <returns>A unique QR code hash string.</returns>
-    Task<string> GenerateUniqueQrHashAsync();
+    Task<string> GenerateUniqueQrHashAsync(string? clientHash = null);
 
     /// <summary>
     /// Cleans up expired QR codes from the database.
