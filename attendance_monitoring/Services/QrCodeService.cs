@@ -275,8 +275,8 @@ public class QrCodeService : IQrCodeService
                 };
             }
 
-            // Generate unique QR hash
-            var qrHash = await GenerateUniqueQrHashAsync().ConfigureAwait(false);
+            // Combine client hash with server-generated hash for uniqueness
+            var qrHash = await GenerateUniqueQrHashAsync(qrCodeRequest.UniqueHash).ConfigureAwait(false);
             var expiresAt = DateTime.UtcNow.AddMinutes(qrCodeRequest.ExpirationMinutes);
 
             // Create QR code entity
@@ -869,14 +869,14 @@ public class QrCodeService : IQrCodeService
 
     #region Utility Operations
 
-    public async Task<string> GenerateUniqueQrHashAsync()
+    public async Task<string> GenerateUniqueQrHashAsync(string? clientHash = null)
     {
         string qrHash;
         bool exists;
         
         do
         {
-            qrHash = GenerateQrHash();
+            qrHash = GenerateQrHash(clientHash);
             exists = await _qrCodeRepository.QrHashExistsAsync(qrHash).ConfigureAwait(false);
         } while (exists);
 
@@ -994,12 +994,26 @@ public class QrCodeService : IQrCodeService
 
     #region Private Helper Methods
 
-    private static string GenerateQrHash()
+    private static string GenerateQrHash(string? clientHash = null)
     {
         using var rng = RandomNumberGenerator.Create();
-        var bytes = new byte[32];
-        rng.GetBytes(bytes);
-        return Convert.ToBase64String(bytes).Replace("+", "-").Replace("/", "_").Replace("=", "");
+        var serverBytes = new byte[32];
+        rng.GetBytes(serverBytes);
+        
+        // If client hash provided, combine it with server randomness
+        if (!string.IsNullOrEmpty(clientHash))
+        {
+            var combinedBytes = Encoding.UTF8.GetBytes(clientHash)
+                .Concat(serverBytes)
+                .ToArray();
+            
+            // Hash the combined data for consistent length and security
+            var hashBytes = SHA256.HashData(combinedBytes);
+            return Convert.ToBase64String(hashBytes).Replace("+", "-").Replace("/", "_").Replace("=", "");
+        }
+        
+        // Fallback to server-only hash
+        return Convert.ToBase64String(serverBytes).Replace("+", "-").Replace("/", "_").Replace("=", "");
     }
 
     private async Task<QrCodeResponseDto> MapToResponseDtoAsync(QrCode qrCode)
