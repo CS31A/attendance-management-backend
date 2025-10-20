@@ -352,6 +352,40 @@ namespace attendance_monitoring.Controllers
         }
         #endregion
 
+        #region GET: api/account/me
+        /// <summary>
+        /// Get the current authenticated user's profile information
+        /// </summary>
+        /// <returns>User profile with role-specific data</returns>
+        /// <response code="200">User profile retrieved successfully</response>
+        /// <response code="401">User is not authenticated</response>
+        [HttpGet("me")]
+        [Authorize]
+        [ProducesResponseType(typeof(UserProfileResponseDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        public async Task<ActionResult<UserProfileResponseDto>> GetMe()
+        {
+            var userId = GetUserId(User);
+            if (string.IsNullOrEmpty(userId))
+            {
+                logger.LogWarning("Profile fetch failed: User not found from claims.");
+                return Unauthorized(new { Success = false, Message = "User not found" });
+            }
+
+            logger.LogInformation("Fetching profile for user: {UserId}", userId);
+            var (profile, error) = await accountService.GetUserProfileAsync(userId);
+
+            if (profile == null)
+            {
+                logger.LogWarning("Profile fetch failed for user {UserId}: {Error}", userId, error);
+                return Unauthorized(new { Success = false, Message = error ?? "Failed to fetch profile" });
+            }
+
+            logger.LogInformation("Profile fetched successfully for user: {UserId}", userId);
+            return Ok(profile);
+        }
+        #endregion
+
         #region POST: api/account/web/logout
         /// <summary>
         /// Logout user by clearing HTTP-only cookies and blacklisting the access token

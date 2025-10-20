@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using Scalar.AspNetCore;
+using System.Text.Json.Serialization;
 
 // Load environment variables from .env file
 DotNetEnv.Env.Load();
@@ -47,7 +48,12 @@ builder.Services.AddSwaggerGen(c =>
         }
     });
 });
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        // Ignore null values in JSON responses for cleaner output
+        options.JsonSerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull;
+    });
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection"); // fallback to in-memory if null
 if (string.IsNullOrWhiteSpace(connectionString))
