@@ -22,7 +22,9 @@ namespace attendance_monitoring.Services
         ILogger<AccountService> logger,
         IAccountRepository accountRepository,
         ISectionRepository sectionRepository,
-        IUserFactory userFactory
+        IUserFactory userFactory,
+        IStudentRepository studentRepository,
+        IInstructorRepository instructorRepository
         )
         : IAccountService
     {
@@ -501,6 +503,93 @@ namespace attendance_monitoring.Services
                 // Token is already blacklisted or other DB update issue; treat duplicate as idempotent
                 logger.LogWarning(ex, "Blacklisting token {Jti} may have already occurred. Treating as idempotent.", jti);
             }
+        }
+        #endregion
+        
+        #region GetUserProfileAsync
+        /// <summary>
+        /// Gets comprehensive user profile information including role-specific data
+        /// </summary>
+        /// <param name="userId">The user ID to retrieve profile for</param>
+        /// <returns>User profile DTO with role-specific information</returns>
+        public async Task<(UserProfileResponseDto?, string?)> GetUserProfileAsync(string userId)
+        {
+            logger.LogInformation("Fetching user profile for user ID: {UserId}", userId);
+
+            // Get the user from Identity
+            var user = await accountRepository.FindUserByIdAsync(userId).ConfigureAwait(false);
+            if (user == null)
+            {
+                logger.LogWarning("User profile fetch failed: User not found for ID {UserId}", userId);
+                return (null, "User not found");
+            }
+
+            // Get user roles
+            var roles = await accountRepository.GetUserRolesAsync(user).ConfigureAwait(false);
+            var role = roles.FirstOrDefault() ?? "Student"; // Default to Student if no role found
+
+            // Build base profile
+            var profile = new UserProfileResponseDto
+            {
+                UserId = user.Id,
+                Username = user.UserName ?? string.Empty,
+                Email = user.Email ?? string.Empty,
+                Role = role,
+                CreatedAt = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Utc), // Will be overridden by role-specific data if available
+                UpdatedAt = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Utc)
+            };
+
+            // Fetch role-specific data
+            if (role.Equals("Student", StringComparison.OrdinalIgnoreCase))
+            {
+                var student = await context.Students
+                    .Include(s => s.Section)
+                    .ThenInclude(sec => sec.Course)
+                    .FirstOrDefaultAsync(s => s.UserId == userId && !s.IsDeleted)
+                    .ConfigureAwait(false);
+
+                if (student != null)
+                {
+                    profile.StudentProfile = new StudentProfileInfo
+                    {
+                        Id = student.Id,
+                        Firstname = student.Firstname,
+                        Lastname = student.Lastname,
+                        Email = student.Email,
+                        IsRegular = student.IsRegular,
+                        SectionId = student.SectionId,
+                        SectionName = student.Section?.Name ?? string.Empty,
+                        CourseId = student.Section?.CourseId ?? 0,
+                        CourseName = student.Section?.Course?.Name ?? string.Empty,
+                        CreatedAt = student.CreatedAt,
+                        UpdatedAt = student.UpdatedAt
+                    };
+                    profile.CreatedAt = student.CreatedAt;
+                    profile.UpdatedAt = student.UpdatedAt;
+                }
+            }
+            else if (role.Equals("Teacher", StringComparison.OrdinalIgnoreCase) || role.Equals("Instructor", StringComparison.OrdinalIgnoreCase))
+            {
+                var instructor = await instructorRepository.GetInstructorByUserIdAsync(userId).ConfigureAwait(false);
+                if (instructor != null)
+                {
+                    profile.InstructorProfile = new InstructorProfileInfo
+                    {
+                        Id = instructor.Id,
+                        Firstname = instructor.Firstname,
+                        Lastname = instructor.Lastname,
+                        Email = instructor.Email,
+                        CreatedAt = instructor.CreatedAt,
+                        UpdatedAt = instructor.UpdatedAt
+                    };
+                    profile.CreatedAt = instructor.CreatedAt;
+                    profile.UpdatedAt = instructor.UpdatedAt;
+                }
+            }
+            // Admin role: only base Identity information (already populated)
+
+            logger.LogInformation("User profile fetched successfully for user ID: {UserId}", userId);
+            return (profile, null);
         }
         #endregion
         #endregion
