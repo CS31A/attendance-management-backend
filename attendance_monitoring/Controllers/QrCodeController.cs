@@ -13,26 +13,33 @@ public class QrCodeController(
     IQrCodeService qrCodeService,
     ILogger<QrCodeController> logger) : ControllerBase
 {
+    /// <summary>
+    /// Generates a new QR code, saves it to database, and returns the PNG image.
+    /// </summary>
+    /// <param name="request">QR code generation parameters.</param>
+    /// <returns>PNG image of the QR code.</returns>
     [HttpPost("generate")]
+    [Authorize(Policy = "PrivilegedPolicy")]
     public async Task<ActionResult> GenerateQrCode([FromBody] QrCodeRequest request)
     {
-        logger.LogInformation("Generating QR code for section ID: {SectionId}", request.SectionId);
+        logger.LogInformation("Generating QR code for schedule ID: {ScheduleId}, section ID: {SectionId}", 
+            request.ScheduleId, request.SectionId);
         
         try
         {
-            // Serialize the request data to JSON
-            var qrData = JsonSerializer.Serialize(new
+            // Generate and save QR code to database
+            var result = await qrCodeService.GenerateQrCodeAsync(request, User);
+            
+            if (!result.Success)
             {
-                scheduleId = request.ScheduleId,
-                sectionId = request.SectionId,
-                actualRoomId = request.ActualRoomId,
-                expirationMinutes = request.ExpirationMinutes,
-                maxUsage = request.MaxUsage,
-                uniqueHash = request.UniqueHash,
-                timestamp = DateTime.UtcNow
-            });
+                logger.LogWarning("Failed to generate QR code: {Message}", result.Message);
+                return BadRequest(new { message = result.Message });
+            }
 
-            // Generate QR Code
+            // Serialize the QR hash as the data to encode
+            var qrData = result.QrHash;
+
+            // Generate QR Code image from the hash
             using var qrGenerator = new QRCodeGenerator();
             using var qrCodeData = qrGenerator.CreateQrCode(qrData, QRCodeGenerator.ECCLevel.Q);
             var qrCode = new PngByteQRCode(qrCodeData);
@@ -40,14 +47,16 @@ public class QrCodeController(
             // Get PNG as byte array
             byte[] qrCodeImage = qrCode.GetGraphic(20);
 
-            logger.LogInformation("Successfully generated QR code for section ID: {SectionId}", request.SectionId);
+            logger.LogInformation("Successfully generated QR code with ID: {QrCodeId}, hash: {QrHash}", 
+                result.QrCodeId, result.QrHash);
             
             // Return image with proper content type
             return File(qrCodeImage, "image/png");
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Unexpected error occurred while generating QR code for section ID: {SectionId}", request.SectionId);
+            logger.LogError(ex, "Unexpected error occurred while generating QR code for section ID: {SectionId}", 
+                request.SectionId);
             return Problem(
                 detail: "An unexpected error occurred while generating the QR code",
                 statusCode: 500,

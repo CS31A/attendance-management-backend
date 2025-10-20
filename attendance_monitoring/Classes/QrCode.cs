@@ -11,10 +11,6 @@ namespace attendance_monitoring.Classes
         public int Id { get; set; }
 
         [Required]
-        [StringLength(255)]
-        public string Code { get; set; } = string.Empty;
-
-        [Required]
         public int ScheduleId { get; set; }
 
         [Required]
