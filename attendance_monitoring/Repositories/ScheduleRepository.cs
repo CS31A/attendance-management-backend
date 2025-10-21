@@ -13,6 +13,7 @@ namespace attendance_monitoring.Repositories
         public async Task<IEnumerable<Schedules>> GetAllSchedulesAsync()
         {
             return await context.Schedules
+                .AsNoTracking()
                 .Include(s => s.Subject)
                 .Include(s => s.Classroom)
                 .Include(s => s.Section)
@@ -25,6 +26,7 @@ namespace attendance_monitoring.Repositories
         public async Task<Schedules?> GetScheduleByIdAsync(int id)
         {
             return await context.Schedules
+                .AsNoTracking()
                 .Include(s => s.Subject)
                 .Include(s => s.Classroom)
                 .Include(s => s.Section)
@@ -37,6 +39,7 @@ namespace attendance_monitoring.Repositories
         public async Task<IEnumerable<Schedules>> GetSchedulesByInstructorIdAsync(int instructorId)
         {
             return await context.Schedules
+                .AsNoTracking()
                 .Include(s => s.Subject)
                 .Include(s => s.Classroom)
                 .Include(s => s.Section)
