@@ -2,6 +2,7 @@ using attendance_monitoring.Classes;
 using attendance_monitoring.Exceptions;
 using attendance_monitoring.IServices;
 using attendance_monitoring.Models.DTO.Request;
+using attendance_monitoring.Models.DTO.Response;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -25,7 +26,7 @@ namespace attendance_monitoring.Controllers
         /// <response code="200">Returns the list of all schedules</response>
         /// <response code="500\">Internal server error</response>
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Schedules>>> GetSchedules()
+        public async Task<ActionResult<IEnumerable<ScheduleResponseDto>>> GetSchedules()
         {
             logger.LogInformation("Getting all schedules");
             try
@@ -54,7 +55,7 @@ namespace attendance_monitoring.Controllers
         /// <response code="404"> not found</response>
         /// <response code="500">Internal server error</response>
         [HttpGet("{id:int}")]
-        public async Task<ActionResult<Schedules>> GetSchedule(int id)
+        public async Task<ActionResult<ScheduleResponseDto>> GetSchedule(int id)
         {
             logger.LogInformation("Getting schedule with ID: {Id}", id);
             try
@@ -96,7 +97,7 @@ namespace attendance_monitoring.Controllers
         /// <response code="200">Returns the list of schedules for the instructor</response>
         /// <response code="500">Internal server error</response>
         [HttpGet("{instructorId:int}/all")]
-        public async Task<ActionResult<IEnumerable<Schedules>>> GetSchedulesByInstructor(int instructorId)
+        public async Task<ActionResult<IEnumerable<ScheduleResponseDto>>> GetSchedulesByInstructor(int instructorId)
         {
             logger.LogInformation("Getting schedules for instructor ID: {InstructorId}", instructorId);
             try
