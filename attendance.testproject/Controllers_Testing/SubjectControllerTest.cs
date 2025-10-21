@@ -52,7 +52,7 @@ public class SubjectControllerTest
         // Arrange
         _mockSubjectService
             .Setup(s => s.GetAllSubjectsAsync())
-            .ThrowsAsync(new SubjectServiceException("Service error"));
+            .ThrowsAsync(new SubjectServiceException("GetAllSubjects", "Service error"));
 
         // Act
         var result = await _controller.GetSubjects();
