@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 using attendance_monitoring.IServices;
 using attendance_monitoring.Models.DTO.Request;
+using attendance_monitoring.Models.DTO.Response;
 
 namespace attendance_monitoring.Services
 {
@@ -16,13 +17,13 @@ namespace attendance_monitoring.Services
         : IScheduleService
     {
         #region Get Operations
-        public async Task<IEnumerable<Schedules>> GetAllSchedulesAsync()
+        public async Task<IEnumerable<ScheduleResponseDto>> GetAllSchedulesAsync()
         {
             logger.LogInformation("Retrieving all schedules");
             try
             {
                 var schedules = await scheduleRepository.GetAllSchedulesAsync();
-                var allSchedules = schedules.ToList();
+                var allSchedules = schedules.Select(MapToResponseDto).ToList();
                 logger.LogInformation("Successfully retrieved {Count} schedules", allSchedules.Count);
                 return allSchedules;
             }
@@ -33,7 +34,7 @@ namespace attendance_monitoring.Services
             }
         }
 
-        public async Task<Schedules?> GetScheduleByIdAsync(int id)
+        public async Task<ScheduleResponseDto?> GetScheduleByIdAsync(int id)
         {
             logger.LogInformation("Retrieving schedule by ID: {Id}", id);
             try
@@ -46,7 +47,7 @@ namespace attendance_monitoring.Services
                 }
 
                 logger.LogInformation("Successfully retrieved schedule with ID: {Id}", id);
-                return schedule;
+                return MapToResponseDto(schedule);
             }
             catch (Exception ex)
             {
@@ -55,13 +56,13 @@ namespace attendance_monitoring.Services
             }
         }
 
-        public async Task<IEnumerable<Schedules>> GetSchedulesByInstructorIdAsync(int instructorId)
+        public async Task<IEnumerable<ScheduleResponseDto>> GetSchedulesByInstructorIdAsync(int instructorId)
         {
             logger.LogInformation("Retrieving schedules for instructor ID: {InstructorId}", instructorId);
             try
             {
                 var schedules = await scheduleRepository.GetSchedulesByInstructorIdAsync(instructorId);
-                var instructorSchedules = schedules.ToList();
+                var instructorSchedules = schedules.Select(MapToResponseDto).ToList();
                 logger.LogInformation("Successfully retrieved {Count} schedules for instructor ID: {InstructorId}", 
                     instructorSchedules.Count, instructorId);
                 return instructorSchedules;
@@ -248,6 +249,53 @@ namespace attendance_monitoring.Services
                 logger.LogError(ex, "Error occurred while deleting schedule with ID: {Id}", id);
                 throw new EntityServiceException("Schedule", $"DeleteSchedule: {id}", "An error occurred while deleting the schedule", ex);
             }
+        }
+        
+        #endregion
+        
+        #region Helper Methods
+        
+        private static ScheduleResponseDto MapToResponseDto(Schedules schedule)
+        {
+            return new ScheduleResponseDto
+            {
+                Id = schedule.Id,
+                TimeIn = schedule.TimeIn,
+                TimeOut = schedule.TimeOut,
+                DayOfWeek = schedule.DayOfWeek,
+                Subject = new SubjectResponseDto
+                {
+                    Id = schedule.Subject.Id,
+                    Name = schedule.Subject.Name,
+                    Code = schedule.Subject.Code,
+                    CreatedAt = schedule.Subject.CreatedAt,
+                    UpdatedAt = schedule.Subject.UpdatedAt
+                },
+                Classroom = new ClassroomResponseDto
+                {
+                    Id = schedule.Classroom.Id,
+                    Name = schedule.Classroom.Name,
+                    CreatedAt = schedule.Classroom.CreatedAt,
+                    UpdatedAt = schedule.Classroom.UpdatedAt
+                },
+                Section = new SectionResponseDto
+                {
+                    Id = schedule.Section.Id,
+                    Name = schedule.Section.Name,
+                    CourseId = schedule.Section.CourseId,
+                    CreatedAt = schedule.Section.CreatedAt,
+                    UpdatedAt = schedule.Section.UpdatedAt
+                },
+                Instructor = new InstructorResponseDto
+                {
+                    Id = schedule.Instructor.Id,
+                    Firstname = schedule.Instructor.Firstname,
+                    Lastname = schedule.Instructor.Lastname,
+                    Email = schedule.Instructor.Email
+                },
+                CreatedAt = schedule.CreatedAt,
+                UpdatedAt = schedule.UpdatedAt
+            };
         }
         
         #endregion
