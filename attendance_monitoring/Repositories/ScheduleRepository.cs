@@ -12,14 +12,26 @@ namespace attendance_monitoring.Repositories
         #region GetAllSchedulesAsync
         public async Task<IEnumerable<Schedules>> GetAllSchedulesAsync()
         {
-            return await context.Schedules.ToListAsync();
+            return await context.Schedules
+                .AsNoTracking()
+                .Include(s => s.Subject)
+                .Include(s => s.Classroom)
+                .Include(s => s.Section)
+                .Include(s => s.Instructor)
+                .ToListAsync();
         }
         #endregion
 
         #region GetScheduleByIdAsync
         public async Task<Schedules?> GetScheduleByIdAsync(int id)
         {
-            return await context.Schedules.FindAsync(id);
+            return await context.Schedules
+                .AsNoTracking()
+                .Include(s => s.Subject)
+                .Include(s => s.Classroom)
+                .Include(s => s.Section)
+                .Include(s => s.Instructor)
+                .FirstOrDefaultAsync(s => s.Id == id);
         }
         #endregion
 
@@ -27,6 +39,11 @@ namespace attendance_monitoring.Repositories
         public async Task<IEnumerable<Schedules>> GetSchedulesByInstructorIdAsync(int instructorId)
         {
             return await context.Schedules
+                .AsNoTracking()
+                .Include(s => s.Subject)
+                .Include(s => s.Classroom)
+                .Include(s => s.Section)
+                .Include(s => s.Instructor)
                 .Where(s => s.InstructorId == instructorId)
                 .ToListAsync();
         }
