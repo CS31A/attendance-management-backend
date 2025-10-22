@@ -15,6 +15,7 @@ public class QrCodeRepository(ApplicationDbContext context, ILogger<QrCodeReposi
         try
         {
             return await context.QrCodes
+                .AsNoTracking()
                 .Include(q => q.Schedule)
                 .Include(q => q.Section)
                 .Include(q => q.ActualRoom)
@@ -35,6 +36,7 @@ public class QrCodeRepository(ApplicationDbContext context, ILogger<QrCodeReposi
         try
         {
             return await context.QrCodes
+                .AsNoTracking()
                 .Include(q => q.Schedule)
                 .Include(q => q.Section)
                 .Include(q => q.ActualRoom)
@@ -55,6 +57,7 @@ public class QrCodeRepository(ApplicationDbContext context, ILogger<QrCodeReposi
         try
         {
             return await context.QrCodes
+                .AsNoTracking()
                 .Include(q => q.Schedule)
                 .Include(q => q.Section)
                 .Include(q => q.ActualRoom)
@@ -76,6 +79,7 @@ public class QrCodeRepository(ApplicationDbContext context, ILogger<QrCodeReposi
         try
         {
             return await context.QrCodes
+                .AsNoTracking()
                 .Include(q => q.Schedule)
                 .Include(q => q.Section)
                 .Include(q => q.ActualRoom)
@@ -98,6 +102,7 @@ public class QrCodeRepository(ApplicationDbContext context, ILogger<QrCodeReposi
         {
             var currentTime = DateTime.UtcNow;
             return await context.QrCodes
+                .AsNoTracking()
                 .Include(q => q.Schedule)
                 .Include(q => q.Section)
                 .Include(q => q.ActualRoom)
@@ -120,6 +125,7 @@ public class QrCodeRepository(ApplicationDbContext context, ILogger<QrCodeReposi
         {
             var currentTime = DateTime.UtcNow;
             return await context.QrCodes
+                .AsNoTracking()
                 .Include(q => q.Schedule)
                 .Include(q => q.Section)
                 .Include(q => q.ActualRoom)
@@ -142,6 +148,7 @@ public class QrCodeRepository(ApplicationDbContext context, ILogger<QrCodeReposi
         {
             var currentTime = DateTime.UtcNow;
             return await context.QrCodes
+                .AsNoTracking()
                 .Where(q => q.ExpiresAt <= currentTime)
                 .ToListAsync()
                 .ConfigureAwait(false);
@@ -163,6 +170,7 @@ public class QrCodeRepository(ApplicationDbContext context, ILogger<QrCodeReposi
             var expirationThreshold = currentTime.Add(expiringWithin);
             
             return await context.QrCodes
+                .AsNoTracking()
                 .Include(q => q.Schedule)
                 .Include(q => q.Section)
                 .Include(q => q.ActualRoom)
@@ -424,6 +432,7 @@ public class QrCodeRepository(ApplicationDbContext context, ILogger<QrCodeReposi
         {
             var currentTime = DateTime.UtcNow;
             var expiredQrCodes = await context.QrCodes
+                .AsNoTracking()
                 .Where(q => q.ExpiresAt <= currentTime)
                 .ToListAsync()
                 .ConfigureAwait(false);
@@ -456,6 +465,7 @@ public class QrCodeRepository(ApplicationDbContext context, ILogger<QrCodeReposi
         try
         {
             return await context.QrCodes
+                .AsNoTracking()
                 .AnyAsync(q => q.QrHash == qrHash)
                 .ConfigureAwait(false);
         }
@@ -474,6 +484,7 @@ public class QrCodeRepository(ApplicationDbContext context, ILogger<QrCodeReposi
         {
             var currentTime = DateTime.UtcNow;
             var qrCode = await context.QrCodes
+                .AsNoTracking()
                 .Include(q => q.Schedule)
                 .Include(q => q.Section)
                 .Include(q => q.ActualRoom)

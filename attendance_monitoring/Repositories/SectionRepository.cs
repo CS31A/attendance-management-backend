@@ -14,7 +14,7 @@ namespace attendance_monitoring.Repositories
         {
             try
             {
-                return await context.Sections.FindAsync(sectionId).ConfigureAwait(false);
+                return await context.Sections.AsNoTracking().FirstOrDefaultAsync(s => s.Id == sectionId).ConfigureAwait(false);
             }
             catch (Exception ex)
             {
@@ -29,7 +29,7 @@ namespace attendance_monitoring.Repositories
         {
             try
             {
-                return await context.Sections.ToListAsync().ConfigureAwait(false);
+                return await context.Sections.AsNoTracking().ToListAsync().ConfigureAwait(false);
             }
             catch (Exception ex)
             {
@@ -45,6 +45,7 @@ namespace attendance_monitoring.Repositories
             try
             {
                 return await context.Students
+                    .AsNoTracking()
                     .Where(s => s.SectionId == sectionId && !s.IsDeleted)
                     .ToListAsync().ConfigureAwait(false);
             }
@@ -62,6 +63,7 @@ namespace attendance_monitoring.Repositories
             try
             {
                 return await context.Students
+                    .AsNoTracking()
                     .Where(s => s.SectionId == sectionId)
                     .ToListAsync().ConfigureAwait(false);
             }

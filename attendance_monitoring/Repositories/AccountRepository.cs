@@ -124,7 +124,7 @@ namespace attendance_monitoring.Repositories
         #region FindRefreshTokenByHashAsync
         public async Task<RefreshToken?> FindRefreshTokenByHashAsync(string tokenHash)
         {
-            return await context.RefreshTokens.FirstOrDefaultAsync(rt => rt.TokenHash == tokenHash).ConfigureAwait(false);
+            return await context.RefreshTokens.AsNoTracking().FirstOrDefaultAsync(rt => rt.TokenHash == tokenHash).ConfigureAwait(false);
         }
         #endregion
 
