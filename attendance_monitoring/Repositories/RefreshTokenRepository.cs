@@ -13,6 +13,7 @@ public class RefreshTokenRepository(ApplicationDbContext context) : IRefreshToke
     public async Task<RefreshToken?> GetByTokenHashAsync(string tokenHash)
     {
         return await context.RefreshTokens
+            .AsNoTracking()
             .FirstOrDefaultAsync(rt => rt.TokenHash == tokenHash).ConfigureAwait(false);
     }
     #endregion
@@ -21,6 +22,7 @@ public class RefreshTokenRepository(ApplicationDbContext context) : IRefreshToke
     public async Task<RefreshToken?> GetByReplacedTokenHashAsync(string replacedTokenHash)
     {
         return await context.RefreshTokens
+            .AsNoTracking()
             .FirstOrDefaultAsync(rt => rt.ReplacedByTokenHash == replacedTokenHash).ConfigureAwait(false);
     }
     #endregion
@@ -29,6 +31,7 @@ public class RefreshTokenRepository(ApplicationDbContext context) : IRefreshToke
     public async Task<bool> ExistsAsync(string tokenHash)
     {
         return await context.RefreshTokens
+            .AsNoTracking()
             .AnyAsync(rt => rt.TokenHash == tokenHash).ConfigureAwait(false);
     }
     #endregion
