@@ -1,106 +1,229 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using attendance_monitoring.Controllers;
-using attendance_monitoring.IServices;
 using attendance_monitoring.Classes;
-using attendance_monitoring.Models.DTO.Request;
+using attendance_monitoring.Controllers;
 using attendance_monitoring.Exceptions;
+using attendance_monitoring.IServices;
+using attendance_monitoring.Models.DTO.Request;
 using Microsoft.Extensions.Logging;
+using Moq;
+using Xunit;
 
 namespace attendance.testproject.Controllers_Testing;
 
 public class SubjectControllerTest
 {
-    private readonly Mock<ISubjectService> _mockSubjectService;
-    private readonly Mock<ILogger<SubjectController>> _mockLogger;
+    private readonly Mock<ISubjectService> _service;
+    private readonly Mock<ILogger<SubjectController>> _logger;
     private readonly SubjectController _controller;
 
     public SubjectControllerTest()
     {
-        _mockSubjectService = new Mock<ISubjectService>();
-        _mockLogger = new Mock<ILogger<SubjectController>>();
-        _controller = new SubjectController(_mockSubjectService.Object, _mockLogger.Object);
+        _service = new Mock<ISubjectService>();
+        _logger = new Mock<ILogger<SubjectController>>();
+        _controller = new SubjectController(_service.Object, _logger.Object);
     }
 
-    #region GetSubjects Tests
-
     [Fact]
-    public async Task GetSubjects_ReturnsOkResult_WithSubjectsList()
+    public async Task GetSubjects_ReturnsOkWithSubjects()
     {
-        // Arrange
-        var expectedSubjects = new List<Subject>
+        var subjects = new List<Subject>
         {
-            new Subject { Id = 1, Name = "Mathematics" },
-            new Subject { Id = 2, Name = "Science" }
+            new() { Id = 1, Name = "Mathematics", Code = "MATH101", CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow },
+            new() { Id = 2, Name = "Science", Code = "SCI101", CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow }
         };
-        _mockSubjectService
-            .Setup(s => s.GetAllSubjectsAsync())
-            .ReturnsAsync(expectedSubjects);
+        _service.Setup(s => s.GetAllSubjectsAsync()).ReturnsAsync(subjects);
 
-        // Act
         var result = await _controller.GetSubjects();
 
-        // Assert
         var okResult = Assert.IsType<OkObjectResult>(result.Result);
-        var subjects = Assert.IsAssignableFrom<IEnumerable<Subject>>(okResult.Value);
-        Assert.Equal(2, subjects.Count());
-        _mockSubjectService.Verify(s => s.GetAllSubjectsAsync(), Times.Once);
+        var returnValue = Assert.IsAssignableFrom<IEnumerable<Subject>>(okResult.Value);
+        Assert.Equal(2, returnValue.Count());
     }
 
     [Fact]
-    public async Task GetSubjects_ReturnsObjectResult_WhenServiceThrowsException()
+    public async Task GetSubjects_ReturnsServerErrorOnEntityServiceException()
     {
-        // Arrange
-        _mockSubjectService
-            .Setup(s => s.GetAllSubjectsAsync())
-            .ThrowsAsync(new SubjectServiceException("Service error"));
+        _service.Setup(s => s.GetAllSubjectsAsync())
+            .ThrowsAsync(new EntityServiceException("Subject", "GetAll", "Database error"));
 
-        // Act
         var result = await _controller.GetSubjects();
 
-        // Assert
-        var objectResult = Assert.IsType<ObjectResult>(result.Result);
-        Assert.Equal(500, objectResult.StatusCode);
+        var objResult = Assert.IsType<ObjectResult>(result.Result);
+        Assert.Equal(500, objResult.StatusCode);
     }
 
-    #endregion
+    [Fact]
+    public async Task GetSubjects_ReturnsServerErrorOnGeneralException()
+    {
+        _service.Setup(s => s.GetAllSubjectsAsync())
+            .ThrowsAsync(new Exception("Unexpected error"));
 
-    //#region GetSubject Tests
+        var result = await _controller.GetSubjects();
 
-    //[Fact]
-    //public async Task GetSubject_ReturnsOkResult_WithSubject()
-    //{
-    //    // Arrange
-    //    var expectedSubject = new Subject { Id = 1, Name = "Mathematics" };
-    //    _mockSubjectService
-    //        .Setup(s => s.GetSubjectByIdAsync(1))
-    //        .ReturnsAsync(expectedSubject);
+        var objResult = Assert.IsType<ObjectResult>(result.Result);
+        Assert.Equal(500, objResult.StatusCode);
+    }
 
-    //    // Act
-    //    var result = await _controller.GetSubject(1);
+    [Fact]
+    public async Task GetSubject_ReturnsOkWithSubject()
+    {
+        var subject = new Subject
+        {
+            Id = 1,
+            Name = "Mathematics",
+            Code = "MATH101",
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+        _service.Setup(s => s.GetSubjectByIdAsync(1)).ReturnsAsync(subject);
 
-    //    // Assert
-    //    var okResult = Assert.IsType<OkObjectResult>(result.Result);
-    //    var subject = Assert.IsType<Subject>(okResult.Value);
-    //    Assert.Equal(1, subject.Id);
-    //    Assert.Equal("Mathematics", subject.Name);
-    //    _mockSubjectService.Verify(s => s.GetSubjectByIdAsync(1), Times.Once);
-    //}
+        var result = await _controller.GetSubject(1);
 
-    //[Fact]
-    //public async Task GetSubject_ReturnsNotFound_WhenSubjectDoesNotExist()
-    //{
-    //    // Arrange
-    //    _mockSubjectService
-    //        .Setup(s => s.GetSubjectByIdAsync(99));
-    //        //.ThrowsAsync(new SubjectNotFoundException("Subject not found"));
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        var returnValue = Assert.IsType<Subject>(okResult.Value);
+        Assert.Equal(1, returnValue.Id);
+        Assert.Equal("Mathematics", returnValue.Name);
+    }
 
-    //    // Act
-    //    var result = await _controller.GetSubject(99);
+    [Fact]
+    public async Task GetSubject_ReturnsNotFoundWhenDoesNotExist()
+    {
+        _service.Setup(s => s.GetSubjectByIdAsync(999))
+            .ThrowsAsync(new EntityNotFoundException<int>("Subject", 999));
 
-    //    // Assert
-    //    var notFoundResult = Assert.IsType<NotFoundObjectResult>(result.Result);
-    //    Assert.Equal("Subject not found", notFoundResult.Value);
-    //}
+        var result = await _controller.GetSubject(999);
 
-    //#endregion
+        Assert.IsType<NotFoundObjectResult>(result.Result);
+    }
+
+    [Fact]
+    public async Task CreateSubject_ReturnsCreatedWithSubject()
+    {
+        var createDto = new CreateSubject { Name = "Physics", Code = "PHY101" };
+        var subject = new Subject
+        {
+            Id = 1,
+            Name = "Physics",
+            Code = "PHY101",
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+        _service.Setup(s => s.CreateSubjectAsync(createDto))
+            .ReturnsAsync((subject, null as string));
+
+        var result = await _controller.CreateSubject(createDto);
+
+        var createdResult = Assert.IsType<CreatedAtActionResult>(result.Result);
+        var returnValue = Assert.IsType<Subject>(createdResult.Value);
+        Assert.Equal("Physics", returnValue.Name);
+        Assert.Equal("PHY101", returnValue.Code);
+    }
+
+    [Fact]
+    public async Task CreateSubject_ReturnsBadRequestOnError()
+    {
+        var createDto = new CreateSubject { Name = "Physics", Code = "PHY101" };
+        _service.Setup(s => s.CreateSubjectAsync(createDto))
+            .ReturnsAsync((null as Subject, "A subject with this code already exists"));
+
+        var result = await _controller.CreateSubject(createDto);
+
+        var badResult = Assert.IsType<BadRequestObjectResult>(result.Result);
+        Assert.Equal("A subject with this code already exists", badResult.Value);
+    }
+
+    [Fact]
+    public async Task CreateSubject_ReturnsBadRequestWhenSubjectIsNull()
+    {
+        var createDto = new CreateSubject { Name = "Physics", Code = "PHY101" };
+        _service.Setup(s => s.CreateSubjectAsync(createDto))
+            .ReturnsAsync((null as Subject, null as string));
+
+        var result = await _controller.CreateSubject(createDto);
+
+        var badResult = Assert.IsType<BadRequestObjectResult>(result.Result);
+        Assert.Equal("An unexpected error occurred while creating the subject.", badResult.Value);
+    }
+
+    [Fact]
+    public async Task UpdateSubject_ReturnsOkWithUpdatedSubject()
+    {
+        var updateDto = new UpdateSubject { Name = "Advanced Math", Code = "MATH201" };
+        var subject = new Subject
+        {
+            Id = 1,
+            Name = "Advanced Math",
+            Code = "MATH201",
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+        _service.Setup(s => s.UpdateSubjectAsync(1, updateDto))
+            .ReturnsAsync((subject, null as string));
+
+        var result = await _controller.UpdateSubject(1, updateDto);
+
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        var returnValue = Assert.IsType<Subject>(okResult.Value);
+        Assert.Equal("Advanced Math", returnValue.Name);
+        Assert.Equal("MATH201", returnValue.Code);
+    }
+
+    [Fact]
+    public async Task UpdateSubject_ReturnsNotFoundWhenDoesNotExist()
+    {
+        var updateDto = new UpdateSubject { Name = "Updated" };
+        _service.Setup(s => s.UpdateSubjectAsync(999, updateDto))
+            .ThrowsAsync(new EntityNotFoundException<int>("Subject", 999));
+
+        var result = await _controller.UpdateSubject(999, updateDto);
+
+        Assert.IsType<NotFoundObjectResult>(result.Result);
+    }
+
+    [Fact]
+    public async Task UpdateSubject_ReturnsBadRequestOnError()
+    {
+        var updateDto = new UpdateSubject { Code = "MATH101" };
+        _service.Setup(s => s.UpdateSubjectAsync(1, updateDto))
+            .ReturnsAsync((null as Subject, "A subject with this code already exists"));
+
+        var result = await _controller.UpdateSubject(1, updateDto);
+
+        var badResult = Assert.IsType<BadRequestObjectResult>(result.Result);
+        Assert.Equal("A subject with this code already exists", badResult.Value);
+    }
+
+    [Fact]
+    public async Task DeleteSubject_ReturnsNoContentOnSuccess()
+    {
+        _service.Setup(s => s.DeleteSubjectAsync(1))
+            .ReturnsAsync(null as string);
+
+        var result = await _controller.DeleteSubject(1);
+
+        Assert.IsType<NoContentResult>(result);
+    }
+
+    [Fact]
+    public async Task DeleteSubject_ReturnsNotFoundWhenDoesNotExist()
+    {
+        _service.Setup(s => s.DeleteSubjectAsync(999))
+            .ThrowsAsync(new EntityNotFoundException<int>("Subject", 999));
+
+        var result = await _controller.DeleteSubject(999);
+
+        Assert.IsType<NotFoundObjectResult>(result);
+    }
+
+    [Fact]
+    public async Task DeleteSubject_ReturnsBadRequestOnError()
+    {
+        _service.Setup(s => s.DeleteSubjectAsync(1))
+            .ReturnsAsync("Cannot delete subject with active schedules");
+
+        var result = await _controller.DeleteSubject(1);
+
+        var badResult = Assert.IsType<BadRequestObjectResult>(result);
+        Assert.Equal("Cannot delete subject with active schedules", badResult.Value);
+    }
 }
