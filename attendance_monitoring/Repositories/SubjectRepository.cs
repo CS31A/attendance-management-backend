@@ -12,21 +12,21 @@ public class SubjectRepository(ApplicationDbContext context) : ISubjectRepositor
     #region GetAllSubjectsAsync
     public async Task<IEnumerable<Subject>> GetAllSubjectsAsync()
     {
-        return await context.Subjects.ToListAsync().ConfigureAwait(false);
+        return await context.Subjects.AsNoTracking().ToListAsync().ConfigureAwait(false);
     }
     #endregion
 
     #region GetSubjectByIdAsync
     public async Task<Subject?> GetSubjectByIdAsync(int id)
     {
-        return await context.Subjects.FindAsync(id).ConfigureAwait(false);
+        return await context.Subjects.AsNoTracking().FirstOrDefaultAsync(s => s.Id == id).ConfigureAwait(false);
     }
     #endregion
 
     #region GetSubjectByCodeAsync
     public async Task<Subject?> GetSubjectByCodeAsync(string code)
     {
-        return await context.Subjects.FirstOrDefaultAsync(s => s.Code == code).ConfigureAwait(false);
+        return await context.Subjects.AsNoTracking().FirstOrDefaultAsync(s => s.Code == code).ConfigureAwait(false);
     }
     #endregion
 

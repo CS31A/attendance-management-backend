@@ -12,21 +12,21 @@ public class ClassroomRepository(ApplicationDbContext context) : IClassroomRepos
     #region GetAllClassroomsAsync
     public async Task<IEnumerable<Classroom>> GetAllClassroomsAsync()
     {
-        return await context.Classrooms.ToListAsync().ConfigureAwait(false);
+        return await context.Classrooms.AsNoTracking().ToListAsync().ConfigureAwait(false);
     }
     #endregion
 
     #region GetClassroomByIdAsync
     public async Task<Classroom?> GetClassroomByIdAsync(int id)
     {
-        return await context.Classrooms.FindAsync(id).ConfigureAwait(false);
+        return await context.Classrooms.AsNoTracking().FirstOrDefaultAsync(c => c.Id == id).ConfigureAwait(false);
     }
     #endregion
 
     #region GetClassroomByNameAsync
     public async Task<Classroom?> GetClassroomByNameAsync(string name)
     {
-        return await context.Classrooms.FirstOrDefaultAsync(c => c.Name == name).ConfigureAwait(false);
+        return await context.Classrooms.AsNoTracking().FirstOrDefaultAsync(c => c.Name == name).ConfigureAwait(false);
     }
     #endregion
 

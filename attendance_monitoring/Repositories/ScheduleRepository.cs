@@ -53,6 +53,7 @@ namespace attendance_monitoring.Repositories
         public async Task<IEnumerable<Subject>> GetSubjectsByInstructorIdAsync(int instructorId)
         {
             return await context.Schedules
+                .AsNoTracking()
                 .Where(s => s.InstructorId == instructorId)
                 .Select(s => s.Subject)
                 .Distinct()

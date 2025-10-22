@@ -12,14 +12,14 @@ public class CourseRepository(ApplicationDbContext context) : ICourseRepository
     #region GetAllCoursesAsync
     public async Task<IEnumerable<Course>> GetAllCoursesAsync()
     {
-        return await context.Courses.ToListAsync().ConfigureAwait(false);
+        return await context.Courses.AsNoTracking().ToListAsync().ConfigureAwait(false);
     }
     #endregion
 
     #region GetCourseByIdAsync
     public async Task<Course?> GetCourseByIdAsync(int id)
     {
-        return await context.Courses.FindAsync(id).ConfigureAwait(false);
+        return await context.Courses.AsNoTracking().FirstOrDefaultAsync(c => c.Id == id).ConfigureAwait(false);
     }
     #endregion
 
