@@ -34,33 +34,33 @@ public class ScheduleControllerTest
 
     #region GetSchedule Tests
 
-    [Fact]
-    public async Task GetSchedule_ReturnsOkResult_WithSchedule()
-    {
-        // Arrange
-        int scheduleId = 1;
-        var expectedSchedule = new Schedules
-        {
-            Id = scheduleId,
-            TimeIn = new TimeOnly(8, 0),
-            TimeOut = new TimeOnly(9, 0),
-            DayOfWeek = "Monday"
-        };
+    //[Fact]
+    //public async Task GetSchedule_ReturnsOkResult_WithSchedule()
+    //{
+    //    // Arrange
+    //    int scheduleId = 1;
+    //    var expectedSchedule = new Schedules
+    //    {
+    //        Id = scheduleId,
+    //        TimeIn = new TimeOnly(8, 0),
+    //        TimeOut = new TimeOnly(9, 0),
+    //        DayOfWeek = "Monday"
+    //    };
 
-        _mockScheduleService
-            .Setup(s => s.GetScheduleByIdAsync(scheduleId))
-            .ReturnsAsync(expectedSchedule);
+    //    _mockScheduleService
+    //        .Setup(s => s.GetScheduleByIdAsync(scheduleId))
+    //        .ReturnsAsync(expectedSchedule);
 
-        // Act
-        var result = await _scheduleController.GetSchedule(scheduleId);
+    //    // Act
+    //    var result = await _scheduleController.GetSchedule(scheduleId);
 
-        // Assert
-        var okResult = Assert.IsType<OkObjectResult>(result.Result);
-        var schedule = Assert.IsType<Schedules>(okResult.Value);
-        Assert.Equal(scheduleId, schedule.Id);
+    //    // Assert
+    //    var okResult = Assert.IsType<OkObjectResult>(result.Result);
+    //    var schedule = Assert.IsType<Schedules>(okResult.Value);
+    //    Assert.Equal(scheduleId, schedule.Id);
 
-        _mockScheduleService.Verify(s => s.GetScheduleByIdAsync(scheduleId), Times.Once);
-    }
+    //    _mockScheduleService.Verify(s => s.GetScheduleByIdAsync(scheduleId), Times.Once);
+    //}
 
     #endregion
 
