@@ -1,5 +1,6 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
 using attendance_monitoring.Controllers;
+using attendance_monitoring.IServices;
 using attendance_monitoring.Models.DTO.Request;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -11,13 +12,15 @@ namespace attendance.testproject.Controllers_Testing;
 /// </summary>
 public class QrCodeControllerTest
 {
+    private readonly Mock<IQrCodeService> _mockQrCodeService;
     private readonly Mock<ILogger<QrCodeController>> _mockLogger;
     private readonly QrCodeController _qrCodeController;
 
     public QrCodeControllerTest()
     {
+        _mockQrCodeService = new Mock<IQrCodeService>();
         _mockLogger = new Mock<ILogger<QrCodeController>>();
-        _qrCodeController = new QrCodeController(_mockLogger.Object);
+        _qrCodeController = new QrCodeController(_mockQrCodeService.Object, _mockLogger.Object);
     }
 
     [Fact]
@@ -26,12 +29,22 @@ public class QrCodeControllerTest
         // Arrange
         var request = new QrCodeRequest
         {
+            ScheduleId = 1001,
             SectionId = 1,
-            Schedule = 1001,
-            RoomId = 101,
-            SubjectName = "Mathematics",
-            UniqueKey = "test-key-123"
+            ActualRoomId = 101,
+            ExpirationMinutes = 30
         };
+
+        // Mock service response
+        var mockResponse = new attendance_monitoring.Models.DTO.Response.QrCodeGenerationResponseDto
+        {
+            Success = true,
+            QrHash = "test-hash-123",
+            QrCodeId = 1,
+            ExpiresAt = DateTime.UtcNow.AddMinutes(30)
+        };
+        _mockQrCodeService.Setup(s => s.GenerateQrCodeAsync(It.IsAny<QrCodeRequest>(), It.IsAny<System.Security.Claims.ClaimsPrincipal>()))
+            .ReturnsAsync(mockResponse);
 
         // Act
         var result = await _qrCodeController.GenerateQrCode(request);
@@ -47,18 +60,18 @@ public class QrCodeControllerTest
             x => x.Log(
                 LogLevel.Information,
                 It.IsAny<EventId>(),
-                It.Is<It.IsAnyType>((v, t) => v.ToString().Contains($"Generating QR code for section ID: {request.SectionId}")),
+                It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains($"Generating QR code for schedule ID: {request.ScheduleId}, section ID: {request.SectionId}")),
                 null,
-                It.IsAny<Func<It.IsAnyType, Exception, string>>()),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
             Times.Once);
 
         _mockLogger.Verify(
             x => x.Log(
                 LogLevel.Information,
                 It.IsAny<EventId>(),
-                It.Is<It.IsAnyType>((v, t) => v.ToString().Contains($"Successfully generated QR code for section ID: {request.SectionId}")),
+                It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains($"Successfully generated QR code with ID: {mockResponse.QrCodeId}, hash: {mockResponse.QrHash}")),
                 null,
-                It.IsAny<Func<It.IsAnyType, Exception, string>>()),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
             Times.Once);
     }
 
@@ -120,12 +133,22 @@ public class QrCodeControllerTest
         // Arrange
         var request = new QrCodeRequest
         {
+            ScheduleId = 1004,
             SectionId = 4,
-            Schedule = 0,
-            RoomId = 0,
-            SubjectName = null,
-            UniqueKey = null
+            ActualRoomId = 404,
+            ExpirationMinutes = 15
         };
+
+        // Mock service response
+        var mockResponse = new attendance_monitoring.Models.DTO.Response.QrCodeGenerationResponseDto
+        {
+            Success = true,
+            QrHash = "minimal-hash",
+            QrCodeId = 4,
+            ExpiresAt = DateTime.UtcNow.AddMinutes(15)
+        };
+        _mockQrCodeService.Setup(s => s.GenerateQrCodeAsync(It.IsAny<QrCodeRequest>(), It.IsAny<System.Security.Claims.ClaimsPrincipal>()))
+            .ReturnsAsync(mockResponse);
 
         // Act
         var result = await _qrCodeController.GenerateQrCode(request);
@@ -143,11 +166,22 @@ public class QrCodeControllerTest
         // Arrange
         var request = new QrCodeRequest
         {
+            ScheduleId = 1007,
             SectionId = 7,
-            Schedule = 1007,
-            RoomId = 101,
-            SubjectName = "English"
+            ActualRoomId = 101,
+            ExpirationMinutes = 60
         };
+
+        // Mock service response
+        var mockResponse = new attendance_monitoring.Models.DTO.Response.QrCodeGenerationResponseDto
+        {
+            Success = true,
+            QrHash = "log-test-hash",
+            QrCodeId = 7,
+            ExpiresAt = DateTime.UtcNow.AddMinutes(60)
+        };
+        _mockQrCodeService.Setup(s => s.GenerateQrCodeAsync(It.IsAny<QrCodeRequest>(), It.IsAny<System.Security.Claims.ClaimsPrincipal>()))
+            .ReturnsAsync(mockResponse);
 
         // Act
         await _qrCodeController.GenerateQrCode(request);
@@ -159,7 +193,7 @@ public class QrCodeControllerTest
                 It.IsAny<EventId>(),
                 It.Is<It.IsAnyType>((v, t) => true),
                 null,
-                It.IsAny<Func<It.IsAnyType, Exception, string>>()),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
             Times.Exactly(2)); // Once for start, once for success
     }
 }
