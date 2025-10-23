@@ -14,6 +14,9 @@ public class BlacklistedTokenCleanupService : BackgroundService
         _logger = logger;
     }
 
+    #region Background Service Methods
+
+    #region ExecuteAsync
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         _logger.LogInformation("Blacklisted Token Cleanup Service running.");
@@ -51,4 +54,7 @@ public class BlacklistedTokenCleanupService : BackgroundService
 
         _logger.LogInformation("Blacklisted Token Cleanup Service is stopping.");
     }
+    #endregion
+
+    #endregion
 }

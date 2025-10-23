@@ -8,10 +8,10 @@ public interface IStudentService
 {
     Task<IList<Student>> GetAllStudentsAsync();
     Task<IList<Student>> GetAllNonDeletedStudentsAsync();
-    Task<Student?> GetStudentByIdAsync(int id);
-    Task<(Student?, string?)> CreateStudentAsync(CreateStudent createStudent, ClaimsPrincipal user);
-    Task<(Student?, string?)> UpdateStudentAsync(int id, UpdateStudent updateStudent, ClaimsPrincipal user);
-    Task<string?> SoftDeleteStudentAsync(int id, ClaimsPrincipal user);
+    Task<Student> GetStudentByIdAsync(int id);
+    Task<Student> CreateStudentAsync(CreateStudent createStudent, ClaimsPrincipal user);
+    Task<Student> UpdateStudentAsync(int id, UpdateStudent updateStudent, ClaimsPrincipal user);
+    Task SoftDeleteStudentAsync(int id, ClaimsPrincipal user);
     Task<string?> HardDeleteStudentAsync(int id, ClaimsPrincipal user);
     Task<string?> RestoreStudentAsync(int id, ClaimsPrincipal user);
 }

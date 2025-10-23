@@ -16,9 +16,6 @@ public class Section
     [StringLength(100, ErrorMessage = "Section name must be between 1 and 100 characters", MinimumLength = 1)]
     public string Name { get; set; } = string.Empty;
 
-    // Foreign key to Instructor - should not be nullable
-    public int InstructorId { get; set; }
-
     // Foreign key to Course - should not be nullable
     public int CourseId { get; set; }
 
@@ -26,11 +23,6 @@ public class Section
     [ForeignKey("CourseId")]
     [JsonIgnore]
     public Course Course { get; set; } = null!;
-
-    // Navigation property - required relationship
-    [ForeignKey("InstructorId")]
-    [JsonIgnore]
-    public Instructor Instructor { get; set; } = null!;
 
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }

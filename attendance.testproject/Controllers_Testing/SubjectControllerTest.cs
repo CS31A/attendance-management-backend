@@ -55,8 +55,10 @@ public class SubjectControllerTest
     [Fact]
     public async Task GetSubjects_ReturnsServerErrorOnGeneralException()
     {
-        _service.Setup(s => s.GetAllSubjectsAsync())
-            .ThrowsAsync(new Exception("Unexpected error"));
+        // Arrange
+        _mockSubjectService
+            .Setup(s => s.GetAllSubjectsAsync())
+            .ThrowsAsync(new SubjectServiceException("GetAllSubjects", "Service error"));
 
         var result = await _controller.GetSubjects();
 

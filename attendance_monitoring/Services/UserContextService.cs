@@ -7,15 +7,22 @@ namespace attendance_monitoring.Services;
 /// <summary>
 /// Service to handle user context operations and extract user information from claims
 /// </summary>
-public class UserContextService
+public class UserContextService(UserManager<IdentityUser> userManager)
 {
-    private readonly UserManager<IdentityUser> _userManager;
-
-    public UserContextService(UserManager<IdentityUser> userManager)
+    private readonly UserManager<IdentityUser> _userManager = userManager ?? throw new ArgumentNullException(nameof(userManager));
+    
+    private static readonly HashSet<string> ValidRoles = new(StringComparer.OrdinalIgnoreCase)
     {
-        _userManager = userManager ?? throw new ArgumentNullException(nameof(userManager));
-    }
+        "Student", "Teacher", "Admin", "Instructor"
+    };
+    
+    // Equivalent na ani, basin malimot ka
+    // private static readonly HashSet<string> ValidRoles = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+    // {
+    //     "Student", "Teacher", "Admin"
+    // };
 
+    #region User Information Operations
     /// <summary>
     /// Extracts user ID from ClaimsPrincipal with multiple fallback strategies
     /// </summary>
@@ -49,11 +56,14 @@ public class UserContextService
     /// </summary>
     /// <param name="userPrincipal">The user's claims principal</param>
     /// <returns>User role if found, null otherwise</returns>
-    public string? GetUserRole(ClaimsPrincipal userPrincipal)
+    private static string? GetUserRole(ClaimsPrincipal userPrincipal)
     {
         return userPrincipal?.FindFirst(ClaimTypes.Role)?.Value;
     }
 
+    #endregion
+
+    #region Authorization Operations
     /// <summary>
     /// Checks if the user is authorized to perform an action on a resource
     /// </summary>
@@ -63,6 +73,15 @@ public class UserContextService
     /// <returns>True if authorized, false otherwise</returns>
     public async Task<bool> IsAuthorizedAsync(ClaimsPrincipal userPrincipal, string resourceUserId, params string[] allowedRoles)
     {
+        // Validate allowedRoles parameter
+        foreach (var role in allowedRoles)
+        {
+            if (!string.IsNullOrEmpty(role) && !ValidRoles.Contains(role))
+            {
+                throw new ArgumentException($"Invalid role specified: {role}. Valid roles are: {string.Join(", ", ValidRoles)}");
+            }
+        }
+
         var currentUserId = await GetUserIdAsync(userPrincipal).ConfigureAwait(false);
         if (string.IsNullOrEmpty(currentUserId))
         {
@@ -77,11 +96,7 @@ public class UserContextService
 
         // Check if user has privileged role
         var userRole = GetUserRole(userPrincipal);
-        if (!string.IsNullOrEmpty(userRole) && allowedRoles.Contains(userRole, StringComparer.OrdinalIgnoreCase))
-        {
-            return true;
-        }
-
-        return false;
+        return !string.IsNullOrEmpty(userRole) && allowedRoles.Contains(userRole, StringComparer.OrdinalIgnoreCase);
     }
+    #endregion
 }
