@@ -1,29 +1,28 @@
-using System.Threading.Tasks;
 using attendance_monitoring.IRepository;
 using attendance_monitoring.IServices;
-using Microsoft.Extensions.Logging;
 
 namespace attendance_monitoring.Services
 {
-    public class RoleInitializationService : IRoleInitializationService
+    public class RoleInitializationService(
+        IAccountRepository accountRepository,
+        ILogger<RoleInitializationService> logger)
+        : IRoleInitializationService
     {
-        private readonly IAccountRepository _accountRepository;
-        private readonly ILogger<RoleInitializationService> _logger;
 
-        public RoleInitializationService(IAccountRepository accountRepository, ILogger<RoleInitializationService> logger)
-        {
-            _accountRepository = accountRepository;
-            _logger = logger;
-        }
+        #region Initialization Methods
 
+        #region InitializeRolesAsync
         public async Task InitializeRolesAsync()
         {
-            _logger.LogInformation("Initializing roles...");
+            logger.LogInformation("Initializing roles...");
 
             var validRoles = new[] { "Admin", "Teacher", "Student" };
-            await _accountRepository.EnsureRolesExistAsync(validRoles).ConfigureAwait(false);
+            await accountRepository.EnsureRolesExistAsync(validRoles).ConfigureAwait(false);
 
-            _logger.LogInformation("Roles initialized successfully.");
+            logger.LogInformation("Roles initialized successfully.");
         }
+        #endregion
+
+        #endregion
     }
 }

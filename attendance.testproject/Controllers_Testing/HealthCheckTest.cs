@@ -51,10 +51,29 @@ public class HealthCheckControllerTest
         var okResult = Assert.IsType<OkObjectResult>(result);
         Assert.Equal(200, okResult.StatusCode);
 
-        dynamic responseValue = okResult.Value;
-        Assert.Equal("healthy", responseValue.status);
-        Assert.Equal("healthy", responseValue.database.status);
-        Assert.True(responseValue.database.connected);
+        var responseValue = okResult.Value;
+        Assert.NotNull(responseValue);
+        
+        // Use reflection or JSON serialization to access anonymous object properties
+        var statusProperty = responseValue.GetType().GetProperty("status");
+        var databaseProperty = responseValue.GetType().GetProperty("database");
+        
+        Assert.NotNull(statusProperty);
+        Assert.NotNull(databaseProperty);
+        
+        Assert.Equal("healthy", statusProperty.GetValue(responseValue));
+        
+        var databaseValue = databaseProperty.GetValue(responseValue);
+        Assert.NotNull(databaseValue);
+        
+        var dbStatusProperty = databaseValue.GetType().GetProperty("status");
+        var dbConnectedProperty = databaseValue.GetType().GetProperty("connected");
+        
+        Assert.NotNull(dbStatusProperty);
+        Assert.NotNull(dbConnectedProperty);
+        
+        Assert.Equal("healthy", dbStatusProperty.GetValue(databaseValue));
+        Assert.Equal(true, dbConnectedProperty.GetValue(databaseValue));
 
         _mockDbFacade.Verify(db => db.CanConnectAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
@@ -71,11 +90,31 @@ public class HealthCheckControllerTest
         var statusCodeResult = Assert.IsType<ObjectResult>(result);
         Assert.Equal(503, statusCodeResult.StatusCode);
 
-        dynamic responseValue = statusCodeResult.Value;
-        Assert.Equal("unhealthy", responseValue.status);
-        Assert.Equal("unhealthy", responseValue.database.status);
-        Assert.False(responseValue.database.connected);
-        Assert.Equal("Database connection failed", responseValue.database.error);
+        var responseValue = statusCodeResult.Value;
+        Assert.NotNull(responseValue);
+        
+        var statusProperty = responseValue.GetType().GetProperty("status");
+        var databaseProperty = responseValue.GetType().GetProperty("database");
+        
+        Assert.NotNull(statusProperty);
+        Assert.NotNull(databaseProperty);
+        
+        Assert.Equal("unhealthy", statusProperty.GetValue(responseValue));
+        
+        var databaseValue = databaseProperty.GetValue(responseValue);
+        Assert.NotNull(databaseValue);
+        
+        var dbStatusProperty = databaseValue.GetType().GetProperty("status");
+        var dbConnectedProperty = databaseValue.GetType().GetProperty("connected");
+        var dbErrorProperty = databaseValue.GetType().GetProperty("error");
+        
+        Assert.NotNull(dbStatusProperty);
+        Assert.NotNull(dbConnectedProperty);
+        Assert.NotNull(dbErrorProperty);
+        
+        Assert.Equal("unhealthy", dbStatusProperty.GetValue(databaseValue));
+        Assert.Equal(false, dbConnectedProperty.GetValue(databaseValue));
+        Assert.Equal("Database connection failed", dbErrorProperty.GetValue(databaseValue));
 
         _mockDbFacade.Verify(db => db.CanConnectAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
@@ -95,11 +134,31 @@ public class HealthCheckControllerTest
         var statusCodeResult = Assert.IsType<ObjectResult>(result);
         Assert.Equal(503, statusCodeResult.StatusCode);
 
-        dynamic responseValue = statusCodeResult.Value;
-        Assert.Equal("unhealthy", responseValue.status);
-        Assert.Equal("unhealthy", responseValue.database.status);
-        Assert.False(responseValue.database.connected);
-        Assert.Equal(exceptionMessage, responseValue.database.error);
+        var responseValue = statusCodeResult.Value;
+        Assert.NotNull(responseValue);
+        
+        var statusProperty = responseValue.GetType().GetProperty("status");
+        var databaseProperty = responseValue.GetType().GetProperty("database");
+        
+        Assert.NotNull(statusProperty);
+        Assert.NotNull(databaseProperty);
+        
+        Assert.Equal("unhealthy", statusProperty.GetValue(responseValue));
+        
+        var databaseValue = databaseProperty.GetValue(responseValue);
+        Assert.NotNull(databaseValue);
+        
+        var dbStatusProperty = databaseValue.GetType().GetProperty("status");
+        var dbConnectedProperty = databaseValue.GetType().GetProperty("connected");
+        var dbErrorProperty = databaseValue.GetType().GetProperty("error");
+        
+        Assert.NotNull(dbStatusProperty);
+        Assert.NotNull(dbConnectedProperty);
+        Assert.NotNull(dbErrorProperty);
+        
+        Assert.Equal("unhealthy", dbStatusProperty.GetValue(databaseValue));
+        Assert.Equal(false, dbConnectedProperty.GetValue(databaseValue));
+        Assert.Equal(exceptionMessage, dbErrorProperty.GetValue(databaseValue));
 
         _mockLogger.Verify(
             x => x.Log(
@@ -107,7 +166,7 @@ public class HealthCheckControllerTest
                 It.IsAny<EventId>(),
                 It.Is<It.IsAnyType>((v, t) => true),
                 expectedException,
-                It.Is<Func<It.IsAnyType, Exception, string>>((v, t) => true)),
+                It.Is<Func<It.IsAnyType, Exception?, string>>((v, t) => true)),
             Times.Once
         );
     }

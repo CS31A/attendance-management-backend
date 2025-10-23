@@ -1,4 +1,5 @@
 using attendance_monitoring.Classes;
+using attendance_monitoring.Exceptions;
 using attendance_monitoring.IServices;
 using attendance_monitoring.Models.DTO.Request;
 using Microsoft.AspNetCore.Authorization;
@@ -19,14 +20,23 @@ public class CourseController(ICourseService courseService, ILogger<CourseContro
     /// </summary>
     /// <returns>A list of courses</returns>
     /// <response code="200">Returns the list of courses</response>
+    /// <response code="500">Internal server error</response>
     // GET: api/Course
     [HttpGet]
     public async Task<ActionResult<IEnumerable<Course>>> GetCourses()
     {
-        logger.LogInformation("Getting all courses");
-        var courses = await courseService.GetAllCoursesAsync();
-        logger.LogInformation("Successfully retrieved {Count} courses", courses.ToList().Count);
-        return Ok(courses);
+        try
+        {
+            logger.LogInformation("Getting all courses");
+            var courses = await courseService.GetAllCoursesAsync();
+            logger.LogInformation("Successfully retrieved {Count} courses", courses.ToList().Count);
+            return Ok(courses);
+        }
+        catch (EntityServiceException ex)
+        {
+            logger.LogError(ex, "Service error occurred while retrieving courses");
+            return StatusCode(500, "An error occurred while retrieving courses");
+        }
     }
 
     /// <summary>
@@ -35,22 +45,29 @@ public class CourseController(ICourseService courseService, ILogger<CourseContro
     /// <param name="id">The ID of the course to retrieve</param>
     /// <returns>The requested course</returns>
     /// <response code="200">Returns the requested course</response>
-    /// <response code="404"> not found</response>
+    /// <response code="404">Course not found</response>
+    /// <response code="500">Internal server error</response>
     // GET: api/Course/5
-    [HttpGet("{id}")]
+    [HttpGet("{id:int}")]
     public async Task<ActionResult<Course>> GetCourse(int id)
     {
-        logger.LogInformation("Getting course with ID: {Id}", id);
-        var course = await courseService.GetCourseByIdAsync(id);
-
-        if (course == null)
+        try
         {
-            logger.LogWarning("Course with ID {Id} not found", id);
-            return NotFound();
+            logger.LogInformation("Getting course with ID: {Id}", id);
+            var course = await courseService.GetCourseByIdAsync(id);
+            logger.LogInformation("Successfully retrieved course with ID: {Id}", id);
+            return Ok(course);
         }
-
-        logger.LogInformation("Successfully retrieved course with ID: {Id}", id);
-        return Ok(course);
+        catch (EntityNotFoundException<int> ex)
+        {
+            logger.LogWarning(ex, "Course with ID {Id} not found", id);
+            return NotFound($"Course with ID {id} not found");
+        }
+        catch (EntityServiceException ex)
+        {
+            logger.LogError(ex, "Service error occurred while retrieving course with ID: {Id}", id);
+            return StatusCode(500, "An error occurred while retrieving the course");
+        }
     }
 
     /// <summary>
@@ -61,34 +78,30 @@ public class CourseController(ICourseService courseService, ILogger<CourseContro
     /// <response code="201">Returns the created course</response>
     /// <response code="400">Invalid input data</response>
     /// <response code="401">Not authorized to create courses</response>
+    /// <response code="500">Internal server error</response>
     // POST: api/Course
     [HttpPost]
     [Authorize(Policy = "AdminPolicy")]
     public async Task<ActionResult<Course>> CreateCourse(CreateCourse createCourse)
     {
-        logger.LogInformation("Creating new course with name: {CourseName}", createCourse.Name);
-        if (!ModelState.IsValid)
+        try
         {
-            logger.LogWarning("Course creation failed due to invalid model state");
-            return BadRequest(ModelState);
+            logger.LogInformation("Creating new course with name: {CourseName}", createCourse.Name);
+            if (!ModelState.IsValid)
+            {
+                logger.LogWarning("Course creation failed due to invalid model state");
+                return BadRequest(ModelState);
+            }
+
+            var course = await courseService.CreateCourseAsync(createCourse, User);
+            logger.LogInformation("Successfully created course with ID: {Id} and name: {CourseName}", course.Id, course.Name);
+            return CreatedAtAction(nameof(GetCourse), new { id = course.Id }, course);
         }
-
-        var (course, error) = await courseService.CreateCourseAsync(createCourse, User);
-
-        if (error != null)
+        catch (EntityServiceException ex)
         {
-            logger.LogWarning("Course creation failed: {Error}", error);
-            return BadRequest(error);
+            logger.LogError(ex, "Service error occurred while creating course");
+            return BadRequest(ex.Message);
         }
-        
-        if (course == null)
-        {
-            logger.LogError("Course creation failed: Unexpected error occurred");
-            return BadRequest("An unexpected error occurred while creating the course.");
-        }
-
-        logger.LogInformation("Successfully created course with ID: {Id} and name: {CourseName}", course.Id, course.Name);
-        return CreatedAtAction(nameof(GetCourse), new { id = course.Id }, course);
     }
 
     /// <summary>
@@ -101,33 +114,35 @@ public class CourseController(ICourseService courseService, ILogger<CourseContro
     /// <response code="400">Invalid input data</response>
     /// <response code="404">Course not found</response>
     /// <response code="401">Not authorized to update this course</response>
+    /// <response code="500">Internal server error</response>
     // PUT: api/Course/5
     [HttpPut("{id}")]
     [Authorize(Policy = "AdminPolicy")]
     public async Task<ActionResult<Course>> UpdateCourse(int id, UpdateCourse updateCourse)
     {
-        logger.LogInformation("Updating course with ID: {Id}", id);
-        if (!ModelState.IsValid)
+        try
         {
-            logger.LogWarning("Course update failed due to invalid model state for course ID: {Id}", id);
-            return BadRequest(ModelState);
-        }
-
-        var (course, error) = await courseService.UpdateCourseAsync(id, updateCourse, User);
-
-        if (error != null)
-        {
-            if (error.Contains("not found"))
+            logger.LogInformation("Updating course with ID: {Id}", id);
+            if (!ModelState.IsValid)
             {
-                logger.LogWarning("Course update failed: Course with ID {Id} not found", id);
-                return NotFound(error);
+                logger.LogWarning("Course update failed due to invalid model state for course ID: {Id}", id);
+                return BadRequest(ModelState);
             }
-            logger.LogWarning("Course update failed for course ID {Id}: {Error}", id, error);
-            return BadRequest(error);
-        }
 
-        logger.LogInformation("Successfully updated course with ID: {Id}", id);
-        return Ok(course);
+            var course = await courseService.UpdateCourseAsync(id, updateCourse, User);
+            logger.LogInformation("Successfully updated course with ID: {Id}", id);
+            return Ok(course);
+        }
+        catch (EntityNotFoundException<int> ex)
+        {
+            logger.LogWarning(ex, "Course with ID {Id} not found", id);
+            return NotFound($"Course with ID {id} not found");
+        }
+        catch (EntityServiceException ex)
+        {
+            logger.LogError(ex, "Service error occurred while updating course with ID: {Id}", id);
+            return BadRequest(ex.Message);
+        }
     }
 
     /// <summary>
@@ -138,26 +153,28 @@ public class CourseController(ICourseService courseService, ILogger<CourseContro
     /// <response code="204">Course deleted successfully</response>
     /// <response code="404">Course not found</response>
     /// <response code="401">Not authorized to delete courses</response>
+    /// <response code="500">Internal server error</response>
     // DELETE: api/Course/5
     [HttpDelete("{id}")]
     [Authorize(Policy = "AdminPolicy")]
     public async Task<ActionResult> DeleteCourse(int id)
     {
-        logger.LogInformation("Deleting course with ID: {Id}", id);
-        var error = await courseService.DeleteCourseAsync(id, User);
-
-        if (error == null) 
+        try
         {
+            logger.LogInformation("Deleting course with ID: {Id}", id);
+            await courseService.DeleteCourseAsync(id, User);
             logger.LogInformation("Successfully deleted course with ID: {Id}", id);
             return NoContent();
         }
-        if (error.Contains("not found"))
+        catch (EntityNotFoundException<int> ex)
         {
-            logger.LogWarning("Course deletion failed: Course with ID {Id} not found", id);
-            return NotFound(error);
+            logger.LogWarning(ex, "Course with ID {Id} not found", id);
+            return NotFound($"Course with ID {id} not found");
         }
-        logger.LogWarning("Course deletion failed for course ID {Id}: {Error}", id, error);
-        return BadRequest(error);
-
+        catch (EntityServiceException ex)
+        {
+            logger.LogError(ex, "Service error occurred while deleting course with ID: {Id}", id);
+            return BadRequest(ex.Message);
+        }
     }
 }

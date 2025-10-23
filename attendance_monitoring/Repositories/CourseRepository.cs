@@ -5,48 +5,65 @@ using Microsoft.EntityFrameworkCore;
 
 namespace attendance_monitoring.Repositories;
 
-public class CourseRepository : ICourseRepository
+public class CourseRepository(ApplicationDbContext context) : ICourseRepository
 {
-    private readonly ApplicationDbContext _context;
+    #region Read Operations
 
-    public CourseRepository(ApplicationDbContext context)
-    {
-        _context = context;
-    }
-
+    #region GetAllCoursesAsync
     public async Task<IEnumerable<Course>> GetAllCoursesAsync()
     {
-        return await _context.Courses.ToListAsync().ConfigureAwait(false);
+        return await context.Courses.AsNoTracking().ToListAsync().ConfigureAwait(false);
     }
+    #endregion
 
+    #region GetCourseByIdAsync
     public async Task<Course?> GetCourseByIdAsync(int id)
     {
-        return await _context.Courses.FindAsync(id).ConfigureAwait(false);
+        return await context.Courses.AsNoTracking().FirstOrDefaultAsync(c => c.Id == id).ConfigureAwait(false);
     }
+    #endregion
 
+    #endregion
+
+    #region Write Operations
+
+    #region CreateCourse
     public async Task<Course> CreateCourse(Course course)
     {
-        var entry = await _context.Courses.AddAsync(course).ConfigureAwait(false);
+        var entry = await context.Courses.AddAsync(course).ConfigureAwait(false);
         return entry.Entity;
     }
+    #endregion
 
+    #region UpdateCourseAsync
     public Task<Course> UpdateCourseAsync(Course course)
     {
-        var entry = _context.Courses.Update(course);
+        var entry = context.Courses.Update(course);
         return Task.FromResult(entry.Entity);
     }
+    #endregion
 
+    #region DeleteCourseAsync
     public async Task<bool> DeleteCourseAsync(int id)
     {
-        var course = await _context.Courses.FindAsync(id).ConfigureAwait(false);
+        var course = await context.Courses.FindAsync(id).ConfigureAwait(false);
         if (course == null) return false;
         
-        _context.Courses.Remove(course);
+        context.Courses.Remove(course);
         return true;
     }
+    #endregion
 
+    #endregion
+
+    #region Utility Operations
+
+    #region SaveChangesAsync
     public async Task<int> SaveChangesAsync()
     {
-        return await _context.SaveChangesAsync().ConfigureAwait(false);
+        return await context.SaveChangesAsync().ConfigureAwait(false);
     }
+    #endregion
+
+    #endregion
 }

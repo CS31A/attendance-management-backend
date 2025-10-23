@@ -1,4 +1,5 @@
 using attendance_monitoring.Classes;
+using attendance_monitoring.Exceptions;
 using attendance_monitoring.IServices;
 using attendance_monitoring.Models.DTO.Request;
 using attendance_monitoring.Models.DTO.Response;
@@ -55,27 +56,89 @@ public class InstructorController(IInstructorService instructorService, ILogger<
     [HttpGet]
     public async Task<ActionResult<IEnumerable<Instructor>>> GetInstructors()
     {
-        logger.LogInformation("Getting all instructors");
-        var instructors = await instructorService.GetAllInstructorsAsync();
-        logger.LogInformation("Successfully retrieved {Count} instructors", instructors.ToList().Count);
-        return Ok(instructors);
+        try
+        {
+            logger.LogInformation("Getting all instructors");
+            var instructors = await instructorService.GetAllInstructorsAsync();
+            logger.LogInformation("Successfully retrieved {Count} instructors", instructors.ToList().Count);
+            return Ok(instructors);
+        }
+        catch (EntityServiceException ex)
+        {
+            logger.LogError(ex, "Service error occurred while retrieving instructors");
+            return StatusCode(500, "An error occurred while retrieving instructors");
+        }
     }
 
     // GET: api/Instructor/5
     [HttpGet("{id:int}")]
     public async Task<ActionResult<Instructor>> GetInstructor(int id)
     {
-        logger.LogInformation("Getting instructor with ID: {Id}", id);
-        var instructor = await instructorService.GetInstructorByIdAsync(id);
-
-        if (instructor == null)
+        try
         {
-            logger.LogWarning("Instructor with ID {Id} not found", id);
-            return NotFound();
+            logger.LogInformation("Getting instructor with ID: {Id}", id);
+            var instructor = await instructorService.GetInstructorByIdAsync(id);
+            logger.LogInformation("Successfully retrieved instructor with ID: {Id}", id);
+            return Ok(instructor);
         }
+        catch (EntityNotFoundException<int> ex)
+        {
+            logger.LogWarning(ex, "Instructor with ID {Id} not found", id);
+            return NotFound($"Instructor with ID {id} not found");
+        }
+        catch (EntityServiceException ex)
+        {
+            logger.LogError(ex, "Service error occurred while retrieving instructor with ID: {Id}", id);
+            return StatusCode(500, "An error occurred while retrieving the instructor");
+        }
+    }
 
-        logger.LogInformation("Successfully retrieved instructor with ID: {Id}", id);
-        return Ok(instructor);
+    // GET: api/instructors/{instructorId}/subjects
+    [HttpGet("{instructorId:int}/subjects")]
+    public async Task<ActionResult<IEnumerable<SubjectResponseDto>>> GetInstructorSubjects(int instructorId)
+    {
+        try
+        {
+            logger.LogInformation("Getting subjects for instructor ID: {InstructorId}", instructorId);
+            var subjects = await instructorService.GetSubjectsByInstructorIdAsync(instructorId);
+            logger.LogInformation("Successfully retrieved subjects for instructor ID: {InstructorId}", instructorId);
+            return Ok(subjects);
+        }
+        catch (EntityNotFoundException<int> ex)
+        {
+            logger.LogWarning(ex, "Instructor with ID {InstructorId} not found", instructorId);
+            return NotFound($"Instructor with ID {instructorId} not found");
+        }
+        catch (EntityServiceException ex)
+        {
+            logger.LogError(ex, "Service error occurred while retrieving subjects for instructor ID: {InstructorId}", instructorId);
+            return StatusCode(500, "An error occurred while retrieving the subjects");
+        }
+    }
+
+    // GET: api/instructors/profile
+    [HttpGet("profile")]
+    public async Task<ActionResult<InstructorProfileResponseDto>> GetInstructorProfile()
+    {
+        try
+        {
+            logger.LogInformation("Getting instructor profile for authenticated user");
+            var profile = await instructorService.GetInstructorProfileAsync(User);
+            
+            if (profile == null)
+            {
+                logger.LogWarning("No instructor profile found for authenticated user");
+                return NotFound("No instructor profile found for the current user");
+            }
+
+            logger.LogInformation("Successfully retrieved instructor profile with ID: {InstructorId}", profile.Id);
+            return Ok(profile);
+        }
+        catch (EntityServiceException ex)
+        {
+            logger.LogError(ex, "Service error occurred while retrieving instructor profile");
+            return StatusCode(500, "An error occurred while retrieving the instructor profile");
+        }
     }
 
     #endregion
@@ -113,33 +176,34 @@ public class InstructorController(IInstructorService instructorService, ILogger<
     [Authorize(Policy = "PrivilegedPolicy")]
     public async Task<ActionResult<Instructor>> PatchInstructor(int id, UpdateInstructor updateInstructor)
     {
-        logger.LogInformation("Updating instructor with ID: {Id}", id);
-        if (!ModelState.IsValid)
+        try
         {
-            logger.LogWarning("Instructor update failed due to invalid model state for instructor ID: {Id}", id);
-            return BadRequest(ModelState);
-        }
+            logger.LogInformation("Updating instructor with ID: {Id}", id);
+            if (!ModelState.IsValid)
+            {
+                logger.LogWarning("Instructor update failed due to invalid model state for instructor ID: {Id}", id);
+                return BadRequest(ModelState);
+            }
 
-        var (instructor, error) = await instructorService.UpdateInstructorAsync(id, updateInstructor, User);
-
-        if (error == null) 
-        {
+            var instructor = await instructorService.UpdateInstructorAsync(id, updateInstructor, User);
             logger.LogInformation("Successfully updated instructor with ID: {Id}", id);
             return Ok(instructor);
         }
-        if (error.Contains("not found"))
+        catch (EntityNotFoundException<int> ex)
         {
-            logger.LogWarning("Instructor update failed: Instructor with ID {Id} not found", id);
-            return NotFound(error);
+            logger.LogWarning(ex, "Instructor with ID {Id} not found", id);
+            return NotFound($"Instructor with ID {id} not found");
         }
-        if (error.Contains("not authorized"))
+        catch (EntityUnauthorizedException ex)
         {
-            logger.LogWarning("Instructor update failed: User not authorized to update instructor with ID {Id}", id);
-            return Unauthorized(error);
+            logger.LogWarning(ex, "User not authorized to update instructor with ID {Id}", id);
+            return Unauthorized(ex.Message);
         }
-        logger.LogWarning("Instructor update failed for instructor ID {Id}: {Error}", id, error);
-        return BadRequest(error);
-
+        catch (EntityServiceException ex)
+        {
+            logger.LogError(ex, "Service error occurred while updating instructor with ID: {Id}", id);
+            return BadRequest(ex.Message);
+        }
     }
 
     #endregion
@@ -151,10 +215,44 @@ public class InstructorController(IInstructorService instructorService, ILogger<
     [Authorize(Policy = "PrivilegedPolicy")]
     public async Task<ActionResult<SoftDeleteResponse>> SoftDeleteInstructor(int id)
     {
-        logger.LogInformation("Soft deleting instructor with ID: {Id}", id);
-        var error = await instructorService.SoftDeleteInstructorAsync(id, User);
-        logger.LogInformation("Soft delete operation completed for instructor with ID: {Id}", id);
-        return CreateResponse(error ?? string.Empty, "Instructor marked as deleted successfully");
+        try
+        {
+            logger.LogInformation("Soft deleting instructor with ID: {Id}", id);
+            await instructorService.SoftDeleteInstructorAsync(id, User);
+            logger.LogInformation("Soft delete operation completed for instructor with ID: {Id}", id);
+            return Ok(new SoftDeleteResponse
+            {
+                Success = true,
+                Message = "Instructor marked as deleted successfully"
+            });
+        }
+        catch (EntityNotFoundException<int> ex)
+        {
+            logger.LogWarning(ex, "Instructor with ID {Id} not found", id);
+            return NotFound(new SoftDeleteResponse
+            {
+                Success = false,
+                Message = $"Instructor with ID {id} not found"
+            });
+        }
+        catch (EntityUnauthorizedException ex)
+        {
+            logger.LogWarning(ex, "User not authorized to delete instructor with ID {Id}", id);
+            return Unauthorized(new SoftDeleteResponse
+            {
+                Success = false,
+                Message = ex.Message
+            });
+        }
+        catch (EntityServiceException ex)
+        {
+            logger.LogError(ex, "Service error occurred while soft deleting instructor with ID: {Id}", id);
+            return BadRequest(new SoftDeleteResponse
+            {
+                Success = false,
+                Message = ex.Message
+            });
+        }
     }
 
     // DELETE: api/Instructor/{id}

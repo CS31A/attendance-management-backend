@@ -378,6 +378,71 @@ namespace attendance_monitoring.Migrations
                     b.ToTable("Instructors");
                 });
 
+            modelBuilder.Entity("attendance_monitoring.Classes.QrCode", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("ActualRoomId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("GeneratedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<int?>("MaxUsage")
+                        .HasColumnType("int");
+
+                    b.Property<string>("QrHash")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.Property<string>("RevocationReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<DateTime?>("RevokedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("RevokedBy")
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<int>("ScheduleId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("SectionId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("UsageCount")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ActualRoomId");
+
+                    b.HasIndex("ScheduleId");
+
+                    b.HasIndex("SectionId");
+
+                    b.ToTable("QrCodes");
+                });
+
             modelBuilder.Entity("attendance_monitoring.Classes.RefreshToken", b =>
                 {
                     b.Property<int>("Id")
@@ -416,7 +481,7 @@ namespace attendance_monitoring.Migrations
                     b.HasIndex("TokenHash")
                         .IsUnique();
 
-                    b.HasIndex("UserId");
+                    b.HasIndex("UserId", "IsRevoked", "ExpiresAt");
 
                     b.ToTable("RefreshTokens");
                 });
@@ -440,22 +505,42 @@ namespace attendance_monitoring.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)");
 
+                    b.Property<int>("InstructorId")
+                        .HasColumnType("int");
+
                     b.Property<int>("SectionId")
                         .HasColumnType("int");
 
                     b.Property<int>("SubjectId")
                         .HasColumnType("int");
 
-                    b.Property<DateTime>("TimeIn")
-                        .HasColumnType("datetime2");
+                    b.Property<TimeOnly>("TimeIn")
+                        .HasColumnType("time");
 
-                    b.Property<DateTime>("TimeOut")
-                        .HasColumnType("datetime2");
+                    b.Property<TimeOnly>("TimeOut")
+                        .HasColumnType("time");
 
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("datetime2");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("ClassroomId");
+
+                    b.HasIndex("DayOfWeek");
+
+                    b.HasIndex("InstructorId");
+
+                    b.HasIndex("SectionId");
+
+                    b.HasIndex("SubjectId");
+
+                    b.HasIndex("TimeIn");
+
+                    b.HasIndex("TimeOut");
+
+                    b.HasIndex("TimeIn", "TimeOut")
+                        .IsUnique();
 
                     b.ToTable("Schedules");
                 });
@@ -474,9 +559,6 @@ namespace attendance_monitoring.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
-                    b.Property<int>("InstructorId")
-                        .HasColumnType("int");
-
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -488,8 +570,6 @@ namespace attendance_monitoring.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("CourseId");
-
-                    b.HasIndex("InstructorId");
 
                     b.HasIndex("Name")
                         .IsUnique();
@@ -518,6 +598,9 @@ namespace attendance_monitoring.Migrations
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsRegular")
                         .HasColumnType("bit");
 
                     b.Property<string>("Lastname")
@@ -555,8 +638,8 @@ namespace attendance_monitoring.Migrations
 
                     b.Property<string>("Code")
                         .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
@@ -653,6 +736,33 @@ namespace attendance_monitoring.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("attendance_monitoring.Classes.QrCode", b =>
+                {
+                    b.HasOne("attendance_monitoring.Classes.Classroom", "ActualRoom")
+                        .WithMany()
+                        .HasForeignKey("ActualRoomId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("attendance_monitoring.Classes.Schedules", "Schedule")
+                        .WithMany()
+                        .HasForeignKey("ScheduleId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("attendance_monitoring.Classes.Section", "Section")
+                        .WithMany()
+                        .HasForeignKey("SectionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ActualRoom");
+
+                    b.Navigation("Schedule");
+
+                    b.Navigation("Section");
+                });
+
             modelBuilder.Entity("attendance_monitoring.Classes.RefreshToken", b =>
                 {
                     b.HasOne("Microsoft.AspNetCore.Identity.IdentityUser", "User")
@@ -664,6 +774,41 @@ namespace attendance_monitoring.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("attendance_monitoring.Classes.Schedules", b =>
+                {
+                    b.HasOne("attendance_monitoring.Classes.Classroom", "Classroom")
+                        .WithMany()
+                        .HasForeignKey("ClassroomId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("attendance_monitoring.Classes.Instructor", "Instructor")
+                        .WithMany()
+                        .HasForeignKey("InstructorId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("attendance_monitoring.Classes.Section", "Section")
+                        .WithMany()
+                        .HasForeignKey("SectionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("attendance_monitoring.Classes.Subject", "Subject")
+                        .WithMany()
+                        .HasForeignKey("SubjectId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Classroom");
+
+                    b.Navigation("Instructor");
+
+                    b.Navigation("Section");
+
+                    b.Navigation("Subject");
+                });
+
             modelBuilder.Entity("attendance_monitoring.Classes.Section", b =>
                 {
                     b.HasOne("attendance_monitoring.Classes.Course", "Course")
@@ -672,15 +817,7 @@ namespace attendance_monitoring.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("attendance_monitoring.Classes.Instructor", "Instructor")
-                        .WithMany("Sections")
-                        .HasForeignKey("InstructorId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
                     b.Navigation("Course");
-
-                    b.Navigation("Instructor");
                 });
 
             modelBuilder.Entity("attendance_monitoring.Classes.Student", b =>
@@ -703,11 +840,6 @@ namespace attendance_monitoring.Migrations
                 });
 
             modelBuilder.Entity("attendance_monitoring.Classes.Course", b =>
-                {
-                    b.Navigation("Sections");
-                });
-
-            modelBuilder.Entity("attendance_monitoring.Classes.Instructor", b =>
                 {
                     b.Navigation("Sections");
                 });

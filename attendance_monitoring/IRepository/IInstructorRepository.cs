@@ -5,7 +5,7 @@ namespace attendance_monitoring.IRepository;
 /// <summary>
 /// Represents the repository for managing instructors.
 /// </summary>
-public interface IInstructorRepository
+public interface IInstructorRepository : ISaveableRepository
 {
     /// <summary>
     /// Retrieves all instructors.
@@ -69,9 +69,4 @@ public interface IInstructorRepository
     /// <returns>True if the instructor was restored; otherwise, false.</returns>
     Task<bool> RestoreInstructorAsync(int id);
 
-    /// <summary>
-    /// Saves changes to the database.
-    /// </summary>
-    /// <returns>The number of state entries written to the database.</returns>
-    Task<int> SaveChangesAsync();
 }
