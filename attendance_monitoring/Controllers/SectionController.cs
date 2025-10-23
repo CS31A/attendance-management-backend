@@ -8,12 +8,11 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace attendance_monitoring.Controllers
 {
-    [Authorize(Policy = "AdminPolicy")]
+    [Authorize(Policy = "UserPolicy")]
     [ApiController]
     [Route("api/sections")]
     public class SectionController(ISectionService sectionService, ILogger<SectionController> logger) : ControllerBase
     {
-        [Authorize(Policy = "UserPolicy")]
         [HttpGet("{id:int}")]
         public async Task<ActionResult<SectionResponseDto>> GetSection(int id)
         {
@@ -57,6 +56,7 @@ namespace attendance_monitoring.Controllers
             }
         }
 
+        [Authorize(Policy = "AdminPolicy")]
         [HttpPost]
         public async Task<ActionResult<SectionResponseDto>> CreateSection([FromBody] CreateSection createSection)
         {
@@ -81,6 +81,7 @@ namespace attendance_monitoring.Controllers
             }
         }
 
+        [Authorize(Policy = "AdminPolicy")]
         [HttpPut("{id:int}")]
         public async Task<ActionResult<SectionResponseDto>> UpdateSection(int id, [FromBody] CreateSection updateSection)
         {
@@ -110,6 +111,7 @@ namespace attendance_monitoring.Controllers
             }
         }
 
+        [Authorize(Policy = "AdminPolicy")]
         [HttpDelete("{id:int}")]
         public async Task<ActionResult> DeleteSection(int id)
         {
@@ -129,7 +131,7 @@ namespace attendance_monitoring.Controllers
                 return StatusCode(500, "An error occurred while deleting the section");
             }
         }
-        
+
         [Authorize(Policy = "UserPolicy")]
         [HttpGet("{sectionId:int}/active-students")]
         public async Task<ActionResult<IEnumerable<Student>>> GetActiveStudentsBySectionId(int sectionId)
@@ -141,7 +143,7 @@ namespace attendance_monitoring.Controllers
                     logger.LogWarning("Invalid section ID {SectionId} provided for active students retrieval.", sectionId);
                     return BadRequest("Section ID must be greater than 0.");
                 }
-                
+
                 var students = await sectionService.GetActiveStudentsBySectionIdAsync(sectionId);
                 return Ok(students);
             }
@@ -151,7 +153,7 @@ namespace attendance_monitoring.Controllers
                 return StatusCode(500, "An error occurred while retrieving active students");
             }
         }
-        
+
         [Authorize(Policy = "UserPolicy")]
         [HttpGet("{sectionId:int}/all-students")]
         public async Task<ActionResult<IEnumerable<Student>>> GetAllStudentsBySectionId(int sectionId)
@@ -163,7 +165,7 @@ namespace attendance_monitoring.Controllers
                     logger.LogWarning("Invalid section ID {SectionId} provided for all students retrieval.", sectionId);
                     return BadRequest("Section ID must be greater than 0.");
                 }
-                
+
                 var students = await sectionService.GetAllStudentsBySectionIdAsync(sectionId);
                 return Ok(students);
             }
