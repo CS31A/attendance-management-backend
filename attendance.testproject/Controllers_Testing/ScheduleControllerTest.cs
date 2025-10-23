@@ -3,6 +3,7 @@ using attendance_monitoring.Controllers;
 using attendance_monitoring.IServices;
 using attendance_monitoring.Classes;
 using attendance_monitoring.Models.DTO.Request;
+using attendance_monitoring.Models.DTO.Response;
 using Microsoft.Extensions.Logging;
 using System.Security.Claims;
 
@@ -39,7 +40,7 @@ public class ScheduleControllerTest
     {
         // Arrange
         int scheduleId = 1;
-        var expectedSchedule = new Schedules
+        var expectedSchedule = new ScheduleResponseDto
         {
             Id = scheduleId,
             TimeIn = new TimeOnly(8, 0),
@@ -56,7 +57,7 @@ public class ScheduleControllerTest
 
         // Assert
         var okResult = Assert.IsType<OkObjectResult>(result.Result);
-        var schedule = Assert.IsType<Schedules>(okResult.Value);
+        var schedule = Assert.IsType<ScheduleResponseDto>(okResult.Value);
         Assert.Equal(scheduleId, schedule.Id);
 
         _mockScheduleService.Verify(s => s.GetScheduleByIdAsync(scheduleId), Times.Once);
