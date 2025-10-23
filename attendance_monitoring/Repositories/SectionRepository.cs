@@ -2,19 +2,19 @@ using attendance_monitoring.Classes;
 using attendance_monitoring.Data;
 using attendance_monitoring.IRepository;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
-using System.Linq;
-using System.Threading.Tasks;
 
 namespace attendance_monitoring.Repositories
 {
     public class SectionRepository(ApplicationDbContext context, ILogger<SectionRepository> logger) : ISectionRepository
     {
+        #region Read Operations
+
+        #region GetSectionByIdAsync
         public async Task<Section?> GetSectionByIdAsync(int sectionId)
         {
             try
             {
-                return await context.Sections.FindAsync(sectionId).ConfigureAwait(false);
+                return await context.Sections.AsNoTracking().FirstOrDefaultAsync(s => s.Id == sectionId).ConfigureAwait(false);
             }
             catch (Exception ex)
             {
@@ -22,12 +22,14 @@ namespace attendance_monitoring.Repositories
                 throw;
             }
         }
+        #endregion
 
+        #region GetAllSectionsAsync
         public async Task<IEnumerable<Section>> GetAllSectionsAsync()
         {
             try
             {
-                return await context.Sections.ToListAsync().ConfigureAwait(false);
+                return await context.Sections.AsNoTracking().ToListAsync().ConfigureAwait(false);
             }
             catch (Exception ex)
             {
@@ -35,8 +37,50 @@ namespace attendance_monitoring.Repositories
                 throw;
             }
         }
+        #endregion
 
-        public async Task<Section> CreateSectionAsync(Section section)
+        #region GetActiveStudentsBySectionIdAsync
+        public async Task<IEnumerable<Student>> GetActiveStudentsBySectionIdAsync(int sectionId)
+        {
+            try
+            {
+                return await context.Students
+                    .AsNoTracking()
+                    .Where(s => s.SectionId == sectionId && !s.IsDeleted)
+                    .ToListAsync().ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "An error occurred while retrieving active students for section with ID {SectionId} from database.", sectionId);
+                throw;
+            }
+        }
+        #endregion
+
+        #region GetAllStudentsBySectionIdAsync
+        public async Task<IEnumerable<Student>> GetAllStudentsBySectionIdAsync(int sectionId)
+        {
+            try
+            {
+                return await context.Students
+                    .AsNoTracking()
+                    .Where(s => s.SectionId == sectionId)
+                    .ToListAsync().ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "An error occurred while retrieving all students for section with ID {SectionId} from database.", sectionId);
+                throw;
+            }
+        }
+        #endregion
+
+        #endregion
+
+        #region Write Operations
+
+        #region CreateSectionAsync
+        public Task<Section> CreateSectionAsync(Section section)
         {
             try
             {
@@ -44,9 +88,8 @@ namespace attendance_monitoring.Repositories
                 section.UpdatedAt = DateTime.UtcNow;
                 
                 context.Sections.Add(section);
-                await context.SaveChangesAsync().ConfigureAwait(false);
                 
-                return section;
+                return Task.FromResult(section);
             }
             catch (Exception ex)
             {
@@ -54,7 +97,9 @@ namespace attendance_monitoring.Repositories
                 throw;
             }
         }
+        #endregion
 
+        #region UpdateSectionAsync
         public async Task<Section?> UpdateSectionAsync(int id, Section section)
         {
             try
@@ -67,11 +112,8 @@ namespace attendance_monitoring.Repositories
                 }
 
                 existingSection.Name = section.Name;
-                existingSection.InstructorId = section.InstructorId;
                 existingSection.CourseId = section.CourseId;
                 existingSection.UpdatedAt = DateTime.UtcNow;
-
-                await context.SaveChangesAsync().ConfigureAwait(false);
 
                 return existingSection;
             }
@@ -81,7 +123,9 @@ namespace attendance_monitoring.Repositories
                 throw;
             }
         }
+        #endregion
 
+        #region DeleteSectionAsync
         public async Task<bool> DeleteSectionAsync(int id)
         {
             try
@@ -94,7 +138,6 @@ namespace attendance_monitoring.Repositories
                 }
 
                 context.Sections.Remove(section);
-                await context.SaveChangesAsync().ConfigureAwait(false);
                 return true;
             }
             catch (Exception ex)
@@ -103,35 +146,19 @@ namespace attendance_monitoring.Repositories
                 throw;
             }
         }
+        #endregion
 
-        public async Task<IEnumerable<Student>> GetActiveStudentsBySectionIdAsync(int sectionId)
-        {
-            try
-            {
-                return await context.Students
-                    .Where(s => s.SectionId == sectionId && !s.IsDeleted)
-                    .ToListAsync().ConfigureAwait(false);
-            }
-            catch (Exception ex)
-            {
-                logger.LogError(ex, "An error occurred while retrieving active students for section with ID {SectionId} from database.", sectionId);
-                throw;
-            }
-        }
+        #endregion
 
-        public async Task<IEnumerable<Student>> GetAllStudentsBySectionIdAsync(int sectionId)
+        #region Utility Operations
+
+        #region SaveChangesAsync
+        public async Task<int> SaveChangesAsync()
         {
-            try
-            {
-                return await context.Students
-                    .Where(s => s.SectionId == sectionId)
-                    .ToListAsync().ConfigureAwait(false);
-            }
-            catch (Exception ex)
-            {
-                logger.LogError(ex, "An error occurred while retrieving all students for section with ID {SectionId} from database.", sectionId);
-                throw;
-            }
+            return await context.SaveChangesAsync().ConfigureAwait(false);
         }
+        #endregion
+
+        #endregion
     }
 }

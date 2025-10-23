@@ -2,48 +2,70 @@ using attendance_monitoring.Classes;
 using attendance_monitoring.Data;
 using attendance_monitoring.IRepository;
 using Microsoft.EntityFrameworkCore;
-using System;
-using System.Threading.Tasks;
 
 namespace attendance_monitoring.Repositories;
 
-public class RefreshTokenRepository : IRefreshTokenRepository
+public class RefreshTokenRepository(ApplicationDbContext context) : IRefreshTokenRepository
 {
-    private readonly ApplicationDbContext _context;
+    #region Read Operations
 
-    public RefreshTokenRepository(ApplicationDbContext context)
-    {
-        _context = context;
-    }
-
+    #region GetByTokenHashAsync
     public async Task<RefreshToken?> GetByTokenHashAsync(string tokenHash)
     {
-        return await _context.RefreshTokens
+        return await context.RefreshTokens
+            .AsNoTracking()
             .FirstOrDefaultAsync(rt => rt.TokenHash == tokenHash).ConfigureAwait(false);
     }
+    #endregion
 
+    #region GetByReplacedTokenHashAsync
     public async Task<RefreshToken?> GetByReplacedTokenHashAsync(string replacedTokenHash)
     {
-        return await _context.RefreshTokens
+        return await context.RefreshTokens
+            .AsNoTracking()
             .FirstOrDefaultAsync(rt => rt.ReplacedByTokenHash == replacedTokenHash).ConfigureAwait(false);
     }
+    #endregion
 
-    public async Task<RefreshToken> CreateAsync(RefreshToken refreshToken)
-    {
-        var entry = await _context.RefreshTokens.AddAsync(refreshToken).ConfigureAwait(false);
-        await _context.SaveChangesAsync().ConfigureAwait(false);
-        return entry.Entity;
-    }
-
-    public async Task UpdateAsync(RefreshToken refreshToken)
-    {
-        _context.RefreshTokens.Update(refreshToken);
-        await _context.SaveChangesAsync().ConfigureAwait(false);
-    }
-
+    #region ExistsAsync
     public async Task<bool> ExistsAsync(string tokenHash)
     {
-        return await _context.RefreshTokens
+        return await context.RefreshTokens
+            .AsNoTracking()
             .AnyAsync(rt => rt.TokenHash == tokenHash).ConfigureAwait(false);
     }
+    #endregion
+
+    #endregion
+
+    #region Write Operations
+
+    #region CreateAsync
+    public async Task<RefreshToken> CreateAsync(RefreshToken refreshToken)
+    {
+        var entry = await context.RefreshTokens.AddAsync(refreshToken).ConfigureAwait(false);
+        return entry.Entity;
+    }
+    #endregion
+
+    #region UpdateAsync
+    public Task UpdateAsync(RefreshToken refreshToken)
+    {
+        context.RefreshTokens.Update(refreshToken);
+        return Task.CompletedTask;
+    }
+    #endregion
+
+    #endregion
+
+    #region Utility Operations
+
+    #region SaveChangesAsync
+    public async Task<int> SaveChangesAsync()
+    {
+        return await context.SaveChangesAsync().ConfigureAwait(false);
+    }
+    #endregion
+
+    #endregion
 }

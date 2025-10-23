@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using attendance_monitoring.Classes;
+using attendance_monitoring.Exceptions;
 using attendance_monitoring.IRepository;
 using attendance_monitoring.IServices;
 using attendance_monitoring.Models.DTO.Request;
@@ -29,155 +30,251 @@ public class CourseService : ICourseService
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
+    #region Get Operations
+    #region GetAllCoursesAsync
     /// <summary>
     /// Retrieves all courses
     /// </summary>
     /// <returns>A collection of courses</returns>
     public async Task<IEnumerable<Course>> GetAllCoursesAsync()
     {
-        _logger.LogInformation("Retrieving all courses");
-        var courses = await _courseRepository.GetAllCoursesAsync().ConfigureAwait(false);
-        var allCoursesAsync = courses.ToList();
-        _logger.LogInformation("Successfully retrieved {Count} courses", allCoursesAsync.ToList().Count);
-        return allCoursesAsync;
+        try
+        {
+            _logger.LogInformation("Retrieving all courses");
+            var courses = await _courseRepository.GetAllCoursesAsync().ConfigureAwait(false);
+            var allCoursesAsync = courses.ToList();
+            _logger.LogInformation("Successfully retrieved {Count} courses", allCoursesAsync.ToList().Count);
+            return allCoursesAsync;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error occurred while retrieving courses");
+            throw new EntityServiceException("Course", "GetAllCourses", "An error occurred while retrieving courses", ex);
+        }
     }
+    #endregion
 
+    #region GetCourseByIdAsync
     /// <summary>
     /// Retrieves a specific course by ID
     /// </summary>
     /// <param name="id">The ID of the course to retrieve</param>
-    /// <returns>The course with the specified ID, or null if not found</returns>
-    public async Task<Course?> GetCourseByIdAsync(int id)
+    /// <returns>The course with the specified ID</returns>
+    /// <exception cref="EntityNotFoundException{int}">Thrown when the course is not found</exception>
+    /// <exception cref="EntityServiceException">Thrown when an error occurs during retrieval</exception>
+    public async Task<Course> GetCourseByIdAsync(int id)
     {
-        _logger.LogInformation("Retrieving course by ID: {Id}", id);
-        var course = await _courseRepository.GetCourseByIdAsync(id).ConfigureAwait(false);
-        if (course == null)
+        try
         {
-            _logger.LogWarning("Course with ID {Id} not found", id);
-        }
-        else
-        {
-            _logger.LogInformation("Successfully retrieved course with ID: {Id}", id);
-        }
-        return course;
-    }
+            _logger.LogInformation("Retrieving course by ID: {Id}", id);
+            var course = await _courseRepository.GetCourseByIdAsync(id).ConfigureAwait(false);
+            if (course == null)
+            {
+                _logger.LogWarning("Course with ID {Id} not found", id);
+                throw new EntityNotFoundException<int>("Course", id);
+            }
 
+            _logger.LogInformation("Successfully retrieved course with ID: {Id}", id);
+            return course;
+        }
+        catch (EntityNotFoundException<int>)
+        {
+            // Re-throw EntityNotFoundException as-is
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error occurred while retrieving course with ID: {Id}", id);
+            throw new EntityServiceException("Course", $"GetCourseById: {id}", "An error occurred while retrieving the course", ex);
+        }
+    }
+    #endregion
+
+    #endregion
+
+    #region Create Operations
+    #region CreateCourseAsync
     /// <summary>
     /// Creates a new course record
     /// </summary>
     /// <param name="createCourse">The course data to create</param>
     /// <param name="user">The claims principal of the current user</param>
-    /// <returns>A tuple containing the created course (if successful) and an error message (if any)</returns>
-    public async Task<(Course?, string?)> CreateCourseAsync(CreateCourse createCourse, ClaimsPrincipal user)
+    /// <returns>The created course</returns>
+    /// <exception cref="EntityServiceException">Thrown when course creation fails</exception>
+    public async Task<Course> CreateCourseAsync(CreateCourse createCourse, ClaimsPrincipal user)
     {
-        _logger.LogInformation("Creating new course with name: {CourseName}", createCourse.Name);
-
-        if (string.IsNullOrWhiteSpace(createCourse.Name))
+        try
         {
-            _logger.LogWarning("Course creation failed: Course name is required");
-            return (null, "Course name is required");
+            _logger.LogInformation("Creating new course with name: {CourseName}", createCourse.Name);
+
+            if (string.IsNullOrWhiteSpace(createCourse.Name))
+            {
+                _logger.LogWarning("Course creation failed: Course name is required");
+                throw new EntityServiceException("Course", "CreateCourse", "Course name is required");
+            }
+
+            var userId = await _userContextService.GetUserIdAsync(user).ConfigureAwait(false);
+            if (string.IsNullOrEmpty(userId))
+            {
+                _logger.LogWarning("Course creation failed: User ID not found in token");
+                throw new EntityServiceException("Course", "CreateCourse", "User ID not found in token");
+            }
+
+            var course = new Course
+            {
+                Name = createCourse.Name,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+
+            var createdCourse = await _courseRepository.CreateCourse(course).ConfigureAwait(false);
+            await _courseRepository.SaveChangesAsync().ConfigureAwait(false);
+
+            _logger.LogInformation("Successfully created course with ID: {Id} and name: {CourseName}", createdCourse.Id, createdCourse.Name);
+            return createdCourse;
         }
-
-        var userId = await _userContextService.GetUserIdAsync(user).ConfigureAwait(false);
-        if (string.IsNullOrEmpty(userId))
+        catch (EntityServiceException)
         {
-            _logger.LogWarning("Course creation failed: User ID not found in token");
-            return (null, "User ID not found in token");
+            // Re-throw EntityServiceException as-is
+            throw;
         }
-
-        var course = new Course
+        catch (Exception ex)
         {
-            Name = createCourse.Name,
-            CreatedAt = DateTime.UtcNow,
-            UpdatedAt = DateTime.UtcNow
-        };
-
-        var createdCourse = await _courseRepository.CreateCourse(course).ConfigureAwait(false);
-        await _courseRepository.SaveChangesAsync().ConfigureAwait(false);
-
-        _logger.LogInformation("Successfully created course with ID: {Id} and name: {CourseName}", createdCourse.Id, createdCourse.Name);
-        return (createdCourse, null);
+            _logger.LogError(ex, "Error occurred while creating course with name: {CourseName}", createCourse.Name);
+            throw new EntityServiceException("Course", "CreateCourse", "An error occurred while creating the course", ex);
+        }
     }
+    #endregion
 
+    #endregion
+
+    #region Update Operations
+    #region UpdateCourseAsync
     /// <summary>
     /// Updates an existing course record
     /// </summary>
     /// <param name="id">The ID of the course to update</param>
     /// <param name="updateCourse">The updated course data</param>
     /// <param name="user">The claims principal of the current user</param>
-    /// <returns>A tuple containing the updated course (if successful) and an error message (if any)</returns>
-    public async Task<(Course?, string?)> UpdateCourseAsync(int id, UpdateCourse updateCourse, ClaimsPrincipal user)
+    /// <returns>The updated course</returns>
+    /// <exception cref="EntityNotFoundException{int}">Thrown when the course is not found</exception>
+    /// <exception cref="EntityServiceException">Thrown when course update fails</exception>
+    public async Task<Course> UpdateCourseAsync(int id, UpdateCourse updateCourse, ClaimsPrincipal user)
     {
-        _logger.LogInformation("Updating course with ID: {Id}", id);
-        
-        // Additional validation for defense in depth
-        if (updateCourse == null)
+        try
         {
-            _logger.LogWarning("Course update failed: Update course data is required");
-            return (null, "Update course data is required");
-        }
+            _logger.LogInformation("Updating course with ID: {Id}", id);
+            
+            // Additional validation for defense in depth
+            if (updateCourse == null)
+            {
+                _logger.LogWarning("Course update failed: Update course data is required");
+                throw new EntityServiceException("Course", $"UpdateCourse: {id}", "Update course data is required");
+            }
 
-        var userId = await _userContextService.GetUserIdAsync(user).ConfigureAwait(false);
-        if (string.IsNullOrEmpty(userId))
+            var userId = await _userContextService.GetUserIdAsync(user).ConfigureAwait(false);
+            if (string.IsNullOrEmpty(userId))
+            {
+                _logger.LogWarning("Course update failed: User ID not found in token");
+                throw new EntityServiceException("Course", $"UpdateCourse: {id}", "User ID not found in token");
+            }
+
+            var existingCourse = await _courseRepository.GetCourseByIdAsync(id).ConfigureAwait(false);
+            if (existingCourse == null)
+            {
+                _logger.LogWarning("Course update failed: Course with ID {Id} not found", id);
+                throw new EntityNotFoundException<int>("Course", id);
+            }
+
+            if (!string.IsNullOrEmpty(updateCourse.Name))
+            {
+                existingCourse.Name = updateCourse.Name;
+            }
+
+            existingCourse.UpdatedAt = DateTime.UtcNow;
+
+            var updatedCourse = await _courseRepository.UpdateCourseAsync(existingCourse).ConfigureAwait(false);
+            await _courseRepository.SaveChangesAsync().ConfigureAwait(false);
+
+            _logger.LogInformation("Successfully updated course with ID: {Id}", id);
+            return updatedCourse;
+        }
+        catch (EntityNotFoundException<int>)
         {
-            _logger.LogWarning("Course update failed: User ID not found in token");
-            return (null, "User ID not found in token");
+            // Re-throw EntityNotFoundException as-is
+            throw;
         }
-
-        var existingCourse = await _courseRepository.GetCourseByIdAsync(id).ConfigureAwait(false);
-        if (existingCourse == null)
+        catch (EntityServiceException)
         {
-            _logger.LogWarning("Course update failed: Course with ID {Id} not found", id);
-            return (null, "Course not found");
+            // Re-throw EntityServiceException as-is
+            throw;
         }
-
-        if (!string.IsNullOrEmpty(updateCourse.Name))
+        catch (Exception ex)
         {
-            existingCourse.Name = updateCourse.Name;
+            _logger.LogError(ex, "Error occurred while updating course with ID: {Id}", id);
+            throw new EntityServiceException("Course", $"UpdateCourse: {id}", "An error occurred while updating the course", ex);
         }
-
-        existingCourse.UpdatedAt = DateTime.UtcNow;
-
-        var updatedCourse = await _courseRepository.UpdateCourseAsync(existingCourse).ConfigureAwait(false);
-        await _courseRepository.SaveChangesAsync().ConfigureAwait(false);
-
-        _logger.LogInformation("Successfully updated course with ID: {Id}", id);
-        return (updatedCourse, null);
     }
+    #endregion
 
+    #endregion
+
+    #region Delete Operations
+    #region DeleteCourseAsync
     /// <summary>
     /// Deletes a course by ID
     /// </summary>
     /// <param name="id">The ID of the course to delete</param>
     /// <param name="user">The claims principal of the current user</param>
-    /// <returns>An error message if deletion fails, null otherwise</returns>
-    public async Task<string?> DeleteCourseAsync(int id, ClaimsPrincipal user)
+    /// <exception cref="EntityNotFoundException{int}">Thrown when the course is not found</exception>
+    /// <exception cref="EntityServiceException">Thrown when course deletion fails</exception>
+    public async Task DeleteCourseAsync(int id, ClaimsPrincipal user)
     {
-        _logger.LogInformation("Deleting course with ID: {Id}", id);
-        
-        var userId = await _userContextService.GetUserIdAsync(user).ConfigureAwait(false);
-        if (string.IsNullOrEmpty(userId))
+        try
         {
-            _logger.LogWarning("Course deletion failed: User ID not found in token");
-            return "User ID not found in token";
-        }
+            _logger.LogInformation("Deleting course with ID: {Id}", id);
+            
+            var userId = await _userContextService.GetUserIdAsync(user).ConfigureAwait(false);
+            if (string.IsNullOrEmpty(userId))
+            {
+                _logger.LogWarning("Course deletion failed: User ID not found in token");
+                throw new EntityServiceException("Course", $"DeleteCourse: {id}", "User ID not found in token");
+            }
 
-        var existingCourse = await _courseRepository.GetCourseByIdAsync(id).ConfigureAwait(false);
-        if (existingCourse == null)
+            var existingCourse = await _courseRepository.GetCourseByIdAsync(id).ConfigureAwait(false);
+            if (existingCourse == null)
+            {
+                _logger.LogWarning("Course deletion failed: Course with ID {Id} not found", id);
+                throw new EntityNotFoundException<int>("Course", id);
+            }
+
+            var result = await _courseRepository.DeleteCourseAsync(id).ConfigureAwait(false);
+            if (!result)
+            {
+                _logger.LogError("Course deletion failed: Failed to delete course with ID {Id}", id);
+                throw new EntityServiceException("Course", $"DeleteCourse: {id}", "Failed to delete course");
+            }
+
+            await _courseRepository.SaveChangesAsync().ConfigureAwait(false);
+            _logger.LogInformation("Successfully deleted course with ID: {Id}", id);
+        }
+        catch (EntityNotFoundException<int>)
         {
-            _logger.LogWarning("Course deletion failed: Course with ID {Id} not found", id);
-            return "Course not found";
+            // Re-throw EntityNotFoundException as-is
+            throw;
         }
-
-        var result = await _courseRepository.DeleteCourseAsync(id).ConfigureAwait(false);
-        if (!result)
+        catch (EntityServiceException)
         {
-            _logger.LogError("Course deletion failed: Failed to delete course with ID {Id}", id);
-            return "Failed to delete course";
+            // Re-throw EntityServiceException as-is
+            throw;
         }
-
-        await _courseRepository.SaveChangesAsync().ConfigureAwait(false);
-        _logger.LogInformation("Successfully deleted course with ID: {Id}", id);
-        return null;
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error occurred while deleting course with ID: {Id}", id);
+            throw new EntityServiceException("Course", $"DeleteCourse: {id}", "An error occurred while deleting the course", ex);
+        }
     }
+    #endregion
+
+    #endregion
 }

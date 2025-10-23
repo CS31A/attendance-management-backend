@@ -4,6 +4,7 @@ using System.Text;
 using attendance_monitoring.Classes;
 using attendance_monitoring.Constants;
 using attendance_monitoring.Data;
+using attendance_monitoring.Exceptions;
 using attendance_monitoring.IRepository;
 using attendance_monitoring.IServices;
 using attendance_monitoring.Models.DTO;
@@ -21,12 +22,15 @@ namespace attendance_monitoring.Services
         ILogger<AccountService> logger,
         IAccountRepository accountRepository,
         ISectionRepository sectionRepository,
-        IUserFactory userFactory
+        IUserFactory userFactory,
+        IStudentRepository studentRepository,
+        IInstructorRepository instructorRepository
         )
         : IAccountService
     {
 
         #region Registration Methods
+        #region RegisterAsync
         public async Task<(IdentityResult, RegisterResponseDto?)> RegisterAsync(RegisterDto registerDto)
         {
             logger.LogInformation("Registration attempt for username: {Username}", registerDto.Username);
@@ -51,12 +55,19 @@ namespace attendance_monitoring.Services
                 return (result, null);
             }
 
+            // Map Instructor to Teacher (Instructor is an alias for Teacher)
+            var requestedRole = registerDto.Role;
+            if (!string.IsNullOrEmpty(requestedRole) && requestedRole.Equals("Instructor", StringComparison.OrdinalIgnoreCase))
+            {
+                requestedRole = "Teacher";
+            }
+
             var validRoles = new[] { "Admin", "Teacher", "Student" };
             // Role assignment logic (roles are now ensured to exist at application startup)
             var roleToAssign = "Student";
-            if (!string.IsNullOrEmpty(registerDto.Role) && validRoles.Contains(registerDto.Role, StringComparer.OrdinalIgnoreCase))
+            if (!string.IsNullOrEmpty(requestedRole) && validRoles.Contains(requestedRole, StringComparer.OrdinalIgnoreCase))
             {
-                roleToAssign = registerDto.Role;
+                roleToAssign = requestedRole;
             }
 
             // For students, validate that the SectionId exists before attempting user creation
@@ -103,14 +114,16 @@ namespace attendance_monitoring.Services
             return (IdentityResult.Success, response);
         }
         #endregion
+        #endregion
 
         #region Login Methods
+        #region LoginAsync
         public async Task<(TokenResponseDto?, string?)> LoginAsync(LoginDto loginDto)
         {
             logger.LogInformation("Login attempt for identifier: {Identifier}", loginDto.Username);
 
             // Check if the identifier is an email or username
-            IdentityUser? user = null;
+            IdentityUser? user;
             if (loginDto.Username.Contains('@'))
             {
                 // Treat as email
@@ -144,7 +157,7 @@ namespace attendance_monitoring.Services
             }
 
             var accessToken = await GenerateJwtToken(user).ConfigureAwait(false);
-            var (refreshTokenEntity, refreshToken) = await refreshTokenService.CreateRefreshTokenAsync(user.Id).ConfigureAwait(false);
+            var (_, refreshToken) = await refreshTokenService.CreateRefreshTokenAsync(user.Id).ConfigureAwait(false);
 
             logger.LogInformation("User {Username} logged in successfully", user.UserName);
             var tokenResponse = new TokenResponseDto
@@ -155,8 +168,10 @@ namespace attendance_monitoring.Services
             return (tokenResponse, null);
         }
         #endregion
+        #endregion
 
         #region Token Management Methods
+        #region RefreshAsync
         public async Task<(TokenResponseDto?, string?)> RefreshAsync(RefreshTokenRequestDto refreshTokenRequest)
         {
             logger.LogInformation("Token refresh attempt.");
@@ -178,86 +193,10 @@ namespace attendance_monitoring.Services
             // Blacklist the old access token if provided
             if (!string.IsNullOrEmpty(refreshTokenRequest.OldAccessToken))
             {
-                try
-                {
-                    var tokenHandler = new JwtSecurityTokenHandler();
-                    
-                    // Clone TokenValidationParameters from our JwtBearer configuration
-                    var issuer = configuration["AppSettings:Issuer"];
-                    var audience = configuration["AppSettings:Audience"];
-                    var tokenKey = configuration["AppSettings:Token"];
-                    
-                    if (string.IsNullOrEmpty(issuer) || string.IsNullOrEmpty(audience) || string.IsNullOrEmpty(tokenKey))
-                    {
-                        logger.LogWarning("Token validation failed: Missing configuration values for issuer, audience, or token key.");
-                        throw new InvalidOperationException("Token validation configuration is incomplete.");
-                    }
-                    
-                    var tokenValidationParameters = new TokenValidationParameters
-                    {
-                        ValidateIssuer = true,
-                        ValidateAudience = true,
-                        ValidateLifetime = true,
-                        ValidateIssuerSigningKey = true,
-                        ValidIssuer = issuer,
-                        ValidAudience = audience,
-                        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(tokenKey))
-                    };
-                    
-                    // Validate the token
-                    var claimsPrincipal = tokenHandler.ValidateToken(refreshTokenRequest.OldAccessToken, tokenValidationParameters, out var validatedToken);
-                    
-                    // Extract jti and ValidTo only after successful validation
-                    var jti = claimsPrincipal.FindFirst("jti")?.Value;
-                    var expiresAt = validatedToken.ValidTo;
-                    var sub = claimsPrincipal.FindFirst("sub")?.Value;
-
-                    // Only blacklist if all validation checks pass:
-                    // 1. Token is issued by us (signature valid, issuer/audience match) - already validated by ValidateToken
-                    // 2. Subject (sub) matches the user from the refresh token
-                    // 3. It has not expired yet
-                    // 4. jti is not null or empty
-                    
-                    // Testing
-                    // if (!string.IsNullOrEmpty(jti) && sub == user.Id && expiresAt > DateTime.UtcNow)
-                    // {
-                    //     await BlacklistTokenAsync(jti, expiresAt);
-                    //     logger.LogInformation("Old access token blacklisted for user {UserId}.");
-                    // }
-                    // else if (!string.IsNullOrEmpty(jti))
-                    // {
-                    //     logger.LogWarning("Old access token not blacklisted - validation failed for user {UserId}.");
-                    // }
-                    // else if (jti == null)
-                    // {
-                    //     logger.LogWarning("Old access token not blacklisted - token has no JTI for user {UserId}.");
-                    // }
-                    
-                    // Simplified switch expression for better readability
-                    switch (jti)
-                    {
-                        case not null when sub == user.Id && expiresAt > DateTime.UtcNow:
-                            await BlacklistTokenAsync(jti, expiresAt).ConfigureAwait(false);
-                            logger.LogInformation("Old access token blacklisted for user {UserId}.", user.Id);
-                            break;
-
-                        case not null:
-                            logger.LogWarning("Old access token not blacklisted - validation failed for user {UserId}.", user.Id);
-                            break;
-
-                        default: // case null
-                            logger.LogWarning("Old access token not blacklisted - token has no JTI for user {UserId}.", user.Id);
-                            break;
-                    }
-
-                }
-                catch (Exception ex)
-                {
-                    logger.LogWarning("Failed to validate and blacklist old access token: {Error}", ex.Message);
-                }
+                 await ValidateAndBlacklistTokenAsync(refreshTokenRequest.OldAccessToken, user.Id, "token refresh");
             }
 
-            var (newRefreshTokenEntity, newRefreshToken) = await refreshTokenService.RotateRefreshTokenAsync(
+            var (_, newRefreshToken) = await refreshTokenService.RotateRefreshTokenAsync(
                 refreshTokenRequest.RefreshToken,
                 user.Id).ConfigureAwait(false);
 
@@ -277,49 +216,228 @@ namespace attendance_monitoring.Services
             };
             return (tokenResponse, null);
         }
+        #endregion
 
+        #region RevokeAsync
         public async Task<(RevokeResponseDto?, string?)> RevokeAsync(RevokeTokenRequestDto revokeTokenRequest, string userId)
         {
             logger.LogInformation("Token revocation attempt for user {UserId}.", userId);
 
-            var tokenHash = refreshTokenService.HashRefreshToken(revokeTokenRequest.RefreshToken);
-            var storedToken = await accountRepository.FindRefreshTokenByHashAsync(tokenHash).ConfigureAwait(false);
-
-            if (storedToken == null)
+            try
             {
-                logger.LogWarning("Token revocation failed: Refresh token not found.");
-                return (null, "Refresh token not found");
-            }
+                var tokenHash = refreshTokenService.HashRefreshToken(revokeTokenRequest.RefreshToken);
+                var storedToken = await accountRepository.FindRefreshTokenByHashAsync(tokenHash).ConfigureAwait(false);
 
-            if (storedToken.UserId != userId)
+                if (storedToken == null)
+                {
+                    logger.LogWarning("Token revocation failed: Refresh token not found.");
+                    return (null, "Refresh token not found");
+                }
+
+                if (storedToken.UserId != userId)
+                {
+                    logger.LogWarning("Token revocation failed: Refresh token does not belong to the current user {UserId}.", userId);
+                    return (null, "Refresh token does not belong to the current user");
+                }
+
+                if (storedToken.IsRevoked)
+                {
+                    logger.LogWarning("Token revocation failed: Refresh token has already been revoked.");
+                    return (null, "Refresh token has already been revoked");
+                }
+
+                if (storedToken.ExpiresAt < DateTime.UtcNow)
+                {
+                    logger.LogWarning("Token revocation failed: Refresh token has expired.");
+                    return (null, "Refresh token has expired");
+                }
+
+                storedToken.IsRevoked = true;
+                storedToken.RevokedAt = DateTime.UtcNow;
+                await accountRepository.SaveChangesAsync().ConfigureAwait(false);
+
+                logger.LogInformation("Refresh token revoked successfully for user {UserId}.", userId);
+                var response = new RevokeResponseDto { Message = "Refresh token revoked successfully" };
+                return (response, null);
+            }
+            catch (DbUpdateConcurrencyException ex)
             {
-                logger.LogWarning("Token revocation failed: Refresh token does not belong to the current user {UserId}.", userId);
-                return (null, "Refresh token does not belong to the current user");
+                logger.LogWarning(ex, "Token revocation concurrency issue for user {UserId}", userId);
+                return (null, "Token revocation failed due to a concurrency issue");
             }
-
-            if (storedToken.IsRevoked)
+            catch (DbUpdateException ex)
             {
-                logger.LogWarning("Token revocation failed: Refresh token has already been revoked.");
-                return (null, "Refresh token has already been revoked");
+                logger.LogError(ex, "Token revocation database update failed for user {UserId}", userId);
+                return (null, "Token revocation failed due to a database error");
             }
-
-            if (storedToken.ExpiresAt < DateTime.UtcNow)
+            catch (Exception ex)
             {
-                logger.LogWarning("Token revocation failed: Refresh token has expired.");
-                return (null, "Refresh token has expired");
+                logger.LogError(ex, "Token revocation operation failed for user {UserId}", userId);
+                return (null, "Token revocation failed due to an unexpected error");
             }
-
-            storedToken.IsRevoked = true;
-            storedToken.RevokedAt = DateTime.UtcNow;
-            await context.SaveChangesAsync().ConfigureAwait(false);
-
-            logger.LogInformation("Refresh token revoked successfully for user {UserId}.", userId);
-            var response = new RevokeResponseDto { Message = "Refresh token revoked successfully" };
-            return (response, null);
         }
         #endregion
 
+        #region LogoutAsync
+        public async Task<LogoutResponseDto> LogoutAsync(string userId, string? accessToken)
+        {
+            logger.LogInformation("Logout attempt for user {UserId}.", userId);
+
+            try
+            {
+                // Blacklist the access token if provided
+                if (!string.IsNullOrEmpty(accessToken))
+                {
+                    await ValidateAndBlacklistTokenAsync(accessToken, userId, "logout");
+                }
+
+                // Revoke all active refresh tokens for the user
+                var activeRefreshTokens = await context.RefreshTokens
+                    .Where(rt => rt.UserId == userId && !rt.IsRevoked && rt.ExpiresAt > DateTime.UtcNow)
+                    .ToListAsync().ConfigureAwait(false);
+
+                foreach (var token in activeRefreshTokens)
+                {
+                    token.IsRevoked = true;
+                    token.RevokedAt = DateTime.UtcNow;
+                }
+
+                if (activeRefreshTokens.Count > 0)
+                {
+                    await accountRepository.SaveChangesAsync().ConfigureAwait(false);
+                    logger.LogInformation("Revoked {TokenCount} active refresh tokens during logout for user {UserId}.", activeRefreshTokens.Count, userId);
+                }
+
+                logger.LogInformation("User logged out successfully: {UserId}", userId);
+            }
+            catch (DbUpdateConcurrencyException ex)
+            {
+                logger.LogWarning(ex, "Logout concurrency issue for user {UserId}", userId);
+            }
+            catch (DbUpdateException ex)
+            {
+                logger.LogError(ex, "Logout database update failed for user {UserId}", userId);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Logout operation failed for user {UserId}", userId);
+            }
+
+            return new LogoutResponseDto { Success = true, Message = "Logged out successfully" };
+        }
+        #endregion
+
+        #region WebLogoutAsync
+        public async Task<LogoutResponseDto> WebLogoutAsync(string userId, string? accessToken)
+        {
+            logger.LogInformation("Web logout attempt for user {UserId}.", userId);
+
+            try
+            {
+                // Blacklist the access token if provided (same logic as regular logout)
+                if (!string.IsNullOrEmpty(accessToken))
+                {
+                    await ValidateAndBlacklistTokenAsync(accessToken, userId, "web logout");
+                }
+
+                // Revoke all active refresh tokens for the user (consistent with JWT logout)
+                var activeRefreshTokens = await context.RefreshTokens
+                    .Where(rt => rt.UserId == userId && !rt.IsRevoked && rt.ExpiresAt > DateTime.UtcNow)
+                    .ToListAsync().ConfigureAwait(false);
+
+                foreach (var token in activeRefreshTokens)
+                {
+                    token.IsRevoked = true;
+                    token.RevokedAt = DateTime.UtcNow;
+                }
+
+                if (activeRefreshTokens.Count > 0)
+                {
+                    await accountRepository.SaveChangesAsync().ConfigureAwait(false);
+                    logger.LogInformation("Revoked {TokenCount} active refresh tokens during web logout for user {UserId}.", activeRefreshTokens.Count, userId);
+                }
+
+                logger.LogInformation("User web logout completed successfully: {UserId}", userId);
+            }
+            catch (DbUpdateConcurrencyException ex)
+            {
+                logger.LogWarning(ex, "Web logout concurrency issue for user {UserId}", userId);
+            }
+            catch (DbUpdateException ex)
+            {
+                logger.LogError(ex, "Web logout database update failed for user {UserId}", userId);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Web logout operation failed for user {UserId}", userId);
+            }
+
+            return new LogoutResponseDto { Success = true, Message = "Logged out successfully" };
+        }
+        #endregion
+        #endregion
+
         #region Helper Methods
+        
+        #region ValidateAndBlacklistTokenAsync
+        /// <summary>
+        /// Validates and blacklists an access token if it's valid and belongs to the specified user
+        /// </summary>
+        /// <param name="accessToken">The access token to validate and blacklist</param>
+        /// <param name="userId">The user ID that should own the token</param>
+        /// <param name="operationType">Type of operation for logging purposes</param>
+        private async Task ValidateAndBlacklistTokenAsync(string accessToken, string userId, string operationType)
+        {
+            try
+            {
+                var tokenHandler = new JwtSecurityTokenHandler();
+                
+                var issuer = configuration["AppSettings:Issuer"];
+                var audience = configuration["AppSettings:Audience"];
+                var tokenKey = configuration["AppSettings:Token"];
+                
+                if (string.IsNullOrEmpty(issuer) || string.IsNullOrEmpty(audience) || string.IsNullOrEmpty(tokenKey))
+                {
+                    logger.LogWarning("Token validation failed: Missing configuration values for issuer, audience, or token key.");
+                    throw new InvalidOperationException("Token validation configuration is incomplete.");
+                }
+                
+                var tokenValidationParameters = new TokenValidationParameters
+                {
+                    ValidateIssuer = true,
+                    ValidateAudience = true,
+                    ValidateLifetime = true,
+                    ValidateIssuerSigningKey = true,
+                    ValidIssuer = issuer,
+                    ValidAudience = audience,
+                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(tokenKey))
+                };
+                
+                // Validate the token
+                var claimsPrincipal = tokenHandler.ValidateToken(accessToken, tokenValidationParameters, out var validatedToken);
+                
+                var jti = claimsPrincipal.FindFirst("jti")?.Value;
+                var expiresAt = validatedToken.ValidTo;
+                var userIdClaim = claimsPrincipal.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+                // Only blacklist if token is valid, has JTI, belongs to current user, and hasn't expired
+                if (!string.IsNullOrEmpty(jti) && userIdClaim == userId && expiresAt > DateTime.UtcNow)
+                {
+                    await BlacklistTokenAsync(jti, expiresAt).ConfigureAwait(false);
+                    logger.LogInformation("Access token blacklisted during {OperationType} for user {UserId}", operationType, userId);
+                }
+                else
+                    logger.LogWarning("Access token not blacklisted during {OperationType} - validation failed for user {UserId}", operationType, userId);
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning("Failed to validate and blacklist access token during {OperationType} for user {UserId}: {Error}", operationType, userId, ex.Message);
+                // Continue with operation even if blacklisting fails
+            }
+        }
+        #endregion
+
+        #region GenerateJwtToken
         private async Task<string> GenerateJwtToken(IdentityUser user)
         {
             var claims = new List<Claim>
@@ -354,13 +472,15 @@ namespace attendance_monitoring.Services
 
             return new JwtSecurityTokenHandler().WriteToken(token);
         }
+        #endregion
         
+        #region BlacklistTokenAsync
         /// <summary>
         /// Blacklists a JWT token by its JTI
         /// </summary>
         /// <param name="jti">The JTI of the token to blacklist</param>
         /// <param name="expiresAt">The expiration time of the token</param>
-        private async Task BlacklistTokenAsync(string jti, DateTime expiresAt)
+        public async Task BlacklistTokenAsync(string jti, DateTime expiresAt)
         {
             var blacklistedToken = new BlacklistedToken
             {
@@ -372,15 +492,106 @@ namespace attendance_monitoring.Services
             try
             {
                 context.BlacklistedTokens.Add(blacklistedToken);
-                await context.SaveChangesAsync().ConfigureAwait(false);
+                await accountRepository.SaveChangesAsync().ConfigureAwait(false);
             }
-            catch (DbUpdateException)
+            catch (DbUpdateConcurrencyException ex)
             {
-                // Token is already blacklisted, treat as idempotent operation
-                // This can happen if the same token is blacklisted multiple times
-                // We simply ignore the exception and continue
+                logger.LogWarning(ex, "Concurrency issue while blacklisting token {Jti}.", jti);
+            }
+            catch (DbUpdateException ex)
+            {
+                // Token is already blacklisted or other DB update issue; treat duplicate as idempotent
+                logger.LogWarning(ex, "Blacklisting token {Jti} may have already occurred. Treating as idempotent.", jti);
             }
         }
+        #endregion
+        
+        #region GetUserProfileAsync
+        /// <summary>
+        /// Gets comprehensive user profile information including role-specific data
+        /// </summary>
+        /// <param name="userId">The user ID to retrieve profile for</param>
+        /// <returns>User profile DTO with role-specific information</returns>
+        public async Task<(UserProfileResponseDto?, string?)> GetUserProfileAsync(string userId)
+        {
+            logger.LogInformation("Fetching user profile for user ID: {UserId}", userId);
+
+            // Get the user from Identity
+            var user = await accountRepository.FindUserByIdAsync(userId).ConfigureAwait(false);
+            if (user == null)
+            {
+                logger.LogWarning("User profile fetch failed: User not found for ID {UserId}", userId);
+                return (null, "User not found");
+            }
+
+            // Get user roles
+            var roles = await accountRepository.GetUserRolesAsync(user).ConfigureAwait(false);
+            var role = roles.FirstOrDefault() ?? "Student"; // Default to Student if no role found
+
+            // Build base profile
+            var profile = new UserProfileResponseDto
+            {
+                UserId = user.Id,
+                Username = user.UserName ?? string.Empty,
+                Email = user.Email ?? string.Empty,
+                Role = role,
+                CreatedAt = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Utc), // Will be overridden by role-specific data if available
+                UpdatedAt = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Utc)
+            };
+
+            // Fetch role-specific data
+            if (role.Equals("Student", StringComparison.OrdinalIgnoreCase))
+            {
+                var student = await context.Students
+                    .Include(s => s.Section)
+                    .ThenInclude(sec => sec.Course)
+                    .FirstOrDefaultAsync(s => s.UserId == userId && !s.IsDeleted)
+                    .ConfigureAwait(false);
+
+                if (student != null)
+                {
+                    profile.StudentProfile = new StudentProfileInfo
+                    {
+                        Id = student.Id,
+                        Firstname = student.Firstname,
+                        Lastname = student.Lastname,
+                        Email = student.Email,
+                        IsRegular = student.IsRegular,
+                        SectionId = student.SectionId,
+                        SectionName = student.Section?.Name ?? string.Empty,
+                        CourseId = student.Section?.CourseId ?? 0,
+                        CourseName = student.Section?.Course?.Name ?? string.Empty,
+                        CreatedAt = student.CreatedAt,
+                        UpdatedAt = student.UpdatedAt
+                    };
+                    profile.CreatedAt = student.CreatedAt;
+                    profile.UpdatedAt = student.UpdatedAt;
+                }
+            }
+            else if (role.Equals("Teacher", StringComparison.OrdinalIgnoreCase) || role.Equals("Instructor", StringComparison.OrdinalIgnoreCase))
+            {
+                var instructor = await instructorRepository.GetInstructorByUserIdAsync(userId).ConfigureAwait(false);
+                if (instructor != null)
+                {
+                    profile.InstructorProfile = new InstructorProfileInfo
+                    {
+                        Id = instructor.Id,
+                        Firstname = instructor.Firstname,
+                        Lastname = instructor.Lastname,
+                        Email = instructor.Email,
+                        CreatedAt = instructor.CreatedAt,
+                        UpdatedAt = instructor.UpdatedAt
+                    };
+                    profile.CreatedAt = instructor.CreatedAt;
+                    profile.UpdatedAt = instructor.UpdatedAt;
+                }
+            }
+            // Admin role: only base Identity information (already populated)
+
+            logger.LogInformation("User profile fetched successfully for user ID: {UserId}", userId);
+            return (profile, null);
+        }
+        #endregion
         #endregion
     }
 }

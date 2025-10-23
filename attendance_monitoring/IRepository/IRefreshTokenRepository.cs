@@ -7,7 +7,7 @@ namespace attendance_monitoring.IRepository;
 /// <summary>
 /// Represents the repository for managing refresh tokens.
 /// </summary>
-public interface IRefreshTokenRepository
+public interface IRefreshTokenRepository : ISaveableRepository
 {
     /// <summary>
     /// Retrieves a refresh token by its hash.
@@ -43,4 +43,5 @@ public interface IRefreshTokenRepository
     /// <param name="tokenHash">The hash of the refresh token.</param>
     /// <returns>True if the refresh token exists; otherwise, false.</returns>
     Task<bool> ExistsAsync(string tokenHash);
+
 }

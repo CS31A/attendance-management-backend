@@ -5,7 +5,7 @@ namespace attendance_monitoring.IRepository;
 /// <summary>
 /// Represents the repository for managing subjects.
 /// </summary>
-public interface ISubjectRepository
+public interface ISubjectRepository : ISaveableRepository
 {
     /// <summary>
     /// Retrieves all subjects.
@@ -48,9 +48,4 @@ public interface ISubjectRepository
     /// <returns>The subject if found; otherwise, null.</returns>
     Task<Subject?> GetSubjectByCodeAsync(string code);
 
-    /// <summary>
-    /// Saves changes to the database.
-    /// </summary>
-    /// <returns>The number of state entries written to the database.</returns>
-    Task<int> SaveChangesAsync();
 }

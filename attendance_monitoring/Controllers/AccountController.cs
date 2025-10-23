@@ -1,15 +1,17 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
+using attendance_monitoring.Exceptions;
 using attendance_monitoring.Models.DTO;
 using attendance_monitoring.IServices;
 using attendance_monitoring.Models.DTO.Response;
+using attendance_monitoring.Services;
 
 namespace attendance_monitoring.Controllers
 {
     [ApiController]
     [Route("api/account")]
-    public class AccountController(IAccountService accountService, ILogger<AccountController> logger, IConfiguration configuration)
+    public class AccountController(IAccountService accountService, ILogger<AccountController> logger, IConfiguration configuration, ICookieOptionsService cookieOptionsService)
         : ControllerBase
     {
         #region Endpoints
@@ -30,10 +32,17 @@ namespace attendance_monitoring.Controllers
             logger.LogInformation("Registration attempt for username: {Username}", registerDto.Username);
 
             // Validate that SectionId is provided for student registrations
-            if ((string.IsNullOrEmpty(registerDto.Role) ||
-                registerDto.Role.Equals("Student", StringComparison.OrdinalIgnoreCase)))
+            // Only check for students (default role is Student if not specified)
+            // Instructor is an alias for Teacher, so treat it as such
+            var roleToCheck = string.IsNullOrEmpty(registerDto.Role) ? "Student" : registerDto.Role;
+            if (roleToCheck.Equals("Instructor", StringComparison.OrdinalIgnoreCase))
             {
-                if (registerDto.SectionId <= 0)
+                roleToCheck = "Teacher";
+            }
+            
+            if (roleToCheck.Equals("Student", StringComparison.OrdinalIgnoreCase))
+            {
+                if (!registerDto.SectionId.HasValue || registerDto.SectionId <= 0)
                 {
                     logger.LogWarning("Student registration failed for username: {Username}: Valid SectionId is required", registerDto.Username);
                     return BadRequest(new RegisterResponseDto { Success = false, Message = "Valid SectionId is required for student registration" });
@@ -142,30 +151,7 @@ namespace attendance_monitoring.Controllers
             }
 
             // Set HTTP-only cookies for access and refresh tokens
-            var accessTokenExpirationMinutes = configuration.GetValue<int>("CookieSettings:AccessTokenExpirationMinutes", 15);
-            var refreshTokenExpirationDays = configuration.GetValue<int>("CookieSettings:RefreshTokenExpirationDays", 7);
-
-            var cookieOptions = new CookieOptions
-            {
-                HttpOnly = true,
-                Secure = true, // Set to true in production with HTTPS
-                // SameSite = SameSiteMode.Strict,
-                SameSite = SameSiteMode.Lax,
-                Expires = DateTime.UtcNow.AddMinutes(accessTokenExpirationMinutes)
-            };
-
-            Response.Cookies.Append("accessToken", tokenResponse.AccessToken, cookieOptions);
-
-            var refreshCookieOptions = new CookieOptions
-            {
-                HttpOnly = true,
-                Secure = true, // Set to true in production with HTTPS
-                // SameSite = SameSiteMode.Strict,
-                SameSite = SameSiteMode.Lax,
-                Expires = DateTime.UtcNow.AddDays(refreshTokenExpirationDays)
-            };
-
-            Response.Cookies.Append("refreshToken", tokenResponse.RefreshToken, refreshCookieOptions);
+            cookieOptionsService.SetTokenCookies(Response, tokenResponse.AccessToken, tokenResponse.RefreshToken);
 
             logger.LogInformation("User logged in successfully via web login");
             return Ok(new WebLoginResponseDto { Success = true, Message = "Login successful" });
@@ -237,7 +223,8 @@ namespace attendance_monitoring.Controllers
             // Get old access token from cookie
             var oldAccessToken = Request.Cookies.TryGetValue("accessToken", out var accessToken) ? accessToken : null;
 
-            var refreshTokenRequest = new RefreshTokenRequestDto { 
+            var refreshTokenRequest = new RefreshTokenRequestDto
+            {
                 RefreshToken = refreshToken,
                 OldAccessToken = oldAccessToken
             };
@@ -250,28 +237,7 @@ namespace attendance_monitoring.Controllers
             }
 
             // Update HTTP-only cookies with new tokens
-            var accessTokenExpirationMinutes = configuration.GetValue<int>("CookieSettings:AccessTokenExpirationMinutes", 15);
-            var refreshTokenExpirationDays = configuration.GetValue<int>("CookieSettings:RefreshTokenExpirationDays", 7);
-
-            var cookieOptions = new CookieOptions
-            {
-                HttpOnly = true,
-                Secure = true, // Set to true in production with HTTPS
-                SameSite = SameSiteMode.Lax, // Changed this from strict breh
-                Expires = DateTime.UtcNow.AddMinutes(accessTokenExpirationMinutes)
-            };
-
-            Response.Cookies.Append("accessToken", tokenResponse.AccessToken, cookieOptions);
-
-            var refreshCookieOptions = new CookieOptions
-            {
-                HttpOnly = true,
-                Secure = true, // Set to true in production with HTTPS
-                SameSite = SameSiteMode.Lax,
-                Expires = DateTime.UtcNow.AddDays(refreshTokenExpirationDays)
-            };
-
-            Response.Cookies.Append("refreshToken", tokenResponse.RefreshToken, refreshCookieOptions);
+            cookieOptionsService.SetTokenCookies(Response, tokenResponse.AccessToken, tokenResponse.RefreshToken);
 
             logger.LogInformation("Web tokens refreshed successfully.");
             return Ok(new WebRefreshResponseDto { Success = true, Message = "Tokens refreshed successfully" });
@@ -360,8 +326,7 @@ namespace attendance_monitoring.Controllers
             }
 
             // Clear cookies after revocation
-            Response.Cookies.Delete("accessToken");
-            Response.Cookies.Delete("refreshToken");
+            cookieOptionsService.ClearTokenCookies(Response);
 
             logger.LogInformation("Refresh token revoked successfully for user {UserId}.", userId);
             return Ok(new WebRevokeResponseDto { Success = true, Message = "Token revoked successfully" });
@@ -387,23 +352,111 @@ namespace attendance_monitoring.Controllers
         }
         #endregion
 
+        #region GET: api/account/me
+        /// <summary>
+        /// Get the current authenticated user's profile information
+        /// </summary>
+        /// <returns>User profile with role-specific data</returns>
+        /// <response code="200">User profile retrieved successfully</response>
+        /// <response code="401">User is not authenticated</response>
+        [HttpGet("me")]
+        [Authorize]
+        [ProducesResponseType(typeof(UserProfileResponseDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        public async Task<ActionResult<UserProfileResponseDto>> GetMe()
+        {
+            var userId = GetUserId(User);
+            if (string.IsNullOrEmpty(userId))
+            {
+                logger.LogWarning("Profile fetch failed: User not found from claims.");
+                return Unauthorized(new { Success = false, Message = "User not found" });
+            }
+
+            logger.LogInformation("Fetching profile for user: {UserId}", userId);
+            var (profile, error) = await accountService.GetUserProfileAsync(userId);
+
+            if (profile == null)
+            {
+                logger.LogWarning("Profile fetch failed for user {UserId}: {Error}", userId, error);
+                return Unauthorized(new { Success = false, Message = error ?? "Failed to fetch profile" });
+            }
+
+            logger.LogInformation("Profile fetched successfully for user: {UserId}", userId);
+            return Ok(profile);
+        }
+        #endregion
+
         #region POST: api/account/web/logout
         /// <summary>
-        /// Logout user by clearing HTTP-only cookies
+        /// Logout user by clearing HTTP-only cookies and blacklisting the access token
         /// </summary>
         /// <returns>Logout status</returns>
         /// <response code="200">User logged out successfully</response>
         [HttpPost("web/logout")]
         [Authorize]
-        [ProducesResponseType(typeof(WebLoginResponseDto), StatusCodes.Status200OK)]
-        public ActionResult<WebLoginResponseDto> WebLogout()
+        [ProducesResponseType(typeof(LogoutResponseDto), StatusCodes.Status200OK)]
+        public async Task<ActionResult<LogoutResponseDto>> WebLogout()
         {
-            // Clear cookies
-            Response.Cookies.Delete("accessToken");
-            Response.Cookies.Delete("refreshToken");
+            var userId = GetUserId(User);
+            if (string.IsNullOrEmpty(userId))
+            {
+                logger.LogWarning("Logout failed: User not found from claims.");
+                // Always clear cookies and return success to prevent timing attacks
+                cookieOptionsService.ClearTokenCookies(Response);
+                return Ok(new LogoutResponseDto { Success = true, Message = "Logged out successfully" });
+            }
 
-            logger.LogInformation("User logged out successfully");
-            return Ok(new WebLoginResponseDto { Success = true, Message = "Logged out successfully" });
+            // Get access token from cookie
+            var accessToken = Request.Cookies.TryGetValue("accessToken", out var token) ? token : null;
+            
+            // Always perform logout operations regardless of token validity to prevent timing attacks
+            await accountService.WebLogoutAsync(userId, accessToken);
+
+            // Always clear cookies
+            cookieOptionsService.ClearTokenCookies(Response);
+
+            logger.LogInformation("User logged out successfully: {UserId}", userId);
+            return Ok(new LogoutResponseDto { Success = true, Message = "Logged out successfully" });
+        }
+        #endregion
+
+        #region POST: api/account/logout
+        /// <summary>
+        /// Logout user by blacklisting the access token and revoking all refresh tokens
+        /// </summary>
+        /// <returns>Logout status</returns>
+        /// <response code="200">User logged out successfully</response>
+        [HttpPost("logout")]
+        [Authorize]
+        [ProducesResponseType(typeof(LogoutResponseDto), StatusCodes.Status200OK)]
+        public async Task<ActionResult<LogoutResponseDto>> Logout()
+        {
+            logger.LogInformation("JWT logout attempt.");
+
+            var userId = GetUserId(User);
+            if (string.IsNullOrEmpty(userId))
+            {
+                logger.LogWarning("Logout failed: User not found from claims.");
+                // Always return success to prevent timing attacks
+                return Ok(new LogoutResponseDto { Success = true, Message = "Logged out successfully" });
+            }
+
+            // Get access token from Authorization header
+            string? accessToken = null;
+            if (Request.Headers.TryGetValue("Authorization", out var authHeader))
+            {
+                var headerValue = authHeader.ToString();
+                if (headerValue.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+                {
+                    accessToken = headerValue["Bearer ".Length..].Trim();
+                }
+            }
+
+            // Always perform logout operations regardless of token validity to prevent timing attacks
+            await accountService.LogoutAsync(userId, accessToken);
+
+            logger.LogInformation("User logged out successfully: {UserId}", userId);
+            return Ok(new LogoutResponseDto { Success = true, Message = "Logged out successfully" });
         }
         #endregion
 

@@ -1,9 +1,14 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using System.Text.Json.Serialization;
+using Microsoft.EntityFrameworkCore;
 
 namespace attendance_monitoring.Classes;
 
+[Index(nameof(ClassroomId))]
+[Index(nameof(DayOfWeek))]
+[Index(nameof(TimeIn))]
+[Index(nameof(TimeOut))]
+[Index(nameof(TimeIn), nameof(TimeOut), IsUnique = true)]
 public class Schedules
 {
     [Key]
@@ -11,10 +16,10 @@ public class Schedules
     public int Id { get; set; }
 
     [Required]
-    public DateTime TimeIn { get; set; }
+    public TimeOnly TimeIn { get; set; }
     
     [Required]
-    public DateTime TimeOut { get; set; }
+    public TimeOnly TimeOut { get; set; }
     
     [Required]
     [StringLength(20)]
@@ -30,6 +35,16 @@ public class Schedules
     
     [Required] 
     public int SectionId { get; set; }
+
+    // foreign key to instructor id
+    [Required]
+    public int InstructorId { get; set; }
+
+    // Navigation properties
+    public Subject Subject { get; set; } = null!;
+    public Classroom Classroom { get; set; } = null!;
+    public Section Section { get; set; } = null!;
+    public Instructor Instructor { get; set; } = null!;
 
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
