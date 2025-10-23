@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
+using Microsoft.EntityFrameworkCore;
 using attendance_monitoring.Classes;
 using attendance_monitoring.Exceptions;
 using attendance_monitoring.IRepository;
@@ -51,7 +52,7 @@ public class QrCodeService : IQrCodeService
         try
         {
             _logger.LogInformation("Retrieving QR code with ID: {QrCodeId}", id);
-            
+
             var qrCode = await _qrCodeRepository.GetQrCodeByIdAsync(id).ConfigureAwait(false);
             if (qrCode == null)
             {
@@ -75,7 +76,7 @@ public class QrCodeService : IQrCodeService
         try
         {
             _logger.LogInformation("Retrieving QR code with hash: {QrHash}", qrHash);
-            
+
             var qrCode = await _qrCodeRepository.GetQrCodeByHashAsync(qrHash).ConfigureAwait(false);
             if (qrCode == null)
             {
@@ -99,10 +100,10 @@ public class QrCodeService : IQrCodeService
         try
         {
             _logger.LogInformation("Retrieving QR codes for schedule ID: {ScheduleId}", scheduleId);
-            
+
             var qrCodes = await _qrCodeRepository.GetQrCodesByScheduleIdAsync(scheduleId).ConfigureAwait(false);
             var responseDtos = new List<QrCodeResponseDto>();
-            
+
             foreach (var qrCode in qrCodes)
             {
                 var responseDto = await MapToResponseDtoAsync(qrCode).ConfigureAwait(false);
@@ -124,10 +125,10 @@ public class QrCodeService : IQrCodeService
         try
         {
             _logger.LogInformation("Retrieving QR codes for section ID: {SectionId}", sectionId);
-            
+
             var qrCodes = await _qrCodeRepository.GetQrCodesBySectionIdAsync(sectionId).ConfigureAwait(false);
             var responseDtos = new List<QrCodeResponseDto>();
-            
+
             foreach (var qrCode in qrCodes)
             {
                 var responseDto = await MapToResponseDtoAsync(qrCode).ConfigureAwait(false);
@@ -149,10 +150,10 @@ public class QrCodeService : IQrCodeService
         try
         {
             _logger.LogInformation("Retrieving all active QR codes");
-            
+
             var qrCodes = await _qrCodeRepository.GetActiveQrCodesAsync().ConfigureAwait(false);
             var responseDtos = new List<QrCodeResponseDto>();
-            
+
             foreach (var qrCode in qrCodes)
             {
                 var responseDto = await MapToResponseDtoAsync(qrCode).ConfigureAwait(false);
@@ -225,7 +226,7 @@ public class QrCodeService : IQrCodeService
 
             var responseDto = await MapToResponseDtoAsync(createdQrCode).ConfigureAwait(false);
             _logger.LogInformation("Successfully created QR code with ID: {QrCodeId}", createdQrCode.Id);
-            
+
             return (responseDto, null);
         }
         catch (Exception ex)
@@ -237,85 +238,94 @@ public class QrCodeService : IQrCodeService
 
     public async Task<QrCodeGenerationResponseDto> GenerateQrCodeAsync(QrCodeRequest qrCodeRequest, ClaimsPrincipal user)
     {
-        try
+        const int maxRetries = 3;
+        var attempts = 0;
+
+        while (attempts < maxRetries)
         {
-            _logger.LogInformation("Generating QR code for schedule ID: {ScheduleId}", qrCodeRequest.ScheduleId);
-
-            // Validate user authorization
-            var userId = await _userContextService.GetUserIdAsync(user).ConfigureAwait(false);
-            if (string.IsNullOrEmpty(userId))
+            try
             {
-                _logger.LogWarning("QR code generation failed: User ID not found in token");
+                _logger.LogInformation("Generating QR code for schedule ID: {ScheduleId} (Attempt {Attempt})",
+                                    qrCodeRequest.ScheduleId, attempts + 1);
+
+                // Validate user authorization
+                var userId = await _userContextService.GetUserIdAsync(user).ConfigureAwait(false);
+                if (string.IsNullOrEmpty(userId))
+                {
+                    _logger.LogWarning("QR code generation failed: User ID not found in token");
+                    return new QrCodeGenerationResponseDto { Success = false, Message = "User ID not found in token" };
+                }
+
+                var isAuthorized = await _userContextService.IsAuthorizedAsync(user, userId, "Admin", "Instructor").ConfigureAwait(false);
+                if (!isAuthorized)
+                {
+                    _logger.LogWarning("QR code generation failed: User not authorized");
+                    return new QrCodeGenerationResponseDto { Success = false, Message = "You are not authorized to generate QR codes" };
+                }
+
+                // Validate entities exist
+                var validationError = await ValidateEntitiesExistAsync(qrCodeRequest.ScheduleId, qrCodeRequest.SectionId, qrCodeRequest.ActualRoomId).ConfigureAwait(false);
+                if (validationError != null)
+                {
+                    return new QrCodeGenerationResponseDto { Success = false, Message = validationError };
+                }
+
+                // Combine client hash with server-generated hash for uniqueness
+                var qrHash = await GenerateUniqueQrHashAsync(qrCodeRequest.UniqueHash).ConfigureAwait(false);
+                var expiresAt = DateTime.UtcNow.AddMinutes(qrCodeRequest.ExpirationMinutes);
+
+                // Create QR code entity
+                var qrCode = new QrCode
+                {
+                    ScheduleId = qrCodeRequest.ScheduleId,
+                    SectionId = qrCodeRequest.SectionId,
+                    ActualRoomId = qrCodeRequest.ActualRoomId,
+                    QrHash = qrHash,
+                    ExpiresAt = expiresAt,
+                    MaxUsage = qrCodeRequest.MaxUsage
+                };
+
+                var createdQrCode = await _qrCodeRepository.CreateQrCodeAsync(qrCode).ConfigureAwait(false);
+                await _qrCodeRepository.SaveChangesAsync().ConfigureAwait(false);
+
+                _logger.LogInformation("Successfully generated QR code with ID: {QrCodeId}", createdQrCode.Id);
+
                 return new QrCodeGenerationResponseDto
                 {
-                    Success = false,
-                    Message = "User ID not found in token"
+                    Success = true,
+                    Message = "QR code generated successfully",
+                    QrHash = qrHash,
+                    QrCodeData = qrHash, // In a real implementation, this would be the actual QR code URL/data
+                    GeneratedAt = createdQrCode.GeneratedAt,
+                    ExpiresAt = expiresAt,
+                    MaxUsage = qrCodeRequest.MaxUsage,
+                    QrCodeId = createdQrCode.Id
                 };
             }
-
-            var isAuthorized = await _userContextService.IsAuthorizedAsync(user, userId, "Admin", "Instructor").ConfigureAwait(false);
-            if (!isAuthorized)
+            catch (DbUpdateException ex) when (ex.InnerException?.Message.Contains("UNIQUE constraint failed") ?? false)
             {
-                _logger.LogWarning("QR code generation failed: User not authorized");
-                return new QrCodeGenerationResponseDto
+                attempts++;
+                _logger.LogWarning(ex, "Attempt {Attempt} to generate a unique QR hash failed due to a database constraint. Retrying...", attempts);
+                if (attempts >= maxRetries)
                 {
-                    Success = false,
-                    Message = "You are not authorized to generate QR codes"
-                };
+                    _logger.LogError("Failed to generate a unique QR hash after {MaxRetries} attempts.", maxRetries);
+                    return new QrCodeGenerationResponseDto { Success = false, Message = "Failed to generate a unique QR hash. Please try again." };
+                }
+                // Wait for a short, random interval before retrying to reduce collision likelihood
+                await Task.Delay(TimeSpan.FromMilliseconds(50 + new Random().Next(0, 100)));
             }
-
-            // Validate entities exist
-            var validationError = await ValidateEntitiesExistAsync(qrCodeRequest.ScheduleId, qrCodeRequest.SectionId, qrCodeRequest.ActualRoomId).ConfigureAwait(false);
-            if (validationError != null)
+            catch (Exception ex)
             {
-                return new QrCodeGenerationResponseDto
-                {
-                    Success = false,
-                    Message = validationError
-                };
+                _logger.LogError(ex, "An unexpected error occurred while generating QR code");
+                return new QrCodeGenerationResponseDto { Success = false, Message = "An unexpected error occurred while generating the QR code" };
             }
-
-            // Combine client hash with server-generated hash for uniqueness
-            var qrHash = await GenerateUniqueQrHashAsync(qrCodeRequest.UniqueHash).ConfigureAwait(false);
-            var expiresAt = DateTime.UtcNow.AddMinutes(qrCodeRequest.ExpirationMinutes);
-
-            // Create QR code entity
-            var qrCode = new QrCode
-            {
-                ScheduleId = qrCodeRequest.ScheduleId,
-                SectionId = qrCodeRequest.SectionId,
-                ActualRoomId = qrCodeRequest.ActualRoomId,
-                QrHash = qrHash,
-                ExpiresAt = expiresAt,
-                MaxUsage = qrCodeRequest.MaxUsage
-            };
-
-            var createdQrCode = await _qrCodeRepository.CreateQrCodeAsync(qrCode).ConfigureAwait(false);
-            await _qrCodeRepository.SaveChangesAsync().ConfigureAwait(false);
-
-            _logger.LogInformation("Successfully generated QR code with ID: {QrCodeId}", createdQrCode.Id);
-            
-            return new QrCodeGenerationResponseDto
-            {
-                Success = true,
-                Message = "QR code generated successfully",
-                QrHash = qrHash,
-                QrCodeData = qrHash, // In a real implementation, this would be the actual QR code URL/data
-                GeneratedAt = createdQrCode.GeneratedAt,
-                ExpiresAt = expiresAt,
-                MaxUsage = qrCodeRequest.MaxUsage,
-                QrCodeId = createdQrCode.Id
-            };
         }
-        catch (Exception ex)
+
+        return new QrCodeGenerationResponseDto
         {
-            _logger.LogError(ex, "Error occurred while generating QR code");
-            return new QrCodeGenerationResponseDto
-            {
-                Success = false,
-                Message = "An error occurred while generating the QR code"
-            };
-        }
+            Success = false,
+            Message = "Failed to generate a unique QR hash after multiple attempts"
+        };
     }
 
     public async Task<(QrCodeResponseDto?, string?)> UpdateQrCodeAsync(int id, UpdateQrCode updateQrCode, ClaimsPrincipal user)
@@ -379,7 +389,7 @@ public class QrCodeService : IQrCodeService
 
             var responseDto = await MapToResponseDtoAsync(updatedQrCode).ConfigureAwait(false);
             _logger.LogInformation("Successfully updated QR code with ID: {QrCodeId}", id);
-            
+
             return (responseDto, null);
         }
         catch (Exception ex)
@@ -466,7 +476,7 @@ public class QrCodeService : IQrCodeService
 
             await _qrCodeRepository.UpdateQrCodeAsync(qrCode).ConfigureAwait(false);
             await _qrCodeRepository.SaveChangesAsync().ConfigureAwait(false);
-            
+
             _logger.LogInformation("Successfully revoked QR code with ID: {QrCodeId} by user: {UserId}", id, userId);
             return null;
         }
@@ -554,7 +564,7 @@ public class QrCodeService : IQrCodeService
 
             await _qrCodeRepository.UpdateQrCodeAsync(qrCode).ConfigureAwait(false);
             await _qrCodeRepository.SaveChangesAsync().ConfigureAwait(false);
-            
+
             _logger.LogInformation("Successfully revoked QR code with hash: {QrHash} by user: {UserId}", qrHash, userId);
             return null;
         }
@@ -721,7 +731,7 @@ public class QrCodeService : IQrCodeService
             _logger.LogInformation("Validating QR code with hash: {QrHash}", qrHash);
 
             var qrCode = await _qrCodeRepository.ValidateQrCodeForUsageAsync(qrHash).ConfigureAwait(false);
-            
+
             if (qrCode == null)
             {
                 _logger.LogWarning("QR code validation failed: QR code not found, expired, inactive, or usage limit reached");
@@ -772,7 +782,7 @@ public class QrCodeService : IQrCodeService
     {
         try
         {
-            _logger.LogInformation("Scanning QR code with hash: {QrHash} for student ID: {StudentId}", 
+            _logger.LogInformation("Scanning QR code with hash: {QrHash} for student ID: {StudentId}",
                 validateQrCode.QrHash, validateQrCode.StudentId);
 
             // Validate QR code first
@@ -819,8 +829,8 @@ public class QrCodeService : IQrCodeService
             await _qrCodeRepository.SaveChangesAsync().ConfigureAwait(false);
 
             // Calculate remaining scans
-            var remainingScans = qrCode.MaxUsage.HasValue ? 
-                Math.Max(0, qrCode.MaxUsage.Value - (qrCode.UsageCount + 1)) : 
+            var remainingScans = qrCode.MaxUsage.HasValue ?
+                Math.Max(0, qrCode.MaxUsage.Value - (qrCode.UsageCount + 1)) :
                 int.MaxValue;
 
             var responseDto = new QrCodeScanResponseDto
@@ -873,7 +883,7 @@ public class QrCodeService : IQrCodeService
     {
         string qrHash;
         bool exists;
-        
+
         do
         {
             qrHash = GenerateQrHash(clientHash);
@@ -925,7 +935,7 @@ public class QrCodeService : IQrCodeService
 
             var expiringWithin = TimeSpan.FromMinutes(expiringWithinMinutes);
             var qrCodes = await _qrCodeRepository.GetQrCodesExpiringWithinAsync(expiringWithin).ConfigureAwait(false);
-            
+
             var responseDtos = new List<QrCodeResponseDto>();
             foreach (var qrCode in qrCodes)
             {
@@ -974,13 +984,13 @@ public class QrCodeService : IQrCodeService
 
             // Extend expiration
             qrCode.ExpiresAt = qrCode.ExpiresAt.AddMinutes(additionalMinutes);
-            
+
             var updatedQrCode = await _qrCodeRepository.UpdateQrCodeAsync(qrCode).ConfigureAwait(false);
             await _qrCodeRepository.SaveChangesAsync().ConfigureAwait(false);
 
             var responseDto = await MapToResponseDtoAsync(updatedQrCode).ConfigureAwait(false);
             _logger.LogInformation("Successfully extended expiration for QR code ID: {QrCodeId}", id);
-            
+
             return (responseDto, null);
         }
         catch (Exception ex)
@@ -999,19 +1009,19 @@ public class QrCodeService : IQrCodeService
         using var rng = RandomNumberGenerator.Create();
         var serverBytes = new byte[32];
         rng.GetBytes(serverBytes);
-        
+
         // If client hash provided, combine it with server randomness
         if (!string.IsNullOrEmpty(clientHash))
         {
             var combinedBytes = Encoding.UTF8.GetBytes(clientHash)
                 .Concat(serverBytes)
                 .ToArray();
-            
+
             // Hash the combined data for consistent length and security
             var hashBytes = SHA256.HashData(combinedBytes);
             return Convert.ToBase64String(hashBytes).Replace("+", "-").Replace("/", "_").Replace("=", "");
         }
-        
+
         // Fallback to server-only hash
         return Convert.ToBase64String(serverBytes).Replace("+", "-").Replace("/", "_").Replace("=", "");
     }
@@ -1036,7 +1046,7 @@ public class QrCodeService : IQrCodeService
             SectionName = qrCode.Section?.Name,
             ActualRoomName = qrCode.ActualRoom?.Name,
             SubjectName = qrCode.Schedule?.Subject?.Name,
-            InstructorName = qrCode.Schedule?.Instructor != null ? 
+            InstructorName = qrCode.Schedule?.Instructor != null ?
                 $"{qrCode.Schedule.Instructor.Firstname} {qrCode.Schedule.Instructor.Lastname}" : null
         };
     }
