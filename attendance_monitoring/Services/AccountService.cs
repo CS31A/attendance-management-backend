@@ -23,7 +23,6 @@ namespace attendance_monitoring.Services
         IAccountRepository accountRepository,
         ISectionRepository sectionRepository,
         IUserFactory userFactory,
-        IStudentRepository studentRepository,
         IInstructorRepository instructorRepository
         )
         : IAccountService

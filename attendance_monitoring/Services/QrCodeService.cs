@@ -60,7 +60,7 @@ public class QrCodeService : IQrCodeService
                 return null;
             }
 
-            var responseDto = await MapToResponseDtoAsync(qrCode).ConfigureAwait(false);
+            var responseDto = MapToResponseDto(qrCode);
             _logger.LogInformation("Successfully retrieved QR code with ID: {QrCodeId}", id);
             return responseDto;
         }
@@ -84,7 +84,7 @@ public class QrCodeService : IQrCodeService
                 return null;
             }
 
-            var responseDto = await MapToResponseDtoAsync(qrCode).ConfigureAwait(false);
+            var responseDto = MapToResponseDto(qrCode);
             _logger.LogInformation("Successfully retrieved QR code with hash: {QrHash}", qrHash);
             return responseDto;
         }
@@ -106,7 +106,7 @@ public class QrCodeService : IQrCodeService
 
             foreach (var qrCode in qrCodes)
             {
-                var responseDto = await MapToResponseDtoAsync(qrCode).ConfigureAwait(false);
+                var responseDto = MapToResponseDto(qrCode);
                 responseDtos.Add(responseDto);
             }
 
@@ -131,7 +131,7 @@ public class QrCodeService : IQrCodeService
 
             foreach (var qrCode in qrCodes)
             {
-                var responseDto = await MapToResponseDtoAsync(qrCode).ConfigureAwait(false);
+                var responseDto = MapToResponseDto(qrCode);
                 responseDtos.Add(responseDto);
             }
 
@@ -156,7 +156,7 @@ public class QrCodeService : IQrCodeService
 
             foreach (var qrCode in qrCodes)
             {
-                var responseDto = await MapToResponseDtoAsync(qrCode).ConfigureAwait(false);
+                var responseDto = MapToResponseDto(qrCode);
                 responseDtos.Add(responseDto);
             }
 
@@ -224,7 +224,7 @@ public class QrCodeService : IQrCodeService
             var createdQrCode = await _qrCodeRepository.CreateQrCodeAsync(qrCode).ConfigureAwait(false);
             await _qrCodeRepository.SaveChangesAsync().ConfigureAwait(false);
 
-            var responseDto = await MapToResponseDtoAsync(createdQrCode).ConfigureAwait(false);
+            var responseDto = MapToResponseDto(createdQrCode);
             _logger.LogInformation("Successfully created QR code with ID: {QrCodeId}", createdQrCode.Id);
 
             return (responseDto, null);
@@ -387,7 +387,7 @@ public class QrCodeService : IQrCodeService
             var updatedQrCode = await _qrCodeRepository.UpdateQrCodeAsync(existingQrCode).ConfigureAwait(false);
             await _qrCodeRepository.SaveChangesAsync().ConfigureAwait(false);
 
-            var responseDto = await MapToResponseDtoAsync(updatedQrCode).ConfigureAwait(false);
+            var responseDto = MapToResponseDto(updatedQrCode);
             _logger.LogInformation("Successfully updated QR code with ID: {QrCodeId}", id);
 
             return (responseDto, null);
@@ -939,7 +939,7 @@ public class QrCodeService : IQrCodeService
             var responseDtos = new List<QrCodeResponseDto>();
             foreach (var qrCode in qrCodes)
             {
-                var responseDto = await MapToResponseDtoAsync(qrCode).ConfigureAwait(false);
+                var responseDto = MapToResponseDto(qrCode);
                 responseDtos.Add(responseDto);
             }
 
@@ -988,7 +988,7 @@ public class QrCodeService : IQrCodeService
             var updatedQrCode = await _qrCodeRepository.UpdateQrCodeAsync(qrCode).ConfigureAwait(false);
             await _qrCodeRepository.SaveChangesAsync().ConfigureAwait(false);
 
-            var responseDto = await MapToResponseDtoAsync(updatedQrCode).ConfigureAwait(false);
+            var responseDto = MapToResponseDto(updatedQrCode);
             _logger.LogInformation("Successfully extended expiration for QR code ID: {QrCodeId}", id);
 
             return (responseDto, null);
@@ -1026,7 +1026,7 @@ public class QrCodeService : IQrCodeService
         return Convert.ToBase64String(serverBytes).Replace("+", "-").Replace("/", "_").Replace("=", "");
     }
 
-    private async Task<QrCodeResponseDto> MapToResponseDtoAsync(QrCode qrCode)
+    private QrCodeResponseDto MapToResponseDto(QrCode qrCode)
     {
         return new QrCodeResponseDto
         {

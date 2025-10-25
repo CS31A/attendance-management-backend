@@ -68,7 +68,7 @@ namespace attendance_monitoring.Services
         /// </summary>
         /// <param name="id">The ID of the instructor to retrieve</param>
         /// <returns>The instructor with the specified ID</returns>
-        /// <exception cref="EntityNotFoundException{int}">Thrown when the instructor is not found</exception>
+        /// <exception cref="T:attendance_monitoring.Exceptions.EntityNotFoundException{System.Int32}">Thrown when the instructor is not found</exception>
         /// <exception cref="EntityServiceException">Thrown when an error occurs during retrieval</exception>
         public async Task<Instructor> GetInstructorByIdAsync(int id)
         {
@@ -104,7 +104,7 @@ namespace attendance_monitoring.Services
         /// </summary>
         /// <param name="instructorId">The ID of the instructor</param>
         /// <returns>A collection of subjects taught by the instructor</returns>
-        /// <exception cref="EntityNotFoundException{int}">Thrown when the instructor is not found</exception>
+        /// <exception cref="T:attendance_monitoring.Exceptions.EntityNotFoundException{System.Int32}">Thrown when the instructor is not found</exception>
         /// <exception cref="EntityServiceException">Thrown when an error occurs during retrieval</exception>
         public async Task<IEnumerable<SubjectResponseDto>> GetSubjectsByInstructorIdAsync(int instructorId)
         {
@@ -281,7 +281,7 @@ namespace attendance_monitoring.Services
         /// <param name="updateInstructor">The updated instructor data</param>
         /// <param name="userPrincipal">The claims principal of the current user</param>
         /// <returns>The updated instructor</returns>
-        /// <exception cref="EntityNotFoundException{int}">Thrown when the instructor is not found</exception>
+        /// <exception cref="T:attendance_monitoring.Exceptions.EntityNotFoundException{System.Int32}">Thrown when the instructor is not found</exception>
         /// <exception cref="EntityUnauthorizedException">Thrown when the user is not authorized to update the instructor</exception>
         /// <exception cref="EntityServiceException">Thrown when instructor update fails</exception>
         public async Task<Instructor> UpdateInstructorAsync(int id, UpdateInstructor updateInstructor, ClaimsPrincipal userPrincipal)
@@ -363,7 +363,7 @@ namespace attendance_monitoring.Services
         /// </summary>
         /// <param name="id">The ID of the instructor to delete</param>
         /// <param name="userPrincipal">The claims principal of the current user</param>
-        /// <exception cref="EntityNotFoundException{int}">Thrown when the instructor is not found</exception>
+        /// <exception cref="T:attendance_monitoring.Exceptions.EntityNotFoundException{System.Int32}">Thrown when the instructor is not found</exception>
         /// <exception cref="EntityUnauthorizedException">Thrown when the user is not authorized to delete the instructor</exception>
         /// <exception cref="EntityServiceException">Thrown when instructor deletion fails</exception>
         public async Task SoftDeleteInstructorAsync(int id, ClaimsPrincipal userPrincipal)

@@ -11,7 +11,7 @@ namespace attendance_monitoring.Controllers
 {
     [ApiController]
     [Route("api/account")]
-    public class AccountController(IAccountService accountService, ILogger<AccountController> logger, IConfiguration configuration, ICookieOptionsService cookieOptionsService)
+    public class AccountController(IAccountService accountService, ILogger<AccountController> logger, ICookieOptionsService cookieOptionsService)
         : ControllerBase
     {
         #region Endpoints

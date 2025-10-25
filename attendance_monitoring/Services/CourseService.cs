@@ -60,7 +60,7 @@ public class CourseService : ICourseService
     /// </summary>
     /// <param name="id">The ID of the course to retrieve</param>
     /// <returns>The course with the specified ID</returns>
-    /// <exception cref="EntityNotFoundException{int}">Thrown when the course is not found</exception>
+    /// <exception cref="T:attendance_monitoring.Exceptions.EntityNotFoundException{System.Int32}">Thrown when the course is not found</exception>
     /// <exception cref="EntityServiceException">Thrown when an error occurs during retrieval</exception>
     public async Task<Course> GetCourseByIdAsync(int id)
     {
@@ -157,7 +157,7 @@ public class CourseService : ICourseService
     /// <param name="updateCourse">The updated course data</param>
     /// <param name="user">The claims principal of the current user</param>
     /// <returns>The updated course</returns>
-    /// <exception cref="EntityNotFoundException{int}">Thrown when the course is not found</exception>
+    /// <exception cref="T:attendance_monitoring.Exceptions.EntityNotFoundException{System.Int32}">Thrown when the course is not found</exception>
     /// <exception cref="EntityServiceException">Thrown when course update fails</exception>
     public async Task<Course> UpdateCourseAsync(int id, UpdateCourse updateCourse, ClaimsPrincipal user)
     {
@@ -226,7 +226,7 @@ public class CourseService : ICourseService
     /// </summary>
     /// <param name="id">The ID of the course to delete</param>
     /// <param name="user">The claims principal of the current user</param>
-    /// <exception cref="EntityNotFoundException{int}">Thrown when the course is not found</exception>
+    /// <exception cref="T:attendance_monitoring.Exceptions.EntityNotFoundException{System.Int32}">Thrown when the course is not found</exception>
     /// <exception cref="EntityServiceException">Thrown when course deletion fails</exception>
     public async Task DeleteCourseAsync(int id, ClaimsPrincipal user)
     {
