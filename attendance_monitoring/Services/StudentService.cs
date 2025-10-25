@@ -4,6 +4,7 @@ using attendance_monitoring.Exceptions;
 using attendance_monitoring.IRepository;
 using attendance_monitoring.IServices;
 using attendance_monitoring.Models.DTO.Request;
+using attendance_monitoring.Models.DTO.Response;
 
 namespace attendance_monitoring.Services
 {
@@ -478,6 +479,91 @@ namespace attendance_monitoring.Services
             }
         }
 
+        #endregion
+
+        #region Get Student Subjects
+        /// <summary>
+        /// Retrieves all subjects assigned to the authenticated student
+        /// </summary>
+        /// <param name="userPrincipal">The claims principal of the current user</param>
+        /// <returns>A collection of subjects with schedule details for the student</returns>
+        /// <exception cref="EntityNotFoundException{string}">Thrown when the student is not found</exception>
+        /// <exception cref="EntityServiceException">Thrown when an error occurs during retrieval</exception>
+        public async Task<IEnumerable<StudentSubjectResponseDto>> GetStudentSubjectsAsync(ClaimsPrincipal userPrincipal)
+        {
+            try
+            {
+                _logger.LogInformation("Retrieving subjects for authenticated student");
+                
+                var userId = await _userContextService.GetUserIdAsync(userPrincipal).ConfigureAwait(false);
+                if (string.IsNullOrEmpty(userId))
+                {
+                    _logger.LogWarning("Get student subjects failed: User ID not found in token");
+                    throw new EntityServiceException("Student", "GetStudentSubjects", "User ID not found in token");
+                }
+
+                // Verify that the user is a student
+                var student = await _studentRepository.GetStudentByUserIdAsync(userId).ConfigureAwait(false);
+                if (student == null)
+                {
+                    _logger.LogWarning("Get student subjects failed: No student record found for user {UserId}", userId);
+                    throw new EntityNotFoundException<string>("Student", userId);
+                }
+
+                var subjectData = await _studentRepository.GetStudentSubjectsAsync(userId).ConfigureAwait(false);
+                
+                var response = subjectData.Select(data => new StudentSubjectResponseDto
+                {
+                    Subject = new SubjectResponseDto
+                    {
+                        Id = data.Subject.Id,
+                        Name = data.Subject.Name,
+                        Code = data.Subject.Code,
+                        CreatedAt = data.Subject.CreatedAt,
+                        UpdatedAt = data.Subject.UpdatedAt
+                    },
+                    Schedule = new StudentSubjectScheduleDto
+                    {
+                        Id = data.Schedule.Id,
+                        TimeIn = data.Schedule.TimeIn,
+                        TimeOut = data.Schedule.TimeOut,
+                        DayOfWeek = data.Schedule.DayOfWeek
+                    },
+                    Instructor = new InstructorResponseDto
+                    {
+                        Id = data.Instructor.Id,
+                        Firstname = data.Instructor.Firstname,
+                        Lastname = data.Instructor.Lastname,
+                        Email = data.Instructor.Email
+                    },
+                    Classroom = new ClassroomResponseDto
+                    {
+                        Id = data.Classroom.Id,
+                        Name = data.Classroom.Name,
+                        CreatedAt = data.Classroom.CreatedAt,
+                        UpdatedAt = data.Classroom.UpdatedAt
+                    }
+                });
+
+                _logger.LogInformation("Successfully retrieved subjects for student {UserId}", userId);
+                return response;
+            }
+            catch (EntityNotFoundException<string>)
+            {
+                // Re-throw EntityNotFoundException as-is
+                throw;
+            }
+            catch (EntityServiceException)
+            {
+                // Re-throw EntityServiceException as-is
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error occurred while retrieving student subjects");
+                throw new EntityServiceException("Student", "GetStudentSubjects", "An error occurred while retrieving student subjects", ex);
+            }
+        }
         #endregion
     }
 }

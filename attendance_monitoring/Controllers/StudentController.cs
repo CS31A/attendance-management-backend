@@ -11,7 +11,7 @@ namespace attendance_monitoring.Controllers;
 /// <summary>
 /// Controller for managing student records
 /// </summary>
-[Authorize(Policy = "PrivilegedPolicy")]
+[Authorize(Policy = "UserPolicy")]
 [ApiController]
 [Route("api/students")]
 public class StudentController(IStudentService studentService, ILogger<StudentController> logger)
@@ -60,6 +60,7 @@ public class StudentController(IStudentService studentService, ILogger<StudentCo
     /// <response code="200">Returns the list of non-deleted students</response>
     /// <response code="500">Internal server error</response>
     // GET: api/Student
+    [Authorize(Policy = "PrivilegedPolicy")]
     [HttpGet]
     public async Task<ActionResult<IList<Student>>> GetStudents()
     {
@@ -86,6 +87,7 @@ public class StudentController(IStudentService studentService, ILogger<StudentCo
     /// <response code="404">Student not found</response>
     /// <response code="500">Internal server error</response>
     // GET: api/Student/5
+    [Authorize(Policy = "PrivilegedPolicy")]
     [HttpGet("{id:int}")]
     public async Task<ActionResult<Student>> GetStudent(int id)
     {
@@ -107,7 +109,7 @@ public class StudentController(IStudentService studentService, ILogger<StudentCo
             return StatusCode(500, "An error occurred while retrieving the student");
         }
     }
-    
+
     // POST: api/Students/
     // [HttpPost("")]
     // [Authorize(Policy = "PrivilegedPolicy")]
@@ -127,13 +129,13 @@ public class StudentController(IStudentService studentService, ILogger<StudentCo
 
     //     return CreatedAtAction(nameof(GetStudent), new { id = student.Id }, student);
     // }
-    
+
     // REDUNDANT ENDPOINT: This endpoint is redundant because student records are automatically 
     // created during user registration. All new users default to "Student" role and get a 
     // student record created automatically. Do not remove this code block entirely as it 
     // might be needed for future administrative purposes, but it's currently commented out 
     // to prevent confusion and potential misuse.
-    
+
     /// <summary>
     /// Update a student record
     /// </summary>
@@ -146,6 +148,7 @@ public class StudentController(IStudentService studentService, ILogger<StudentCo
     /// <response code="401">Not authorized to update this student</response>
     /// <response code="500">Internal server error</response>
     // PATCH: api/Student/{id}
+    [Authorize(Policy = "PrivilegedPolicy")]
     [HttpPatch("{id:int}")]
     public async Task<ActionResult<Student>> PatchStudent(int id, UpdateStudent updateStudent)
     {
@@ -189,6 +192,7 @@ public class StudentController(IStudentService studentService, ILogger<StudentCo
     /// <response code="401">Not authorized to delete this student</response>
     /// <response code="500">Internal server error</response>
     // PATCH: api/Student/{id}/soft-delete
+    [Authorize(Policy = "AdminPolicy")]
     [HttpPatch("{id:int}/soft-delete")]
     public async Task<ActionResult<SoftDeleteResponse>> SoftDeleteStudent(int id)
     {
@@ -250,7 +254,7 @@ public class StudentController(IStudentService studentService, ILogger<StudentCo
         logger.LogInformation("Hard delete operation completed for student with ID: {Id}", id);
         return CreateResponse(error, "Student permanently deleted successfully");
     }
-    
+
     /// <summary>
     /// Restore a soft deleted student record
     /// </summary>
@@ -268,5 +272,37 @@ public class StudentController(IStudentService studentService, ILogger<StudentCo
         var error = await studentService.RestoreStudentAsync(id, User);
         logger.LogInformation("Restore operation completed for student with ID: {Id}", id);
         return CreateResponse(error, "Student restored successfully");
+    }
+
+    /// <summary>
+    /// Get all subjects assigned to the authenticated student
+    /// </summary>
+    /// <returns>A list of subjects with schedule details for the student</returns>
+    /// <response code="200">Returns the list of assigned subjects</response>
+    /// <response code="401">User is not authenticated or not a student</response>
+    /// <response code="404">Student record not found</response>
+    /// <response code="500">Internal server error</response>
+    // GET: api/students/my-subjects
+    [HttpGet("my-subjects")]
+    [Authorize] // Any authenticated user can access this, but it will only work for students
+    public async Task<ActionResult<IEnumerable<StudentSubjectResponseDto>>> GetMySubjects()
+    {
+        try
+        {
+            logger.LogInformation("Getting subjects for authenticated student");
+            var subjects = await studentService.GetStudentSubjectsAsync(User);
+            logger.LogInformation("Successfully retrieved subjects for student");
+            return Ok(subjects);
+        }
+        catch (EntityNotFoundException<string> ex)
+        {
+            logger.LogWarning(ex, "Student record not found for authenticated user");
+            return NotFound("Student record not found. This endpoint is only available for students.");
+        }
+        catch (EntityServiceException ex)
+        {
+            logger.LogError(ex, "Service error occurred while retrieving student subjects");
+            return StatusCode(500, "An error occurred while retrieving your subjects");
+        }
     }
 }

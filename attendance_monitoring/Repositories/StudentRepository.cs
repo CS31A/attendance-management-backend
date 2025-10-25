@@ -109,4 +109,27 @@ public class StudentRepository(ApplicationDbContext context) : IStudentRepositor
         return await context.SaveChangesAsync().ConfigureAwait(false);
     }
     #endregion
+
+    #region GetStudentSubjectsAsync
+    public async Task<IEnumerable<(Subject Subject, Schedules Schedule, Instructor Instructor, Classroom Classroom)>> GetStudentSubjectsAsync(string userId)
+    {
+        return await context.Students
+            .AsNoTracking()
+            .Where(s => s.UserId == userId && !s.IsDeleted)
+            .Join(context.Schedules,
+                student => student.SectionId,
+                schedule => schedule.SectionId,
+                (student, schedule) => schedule)
+            .Include(schedule => schedule.Subject)
+            .Include(schedule => schedule.Instructor)
+            .Include(schedule => schedule.Classroom)
+            .Select(schedule => new ValueTuple<Subject, Schedules, Instructor, Classroom>(
+                schedule.Subject,
+                schedule,
+                schedule.Instructor,
+                schedule.Classroom))
+            .ToListAsync()
+            .ConfigureAwait(false);
+    }
+    #endregion
 }
