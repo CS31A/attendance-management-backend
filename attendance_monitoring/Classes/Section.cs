@@ -24,6 +24,10 @@ public class Section
     [JsonIgnore]
     public Course Course { get; set; } = null!;
 
+    // Navigation property for student enrollments (many-to-many with students)
+    [JsonIgnore]
+    public ICollection<StudentEnrollment> StudentEnrollments { get; set; } = new List<StudentEnrollment>();
+
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
 }

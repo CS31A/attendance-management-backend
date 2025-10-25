@@ -21,6 +21,7 @@ public class QrCodeService : IQrCodeService
     private readonly ISectionRepository _sectionRepository;
     private readonly IClassroomRepository _classroomRepository;
     private readonly IStudentRepository _studentRepository;
+    private readonly IStudentEnrollmentService _studentEnrollmentService;
     private readonly UserContextService _userContextService;
     private readonly ILogger<QrCodeService> _logger;
 
@@ -33,6 +34,7 @@ public class QrCodeService : IQrCodeService
         ISectionRepository sectionRepository,
         IClassroomRepository classroomRepository,
         IStudentRepository studentRepository,
+        IStudentEnrollmentService studentEnrollmentService,
         UserContextService userContextService,
         ILogger<QrCodeService> logger)
     {
@@ -41,6 +43,7 @@ public class QrCodeService : IQrCodeService
         _sectionRepository = sectionRepository ?? throw new ArgumentNullException(nameof(sectionRepository));
         _classroomRepository = classroomRepository ?? throw new ArgumentNullException(nameof(classroomRepository));
         _studentRepository = studentRepository ?? throw new ArgumentNullException(nameof(studentRepository));
+        _studentEnrollmentService = studentEnrollmentService ?? throw new ArgumentNullException(nameof(studentEnrollmentService));
         _userContextService = userContextService ?? throw new ArgumentNullException(nameof(userContextService));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
@@ -811,14 +814,28 @@ public class QrCodeService : IQrCodeService
                 };
             }
 
-            // Check if student belongs to the section
-            if (student.SectionId != qrCode.SectionId)
+            // Check if student is authorized for this section
+            // Student is authorized if they are in their primary section OR enrolled via StudentEnrollment
+            bool isAuthorized = student.SectionId == qrCode.SectionId;
+
+            if (!isAuthorized && qrCode.Schedule != null)
             {
-                _logger.LogWarning("QR code scan failed: Student does not belong to this section");
+                // Check if student is enrolled in this section-subject combination (for irregular students)
+                isAuthorized = await IsStudentEnrolledInSectionSubjectAsync(
+                    validateQrCode.StudentId,
+                    qrCode.SectionId,
+                    qrCode.Schedule.SubjectId
+                ).ConfigureAwait(false);
+            }
+
+            if (!isAuthorized)
+            {
+                _logger.LogWarning("QR code scan failed: Student {StudentId} is not authorized for section {SectionId}",
+                    validateQrCode.StudentId, qrCode.SectionId);
                 return new QrCodeScanResponseDto
                 {
                     Success = false,
-                    Message = "Student does not belong to this section",
+                    Message = "You are not enrolled in this section or subject",
                     AttendanceMarked = false,
                     StudentName = $"{student.Firstname} {student.Lastname}"
                 };
@@ -1078,6 +1095,29 @@ public class QrCodeService : IQrCodeService
         }
 
         return null; // All validations passed
+    }
+
+    /// <summary>
+    /// Helper method to check if a student is enrolled in a specific section-subject combination.
+    /// This supports irregular students who are enrolled in subjects outside their primary section.
+    /// </summary>
+    /// <param name="studentId">The student ID to check</param>
+    /// <param name="sectionId">The section ID to check</param>
+    /// <param name="subjectId">The subject ID to check</param>
+    /// <returns>True if the student is enrolled in the section-subject combination; otherwise, false</returns>
+    private async Task<bool> IsStudentEnrolledInSectionSubjectAsync(int studentId, int sectionId, int subjectId)
+    {
+        try
+        {
+            return await _studentEnrollmentService.IsStudentEnrolledInSectionSubjectAsync(studentId, sectionId, subjectId)
+                .ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error checking student enrollment for Student: {StudentId}, Section: {SectionId}, Subject: {SubjectId}",
+                studentId, sectionId, subjectId);
+            return false; // Default to not enrolled if there's an error
+        }
     }
 
     #endregion
