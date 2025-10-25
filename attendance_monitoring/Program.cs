@@ -52,19 +52,12 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
-// Add Response Compression with Gzip
+// Add Response Compression with Gzip - Selective application
 builder.Services.AddResponseCompression(options =>
 {
     options.EnableForHttps = true; // Enable compression for HTTPS requests
     options.Providers.Add<GzipCompressionProvider>();
-    options.MimeTypes = ResponseCompressionDefaults.MimeTypes.Concat(new[]
-    {
-        "application/json",
-        "text/json",
-        "application/javascript",
-        "text/css",
-        "text/html"
-    });
+    options.MimeTypes = new[] { "application/json", "text/json" };
 });
 
 // Configure Gzip compression level
@@ -205,25 +198,61 @@ builder.Logging.AddFilter("System", LogLevel.Warning);
 
 var app = builder.Build();
 
-// Add Response Compression Middleware FIRST
-app.UseResponseCompression();
+// Add SELECTIVE Response Compression - Only for specific GET endpoints
+app.UseWhen(
+    context => 
+    {
+        var method = context.Request.Method;
+        var path = context.Request.Path.Value?.ToLowerInvariant() ?? "";
+        
+        // Only apply compression to GET requests
+        if (method != "GET") return false;
+        
+        // Check for specific endpoints that should be compressed
+        return path.StartsWith("/api/classrooms") ||
+               path.StartsWith("/api/course") ||
+               path.StartsWith("/api/instructors") ||
+               path.StartsWith("/api/schedules") ||
+               path.StartsWith("/api/sections") ||
+               path.StartsWith("/api/students") ||
+               path.StartsWith("/api/subjects");
+    },
+    appBuilder => appBuilder.UseResponseCompression()
+);
 
 // THEN Performance monitoring (to see compression results)
 app.Use(async (context, next) =>
 {
     var stopwatch = Stopwatch.StartNew();
+    
+    // Set up response callback to capture timing after response is complete
+    context.Response.OnStarting(() =>
+    {
+        stopwatch.Stop();
+        var responseTime = stopwatch.ElapsedMilliseconds;
+        
+        // Add debug headers for client inspection (before response starts)
+        context.Response.Headers["X-Response-Time"] = $"{responseTime}ms";
+        
+        // Check compression headers (already applied by compression middleware)
+        var isCompressed = context.Response.Headers.ContainsKey("Content-Encoding");
+        if (isCompressed)
+        {
+            var compressionType = context.Response.Headers["Content-Encoding"].ToString();
+            context.Response.Headers["X-Compression"] = compressionType;
+        }
+        
+        return Task.CompletedTask;
+    });
+    
     await next();
-    stopwatch.Stop();
-    
-    var responseTime = stopwatch.ElapsedMilliseconds;
-    
-    // Check compression headers (already applied by compression middleware)
-    var isCompressed = context.Response.Headers.ContainsKey("Content-Encoding");
-    var compressionType = isCompressed ? context.Response.Headers["Content-Encoding"].ToString() : "none";
     
     // Log performance metrics for API endpoints with successful responses
     if (context.Request.Path.StartsWithSegments("/api") && context.Response.StatusCode == 200)
     {
+        var responseTime = stopwatch.ElapsedMilliseconds;
+        var isCompressed = context.Response.Headers.ContainsKey("Content-Encoding");
+        var compressionType = isCompressed ? context.Response.Headers["Content-Encoding"].ToString() : "none";
         var logger = context.RequestServices.GetRequiredService<ILogger<Program>>();
         var endpoint = $"{context.Request.Method} {context.Request.Path}";
         var contentType = context.Response.ContentType ?? "";
@@ -232,13 +261,6 @@ app.Use(async (context, next) =>
             "PERF: {Endpoint} | {ResponseTime}ms | Compressed: {IsCompressed} ({CompressionType}) | Content-Type: {ContentType}",
             endpoint, responseTime, isCompressed, compressionType, contentType
         );
-    }
-    
-    // Add debug headers for client inspection
-    context.Response.Headers["X-Response-Time"] = $"{responseTime}ms";
-    if (isCompressed)
-    {
-        context.Response.Headers["X-Compression"] = compressionType;
     }
 });
 
@@ -270,7 +292,7 @@ app.MapControllers();
 using (var scope = app.Services.CreateScope())
 {
     var roleInitializationService = scope.ServiceProvider.GetRequiredService<IRoleInitializationService>();
-    roleInitializationService.InitializeRolesAsync().Wait();
+    await roleInitializationService.InitializeRolesAsync();
 }
 
-app.Run();
+await app.RunAsync();
