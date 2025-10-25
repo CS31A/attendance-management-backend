@@ -10,6 +10,9 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using Scalar.AspNetCore;
 using System.Text.Json.Serialization;
+using Microsoft.AspNetCore.ResponseCompression;
+using System.IO.Compression;
+using System.Diagnostics;
 
 // Load environment variables from .env file
 DotNetEnv.Env.Load();
@@ -48,6 +51,28 @@ builder.Services.AddSwaggerGen(c =>
         }
     });
 });
+
+// Add Response Compression with Gzip
+builder.Services.AddResponseCompression(options =>
+{
+    options.EnableForHttps = true; // Enable compression for HTTPS requests
+    options.Providers.Add<GzipCompressionProvider>();
+    options.MimeTypes = ResponseCompressionDefaults.MimeTypes.Concat(new[]
+    {
+        "application/json",
+        "text/json",
+        "application/javascript",
+        "text/css",
+        "text/html"
+    });
+});
+
+// Configure Gzip compression level
+builder.Services.Configure<GzipCompressionProviderOptions>(options =>
+{
+    options.Level = CompressionLevel.Optimal; // Best compression ratio
+});
+
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
     {
@@ -179,6 +204,43 @@ builder.Logging.AddFilter("Microsoft", LogLevel.Warning);
 builder.Logging.AddFilter("System", LogLevel.Warning);
 
 var app = builder.Build();
+
+// Add Response Compression Middleware FIRST
+app.UseResponseCompression();
+
+// THEN Performance monitoring (to see compression results)
+app.Use(async (context, next) =>
+{
+    var stopwatch = Stopwatch.StartNew();
+    await next();
+    stopwatch.Stop();
+    
+    var responseTime = stopwatch.ElapsedMilliseconds;
+    
+    // Check compression headers (already applied by compression middleware)
+    var isCompressed = context.Response.Headers.ContainsKey("Content-Encoding");
+    var compressionType = isCompressed ? context.Response.Headers["Content-Encoding"].ToString() : "none";
+    
+    // Log performance metrics for API endpoints with successful responses
+    if (context.Request.Path.StartsWithSegments("/api") && context.Response.StatusCode == 200)
+    {
+        var logger = context.RequestServices.GetRequiredService<ILogger<Program>>();
+        var endpoint = $"{context.Request.Method} {context.Request.Path}";
+        var contentType = context.Response.ContentType ?? "";
+        
+        logger.LogInformation(
+            "PERF: {Endpoint} | {ResponseTime}ms | Compressed: {IsCompressed} ({CompressionType}) | Content-Type: {ContentType}",
+            endpoint, responseTime, isCompressed, compressionType, contentType
+        );
+    }
+    
+    // Add debug headers for client inspection
+    context.Response.Headers["X-Response-Time"] = $"{responseTime}ms";
+    if (isCompressed)
+    {
+        context.Response.Headers["X-Compression"] = compressionType;
+    }
+});
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
