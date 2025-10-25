@@ -16,7 +16,6 @@ public class AccountControllerTest
 {
     private readonly Mock<IAccountService> _mockAccountService;
     private readonly Mock<ILogger<AccountController>> _mockLogger;
-    private readonly Mock<IConfiguration> _mockConfiguration;
     private readonly Mock<ICookieOptionsService> _mockCookieOptionsService;
     private readonly AccountController _accountController;
 
@@ -24,12 +23,10 @@ public class AccountControllerTest
     {
         _mockAccountService = new Mock<IAccountService>();
         _mockLogger = new Mock<ILogger<AccountController>>();
-        _mockConfiguration = new Mock<IConfiguration>();
         _mockCookieOptionsService = new Mock<ICookieOptionsService>();
         _accountController = new AccountController(
             _mockAccountService.Object,
             _mockLogger.Object,
-            _mockConfiguration.Object,
             _mockCookieOptionsService.Object);
     }
 

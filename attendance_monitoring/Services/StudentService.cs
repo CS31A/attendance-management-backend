@@ -77,7 +77,7 @@ namespace attendance_monitoring.Services
         /// </summary>
         /// <param name="id">The ID of the student to retrieve</param>
         /// <returns>The student with the specified ID</returns>
-        /// <exception cref="EntityNotFoundException{int}">Thrown when the student is not found</exception>
+        /// <exception cref="T:attendance_monitoring.Exceptions.EntityNotFoundException{System.Int32}">Thrown when the student is not found</exception>
         /// <exception cref="EntityServiceException">Thrown when an error occurs during retrieval</exception>
         public async Task<Student> GetStudentByIdAsync(int id)
         {
@@ -200,7 +200,7 @@ namespace attendance_monitoring.Services
         /// <param name="updateStudent">The updated student data</param>
         /// <param name="userPrincipal">The claims principal of the current user</param>
         /// <returns>The updated student</returns>
-        /// <exception cref="EntityNotFoundException{int}">Thrown when the student is not found</exception>
+        /// <exception cref="T:attendance_monitoring.Exceptions.EntityNotFoundException{System.Int32}">Thrown when the student is not found</exception>
         /// <exception cref="EntityUnauthorizedException">Thrown when the user is not authorized to update the student</exception>
         /// <exception cref="EntityServiceException">Thrown when student update fails</exception>
         public async Task<Student> UpdateStudentAsync(int id, UpdateStudent updateStudent, ClaimsPrincipal userPrincipal)
@@ -288,7 +288,7 @@ namespace attendance_monitoring.Services
         /// </summary>
         /// <param name="id">The ID of the student to delete</param>
         /// <param name="userPrincipal">The claims principal of the current user</param>
-        /// <exception cref="EntityNotFoundException{int}">Thrown when the student is not found</exception>
+        /// <exception cref="T:attendance_monitoring.Exceptions.EntityNotFoundException{System.Int32}">Thrown when the student is not found</exception>
         /// <exception cref="EntityUnauthorizedException">Thrown when the user is not authorized to delete the student</exception>
         /// <exception cref="EntityServiceException">Thrown when student deletion fails</exception>
         public async Task SoftDeleteStudentAsync(int id, ClaimsPrincipal userPrincipal)
@@ -487,7 +487,7 @@ namespace attendance_monitoring.Services
         /// </summary>
         /// <param name="userPrincipal">The claims principal of the current user</param>
         /// <returns>A collection of subjects with schedule details for the student</returns>
-        /// <exception cref="EntityNotFoundException{string}">Thrown when the student is not found</exception>
+        /// <exception cref="T:attendance_monitoring.Exceptions.EntityNotFoundException{System.String}">Thrown when the student is not found</exception>
         /// <exception cref="EntityServiceException">Thrown when an error occurs during retrieval</exception>
         public async Task<IEnumerable<StudentSubjectResponseDto>> GetStudentSubjectsAsync(ClaimsPrincipal userPrincipal)
         {

@@ -16,7 +16,7 @@ namespace attendance_monitoring.Services
         /// </summary>
         /// <param name="sectionId">The ID of the section to retrieve</param>
         /// <returns>The section with the specified ID</returns>
-        /// <exception cref="EntityNotFoundException{int}">Thrown when the section is not found</exception>
+        /// <exception cref="T:attendance_monitoring.Exceptions.EntityNotFoundException{System.Int32}">Thrown when the section is not found</exception>
         /// <exception cref="EntityServiceException">Thrown when an error occurs during retrieval</exception>
         public async Task<Section> GetSectionByIdAsync(int sectionId)
         {
@@ -119,7 +119,7 @@ namespace attendance_monitoring.Services
         /// <param name="id">The ID of the section to update</param>
         /// <param name="section">The updated section data</param>
         /// <returns>The updated section response DTO</returns>
-        /// <exception cref="EntityNotFoundException{int}">Thrown when the section is not found</exception>
+        /// <exception cref="T:attendance_monitoring.Exceptions.EntityNotFoundException{System.Int32}">Thrown when the section is not found</exception>
         /// <exception cref="EntityServiceException">Thrown when section update fails</exception>
         public async Task<SectionResponseDto> UpdateSectionAsync(int id, Section section)
         {
@@ -166,7 +166,7 @@ namespace attendance_monitoring.Services
         /// Deletes a section by ID
         /// </summary>
         /// <param name="id">The ID of the section to delete</param>
-        /// <exception cref="EntityNotFoundException{int}">Thrown when the section is not found</exception>
+        /// <exception cref="T:attendance_monitoring.Exceptions.EntityNotFoundException{System.Int32}">Thrown when the section is not found</exception>
         /// <exception cref="EntityServiceException">Thrown when section deletion fails</exception>
         public async Task DeleteSectionAsync(int id)
         {
