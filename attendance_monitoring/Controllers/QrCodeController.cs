@@ -154,4 +154,146 @@ public class QrCodeController(
         logger.LogInformation("Successfully reactivated QR code with hash: {QrHash}", qrHash);
         return NoContent();
     }
+
+    /// <summary>
+    /// Gets a QR code by its ID.
+    /// </summary>
+    /// <param name="id">The QR code ID.</param>
+    /// <returns>QR code details if found.</returns>
+    [HttpGet("{id}")]
+    [Authorize(Policy = "PrivilegedPolicy")]
+    public async Task<ActionResult> GetQrCodeById(int id)
+    {
+        logger.LogInformation("Retrieving QR code with ID: {QrCodeId}", id);
+
+        try
+        {
+            var qrCode = await qrCodeService.GetQrCodeByIdAsync(id);
+
+            if (qrCode == null)
+            {
+                logger.LogWarning("QR code with ID {QrCodeId} not found", id);
+                return NotFound(new { message = $"QR code with ID {id} not found" });
+            }
+
+            logger.LogInformation("Successfully retrieved QR code with ID: {QrCodeId}", id);
+            return Ok(qrCode);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Unexpected error occurred while retrieving QR code with ID: {QrCodeId}", id);
+            return Problem(
+                detail: "An unexpected error occurred while retrieving the QR code",
+                statusCode: 500,
+                title: "Internal Server Error"
+            );
+        }
+    }
+
+    /// <summary>
+    /// Gets a QR code by its hash.
+    /// </summary>
+    /// <param name="qrHash">The QR code hash.</param>
+    /// <returns>QR code details if found.</returns>
+    [HttpGet("hash/{qrHash}")]
+    [Authorize(Policy = "PrivilegedPolicy")]
+    public async Task<ActionResult> GetQrCodeByHash(string qrHash)
+    {
+        logger.LogInformation("Retrieving QR code with hash: {QrHash}", qrHash);
+
+        try
+        {
+            var qrCode = await qrCodeService.GetQrCodeByHashAsync(qrHash);
+
+            if (qrCode == null)
+            {
+                logger.LogWarning("QR code with hash {QrHash} not found", qrHash);
+                return NotFound(new { message = $"QR code with hash {qrHash} not found" });
+            }
+
+            logger.LogInformation("Successfully retrieved QR code with hash: {QrHash}", qrHash);
+            return Ok(qrCode);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Unexpected error occurred while retrieving QR code with hash: {QrHash}", qrHash);
+            return Problem(
+                detail: "An unexpected error occurred while retrieving the QR code",
+                statusCode: 500,
+                title: "Internal Server Error"
+            );
+        }
+    }
+
+    /// <summary>
+    /// Validates a QR code without recording attendance.
+    /// </summary>
+    /// <param name="qrHash">The QR code hash to validate.</param>
+    /// <returns>Validation response with QR code details.</returns>
+    [HttpGet("validate/{qrHash}")]
+    [AllowAnonymous]
+    public async Task<ActionResult> ValidateQrCode(string qrHash)
+    {
+        logger.LogInformation("Validating QR code with hash: {QrHash}", qrHash);
+
+        try
+        {
+            var result = await qrCodeService.ValidateQrCodeAsync(qrHash);
+
+            if (!result.IsValid)
+            {
+                logger.LogWarning("QR code validation failed: {Message}", result.Message);
+                return Ok(result); // Return 200 with isValid: false
+            }
+
+            logger.LogInformation("Successfully validated QR code with hash: {QrHash}", qrHash);
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Unexpected error occurred while validating QR code with hash: {QrHash}", qrHash);
+            return Problem(
+                detail: "An unexpected error occurred while validating the QR code",
+                statusCode: 500,
+                title: "Internal Server Error"
+            );
+        }
+    }
+
+    /// <summary>
+    /// Scans a QR code and records attendance for a student.
+    /// </summary>
+    /// <param name="request">The scan request containing QR hash and student ID.</param>
+    /// <returns>Scan response with attendance status.</returns>
+    [HttpPost("scan")]
+    [Authorize]
+    public async Task<ActionResult> ScanQrCode([FromBody] ValidateQrCode request)
+    {
+        logger.LogInformation("Scanning QR code with hash: {QrHash} for student ID: {StudentId}",
+            request.QrHash, request.StudentId);
+
+        try
+        {
+            var result = await qrCodeService.ScanQrCodeAsync(request, User);
+
+            if (!result.Success)
+            {
+                logger.LogWarning("QR code scan failed: {Message}", result.Message);
+                return Ok(result); // Return 200 with success: false
+            }
+
+            logger.LogInformation("Successfully scanned QR code for student ID: {StudentId}", request.StudentId);
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Unexpected error occurred while scanning QR code for student ID: {StudentId}",
+                request.StudentId);
+            return Problem(
+                detail: "An unexpected error occurred while scanning the QR code",
+                statusCode: 500,
+                title: "Internal Server Error"
+            );
+        }
+    }
 }

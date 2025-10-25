@@ -152,6 +152,7 @@ builder.Services.AddScoped<ISubjectRepository, SubjectRepository>();
 builder.Services.AddScoped<IClassroomRepository, ClassroomRepository>();
 builder.Services.AddScoped<IScheduleRepository, ScheduleRepository>();
 builder.Services.AddScoped<IQrCodeRepository, QrCodeRepository>();
+builder.Services.AddScoped<IStudentEnrollmentRepository, StudentEnrollmentRepository>();
 
 // Register services
 builder.Services.AddScoped<IStudentService, StudentService>();
@@ -169,6 +170,7 @@ builder.Services.AddScoped<IRoleInitializationService, RoleInitializationService
 builder.Services.AddScoped<UserContextService>();
 builder.Services.AddScoped<ITokenValidationService, TokenValidationService>();
 builder.Services.AddScoped<ICookieOptionsService, CookieOptionsService>();
+builder.Services.AddScoped<IStudentEnrollmentService, StudentEnrollmentService>();
 
 builder.Services.AddEndpointsApiExplorer();
 
