@@ -74,4 +74,11 @@ public interface IStudentRepository : ISaveableRepository
     /// <returns>The student if found; otherwise, null.</returns>
     Task<Student?> GetStudentByIdIgnoreDeleteStatus(int id);
 
+    /// <summary>
+    /// Retrieves all subjects assigned to a student by their user ID.
+    /// </summary>
+    /// <param name="userId">The user ID of the student.</param>
+    /// <returns>A collection of subjects with schedule details for the student.</returns>
+    Task<IEnumerable<(Subject Subject, Schedules Schedule, Instructor Instructor, Classroom Classroom)>> GetStudentSubjectsAsync(string userId);
+
 }
