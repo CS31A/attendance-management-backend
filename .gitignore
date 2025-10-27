@@ -1,5 +1,27 @@
+# Build artifacts
 bin/
 obj/
 /packages/
-riderModule.iml
 /_ReSharper.Caches/
+
+# IDE specific files
+.idea/
+.vs/
+*.user
+*.suo
+*.userosscache
+riderModule.iml
+
+# AI Assistant configurations
+.claude/
+.qwen/
+.crush/
+
+# Temporary and scratch files
+**/scratch.*
+*.tmp
+*.temp
+
+# OS specific
+.DS_Store
+Thumbs.db
