@@ -267,6 +267,29 @@ public class SubjectService : ISubjectService
             // Re-throw the specific exception for the controller to handle
             throw;
         }
+        catch (DbUpdateException ex) when (ex.InnerException?.Message.Contains("REFERENCE constraint") == true 
+                                           || ex.InnerException?.Message.Contains("FK_") == true)
+        {
+            // Handle foreign key constraint violations with user-friendly messages
+            var innerMessage = ex.InnerException?.Message ?? ex.Message;
+            
+            string userFriendlyMessage;
+            if (innerMessage.Contains("FK_Schedules_Subjects") || innerMessage.Contains("Schedules"))
+            {
+                userFriendlyMessage = "Cannot delete subject because it is assigned to one or more schedules. Please remove the subject from all schedules first.";
+            }
+            else if (innerMessage.Contains("FK_StudentEnrollments") || innerMessage.Contains("StudentEnrollments"))
+            {
+                userFriendlyMessage = "Cannot delete subject because students are enrolled in it. Please remove all student enrollments first.";
+            }
+            else
+            {
+                userFriendlyMessage = "Cannot delete subject because it has associated records. Please remove all dependencies first.";
+            }
+            
+            _logger.LogWarning(ex, "Subject deletion failed due to foreign key constraint: {Message}", userFriendlyMessage);
+            throw new EntityServiceException("Subject", $"DeleteSubject: {id}", userFriendlyMessage, ex);
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error occurred while deleting subject with ID {Id}", id);

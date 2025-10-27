@@ -47,19 +47,16 @@ public class SubjectControllerTest
     }
 
     [Fact]
-    public async Task GetSubjects_ReturnsObjectResult_WhenServiceThrowsException()
+    public async Task GetSubjects_ThrowsException_WhenServiceThrowsException()
     {
         // Arrange
         _mockSubjectService
             .Setup(s => s.GetAllSubjectsAsync())
             .ThrowsAsync(new SubjectServiceException("GetAllSubjects", "Service error"));
 
-        // Act
-        var result = await _controller.GetSubjects();
-
-        // Assert
-        var objectResult = Assert.IsType<ObjectResult>(result.Result);
-        Assert.Equal(500, objectResult.StatusCode);
+        // Act & Assert
+        // The controller no longer catches generic exceptions - they propagate to the global handler
+        await Assert.ThrowsAsync<SubjectServiceException>(() => _controller.GetSubjects());
     }
 
     #endregion
