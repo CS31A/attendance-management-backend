@@ -123,19 +123,26 @@ public class StudentEnrollmentService : IStudentEnrollmentService
 
     public async Task<IEnumerable<Student>> GetStudentsInSectionAsync(int sectionId)
     {
-        var enrollments = await _enrollmentRepository.GetSectionEnrollmentsAsync(sectionId);
-        return enrollments.Where(e => e.IsActive).Select(e => e.Student).Distinct();
+        // Use database-level filtering for better performance
+        var enrollments = await _enrollmentRepository.GetActiveSectionEnrollmentsAsync(sectionId);
+        return enrollments.Select(e => e.Student).Distinct();
     }
 
     public async Task<IEnumerable<Student>> GetStudentsInSubjectAsync(int subjectId)
     {
-        var enrollments = await _enrollmentRepository.GetSubjectEnrollmentsAsync(subjectId);
-        return enrollments.Where(e => e.IsActive).Select(e => e.Student).Distinct();
+        // Use database-level filtering for better performance
+        var enrollments = await _enrollmentRepository.GetActiveSubjectEnrollmentsAsync(subjectId);
+        return enrollments.Select(e => e.Student).Distinct();
     }
 
     public async Task<IEnumerable<StudentEnrollment>> GetSectionEnrollmentsAsync(int sectionId)
     {
         return await _enrollmentRepository.GetSectionEnrollmentsAsync(sectionId);
+    }
+
+    public async Task<IEnumerable<StudentEnrollment>> GetActiveSectionEnrollmentsAsync(int sectionId)
+    {
+        return await _enrollmentRepository.GetActiveSectionEnrollmentsAsync(sectionId);
     }
 
     public async Task<StudentEnrollment?> GetSpecificEnrollmentAsync(int studentId, int sectionId, int subjectId)
