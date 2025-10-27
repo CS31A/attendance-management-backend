@@ -12,6 +12,8 @@ public interface IStudentEnrollmentRepository
     Task<IEnumerable<StudentEnrollment>> GetStudentEnrollmentsAsync(int studentId);
     Task<IEnumerable<StudentEnrollment>> GetSectionEnrollmentsAsync(int sectionId);
     Task<IEnumerable<StudentEnrollment>> GetSubjectEnrollmentsAsync(int subjectId);
+    Task<IEnumerable<StudentEnrollment>> GetActiveSectionEnrollmentsAsync(int sectionId);
+    Task<IEnumerable<StudentEnrollment>> GetActiveSubjectEnrollmentsAsync(int subjectId);
     Task<StudentEnrollment?> GetEnrollmentAsync(int studentId, int sectionId, int subjectId);
     Task<bool> IsStudentEnrolledAsync(int studentId, int sectionId, int subjectId);
     Task<IEnumerable<StudentEnrollment>> GetActiveEnrollmentsAsync(int studentId);

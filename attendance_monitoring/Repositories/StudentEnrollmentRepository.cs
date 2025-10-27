@@ -90,6 +90,25 @@ public class StudentEnrollmentRepository : IStudentEnrollmentRepository
             .ToListAsync();
     }
 
+    public async Task<IEnumerable<StudentEnrollment>> GetActiveSectionEnrollmentsAsync(int sectionId)
+    {
+        return await _context.StudentEnrollments
+            .Include(se => se.Student)
+            .Include(se => se.Section)
+            .Include(se => se.Subject)
+            .Where(se => se.SectionId == sectionId && se.IsActive)
+            .ToListAsync();
+    }
+
+    public async Task<IEnumerable<StudentEnrollment>> GetActiveSubjectEnrollmentsAsync(int subjectId)
+    {
+        return await _context.StudentEnrollments
+            .Include(se => se.Student)
+            .Include(se => se.Section)
+            .Where(se => se.SubjectId == subjectId && se.IsActive)
+            .ToListAsync();
+    }
+
     public async Task<StudentEnrollment?> GetEnrollmentAsync(int studentId, int sectionId, int subjectId)
     {
         return await _context.StudentEnrollments
