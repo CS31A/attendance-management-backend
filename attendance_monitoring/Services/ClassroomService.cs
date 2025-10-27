@@ -249,6 +249,25 @@ public class ClassroomService : IClassroomService
             // Re-throw the specific exception for the controller to handle
             throw;
         }
+        catch (DbUpdateException ex) when (ex.InnerException?.Message.Contains("REFERENCE constraint") == true 
+                                           || ex.InnerException?.Message.Contains("FK_") == true)
+        {
+            // Handle foreign key constraint violations with user-friendly messages
+            var innerMessage = ex.InnerException?.Message ?? ex.Message;
+            
+            string userFriendlyMessage;
+            if (innerMessage.Contains("FK_Schedules_Classrooms") || innerMessage.Contains("Schedules"))
+            {
+                userFriendlyMessage = "Cannot delete classroom because it is assigned to one or more schedules. Please remove the classroom from all schedules first.";
+            }
+            else
+            {
+                userFriendlyMessage = "Cannot delete classroom because it has associated records. Please remove all dependencies first.";
+            }
+            
+            _logger.LogWarning(ex, "Classroom deletion failed due to foreign key constraint: {Message}", userFriendlyMessage);
+            throw new EntityServiceException("Classroom", $"DeleteClassroom: {id}", userFriendlyMessage, ex);
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error occurred while deleting classroom with ID {Id}", id);
