@@ -32,6 +32,9 @@ public class StudentEnrollmentController : ControllerBase
     {
         try
         {
+            _logger.LogInformation("Enrolling student {StudentId} in section {SectionId} for subject {SubjectId}",
+                request.StudentId, request.SectionId, request.SubjectId);
+
             var enrollment = await _enrollmentService.EnrollStudentAsync(
                 request.StudentId,
                 request.SectionId,
@@ -62,22 +65,25 @@ public class StudentEnrollmentController : ControllerBase
                 UpdatedAt = enrollment.UpdatedAt
             };
 
+            _logger.LogInformation("Successfully enrolled student {StudentId}", request.StudentId);
             return Ok(response);
         }
         catch (EntityNotFoundException<int> ex)
         {
+            _logger.LogWarning(ex, "Entity not found while enrolling student {StudentId}", request.StudentId);
             return NotFound(new { message = ex.Message });
         }
         catch (EntityAlreadyExistsException<string> ex)
         {
+            _logger.LogWarning(ex, "Duplicate enrollment attempt for student {StudentId}", request.StudentId);
             return Conflict(new { message = ex.Message });
         }
-        catch (Exception ex)
+        catch (EntityAlreadyExistsException<int> ex)
         {
-            _logger.LogError(ex, "Error enrolling student {StudentId} in section {SectionId} for subject {SubjectId}",
-                request.StudentId, request.SectionId, request.SubjectId);
-            return StatusCode(500, new { message = "An error occurred while enrolling the student" });
+            _logger.LogWarning(ex, "Duplicate enrollment attempt for student {StudentId}", request.StudentId);
+            return Conflict(new { message = ex.Message });
         }
+        // No generic catch - let global exception handler handle unexpected errors
     }
 
     /// <summary>
@@ -87,34 +93,32 @@ public class StudentEnrollmentController : ControllerBase
     [Authorize(Roles = "Admin,Instructor,Student")]
     public async Task<ActionResult<StudentSectionsResponseDto>> GetStudentEnrollments(int studentId)
     {
-        try
-        {
-            var enrollments = await _enrollmentService.GetStudentEnrollmentsAsync(studentId);
+        _logger.LogInformation("Retrieving enrollments for student {StudentId}", studentId);
 
-            var response = new StudentSectionsResponseDto
+        var enrollments = await _enrollmentService.GetStudentEnrollmentsAsync(studentId);
+
+        var response = new StudentSectionsResponseDto
+        {
+            StudentId = studentId,
+            Enrollments = enrollments.Select(e => new EnrollmentSummaryDto
             {
-                StudentId = studentId,
-                Enrollments = enrollments.Select(e => new EnrollmentSummaryDto
-                {
-                    EnrollmentId = e.Id,
-                    SectionId = e.SectionId,
-                    SectionName = e.Section?.Name,
-                    SubjectId = e.SubjectId,
-                    SubjectName = e.Subject?.Name,
-                    SubjectCode = e.Subject?.Code,
-                    EnrollmentType = e.EnrollmentType,
-                    IsActive = e.IsActive,
-                    EnrolledAt = e.EnrolledAt
-                }).ToList()
-            };
+                EnrollmentId = e.Id,
+                SectionId = e.SectionId,
+                SectionName = e.Section?.Name,
+                SubjectId = e.SubjectId,
+                SubjectName = e.Subject?.Name,
+                SubjectCode = e.Subject?.Code,
+                EnrollmentType = e.EnrollmentType,
+                IsActive = e.IsActive,
+                EnrolledAt = e.EnrolledAt
+            }).ToList()
+        };
 
-            return Ok(response);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error retrieving enrollments for student {StudentId}", studentId);
-            return StatusCode(500, new { message = "An error occurred while retrieving student enrollments" });
-        }
+        _logger.LogInformation("Successfully retrieved {Count} enrollments for student {StudentId}",
+            response.Enrollments.Count, studentId);
+
+        return Ok(response);
+        // No try-catch - let global exception handler handle any errors
     }
 
     /// <summary>
@@ -124,40 +128,36 @@ public class StudentEnrollmentController : ControllerBase
     [Authorize(Roles = "Admin,Instructor")]
     public async Task<ActionResult<IEnumerable<StudentEnrollmentResponseDto>>> GetSectionStudents(int sectionId)
     {
-        try
-        {
-            // Get only active enrollments from database (database-level filtering, no in-memory filtering)
-            var enrollments = await _enrollmentService.GetActiveSectionEnrollmentsAsync(sectionId);
+        _logger.LogInformation("Retrieving active students for section {SectionId}", sectionId);
 
-            var response = enrollments.Select(e => new StudentEnrollmentResponseDto
-            {
-                Id = e.Id,
-                StudentId = e.StudentId,
-                StudentFirstname = e.Student?.Firstname,
-                StudentLastname = e.Student?.Lastname,
-                StudentEmail = e.Student?.Email,
-                SectionId = e.SectionId,
-                SectionName = e.Section?.Name,
-                SubjectId = e.SubjectId,
-                SubjectName = e.Subject?.Name,
-                SubjectCode = e.Subject?.Code,
-                IsActive = e.IsActive,
-                EnrollmentType = e.EnrollmentType,
-                AcademicYear = e.AcademicYear,
-                Semester = e.Semester,
-                EnrolledAt = e.EnrolledAt,
-                DroppedAt = e.DroppedAt,
-                CreatedAt = e.CreatedAt,
-                UpdatedAt = e.UpdatedAt
-            });
+        // Get only active enrollments from database (database-level filtering, no in-memory filtering)
+        var enrollments = await _enrollmentService.GetActiveSectionEnrollmentsAsync(sectionId);
 
-            return Ok(response);
-        }
-        catch (Exception ex)
+        var response = enrollments.Select(e => new StudentEnrollmentResponseDto
         {
-            _logger.LogError(ex, "Error retrieving students for section {SectionId}", sectionId);
-            return StatusCode(500, new { message = "An error occurred while retrieving section students" });
-        }
+            Id = e.Id,
+            StudentId = e.StudentId,
+            StudentFirstname = e.Student?.Firstname,
+            StudentLastname = e.Student?.Lastname,
+            StudentEmail = e.Student?.Email,
+            SectionId = e.SectionId,
+            SectionName = e.Section?.Name,
+            SubjectId = e.SubjectId,
+            SubjectName = e.Subject?.Name,
+            SubjectCode = e.Subject?.Code,
+            IsActive = e.IsActive,
+            EnrollmentType = e.EnrollmentType,
+            AcademicYear = e.AcademicYear,
+            Semester = e.Semester,
+            EnrolledAt = e.EnrolledAt,
+            DroppedAt = e.DroppedAt,
+            CreatedAt = e.CreatedAt,
+            UpdatedAt = e.UpdatedAt
+        });
+
+        _logger.LogInformation("Successfully retrieved students for section {SectionId}", sectionId);
+        return Ok(response);
+        // No try-catch - let global exception handler handle any errors
     }
 
     /// <summary>
@@ -169,18 +169,24 @@ public class StudentEnrollmentController : ControllerBase
     {
         try
         {
+            _logger.LogInformation("Dropping student from enrollment {EnrollmentId}", enrollmentId);
             var success = await _enrollmentService.DropStudentFromSubjectAsync(enrollmentId);
-            
-            if (!success)
-                return NotFound(new { message = "Enrollment not found" });
 
+            if (!success)
+            {
+                _logger.LogWarning("Enrollment {EnrollmentId} not found", enrollmentId);
+                return NotFound(new { message = "Enrollment not found" });
+            }
+
+            _logger.LogInformation("Successfully dropped student from enrollment {EnrollmentId}", enrollmentId);
             return Ok(new { message = "Student successfully dropped from enrollment" });
         }
-        catch (Exception ex)
+        catch (EntityNotFoundException<int> ex)
         {
-            _logger.LogError(ex, "Error dropping student from enrollment {EnrollmentId}", enrollmentId);
-            return StatusCode(500, new { message = "An error occurred while dropping the student" });
+            _logger.LogWarning(ex, "Enrollment {EnrollmentId} not found", enrollmentId);
+            return NotFound(new { message = ex.Message });
         }
+        // No generic catch - let global exception handler handle unexpected errors
     }
 
     /// <summary>
@@ -192,18 +198,24 @@ public class StudentEnrollmentController : ControllerBase
     {
         try
         {
+            _logger.LogInformation("Re-enrolling student for enrollment {EnrollmentId}", enrollmentId);
             var success = await _enrollmentService.ReenrollStudentAsync(enrollmentId);
-            
-            if (!success)
-                return NotFound(new { message = "Enrollment not found" });
 
+            if (!success)
+            {
+                _logger.LogWarning("Enrollment {EnrollmentId} not found", enrollmentId);
+                return NotFound(new { message = "Enrollment not found" });
+            }
+
+            _logger.LogInformation("Successfully re-enrolled student for enrollment {EnrollmentId}", enrollmentId);
             return Ok(new { message = "Student successfully re-enrolled" });
         }
-        catch (Exception ex)
+        catch (EntityNotFoundException<int> ex)
         {
-            _logger.LogError(ex, "Error re-enrolling student for enrollment {EnrollmentId}", enrollmentId);
-            return StatusCode(500, new { message = "An error occurred while re-enrolling the student" });
+            _logger.LogWarning(ex, "Enrollment {EnrollmentId} not found", enrollmentId);
+            return NotFound(new { message = ex.Message });
         }
+        // No generic catch - let global exception handler handle unexpected errors
     }
 
     /// <summary>
@@ -213,16 +225,12 @@ public class StudentEnrollmentController : ControllerBase
     [Authorize(Roles = "Admin,Instructor,Student")]
     public async Task<ActionResult<bool>> CheckEnrollment([FromQuery] int studentId, [FromQuery] int sectionId, [FromQuery] int subjectId)
     {
-        try
-        {
-            var isEnrolled = await _enrollmentService.IsStudentEnrolledInSectionSubjectAsync(studentId, sectionId, subjectId);
-            return Ok(new { isEnrolled });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error checking enrollment for student {StudentId}, section {SectionId}, subject {SubjectId}",
-                studentId, sectionId, subjectId);
-            return StatusCode(500, new { message = "An error occurred while checking enrollment" });
-        }
+        _logger.LogInformation("Checking enrollment for student {StudentId}, section {SectionId}, subject {SubjectId}",
+            studentId, sectionId, subjectId);
+
+        var isEnrolled = await _enrollmentService.IsStudentEnrolledInSectionSubjectAsync(studentId, sectionId, subjectId);
+
+        return Ok(new { isEnrolled });
+        // No try-catch - let global exception handler handle any errors
     }
 }

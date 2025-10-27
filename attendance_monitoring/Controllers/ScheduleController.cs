@@ -29,21 +29,11 @@ namespace attendance_monitoring.Controllers
         public async Task<ActionResult<IEnumerable<ScheduleResponseDto>>> GetSchedules()
         {
             logger.LogInformation("Getting all schedules");
-            try
-            {
-                var schedules = await scheduleService.GetAllSchedulesAsync();
-                logger.LogInformation("Successfully retrieved {Count} schedules", schedules.Count());
-                return Ok(schedules);
-            }
-            catch (Exception ex)
-            {
-                logger.LogError(ex, "Unexpected error occurred while retrieving all schedules");
-                return Problem(
-                    detail: "An unexpected error occurred",
-                    statusCode: 500,
-                    title: "Internal Server Error"
-                );
-            }
+
+            var schedules = await scheduleService.GetAllSchedulesAsync();
+            logger.LogInformation("Successfully retrieved {Count} schedules", schedules.Count());
+            return Ok(schedules);
+            // No try-catch - global handler will catch any unexpected errors
         }
 
         /// <summary>
@@ -66,27 +56,10 @@ namespace attendance_monitoring.Controllers
             }
             catch (EntityNotFoundException<int> ex)
             {
-                logger.LogWarning("Schedule with ID {Id} not found", id);
-                return NotFound(ex.Message);
+                logger.LogWarning(ex, "Schedule with ID {Id} not found", id);
+                return NotFound(new { message = ex.Message });
             }
-            catch (EntityServiceException ex)
-            {
-                logger.LogError(ex, "Error occurred while retrieving schedule with ID {Id}", id);
-                return Problem(
-                    detail: "An error occurred while retrieving the schedule",
-                    statusCode: 500,
-                    title: "Internal Server Error"
-                );
-            }
-            catch (Exception ex)
-            {
-                logger.LogError(ex, "Unexpected error occurred while retrieving schedule with ID {Id}", id);
-                return Problem(
-                    detail: "An unexpected error occurred",
-                    statusCode: 500,
-                    title: "Internal Server Error"
-                );
-            }
+            // No generic catch - global handler will manage unexpected errors
         }
 
         /// <summary>
@@ -100,31 +73,12 @@ namespace attendance_monitoring.Controllers
         public async Task<ActionResult<IEnumerable<ScheduleResponseDto>>> GetSchedulesByInstructor(int instructorId)
         {
             logger.LogInformation("Getting schedules for instructor ID: {InstructorId}", instructorId);
-            try
-            {
-                var schedules = await scheduleService.GetSchedulesByInstructorIdAsync(instructorId);
-                logger.LogInformation("Successfully retrieved {Count} schedules for instructor ID: {InstructorId}", 
-                    schedules.Count(), instructorId);
-                return Ok(schedules);
-            }
-            catch (EntityServiceException ex)
-            {
-                logger.LogError(ex, "Error occurred while retrieving schedules for instructor ID {InstructorId}", instructorId);
-                return Problem(
-                    detail: "An error occurred while retrieving schedules for the instructor",
-                    statusCode: 500,
-                    title: "Internal Server Error"
-                );
-            }
-            catch (Exception ex)
-            {
-                logger.LogError(ex, "Unexpected error occurred while retrieving schedules for instructor ID {InstructorId}", instructorId);
-                return Problem(
-                    detail: "An unexpected error occurred",
-                    statusCode: 500,
-                    title: "Internal Server Error"
-                );
-            }
+
+            var schedules = await scheduleService.GetSchedulesByInstructorIdAsync(instructorId);
+            logger.LogInformation("Successfully retrieved {Count} schedules for instructor ID: {InstructorId}",
+                schedules.Count(), instructorId);
+            return Ok(schedules);
+            // No try-catch - global handler will catch any unexpected errors
         }
 
         #endregion
@@ -159,37 +113,34 @@ namespace attendance_monitoring.Controllers
                 if (error != null)
                 {
                     logger.LogWarning("Schedule creation failed: {Error}", error);
-                    return BadRequest(error);
+                    return BadRequest(new { message = error });
                 }
 
                 if (schedule == null)
                 {
-                    logger.LogError("Schedule creation failed: Unexpected error occurred");
-                    return BadRequest("An unexpected error occurred while creating the schedule.");
+                    logger.LogWarning("Schedule creation failed: Unexpected error occurred");
+                    return BadRequest(new { message = "An unexpected error occurred while creating the schedule." });
                 }
 
                 logger.LogInformation("Successfully created schedule with ID: {Id} and TimeIn: {TimeIn}, TimeOut: {TimeOut}", schedule.Id, schedule.TimeIn, schedule.TimeOut);
                 return CreatedAtAction(nameof(GetSchedule), new { id = schedule.Id }, schedule);
             }
-            catch (EntityServiceException ex)
+            catch (EntityNotFoundException<int> ex)
             {
-                logger.LogError(ex, "Error occurred while creating schedule with TimeIn: {TimeIn}, TimeOut: {TimeOut}", createSchedule.TimeIn, createSchedule.TimeOut);
-                return Problem(
-                    detail: "An error occurred while creating the schedule",
-                    statusCode: 500,
-                    title: "Internal Server Error"
-                );
+                logger.LogWarning(ex, "Entity not found while creating schedule");
+                return NotFound(new { message = ex.Message });
             }
-            catch (Exception ex)
+            catch (EntityAlreadyExistsException<string> ex)
             {
-                logger.LogError(ex, "Unexpected error occurred while creating schedule with TimeIn: {TimeIn}, TimeOut: {TimeOut}",
-                    createSchedule.TimeIn, createSchedule.TimeOut);
-                return Problem(
-                    detail: "An unexpected error occurred",
-                    statusCode: 500,
-                    title: "Internal Server Error"
-                );
+                logger.LogWarning(ex, "Duplicate schedule detected");
+                return Conflict(new { message = ex.Message });
             }
+            catch (EntityAlreadyExistsException<int> ex)
+            {
+                logger.LogWarning(ex, "Duplicate schedule detected");
+                return Conflict(new { message = ex.Message });
+            }
+            // No generic catch - global handler will manage unexpected errors
         }
 
         #endregion
@@ -225,7 +176,7 @@ namespace attendance_monitoring.Controllers
                 if (error != null)
                 {
                     logger.LogWarning("Schedule update failed for schedule ID {Id}: {Error}", id, error);
-                    return BadRequest(error);
+                    return BadRequest(new { message = error });
                 }
 
                 logger.LogInformation("Successfully updated schedule with ID: {Id}", id);
@@ -233,27 +184,10 @@ namespace attendance_monitoring.Controllers
             }
             catch (EntityNotFoundException<int> ex)
             {
-                logger.LogWarning("Schedule update failed: Schedule with ID {Id} not found", id);
-                return NotFound(ex.Message);
+                logger.LogWarning(ex, "Schedule update failed: Schedule with ID {Id} not found", id);
+                return NotFound(new { message = ex.Message });
             }
-            catch (EntityServiceException ex)
-            {
-                logger.LogError(ex, "Error occurred while updating schedule with ID {Id}", id);
-                return Problem(
-                    detail: "An error occurred while updating the schedule",
-                    statusCode: 500,
-                    title: "Internal Server Error"
-                );
-            }
-            catch (Exception ex)
-            {
-                logger.LogError(ex, "Unexpected error occurred while updating schedule with ID {Id}", id);
-                return Problem(
-                    detail: "An unexpected error occurred",
-                    statusCode: 500,
-                    title: "Internal Server Error"
-                );
-            }
+            // No generic catch - global handler will manage unexpected errors
         }
 
         #endregion
@@ -285,31 +219,19 @@ namespace attendance_monitoring.Controllers
                 }
 
                 logger.LogWarning("Schedule deletion failed for schedule ID {Id}: {Error}", id, error);
-                return BadRequest(error);
+                return BadRequest(new { message = error });
             }
             catch (EntityNotFoundException<int> ex)
             {
-                logger.LogWarning("Schedule deletion failed: Schedule with ID {Id} not found", id);
-                return NotFound(ex.Message);
+                logger.LogWarning(ex, "Schedule deletion failed: Schedule with ID {Id} not found", id);
+                return NotFound(new { message = ex.Message });
             }
-            catch (EntityServiceException ex)
+            catch (EntityUnauthorizedException ex)
             {
-                logger.LogError(ex, "Error occurred while deleting schedule with ID {Id}", id);
-                return Problem(
-                    detail: "An error occurred while deleting the schedule",
-                    statusCode: 500,
-                    title: "Internal Server Error"
-                );
+                logger.LogWarning(ex, "Unauthorized schedule deletion attempt for schedule ID {Id}", id);
+                return Forbid();
             }
-            catch (Exception ex)
-            {
-                logger.LogError(ex, "Unexpected error occurred while deleting schedule with ID {Id}", id);
-                return Problem(
-                    detail: "An unexpected error occurred",
-                    statusCode: 500,
-                    title: "Internal Server Error"
-                );
-            }
+            // No generic catch - global handler will manage unexpected errors
         }
 
         #endregion
