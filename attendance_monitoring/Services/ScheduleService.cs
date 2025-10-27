@@ -244,6 +244,29 @@ namespace attendance_monitoring.Services
                 logger.LogInformation("Successfully deleted schedule with ID: {Id}", id);
                 return null;
             }
+            catch (DbUpdateException ex) when (ex.InnerException?.Message.Contains("REFERENCE constraint") == true 
+                                               || ex.InnerException?.Message.Contains("FK_") == true)
+            {
+                // Handle foreign key constraint violations with user-friendly messages
+                var innerMessage = ex.InnerException?.Message ?? ex.Message;
+                
+                string userFriendlyMessage;
+                if (innerMessage.Contains("FK_QrCodes_Schedules") || innerMessage.Contains("QrCodes"))
+                {
+                    userFriendlyMessage = "Cannot delete schedule because it has associated QR codes. Please delete or revoke the QR codes first.";
+                }
+                else if (innerMessage.Contains("FK_Attendance") || innerMessage.Contains("Attendance"))
+                {
+                    userFriendlyMessage = "Cannot delete schedule because it has associated attendance records. Schedules with attendance history cannot be deleted.";
+                }
+                else
+                {
+                    userFriendlyMessage = "Cannot delete schedule because it has associated records. Please remove all dependencies first.";
+                }
+                
+                logger.LogWarning(ex, "Schedule deletion failed due to foreign key constraint: {Message}", userFriendlyMessage);
+                throw new EntityServiceException("Schedule", $"DeleteSchedule: {id}", userFriendlyMessage, ex);
+            }
             catch (Exception ex)
             {
                 logger.LogError(ex, "Error occurred while deleting schedule with ID: {Id}", id);

@@ -155,7 +155,12 @@ public class ScheduleControllerTest
 
         // Assert
         var badRequestResult = Assert.IsType<BadRequestObjectResult>(result.Result);
-        Assert.Equal("Schedule conflict detected", badRequestResult.Value);
+        // Controller now returns structured JSON: { message = "..." }
+        Assert.NotNull(badRequestResult.Value);
+        var messageProperty = badRequestResult.Value.GetType().GetProperty("message");
+        Assert.NotNull(messageProperty);
+        var message = messageProperty.GetValue(badRequestResult.Value) as string;
+        Assert.Equal("Schedule conflict detected", message);
     }
 
     [Fact]
@@ -186,7 +191,7 @@ public class ScheduleControllerTest
     }
 
     [Fact]
-    public async Task PostSchedule_ReturnsInternalServerError_WhenExceptionOccurs()
+    public async Task PostSchedule_ThrowsException_WhenExceptionOccurs()
     {
         // Arrange
         var createSchedule = new CreateSchedule
@@ -204,12 +209,9 @@ public class ScheduleControllerTest
             .Setup(s => s.CreateScheduleAsync(createSchedule))
             .ThrowsAsync(new Exception("Database error"));
 
-        // Act
-        var result = await _scheduleController.PostSchedule(createSchedule);
-
-        // Assert
-        var objectResult = Assert.IsType<ObjectResult>(result.Result);
-        Assert.Equal(500, objectResult.StatusCode);
+        // Act & Assert
+        // The controller no longer catches generic exceptions - they propagate to the global handler
+        await Assert.ThrowsAsync<Exception>(() => _scheduleController.PostSchedule(createSchedule));
     }
 
     #endregion
@@ -306,11 +308,16 @@ public class ScheduleControllerTest
 
         // Assert
         var badRequestResult = Assert.IsType<BadRequestObjectResult>(result.Result);
-        Assert.Equal("Schedule conflict detected", badRequestResult.Value);
+        // Controller now returns structured JSON: { message = "..." }
+        Assert.NotNull(badRequestResult.Value);
+        var messageProperty = badRequestResult.Value.GetType().GetProperty("message");
+        Assert.NotNull(messageProperty);
+        var message = messageProperty.GetValue(badRequestResult.Value) as string;
+        Assert.Equal("Schedule conflict detected", message);
     }
 
     [Fact]
-    public async Task UpdateSchedule_ReturnsInternalServerError_WhenExceptionOccurs()
+    public async Task UpdateSchedule_ThrowsException_WhenExceptionOccurs()
     {
         // Arrange
         int scheduleId = 1;
@@ -329,12 +336,9 @@ public class ScheduleControllerTest
             .Setup(s => s.UpdateScheduleAsync(scheduleId, updateSchedule))
             .ThrowsAsync(new Exception("Database error"));
 
-        // Act
-        var result = await _scheduleController.UpdateSchedule(scheduleId, updateSchedule);
-
-        // Assert
-        var objectResult = Assert.IsType<ObjectResult>(result.Result);
-        Assert.Equal(500, objectResult.StatusCode);
+        // Act & Assert
+        // The controller no longer catches generic exceptions - they propagate to the global handler
+        await Assert.ThrowsAsync<Exception>(() => _scheduleController.UpdateSchedule(scheduleId, updateSchedule));
     }
 
     #endregion
@@ -376,11 +380,16 @@ public class ScheduleControllerTest
 
         // Assert
         var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
-        Assert.Equal(errorMessage, badRequestResult.Value);
+        // Controller now returns structured JSON: { message = "..." }
+        Assert.NotNull(badRequestResult.Value);
+        var messageProperty = badRequestResult.Value.GetType().GetProperty("message");
+        Assert.NotNull(messageProperty);
+        var message = messageProperty.GetValue(badRequestResult.Value) as string;
+        Assert.Equal(errorMessage, message);
     }
 
     [Fact]
-    public async Task DeleteSchedule_ReturnsInternalServerError_WhenUnexpectedExceptionOccurs()
+    public async Task DeleteSchedule_ThrowsException_WhenUnexpectedExceptionOccurs()
     {
         // Arrange
         int scheduleId = 1;
@@ -389,12 +398,9 @@ public class ScheduleControllerTest
             .Setup(s => s.DeleteScheduleAsync(scheduleId, It.IsAny<ClaimsPrincipal>()))
             .ThrowsAsync(new Exception("Unexpected error"));
 
-        // Act
-        var result = await _scheduleController.DeleteSchedule(scheduleId);
-
-        // Assert
-        var objectResult = Assert.IsType<ObjectResult>(result);
-        Assert.Equal(500, objectResult.StatusCode);
+        // Act & Assert
+        // The controller no longer catches generic exceptions - they propagate to the global handler
+        await Assert.ThrowsAsync<Exception>(() => _scheduleController.DeleteSchedule(scheduleId));
     }
 
     #endregion

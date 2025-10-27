@@ -21,7 +21,7 @@ public class Student
     // Foreign key to Identity user - should not be nullable
     public string UserId { get; set; } = string.Empty;
 
-    // Foreign key to Section - should not be nullable
+    // Foreign key to Section - primary/home section (kept for backward compatibility)
     public int SectionId { get; set; }
 
     // Navigation property - required relationship
@@ -29,10 +29,14 @@ public class Student
     [JsonIgnore]
     public IdentityUser User { get; set; } = null!;
 
-    // Navigation property - required relationship
+    // Navigation property - required relationship (primary/home section)
     [ForeignKey("SectionId")]
     [JsonIgnore]
     public Section Section { get; set; } = null!;
+
+    // Navigation property for additional enrollments (irregular student subjects)
+    [JsonIgnore]
+    public ICollection<StudentEnrollment> AdditionalEnrollments { get; set; } = new List<StudentEnrollment>();
 
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }

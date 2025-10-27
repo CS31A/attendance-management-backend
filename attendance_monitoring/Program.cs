@@ -3,6 +3,8 @@ using attendance_monitoring.IServices;
 using attendance_monitoring.IRepository;
 using attendance_monitoring.Repositories;
 using attendance_monitoring.Services;
+using attendance_monitoring.Exceptions;
+using attendance_monitoring.Models.DTO.Response;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -13,6 +15,7 @@ using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.ResponseCompression;
 using System.IO.Compression;
 using System.Diagnostics;
+using Microsoft.AspNetCore.Diagnostics;
 
 // Load environment variables from .env file
 DotNetEnv.Env.Load();
@@ -152,6 +155,7 @@ builder.Services.AddScoped<ISubjectRepository, SubjectRepository>();
 builder.Services.AddScoped<IClassroomRepository, ClassroomRepository>();
 builder.Services.AddScoped<IScheduleRepository, ScheduleRepository>();
 builder.Services.AddScoped<IQrCodeRepository, QrCodeRepository>();
+builder.Services.AddScoped<IStudentEnrollmentRepository, StudentEnrollmentRepository>();
 
 // Register services
 builder.Services.AddScoped<IStudentService, StudentService>();
@@ -169,6 +173,7 @@ builder.Services.AddScoped<IRoleInitializationService, RoleInitializationService
 builder.Services.AddScoped<UserContextService>();
 builder.Services.AddScoped<ITokenValidationService, TokenValidationService>();
 builder.Services.AddScoped<ICookieOptionsService, CookieOptionsService>();
+builder.Services.AddScoped<IStudentEnrollmentService, StudentEnrollmentService>();
 
 builder.Services.AddEndpointsApiExplorer();
 
@@ -284,6 +289,110 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 app.UseCors("AllowFrontend");
+
+// Global Exception Handler - Catches all unhandled exceptions
+app.UseExceptionHandler(errorApp =>
+{
+    errorApp.Run(async context =>
+    {
+        var exceptionHandlerFeature = context.Features.Get<IExceptionHandlerPathFeature>();
+        var exception = exceptionHandlerFeature?.Error;
+        var logger = context.RequestServices.GetRequiredService<ILogger<Program>>();
+
+        // Map exceptions to appropriate HTTP status codes and messages
+        (int statusCode, string message, bool includeDetails) = exception switch
+        {
+            // Custom domain exceptions
+            EntityNotFoundException<int> ex =>
+                (StatusCodes.Status404NotFound, ex.Message, false),
+
+            EntityNotFoundException<string> ex =>
+                (StatusCodes.Status404NotFound, ex.Message, false),
+
+            EntityUnauthorizedException ex =>
+                (StatusCodes.Status403Forbidden, ex.Message, false),
+
+            EntityAlreadyExistsException<int> ex =>
+                (StatusCodes.Status409Conflict, ex.Message, false),
+
+            EntityAlreadyExistsException<string> ex =>
+                (StatusCodes.Status409Conflict, ex.Message, false),
+
+            // Database exceptions
+            DbUpdateConcurrencyException ex =>
+                (StatusCodes.Status409Conflict,
+                 "The record was modified by another user. Please refresh and try again.",
+                 true),
+
+            DbUpdateException ex =>
+                (StatusCodes.Status503ServiceUnavailable,
+                 "Database is temporarily unavailable. Please try again later.",
+                 true),
+
+            // Timeout exceptions
+            TimeoutException ex =>
+                (StatusCodes.Status504GatewayTimeout,
+                 "The request timed out. Please try again.",
+                 true),
+
+            // Validation exceptions
+            ArgumentNullException ex =>
+                (StatusCodes.Status400BadRequest,
+                 $"Missing required parameter: {ex.ParamName}",
+                 false),
+
+            ArgumentException ex =>
+                (StatusCodes.Status400BadRequest,
+                 ex.Message,
+                 false),
+
+            // Service layer exceptions
+            EntityServiceException ex =>
+                (StatusCodes.Status400BadRequest, ex.Message, true),
+
+            // Unexpected exceptions
+            _ => (StatusCodes.Status500InternalServerError,
+                  "An unexpected error occurred. Please contact support if this persists.",
+                  true)
+        };
+
+        // Log the exception with appropriate severity
+        if (statusCode >= 500)
+        {
+            logger.LogError(exception,
+                "Unhandled exception: {ExceptionType} | Status: {StatusCode} | Path: {Path} | Message: {Message}",
+                exception?.GetType().Name, statusCode, context.Request.Path, message);
+        }
+        else
+        {
+            logger.LogWarning(exception,
+                "Client error: {ExceptionType} | Status: {StatusCode} | Path: {Path} | Message: {Message}",
+                exception?.GetType().Name, statusCode, context.Request.Path, message);
+        }
+
+        // Build error response
+        var errorResponse = new ErrorResponseDto
+        {
+            Success = false,
+            Message = message,
+            StatusCode = statusCode,
+            Path = context.Request.Path,
+            Timestamp = DateTime.UtcNow
+        };
+
+        // Include detailed error information in development
+        if (app.Environment.IsDevelopment() && includeDetails && exception != null)
+        {
+            errorResponse.Details = exception.ToString();
+        }
+
+        context.Response.StatusCode = statusCode;
+        context.Response.ContentType = "application/json";
+
+        await context.Response.WriteAsJsonAsync(errorResponse);
+    });
+});
+
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();

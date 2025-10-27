@@ -22,6 +22,7 @@ namespace attendance_monitoring.Data
         public DbSet<RefreshToken> RefreshTokens { get; set; } = null!;
         public DbSet<BlacklistedToken> BlacklistedTokens { get; set; } = null!;
         public DbSet<QrCode> QrCodes { get; set; } = null!;
+        public DbSet<StudentEnrollment> StudentEnrollments { get; set; } = null!;
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
@@ -55,6 +56,32 @@ namespace attendance_monitoring.Data
                 .HasOne(s => s.Instructor)
                 .WithMany()
                 .HasForeignKey(s => s.InstructorId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // Configure Student-Section relationship (primary/home section)
+            builder.Entity<Student>()
+                .HasOne(s => s.Section)
+                .WithMany()
+                .HasForeignKey(s => s.SectionId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // Configure StudentEnrollment relationships (additional enrollments)
+            builder.Entity<StudentEnrollment>()
+                .HasOne(se => se.Student)
+                .WithMany(s => s.AdditionalEnrollments)
+                .HasForeignKey(se => se.StudentId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            builder.Entity<StudentEnrollment>()
+                .HasOne(se => se.Section)
+                .WithMany(s => s.StudentEnrollments)
+                .HasForeignKey(se => se.SectionId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            builder.Entity<StudentEnrollment>()
+                .HasOne(se => se.Subject)
+                .WithMany(s => s.StudentEnrollments)
+                .HasForeignKey(se => se.SubjectId)
                 .OnDelete(DeleteBehavior.Restrict);
         }
     }
