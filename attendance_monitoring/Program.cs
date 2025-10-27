@@ -1,407 +1,59 @@
-using attendance_monitoring.Data;
-using attendance_monitoring.IServices;
-using attendance_monitoring.IRepository;
-using attendance_monitoring.Repositories;
-using attendance_monitoring.Services;
-using attendance_monitoring.Exceptions;
-using attendance_monitoring.Models.DTO.Response;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.AspNetCore.Identity;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.IdentityModel.Tokens;
-using Microsoft.OpenApi.Models;
-using Scalar.AspNetCore;
-using System.Text.Json.Serialization;
-using Microsoft.AspNetCore.ResponseCompression;
-using System.IO.Compression;
-using System.Diagnostics;
-using Microsoft.AspNetCore.Diagnostics;
+using attendance_monitoring.Extensions.ServiceCollectionExtensions;
+using attendance_monitoring.Extensions.WebApplicationExtensions;
 
 // Load environment variables from .env file
 DotNetEnv.Env.Load();
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
-// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
-builder.Services.AddOpenApi();
+// ===== SERVICE REGISTRATION =====
 
-builder.Services.AddSwaggerGen(c =>
-{
-    c.SwaggerDoc("v1", new OpenApiInfo { Title = "Attendance Monitoring API", Version = "v1" });
-    var securityScheme = new OpenApiSecurityScheme
-    {
-        Name = "Authorization",
-        Description = "Enter JWT Bearer token",
-        In = ParameterLocation.Header,
-        Type = SecuritySchemeType.Http,
-        Scheme = "bearer",
-        BearerFormat = "JWT",
-        Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "Bearer" }
-    };
-    c.AddSecurityDefinition("Bearer", securityScheme);
-    c.AddSecurityRequirement(new OpenApiSecurityRequirement
-    {
-        {
-            new OpenApiSecurityScheme
-            {
-                Reference = new OpenApiReference
-                {
-                    Type = ReferenceType.SecurityScheme,
-                    Id = "Bearer"
-                }
-            }, new List<string>()
-        }
-    });
-});
+// Database & Identity
+builder.Services.AddDatabaseServices(builder.Configuration);
 
-// Add Response Compression with Gzip - Selective application
-builder.Services.AddResponseCompression(options =>
-{
-    options.EnableForHttps = true; // Enable compression for HTTPS requests
-    options.Providers.Add<GzipCompressionProvider>();
-    options.MimeTypes = new[] { "application/json", "text/json" };
-});
+// Authentication & Authorization
+builder.Services.AddAuthenticationServices(builder.Configuration);
+builder.Services.AddAuthorizationPolicies();
 
-// Configure Gzip compression level
-builder.Services.Configure<GzipCompressionProviderOptions>(options =>
-{
-    options.Level = CompressionLevel.Optimal; // Best compression ratio
-});
+// API Documentation
+builder.Services.AddApiDocumentation();
 
-builder.Services.AddControllers()
-    .AddJsonOptions(options =>
-    {
-        // Ignore null values in JSON responses for cleaner output
-        options.JsonSerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull;
-    });
+// Response Handling & CORS
+builder.Services.AddResponseHandling();
+builder.Services.AddCorsPolicy();
 
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection"); // fallback to in-memory if null
-if (string.IsNullOrWhiteSpace(connectionString))
-{
-    builder.Services.AddDbContext<ApplicationDbContext>(options => options.UseInMemoryDatabase("AttendanceDb"));
-}
-else
-{
-    builder.Services.AddDbContext<ApplicationDbContext>(options => options.UseSqlServer(connectionString));
-}
+// Dependency Injection
+builder.Services.AddRepositories();
+builder.Services.AddApplicationServices();
+builder.Services.AddBackgroundServices();
 
-builder.Services.AddIdentity<IdentityUser, IdentityRole>()
-    .AddEntityFrameworkStores<ApplicationDbContext>()
-    .AddDefaultTokenProviders();
+// Logging
+builder.Logging.AddApplicationLogging();
 
-builder.Services.AddAuthentication(options =>
-{
-    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-})
-.AddJwtBearer(options =>
-{
-    options.TokenValidationParameters = new TokenValidationParameters
-    {
-        ValidateIssuer = true,
-        ValidateAudience = true,
-        ValidateLifetime = true,
-        ValidateIssuerSigningKey = true,
-        ValidIssuer = builder.Configuration["AppSettings:Issuer"],
-        ValidAudience = builder.Configuration["AppSettings:Audience"],
-        IssuerSigningKey = new SymmetricSecurityKey(System.Text.Encoding.UTF8.GetBytes(builder.Configuration["AppSettings:Token"]!))
-    };
-    
-    // Add cookie authentication for web login
-    options.Events = new JwtBearerEvents
-    {
-        OnMessageReceived = context =>
-        {
-            // If the request is for a web endpoint and contains cookies, use the cookie token
-            if (context.Request.Cookies.ContainsKey("accessToken"))
-            {
-                context.Token = context.Request.Cookies["accessToken"];
-            }
-            return Task.CompletedTask;
-        },
-        OnTokenValidated = async context =>
-        {
-            // Check if the token has been blacklisted
-            var tokenValidationService = context.HttpContext.RequestServices.GetRequiredService<ITokenValidationService>();
-            var jti = context.Principal?.Claims.FirstOrDefault(c => c.Type == "jti")?.Value;
-            
-            if (!string.IsNullOrEmpty(jti) && await tokenValidationService.IsTokenBlacklistedAsync(jti))
-            {
-                // Token has been blacklisted
-                context.Fail("Token has been revoked");
-            }
-            
-            await Task.CompletedTask;
-        }
-    };
-});
-
-builder.Services.AddAuthorization(Options =>
-{
-    Options.AddPolicy("AdminPolicy", policy => policy.RequireRole("Admin"));
-    Options.AddPolicy("PrivilegedPolicy", policy => policy.RequireRole("Admin", "Teacher"));
-    Options.AddPolicy("UserPolicy", policy => policy.RequireRole("Admin", "Teacher", "Student"));
-});
-
-// Register repositories
-builder.Services.AddScoped<IStudentRepository, StudentRepository>();
-builder.Services.AddScoped<IInstructorRepository, InstructorRepository>();
-builder.Services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
-builder.Services.AddScoped<IAccountRepository, AccountRepository>();
-builder.Services.AddScoped<ISectionRepository, SectionRepository>();
-builder.Services.AddScoped<ICourseRepository, CourseRepository>();
-builder.Services.AddScoped<ISubjectRepository, SubjectRepository>();
-builder.Services.AddScoped<IClassroomRepository, ClassroomRepository>();
-builder.Services.AddScoped<IScheduleRepository, ScheduleRepository>();
-builder.Services.AddScoped<IQrCodeRepository, QrCodeRepository>();
-builder.Services.AddScoped<IStudentEnrollmentRepository, StudentEnrollmentRepository>();
-
-// Register services
-builder.Services.AddScoped<IStudentService, StudentService>();
-builder.Services.AddScoped<IInstructorService, InstructorService>();
-builder.Services.AddScoped<IRefreshTokenService, RefreshTokenService>();
-builder.Services.AddScoped<IAccountService, AccountService>();
-builder.Services.AddScoped<IUserFactory, attendance_monitoring.Classes.Factory.UserFactory>();
-builder.Services.AddScoped<ISectionService, SectionService>();
-builder.Services.AddScoped<ICourseService, CourseService>();
-builder.Services.AddScoped<ISubjectService, SubjectService>();
-builder.Services.AddScoped<IClassroomService, ClassroomService>();
-builder.Services.AddScoped<IScheduleService, ScheduleService>();
-builder.Services.AddScoped<IQrCodeService, QrCodeService>();
-builder.Services.AddScoped<IRoleInitializationService, RoleInitializationService>();
-builder.Services.AddScoped<UserContextService>();
-builder.Services.AddScoped<ITokenValidationService, TokenValidationService>();
-builder.Services.AddScoped<ICookieOptionsService, CookieOptionsService>();
-builder.Services.AddScoped<IStudentEnrollmentService, StudentEnrollmentService>();
-
-builder.Services.AddEndpointsApiExplorer();
-
-// Add CORS policy
-builder.Services.AddCors(options =>
-{
-    options.AddPolicy("AllowFrontend", policy =>
-    {
-        policy.WithOrigins("http://localhost:5173") // Frontend origin
-              .AllowAnyHeader()
-              .AllowAnyMethod()
-              .AllowCredentials(); // If you need to send cookies or authorization headers
-    });
-});
-
-// Register background services
-builder.Services.AddHostedService<BlacklistedTokenCleanupService>();
-
-builder.Logging.ClearProviders();
-builder.Logging.AddConsole();
-builder.Logging.AddDebug();
-builder.Logging.AddEventSourceLogger();
-
-builder.Logging.SetMinimumLevel(LogLevel.Information);
-builder.Logging.AddFilter("Microsoft", LogLevel.Warning);
-builder.Logging.AddFilter("System", LogLevel.Warning);
+// ===== BUILD APPLICATION =====
 
 var app = builder.Build();
 
-// Add SELECTIVE Response Compression - Only for specific GET endpoints
-app.UseWhen(
-    context => 
-    {
-        var method = context.Request.Method;
-        var path = context.Request.Path.Value?.ToLowerInvariant() ?? "";
-        
-        // Only apply compression to GET requests
-        if (method != "GET") return false;
-        
-        // Check for specific endpoints that should be compressed
-        return path.StartsWith("/api/classrooms") ||
-               path.StartsWith("/api/course") ||
-               path.StartsWith("/api/instructors") ||
-               path.StartsWith("/api/schedules") ||
-               path.StartsWith("/api/sections") ||
-               path.StartsWith("/api/students") ||
-               path.StartsWith("/api/subjects");
-    },
-    appBuilder => appBuilder.UseResponseCompression()
-);
+// ===== MIDDLEWARE PIPELINE =====
 
-// THEN Performance monitoring (to see compression results)
-app.Use(async (context, next) =>
-{
-    var stopwatch = Stopwatch.StartNew();
-    
-    // Set up response callback to capture timing after response is complete
-    context.Response.OnStarting(() =>
-    {
-        stopwatch.Stop();
-        var responseTime = stopwatch.ElapsedMilliseconds;
-        
-        // Add debug headers for client inspection (before response starts)
-        context.Response.Headers["X-Response-Time"] = $"{responseTime}ms";
-        
-        // Check compression headers (already applied by compression middleware)
-        var isCompressed = context.Response.Headers.ContainsKey("Content-Encoding");
-        if (isCompressed)
-        {
-            var compressionType = context.Response.Headers["Content-Encoding"].ToString();
-            context.Response.Headers["X-Compression"] = compressionType;
-        }
-        
-        return Task.CompletedTask;
-    });
-    
-    await next();
-    
-    // Log performance metrics for API endpoints with successful responses
-    if (context.Request.Path.StartsWithSegments("/api") && context.Response.StatusCode == 200)
-    {
-        var responseTime = stopwatch.ElapsedMilliseconds;
-        var isCompressed = context.Response.Headers.ContainsKey("Content-Encoding");
-        var compressionType = isCompressed ? context.Response.Headers["Content-Encoding"].ToString() : "none";
-        var logger = context.RequestServices.GetRequiredService<ILogger<Program>>();
-        var endpoint = $"{context.Request.Method} {context.Request.Path}";
-        var contentType = context.Response.ContentType ?? "";
-        
-        logger.LogInformation(
-            "PERF: {Endpoint} | {ResponseTime}ms | Compressed: {IsCompressed} ({CompressionType}) | Content-Type: {ContentType}",
-            endpoint, responseTime, isCompressed, compressionType, contentType
-        );
-    }
-});
+// Selective compression (must be first)
+app.UseSelectiveResponseCompression();
 
-// Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI(c =>
-    {
-        c.SwaggerEndpoint("/swagger/v1/swagger.json", "Attendance Monitoring API");
-    });
-    app.MapOpenApi();
-    // Configure Scalar to use the Swagger-generated OpenAPI document (includes MVC controller endpoints)
-    app.MapScalarApiReference(options =>
-    {
-        options
-            .WithTitle("Attendance Monitoring API")
-            .WithOpenApiRoutePattern("/swagger/v1/swagger.json");
-    });
-}
+// Performance monitoring
+app.UsePerformanceMonitoring();
 
-app.UseHttpsRedirection();
-app.UseCors("AllowFrontend");
+// Development tools (Swagger, Scalar)
+app.UseDevelopmentTools();
 
-// Global Exception Handler - Catches all unhandled exceptions
-app.UseExceptionHandler(errorApp =>
-{
-    errorApp.Run(async context =>
-    {
-        var exceptionHandlerFeature = context.Features.Get<IExceptionHandlerPathFeature>();
-        var exception = exceptionHandlerFeature?.Error;
-        var logger = context.RequestServices.GetRequiredService<ILogger<Program>>();
+// Core pipeline (HTTPS, CORS, Auth)
+app.UseCorePipeline();
 
-        // Map exceptions to appropriate HTTP status codes and messages
-        (int statusCode, string message, bool includeDetails) = exception switch
-        {
-            // Custom domain exceptions
-            EntityNotFoundException<int> ex =>
-                (StatusCodes.Status404NotFound, ex.Message, false),
+// Global exception handler
+app.UseGlobalExceptionHandler();
 
-            EntityNotFoundException<string> ex =>
-                (StatusCodes.Status404NotFound, ex.Message, false),
+// ===== STARTUP INITIALIZATION =====
+await app.InitializeApplicationAsync();
 
-            EntityUnauthorizedException ex =>
-                (StatusCodes.Status403Forbidden, ex.Message, false),
-
-            EntityAlreadyExistsException<int> ex =>
-                (StatusCodes.Status409Conflict, ex.Message, false),
-
-            EntityAlreadyExistsException<string> ex =>
-                (StatusCodes.Status409Conflict, ex.Message, false),
-
-            // Database exceptions
-            DbUpdateConcurrencyException ex =>
-                (StatusCodes.Status409Conflict,
-                 "The record was modified by another user. Please refresh and try again.",
-                 true),
-
-            DbUpdateException ex =>
-                (StatusCodes.Status503ServiceUnavailable,
-                 "Database is temporarily unavailable. Please try again later.",
-                 true),
-
-            // Timeout exceptions
-            TimeoutException ex =>
-                (StatusCodes.Status504GatewayTimeout,
-                 "The request timed out. Please try again.",
-                 true),
-
-            // Validation exceptions
-            ArgumentNullException ex =>
-                (StatusCodes.Status400BadRequest,
-                 $"Missing required parameter: {ex.ParamName}",
-                 false),
-
-            ArgumentException ex =>
-                (StatusCodes.Status400BadRequest,
-                 ex.Message,
-                 false),
-
-            // Service layer exceptions
-            EntityServiceException ex =>
-                (StatusCodes.Status400BadRequest, ex.Message, true),
-
-            // Unexpected exceptions
-            _ => (StatusCodes.Status500InternalServerError,
-                  "An unexpected error occurred. Please contact support if this persists.",
-                  true)
-        };
-
-        // Log the exception with appropriate severity
-        if (statusCode >= 500)
-        {
-            logger.LogError(exception,
-                "Unhandled exception: {ExceptionType} | Status: {StatusCode} | Path: {Path} | Message: {Message}",
-                exception?.GetType().Name, statusCode, context.Request.Path, message);
-        }
-        else
-        {
-            logger.LogWarning(exception,
-                "Client error: {ExceptionType} | Status: {StatusCode} | Path: {Path} | Message: {Message}",
-                exception?.GetType().Name, statusCode, context.Request.Path, message);
-        }
-
-        // Build error response
-        var errorResponse = new ErrorResponseDto
-        {
-            Success = false,
-            Message = message,
-            StatusCode = statusCode,
-            Path = context.Request.Path,
-            Timestamp = DateTime.UtcNow
-        };
-
-        // Include detailed error information in development
-        if (app.Environment.IsDevelopment() && includeDetails && exception != null)
-        {
-            errorResponse.Details = exception.ToString();
-        }
-
-        context.Response.StatusCode = statusCode;
-        context.Response.ContentType = "application/json";
-
-        await context.Response.WriteAsJsonAsync(errorResponse);
-    });
-});
-
-app.UseAuthentication();
-app.UseAuthorization();
-app.MapControllers();
-
-// Initialize roles
-using (var scope = app.Services.CreateScope())
-{
-    var roleInitializationService = scope.ServiceProvider.GetRequiredService<IRoleInitializationService>();
-    await roleInitializationService.InitializeRolesAsync();
-}
+// ===== RUN APPLICATION =====
 
 await app.RunAsync();
