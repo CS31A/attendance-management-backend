@@ -7,7 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### 🐛 **Bug Fixes**
+
+#### Authentication Improvements
+- **Fixed** `LoginAsync` method to return actual username instead of login identifier
+  - Updated `IAccountService.LoginAsync` signature to return tuple with username
+  - Modified `AccountService.LoginAsync` to return the authenticated user's username
+  - Updated `AccountController.Login` to use returned username in response instead of input identifier
+  - Ensures login response contains the correct username regardless of whether user logged in with email or username
+  - Improved security by not echoing back user input directly
+
 ### 🧪 **Testing Infrastructure**
+
+#### Account Controller Tests
+- **Added** new unit test `Login_ReturnsOk_AndCorrectUsername_WhenLoginSuccessful`
+  - Tests successful login returns correct username in response
+  - Validates `LoginResponseDto` structure and success status
+  - Verifies username is properly extracted from service layer
+- **Fixed** indentation in existing `Register_ReturnsOk_WhenRegistrationSuccessful` test
 
 #### Comprehensive Test Suite for Student Enrollment Feature
 - **Added** 44 new unit tests for irregular student enrollment functionality
