@@ -9,7 +9,7 @@ namespace attendance_monitoring.IServices
     public interface IAccountService
     {
         Task<(IdentityResult, RegisterResponseDto?)> RegisterAsync(RegisterDto registerDto);
-        Task<(TokenResponseDto?, string?)> LoginAsync(LoginDto loginDto);
+        Task<(TokenResponseDto?, string?, string?)> LoginAsync(LoginDto loginDto);
         Task<(TokenResponseDto?, string?)> RefreshAsync(RefreshTokenRequestDto refreshTokenRequest);
         Task<(RevokeResponseDto?, string?)> RevokeAsync(RevokeTokenRequestDto revokeTokenRequest, string userId);
         Task<LogoutResponseDto> LogoutAsync(string userId, string? accessToken);

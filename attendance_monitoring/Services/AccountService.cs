@@ -117,7 +117,7 @@ namespace attendance_monitoring.Services
 
         #region Login Methods
         #region LoginAsync
-        public async Task<(TokenResponseDto?, string?)> LoginAsync(LoginDto loginDto)
+        public async Task<(TokenResponseDto?, string?, string?)> LoginAsync(LoginDto loginDto)
         {
             logger.LogInformation("Login attempt for identifier: {Identifier}", loginDto.Username);
 
@@ -145,14 +145,14 @@ namespace attendance_monitoring.Services
             if (user == null)
             {
                 logger.LogWarning("Login failed for identifier {Identifier}: Invalid email or username or password", loginDto.Username);
-                return (null, "Invalid email or username or password");
+                return (null, null, "Invalid email or username or password");
             }
 
             var result = await accountRepository.CheckPasswordAsync(user, loginDto.Password).ConfigureAwait(false);
             if (!result.Succeeded)
             {
                 logger.LogWarning("Login failed for user {Username}: Invalid password", user.UserName);
-                return (null, "Invalid email or username or password");
+                return (null, null, "Invalid email or username or password");
             }
 
             var accessToken = await GenerateJwtToken(user).ConfigureAwait(false);
@@ -164,7 +164,7 @@ namespace attendance_monitoring.Services
                 AccessToken = accessToken,
                 RefreshToken = refreshToken
             };
-            return (tokenResponse, null);
+            return (tokenResponse, user.UserName, null);
         }
         #endregion
         #endregion
@@ -192,7 +192,7 @@ namespace attendance_monitoring.Services
             // Blacklist the old access token if provided
             if (!string.IsNullOrEmpty(refreshTokenRequest.OldAccessToken))
             {
-                 await ValidateAndBlacklistTokenAsync(refreshTokenRequest.OldAccessToken, user.Id, "token refresh");
+                await ValidateAndBlacklistTokenAsync(refreshTokenRequest.OldAccessToken, user.Id, "token refresh");
             }
 
             var (_, newRefreshToken) = await refreshTokenService.RotateRefreshTokenAsync(
@@ -377,7 +377,7 @@ namespace attendance_monitoring.Services
         #endregion
 
         #region Helper Methods
-        
+
         #region ValidateAndBlacklistTokenAsync
         /// <summary>
         /// Validates and blacklists an access token if it's valid and belongs to the specified user
@@ -390,17 +390,17 @@ namespace attendance_monitoring.Services
             try
             {
                 var tokenHandler = new JwtSecurityTokenHandler();
-                
+
                 var issuer = configuration["AppSettings:Issuer"];
                 var audience = configuration["AppSettings:Audience"];
                 var tokenKey = configuration["AppSettings:Token"];
-                
+
                 if (string.IsNullOrEmpty(issuer) || string.IsNullOrEmpty(audience) || string.IsNullOrEmpty(tokenKey))
                 {
                     logger.LogWarning("Token validation failed: Missing configuration values for issuer, audience, or token key.");
                     throw new InvalidOperationException("Token validation configuration is incomplete.");
                 }
-                
+
                 var tokenValidationParameters = new TokenValidationParameters
                 {
                     ValidateIssuer = true,
@@ -411,10 +411,10 @@ namespace attendance_monitoring.Services
                     ValidAudience = audience,
                     IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(tokenKey))
                 };
-                
+
                 // Validate the token
                 var claimsPrincipal = tokenHandler.ValidateToken(accessToken, tokenValidationParameters, out var validatedToken);
-                
+
                 var jti = claimsPrincipal.FindFirst("jti")?.Value;
                 var expiresAt = validatedToken.ValidTo;
                 var userIdClaim = claimsPrincipal.FindFirst(ClaimTypes.NameIdentifier)?.Value;
@@ -458,7 +458,7 @@ namespace attendance_monitoring.Services
             {
                 throw new InvalidOperationException("Token key is not configured properly in AppSettings.");
             }
-            
+
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(tokenKey));
             var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
@@ -472,7 +472,7 @@ namespace attendance_monitoring.Services
             return new JwtSecurityTokenHandler().WriteToken(token);
         }
         #endregion
-        
+
         #region BlacklistTokenAsync
         /// <summary>
         /// Blacklists a JWT token by its JTI
@@ -487,7 +487,7 @@ namespace attendance_monitoring.Services
                 BlacklistedAt = DateTime.UtcNow,
                 ExpiresAt = expiresAt
             };
-            
+
             try
             {
                 context.BlacklistedTokens.Add(blacklistedToken);
@@ -504,7 +504,7 @@ namespace attendance_monitoring.Services
             }
         }
         #endregion
-        
+
         #region GetUserProfileAsync
         /// <summary>
         /// Gets comprehensive user profile information including role-specific data
