@@ -18,5 +18,6 @@ public interface IStudentEnrollmentService
     Task<IEnumerable<Student>> GetStudentsInSectionAsync(int sectionId);
     Task<IEnumerable<Student>> GetStudentsInSubjectAsync(int subjectId);
     Task<IEnumerable<StudentEnrollment>> GetSectionEnrollmentsAsync(int sectionId);
+    Task<IEnumerable<StudentEnrollment>> GetActiveSectionEnrollmentsAsync(int sectionId);
     Task<StudentEnrollment?> GetSpecificEnrollmentAsync(int studentId, int sectionId, int subjectId);
 }

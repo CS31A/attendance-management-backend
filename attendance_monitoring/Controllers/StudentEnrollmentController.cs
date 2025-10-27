@@ -118,7 +118,7 @@ public class StudentEnrollmentController : ControllerBase
     }
 
     /// <summary>
-    /// Get all students enrolled in a specific section
+    /// Get all active students enrolled in a specific section
     /// </summary>
     [HttpGet("section/{sectionId}/students")]
     [Authorize(Roles = "Admin,Instructor")]
@@ -126,27 +126,30 @@ public class StudentEnrollmentController : ControllerBase
     {
         try
         {
-            var enrollments = await _enrollmentService.GetSectionEnrollmentsAsync(sectionId);
-            
-            var response = enrollments
-                .Where(e => e.IsActive)
-                .Select(e => new StudentEnrollmentResponseDto
-                {
-                    Id = e.Id,
-                    StudentId = e.StudentId,
-                    StudentFirstname = e.Student?.Firstname,
-                    StudentLastname = e.Student?.Lastname,
-                    StudentEmail = e.Student?.Email,
-                    SectionId = e.SectionId,
-                    SubjectId = e.SubjectId,
-                    IsActive = e.IsActive,
-                    EnrollmentType = e.EnrollmentType,
-                    AcademicYear = e.AcademicYear,
-                    Semester = e.Semester,
-                    EnrolledAt = e.EnrolledAt,
-                    CreatedAt = e.CreatedAt,
-                    UpdatedAt = e.UpdatedAt
-                });
+            // Get only active enrollments from database (database-level filtering, no in-memory filtering)
+            var enrollments = await _enrollmentService.GetActiveSectionEnrollmentsAsync(sectionId);
+
+            var response = enrollments.Select(e => new StudentEnrollmentResponseDto
+            {
+                Id = e.Id,
+                StudentId = e.StudentId,
+                StudentFirstname = e.Student?.Firstname,
+                StudentLastname = e.Student?.Lastname,
+                StudentEmail = e.Student?.Email,
+                SectionId = e.SectionId,
+                SectionName = e.Section?.Name,
+                SubjectId = e.SubjectId,
+                SubjectName = e.Subject?.Name,
+                SubjectCode = e.Subject?.Code,
+                IsActive = e.IsActive,
+                EnrollmentType = e.EnrollmentType,
+                AcademicYear = e.AcademicYear,
+                Semester = e.Semester,
+                EnrolledAt = e.EnrolledAt,
+                DroppedAt = e.DroppedAt,
+                CreatedAt = e.CreatedAt,
+                UpdatedAt = e.UpdatedAt
+            });
 
             return Ok(response);
         }
