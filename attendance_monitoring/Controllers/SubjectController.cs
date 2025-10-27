@@ -28,30 +28,11 @@ public class SubjectController(ISubjectService subjectService, ILogger<SubjectCo
     public async Task<ActionResult<IEnumerable<Subject>>> GetSubjects()
     {
         logger.LogInformation("Getting all subjects");
-        try
-        {
-            var subjects = await subjectService.GetAllSubjectsAsync();
-            logger.LogInformation("Successfully retrieved {Count} subjects", subjects.Count());
-            return Ok(subjects);
-        }
-        catch (EntityServiceException ex)
-        {
-            logger.LogError(ex, "Error occurred while retrieving all subjects");
-            return Problem(
-                detail: "An error occurred while retrieving subjects",
-                statusCode: 500,
-                title: "Internal Server Error"
-            );
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Unexpected error occurred while retrieving all subjects");
-            return Problem(
-                detail: "An unexpected error occurred",
-                statusCode: 500,
-                title: "Internal Server Error"
-            );
-        }
+
+        var subjects = await subjectService.GetAllSubjectsAsync();
+        logger.LogInformation("Successfully retrieved {Count} subjects", subjects.Count());
+        return Ok(subjects);
+        // No try-catch - global handler will catch any unexpected errors
     }
 
     /// <summary>
@@ -75,27 +56,10 @@ public class SubjectController(ISubjectService subjectService, ILogger<SubjectCo
         }
         catch (EntityNotFoundException<int> ex)
         {
-            logger.LogWarning("Subject with ID {Id} not found", id);
-            return NotFound(ex.Message);
+            logger.LogWarning(ex, "Subject with ID {Id} not found", id);
+            return NotFound(new { message = ex.Message });
         }
-        catch (EntityServiceException ex)
-        {
-            logger.LogError(ex, "Error occurred while retrieving subject with ID {Id}", id);
-            return Problem(
-                detail: "An error occurred while retrieving the subject",
-                statusCode: 500,
-                title: "Internal Server Error"
-            );
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Unexpected error occurred while retrieving subject with ID {Id}", id);
-            return Problem(
-                detail: "An unexpected error occurred",
-                statusCode: 500,
-                title: "Internal Server Error"
-            );
-        }
+        // No generic catch - global handler will manage unexpected errors
     }
 
     #endregion
@@ -130,38 +94,30 @@ public class SubjectController(ISubjectService subjectService, ILogger<SubjectCo
             if (error != null)
             {
                 logger.LogWarning("Subject creation failed: {Error}", error);
-                return BadRequest(error);
+                return BadRequest(new { message = error });
             }
 
             if (subject == null)
             {
-                logger.LogError("Subject creation failed: Unexpected error occurred");
-                return BadRequest("An unexpected error occurred while creating the subject.");
+                logger.LogWarning("Subject creation failed: Unexpected error occurred");
+                return BadRequest(new { message = "An unexpected error occurred while creating the subject." });
             }
 
             logger.LogInformation("Successfully created subject with ID: {Id} and name: {SubjectName}", subject.Id,
                 subject.Name);
             return CreatedAtAction(nameof(GetSubject), new { id = subject.Id }, subject);
         }
-        catch (EntityServiceException ex)
+        catch (EntityAlreadyExistsException<string> ex)
         {
-            logger.LogError(ex, "Error occurred while creating subject with name: {SubjectName}", createSubject.Name);
-            return Problem(
-                detail: "An error occurred while creating the subject",
-                statusCode: 500,
-                title: "Internal Server Error"
-            );
+            logger.LogWarning(ex, "Duplicate subject detected");
+            return Conflict(new { message = ex.Message });
         }
-        catch (Exception ex)
+        catch (EntityAlreadyExistsException<int> ex)
         {
-            logger.LogError(ex, "Unexpected error occurred while creating subject with name: {SubjectName}",
-                createSubject.Name);
-            return Problem(
-                detail: "An unexpected error occurred",
-                statusCode: 500,
-                title: "Internal Server Error"
-            );
+            logger.LogWarning(ex, "Duplicate subject detected");
+            return Conflict(new { message = ex.Message });
         }
+        // No generic catch - global handler will manage unexpected errors
     }
 
     #endregion
@@ -198,7 +154,7 @@ public class SubjectController(ISubjectService subjectService, ILogger<SubjectCo
             if (error != null)
             {
                 logger.LogWarning("Subject update failed for subject ID {Id}: {Error}", id, error);
-                return BadRequest(error);
+                return BadRequest(new { message = error });
             }
 
             logger.LogInformation("Successfully updated subject with ID: {Id}", id);
@@ -206,27 +162,10 @@ public class SubjectController(ISubjectService subjectService, ILogger<SubjectCo
         }
         catch (EntityNotFoundException<int> ex)
         {
-            logger.LogWarning("Subject update failed: Subject with ID {Id} not found", id);
-            return NotFound(ex.Message);
+            logger.LogWarning(ex, "Subject update failed: Subject with ID {Id} not found", id);
+            return NotFound(new { message = ex.Message });
         }
-        catch (EntityServiceException ex)
-        {
-            logger.LogError(ex, "Error occurred while updating subject with ID {Id}", id);
-            return Problem(
-                detail: "An error occurred while updating the subject",
-                statusCode: 500,
-                title: "Internal Server Error"
-            );
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Unexpected error occurred while updating subject with ID {Id}", id);
-            return Problem(
-                detail: "An unexpected error occurred",
-                statusCode: 500,
-                title: "Internal Server Error"
-            );
-        }
+        // No generic catch - global handler will manage unexpected errors
     }
 
     #endregion
@@ -259,31 +198,14 @@ public class SubjectController(ISubjectService subjectService, ILogger<SubjectCo
             }
 
             logger.LogWarning("Subject deletion failed for subject ID {Id}: {Error}", id, error);
-            return BadRequest(error);
+            return BadRequest(new { message = error });
         }
         catch (EntityNotFoundException<int> ex)
         {
-            logger.LogWarning("Subject deletion failed: Subject with ID {Id} not found", id);
-            return NotFound(ex.Message);
+            logger.LogWarning(ex, "Subject deletion failed: Subject with ID {Id} not found", id);
+            return NotFound(new { message = ex.Message });
         }
-        catch (EntityServiceException ex)
-        {
-            logger.LogError(ex, "Error occurred while deleting subject with ID {Id}", id);
-            return Problem(
-                detail: "An error occurred while deleting the subject",
-                statusCode: 500,
-                title: "Internal Server Error"
-            );
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Unexpected error occurred while deleting subject with ID {Id}", id);
-            return Problem(
-                detail: "An unexpected error occurred",
-                statusCode: 500,
-                title: "Internal Server Error"
-            );
-        }
+        // No generic catch - global handler will manage unexpected errors
     }
 
     #endregion

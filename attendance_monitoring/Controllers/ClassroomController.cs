@@ -28,30 +28,11 @@ public class ClassroomController(IClassroomService classroomService, ILogger<Cla
     public async Task<ActionResult<IEnumerable<Classroom>>> GetClassrooms()
     {
         logger.LogInformation("Getting all classrooms");
-        try
-        {
-            var classrooms = await classroomService.GetAllClassroomsAsync();
-            logger.LogInformation("Successfully retrieved {Count} classrooms", classrooms.Count());
-            return Ok(classrooms);
-        }
-        catch (EntityServiceException ex)
-        {
-            logger.LogError(ex, "Error occurred while retrieving all classrooms");
-            return Problem(
-                detail: "An error occurred while retrieving classrooms",
-                statusCode: 500,
-                title: "Internal Server Error"
-            );
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Unexpected error occurred while retrieving all classrooms");
-            return Problem(
-                detail: "An unexpected error occurred",
-                statusCode: 500,
-                title: "Internal Server Error"
-            );
-        }
+
+        var classrooms = await classroomService.GetAllClassroomsAsync();
+        logger.LogInformation("Successfully retrieved {Count} classrooms", classrooms.Count());
+        return Ok(classrooms);
+        // No try-catch - global handler will catch any unexpected errors
     }
 
     /// <summary>
@@ -75,27 +56,10 @@ public class ClassroomController(IClassroomService classroomService, ILogger<Cla
         }
         catch (EntityNotFoundException<int> ex)
         {
-            logger.LogWarning("Classroom with ID {Id} not found", id);
-            return NotFound(ex.Message);
+            logger.LogWarning(ex, "Classroom with ID {Id} not found", id);
+            return NotFound(new { message = ex.Message });
         }
-        catch (EntityServiceException ex)
-        {
-            logger.LogError(ex, "Error occurred while retrieving classroom with ID {Id}", id);
-            return Problem(
-                detail: "An error occurred while retrieving the classroom",
-                statusCode: 500,
-                title: "Internal Server Error"
-            );
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Unexpected error occurred while retrieving classroom with ID {Id}", id);
-            return Problem(
-                detail: "An unexpected error occurred",
-                statusCode: 500,
-                title: "Internal Server Error"
-            );
-        }
+        // No generic catch - global handler will manage unexpected errors
     }
 
     #endregion
@@ -130,38 +94,30 @@ public class ClassroomController(IClassroomService classroomService, ILogger<Cla
             if (error != null)
             {
                 logger.LogWarning("Classroom creation failed: {Error}", error);
-                return BadRequest(error);
+                return BadRequest(new { message = error });
             }
 
             if (classroom == null)
             {
-                logger.LogError("Classroom creation failed: Unexpected error occurred");
-                return BadRequest("An unexpected error occurred while creating the classroom.");
+                logger.LogWarning("Classroom creation failed: Unexpected error occurred");
+                return BadRequest(new { message = "An unexpected error occurred while creating the classroom." });
             }
 
             logger.LogInformation("Successfully created classroom with ID: {Id} and name: {ClassroomName}", classroom.Id,
                 classroom.Name);
             return CreatedAtAction(nameof(GetClassroom), new { id = classroom.Id }, classroom);
         }
-        catch (EntityServiceException ex)
+        catch (EntityAlreadyExistsException<string> ex)
         {
-            logger.LogError(ex, "Error occurred while creating classroom with name: {ClassroomName}", createClassroom.Name);
-            return Problem(
-                detail: "An error occurred while creating the classroom",
-                statusCode: 500,
-                title: "Internal Server Error"
-            );
+            logger.LogWarning(ex, "Duplicate classroom detected");
+            return Conflict(new { message = ex.Message });
         }
-        catch (Exception ex)
+        catch (EntityAlreadyExistsException<int> ex)
         {
-            logger.LogError(ex, "Unexpected error occurred while creating classroom with name: {ClassroomName}",
-                createClassroom.Name);
-            return Problem(
-                detail: "An unexpected error occurred",
-                statusCode: 500,
-                title: "Internal Server Error"
-            );
+            logger.LogWarning(ex, "Duplicate classroom detected");
+            return Conflict(new { message = ex.Message });
         }
+        // No generic catch - global handler will manage unexpected errors
     }
 
     #endregion
@@ -198,7 +154,7 @@ public class ClassroomController(IClassroomService classroomService, ILogger<Cla
             if (error != null)
             {
                 logger.LogWarning("Classroom update failed for classroom ID {Id}: {Error}", id, error);
-                return BadRequest(error);
+                return BadRequest(new { message = error });
             }
 
             logger.LogInformation("Successfully updated classroom with ID: {Id}", id);
@@ -206,27 +162,10 @@ public class ClassroomController(IClassroomService classroomService, ILogger<Cla
         }
         catch (EntityNotFoundException<int> ex)
         {
-            logger.LogWarning("Classroom update failed: Classroom with ID {Id} not found", id);
-            return NotFound(ex.Message);
+            logger.LogWarning(ex, "Classroom update failed: Classroom with ID {Id} not found", id);
+            return NotFound(new { message = ex.Message });
         }
-        catch (EntityServiceException ex)
-        {
-            logger.LogError(ex, "Error occurred while updating classroom with ID {Id}", id);
-            return Problem(
-                detail: "An error occurred while updating the classroom",
-                statusCode: 500,
-                title: "Internal Server Error"
-            );
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Unexpected error occurred while updating classroom with ID {Id}", id);
-            return Problem(
-                detail: "An unexpected error occurred",
-                statusCode: 500,
-                title: "Internal Server Error"
-            );
-        }
+        // No generic catch - global handler will manage unexpected errors
     }
 
     #endregion
@@ -259,31 +198,14 @@ public class ClassroomController(IClassroomService classroomService, ILogger<Cla
             }
 
             logger.LogWarning("Classroom deletion failed for classroom ID {Id}: {Error}", id, error);
-            return BadRequest(error);
+            return BadRequest(new { message = error });
         }
         catch (EntityNotFoundException<int> ex)
         {
-            logger.LogWarning("Classroom deletion failed: Classroom with ID {Id} not found", id);
-            return NotFound(ex.Message);
+            logger.LogWarning(ex, "Classroom deletion failed: Classroom with ID {Id} not found", id);
+            return NotFound(new { message = ex.Message });
         }
-        catch (EntityServiceException ex)
-        {
-            logger.LogError(ex, "Error occurred while deleting classroom with ID {Id}", id);
-            return Problem(
-                detail: "An error occurred while deleting the classroom",
-                statusCode: 500,
-                title: "Internal Server Error"
-            );
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Unexpected error occurred while deleting classroom with ID {Id}", id);
-            return Problem(
-                detail: "An unexpected error occurred",
-                statusCode: 500,
-                title: "Internal Server Error"
-            );
-        }
+        // No generic catch - global handler will manage unexpected errors
     }
 
     #endregion
