@@ -5,6 +5,30 @@ All notable changes to the Attendance Monitoring System project will be document
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### 🔧 **Technical Improvements**
+
+#### Error Handling Enhancements
+- **Implemented** centralized global exception handler middleware
+  - Replaced controller-level try-catch blocks with unified middleware in Program.cs
+  - Removed generic exception handling from 5 controllers (Account, Instructor, QrCode, Student, Subject)
+  - Reduced code duplication by ~100+ lines
+  - Improved error response consistency across all endpoints
+- **Enhanced** delete operation error handling
+  - Added specific foreign key constraint violation detection
+  - Implemented user-friendly error messages for constraint failures
+  - Improved client-side error understanding by identifying which constraint prevents deletion
+  - Better error message specificity for cascading delete failures
+
+#### Performance Optimizations
+- **Optimized** student enrollment queries with database-level filtering
+  - Moved active enrollment filtering from application layer to database layer
+  - Improved API response time for enrollment endpoints
+  - Enhanced response completeness for student enrollment data
+
+---
+
 ## [Current State - v1.4.0] - 2025-10-26
 
 ### 🎉 **Major Features**
@@ -222,9 +246,8 @@ DotNetEnv 3.1.1
 ### 🚀 **Planned Features**
 1. **Real-time Notifications** - WebSocket integration for live updates
 2. **Advanced Analytics** - Attendance reporting and insights
-3. **Mobile Application** - Native mobile app for QR scanning
-4. **Batch Operations** - Bulk student enrollment and management
-5. **Integration APIs** - External system integration capabilities
+3. **Batch Operations** - Bulk student enrollment and management
+4. **Integration APIs** - External system integration capabilities
 
 ### 🔧 **Technical Improvements**
 1. **Caching Implementation** - Redis for frequently accessed data
