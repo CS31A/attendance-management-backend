@@ -33,7 +33,7 @@ public class AccountControllerTest
     #region Register Tests
 
     [Fact]
-        public async Task Register_ReturnsOk_WhenRegistrationSuccessful()
+    public async Task Register_ReturnsOk_WhenRegistrationSuccessful()
     {
         // Arrange
         var registerDto = new RegisterDto { Username = "testuser", Password = "Test@123", Email = "test@test.com", Role = "Student", SectionId = 1 };
@@ -73,5 +73,25 @@ public class AccountControllerTest
         Assert.Equal("testuser", responseDto.User);
     }
 
+    #endregion
+
+    #region Login Tests
+    [Fact]
+    public async Task Login_ReturnsOk_AndCorrectUsername_WhenLoginSuccessful()
+    {
+        // Arrange
+        var loginDto = new LoginDto { Username = "test@test.com", Password = "Test@123" };
+        var tokenResponseDto = new TokenResponseDto { AccessToken = "access_token", RefreshToken = "refresh_token" };
+        _mockAccountService.Setup(s => s.LoginAsync(loginDto)).ReturnsAsync((tokenResponseDto, "testuser", null));
+
+        // Act
+        var result = await _accountController.Login(loginDto);
+
+        // Assert
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        var responseDto = Assert.IsType<LoginResponseDto>(okResult.Value);
+        Assert.True(responseDto.Success);
+        Assert.Equal("testuser", responseDto.User);
+    }
     #endregion
 }

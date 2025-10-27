@@ -39,7 +39,7 @@ namespace attendance_monitoring.Controllers
             {
                 roleToCheck = "Teacher";
             }
-            
+
             if (roleToCheck.Equals("Student", StringComparison.OrdinalIgnoreCase))
             {
                 if (!registerDto.SectionId.HasValue || registerDto.SectionId <= 0)
@@ -93,7 +93,7 @@ namespace attendance_monitoring.Controllers
                 return BadRequest(new LoginResponseDto { Success = false, Message = "Invalid request data" });
             }
 
-            var (tokenResponse, error) = await accountService.LoginAsync(loginDto);
+            var (tokenResponse, username, error) = await accountService.LoginAsync(loginDto);
 
             if (tokenResponse == null)
             {
@@ -108,7 +108,7 @@ namespace attendance_monitoring.Controllers
                 Message = "Login successful",
                 AccessToken = tokenResponse.AccessToken,
                 RefreshToken = tokenResponse.RefreshToken,
-                User = loginDto.Username
+                User = username ?? string.Empty
             });
         }
         #endregion
@@ -142,7 +142,7 @@ namespace attendance_monitoring.Controllers
                 Password = webLoginDto.Password
             };
 
-            var (tokenResponse, error) = await accountService.LoginAsync(loginDto);
+            var (tokenResponse, _, error) = await accountService.LoginAsync(loginDto);
 
             if (tokenResponse == null)
             {
@@ -408,7 +408,7 @@ namespace attendance_monitoring.Controllers
 
             // Get access token from cookie
             var accessToken = Request.Cookies.TryGetValue("accessToken", out var token) ? token : null;
-            
+
             // Always perform logout operations regardless of token validity to prevent timing attacks
             await accountService.WebLogoutAsync(userId, accessToken);
 
