@@ -24,7 +24,7 @@ public class QrCodeService : IQrCodeService
     private readonly IStudentRepository _studentRepository;
     private readonly IStudentEnrollmentService _studentEnrollmentService;
     private readonly UserContextService _userContextService;
-    private readonly ApplicationDbContext _context;
+    private readonly ISessionRepository _sessionRepository;
     private readonly ILogger<QrCodeService> _logger;
 
     /// <summary>
@@ -38,7 +38,7 @@ public class QrCodeService : IQrCodeService
         IStudentRepository studentRepository,
         IStudentEnrollmentService studentEnrollmentService,
         UserContextService userContextService,
-        ApplicationDbContext context,
+        ISessionRepository sessionRepository,
         ILogger<QrCodeService> logger)
     {
         _qrCodeRepository = qrCodeRepository ?? throw new ArgumentNullException(nameof(qrCodeRepository));
@@ -48,7 +48,7 @@ public class QrCodeService : IQrCodeService
         _studentRepository = studentRepository ?? throw new ArgumentNullException(nameof(studentRepository));
         _studentEnrollmentService = studentEnrollmentService ?? throw new ArgumentNullException(nameof(studentEnrollmentService));
         _userContextService = userContextService ?? throw new ArgumentNullException(nameof(userContextService));
-        _context = context ?? throw new ArgumentNullException(nameof(context));
+        _sessionRepository = sessionRepository ?? throw new ArgumentNullException(nameof(sessionRepository));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
@@ -1106,9 +1106,7 @@ public class QrCodeService : IQrCodeService
     private async Task<string?> ValidateSessionExistsAsync(int sessionId)
     {
         // Validate session exists
-        var session = await _context.Sessions
-            .AsNoTracking()
-            .FirstOrDefaultAsync(s => s.Id == sessionId)
+        var session = await _sessionRepository.GetSessionByIdAsync(sessionId)
             .ConfigureAwait(false);
 
         if (session == null)
