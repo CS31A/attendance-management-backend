@@ -3,6 +3,7 @@ using System.Security.Cryptography;
 using System.Text;
 using Microsoft.EntityFrameworkCore;
 using attendance_monitoring.Classes;
+using attendance_monitoring.Data;
 using attendance_monitoring.Exceptions;
 using attendance_monitoring.IRepository;
 using attendance_monitoring.IServices;
@@ -23,6 +24,7 @@ public class QrCodeService : IQrCodeService
     private readonly IStudentRepository _studentRepository;
     private readonly IStudentEnrollmentService _studentEnrollmentService;
     private readonly UserContextService _userContextService;
+    private readonly ApplicationDbContext _context;
     private readonly ILogger<QrCodeService> _logger;
 
     /// <summary>
@@ -36,6 +38,7 @@ public class QrCodeService : IQrCodeService
         IStudentRepository studentRepository,
         IStudentEnrollmentService studentEnrollmentService,
         UserContextService userContextService,
+        ApplicationDbContext context,
         ILogger<QrCodeService> logger)
     {
         _qrCodeRepository = qrCodeRepository ?? throw new ArgumentNullException(nameof(qrCodeRepository));
@@ -45,6 +48,7 @@ public class QrCodeService : IQrCodeService
         _studentRepository = studentRepository ?? throw new ArgumentNullException(nameof(studentRepository));
         _studentEnrollmentService = studentEnrollmentService ?? throw new ArgumentNullException(nameof(studentEnrollmentService));
         _userContextService = userContextService ?? throw new ArgumentNullException(nameof(userContextService));
+        _context = context ?? throw new ArgumentNullException(nameof(context));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
@@ -181,7 +185,7 @@ public class QrCodeService : IQrCodeService
     {
         try
         {
-            _logger.LogInformation("Creating QR code for schedule ID: {ScheduleId}", createQrCode.ScheduleId);
+            _logger.LogInformation("Creating QR code for session ID: {SessionId}", createQrCode.SessionId);
 
             // Validate user authorization
             var userId = await _userContextService.GetUserIdAsync(user).ConfigureAwait(false);
@@ -198,8 +202,8 @@ public class QrCodeService : IQrCodeService
                 return (null, "You are not authorized to create QR codes");
             }
 
-            // Validate entities exist
-            var validationError = await ValidateEntitiesExistAsync(createQrCode.ScheduleId, createQrCode.SectionId, createQrCode.ActualRoomId).ConfigureAwait(false);
+            // Validate session exists and is active
+            var validationError = await ValidateSessionExistsAsync(createQrCode.SessionId).ConfigureAwait(false);
             if (validationError != null)
             {
                 return (null, validationError);
@@ -216,9 +220,7 @@ public class QrCodeService : IQrCodeService
             // Create QR code entity
             var qrCode = new QrCode
             {
-                ScheduleId = createQrCode.ScheduleId,
-                SectionId = createQrCode.SectionId,
-                ActualRoomId = createQrCode.ActualRoomId,
+                SessionId = createQrCode.SessionId,
                 QrHash = createQrCode.QrHash,
                 ExpiresAt = createQrCode.ExpiresAt,
                 MaxUsage = createQrCode.MaxUsage
@@ -248,8 +250,8 @@ public class QrCodeService : IQrCodeService
         {
             try
             {
-                _logger.LogInformation("Generating QR code for schedule ID: {ScheduleId} (Attempt {Attempt})",
-                                    qrCodeRequest.ScheduleId, attempts + 1);
+                _logger.LogInformation("Generating QR code for session ID: {SessionId} (Attempt {Attempt})",
+                                    qrCodeRequest.SessionId, attempts + 1);
 
                 // Validate user authorization
                 var userId = await _userContextService.GetUserIdAsync(user).ConfigureAwait(false);
@@ -266,8 +268,8 @@ public class QrCodeService : IQrCodeService
                     return new QrCodeGenerationResponseDto { Success = false, Message = "You are not authorized to generate QR codes" };
                 }
 
-                // Validate entities exist
-                var validationError = await ValidateEntitiesExistAsync(qrCodeRequest.ScheduleId, qrCodeRequest.SectionId, qrCodeRequest.ActualRoomId).ConfigureAwait(false);
+                // Validate session exists and is active
+                var validationError = await ValidateSessionExistsAsync(qrCodeRequest.SessionId).ConfigureAwait(false);
                 if (validationError != null)
                 {
                     return new QrCodeGenerationResponseDto { Success = false, Message = validationError };
@@ -280,9 +282,7 @@ public class QrCodeService : IQrCodeService
                 // Create QR code entity
                 var qrCode = new QrCode
                 {
-                    ScheduleId = qrCodeRequest.ScheduleId,
-                    SectionId = qrCodeRequest.SectionId,
-                    ActualRoomId = qrCodeRequest.ActualRoomId,
+                    SessionId = qrCodeRequest.SessionId,
                     QrHash = qrHash,
                     ExpiresAt = expiresAt,
                     MaxUsage = qrCodeRequest.MaxUsage
@@ -361,17 +361,6 @@ public class QrCodeService : IQrCodeService
             }
 
             // Apply updates
-            if (updateQrCode.ActualRoomId.HasValue)
-            {
-                // Validate new room exists
-                var classroom = await _classroomRepository.GetClassroomByIdAsync(updateQrCode.ActualRoomId.Value).ConfigureAwait(false);
-                if (classroom == null)
-                {
-                    return (null, "The specified classroom does not exist");
-                }
-                existingQrCode.ActualRoomId = updateQrCode.ActualRoomId.Value;
-            }
-
             if (updateQrCode.ExpiresAt.HasValue)
             {
                 existingQrCode.ExpiresAt = updateQrCode.ExpiresAt.Value;
@@ -752,19 +741,41 @@ public class QrCodeService : IQrCodeService
                 remainingUsage = qrCode.MaxUsage.Value - qrCode.UsageCount;
             }
 
+            // Validate that all required navigation properties are loaded
+            if (qrCode.Session == null)
+            {
+                _logger.LogError("QR code {QrCodeId} missing Session navigation property", qrCode.Id);
+                return new QrCodeValidationResponseDto
+                {
+                    IsValid = false,
+                    Message = "QR code data is incomplete. Please contact support."
+                };
+            }
+
+            if (qrCode.Session.Schedule == null)
+            {
+                _logger.LogError("QR code {QrCodeId} Session {SessionId} missing Schedule navigation property",
+                    qrCode.Id, qrCode.Session.Id);
+                return new QrCodeValidationResponseDto
+                {
+                    IsValid = false,
+                    Message = "Session data is incomplete. Please contact support."
+                };
+            }
+
             var responseDto = new QrCodeValidationResponseDto
             {
                 IsValid = true,
                 Message = "QR code is valid",
                 QrCodeId = qrCode.Id,
-                ScheduleId = qrCode.ScheduleId,
-                SectionId = qrCode.SectionId,
-                ActualRoomId = qrCode.ActualRoomId,
+                ScheduleId = qrCode.Session.ScheduleId,
+                SectionId = qrCode.Session.Schedule.SectionId,
+                ActualRoomId = qrCode.Session.ActualRoomId ?? 0,
                 ExpiresAt = qrCode.ExpiresAt,
                 RemainingUsage = remainingUsage,
-                ScheduleTitle = qrCode.Schedule != null ? $"{qrCode.Schedule.DayOfWeek} {qrCode.Schedule.TimeIn}-{qrCode.Schedule.TimeOut}" : null,
-                SectionName = qrCode.Section?.Name,
-                RoomName = qrCode.ActualRoom?.Name
+                ScheduleTitle = $"{qrCode.Session.Schedule.DayOfWeek} {qrCode.Session.Schedule.TimeIn}-{qrCode.Session.Schedule.TimeOut}",
+                SectionName = qrCode.Session.Schedule.Section?.Name,
+                RoomName = qrCode.Session.ActualRoom?.Name
             };
 
             _logger.LogInformation("QR code validation successful for hash: {QrHash}", qrHash);
@@ -816,22 +827,23 @@ public class QrCodeService : IQrCodeService
 
             // Check if student is authorized for this section
             // Student is authorized if they are in their primary section OR enrolled via StudentEnrollment
-            bool isAuthorized = student.SectionId == qrCode.SectionId;
+            var sectionId = qrCode.Session?.Schedule?.SectionId ?? 0;
+            bool isAuthorized = student.SectionId == sectionId;
 
-            if (!isAuthorized && qrCode.Schedule != null)
+            if (!isAuthorized && qrCode.Session?.Schedule != null)
             {
                 // Check if student is enrolled in this section-subject combination (for irregular students)
                 isAuthorized = await IsStudentEnrolledInSectionSubjectAsync(
                     validateQrCode.StudentId,
-                    qrCode.SectionId,
-                    qrCode.Schedule.SubjectId
+                    sectionId,
+                    qrCode.Session.Schedule.SubjectId
                 ).ConfigureAwait(false);
             }
 
             if (!isAuthorized)
             {
                 _logger.LogWarning("QR code scan failed: Student {StudentId} is not authorized for section {SectionId}",
-                    validateQrCode.StudentId, qrCode.SectionId);
+                    validateQrCode.StudentId, sectionId);
                 return new QrCodeScanResponseDto
                 {
                     Success = false,
@@ -857,10 +869,11 @@ public class QrCodeService : IQrCodeService
                 AttendanceMarked = true,
                 AttendanceTime = DateTime.UtcNow,
                 StudentName = $"{student.Firstname} {student.Lastname}",
-                ClassName = qrCode.Section?.Name ?? "Unknown",
-                SubjectName = qrCode.Schedule?.Subject?.Name ?? "Unknown",
-                RoomName = qrCode.ActualRoom?.Name ?? "Unknown",
-                InstructorName = qrCode.Schedule?.Instructor?.Firstname + " " + qrCode.Schedule?.Instructor?.Lastname ?? "Unknown",
+                ClassName = qrCode.Session?.Schedule?.Section?.Name ?? "Unknown",
+                SubjectName = qrCode.Session?.Schedule?.Subject?.Name ?? "Unknown",
+                RoomName = qrCode.Session?.ActualRoom?.Name ?? "Unknown",
+                InstructorName = qrCode.Session?.Schedule?.Instructor != null ?
+                    $"{qrCode.Session.Schedule.Instructor.Firstname} {qrCode.Session.Schedule.Instructor.Lastname}" : "Unknown",
                 RemainingScans = remainingScans
             };
 
@@ -1045,12 +1058,21 @@ public class QrCodeService : IQrCodeService
 
     private QrCodeResponseDto MapToResponseDto(QrCode qrCode)
     {
+        // Validate critical navigation properties are loaded
+        if (qrCode.Session == null)
+        {
+            _logger.LogWarning("QR code {QrCodeId} missing Session navigation property in MapToResponseDto", qrCode.Id);
+        }
+
+        if (qrCode.Session?.Schedule == null)
+        {
+            _logger.LogWarning("QR code {QrCodeId} Session missing Schedule navigation property in MapToResponseDto", qrCode.Id);
+        }
+
         return new QrCodeResponseDto
         {
             Id = qrCode.Id,
-            ScheduleId = qrCode.ScheduleId,
-            SectionId = qrCode.SectionId,
-            ActualRoomId = qrCode.ActualRoomId,
+            SessionId = qrCode.SessionId,
             QrHash = qrCode.QrHash,
             GeneratedAt = qrCode.GeneratedAt,
             ExpiresAt = qrCode.ExpiresAt,
@@ -1059,42 +1081,57 @@ public class QrCodeService : IQrCodeService
             MaxUsage = qrCode.MaxUsage,
             CreatedAt = qrCode.CreatedAt,
             UpdatedAt = qrCode.UpdatedAt,
-            ScheduleTitle = qrCode.Schedule != null ? $"{qrCode.Schedule.DayOfWeek} {qrCode.Schedule.TimeIn}-{qrCode.Schedule.TimeOut}" : null,
-            SectionName = qrCode.Section?.Name,
-            ActualRoomName = qrCode.ActualRoom?.Name,
-            SubjectName = qrCode.Schedule?.Subject?.Name,
-            InstructorName = qrCode.Schedule?.Instructor != null ?
-                $"{qrCode.Schedule.Instructor.Firstname} {qrCode.Schedule.Instructor.Lastname}" : null
+
+            // Session information
+            ScheduleId = qrCode.Session?.ScheduleId,
+            SessionDate = qrCode.Session?.SessionDate,
+            SessionStatus = qrCode.Session?.Status,
+
+            // Related entity information (from Session -> Schedule)
+            ScheduleTitle = qrCode.Session?.Schedule != null ?
+                $"{qrCode.Session.Schedule.DayOfWeek} {qrCode.Session.Schedule.TimeIn}-{qrCode.Session.Schedule.TimeOut}" : null,
+            SectionName = qrCode.Session?.Schedule?.Section?.Name,
+            ActualRoomName = qrCode.Session?.ActualRoom?.Name,
+            SubjectName = qrCode.Session?.Schedule?.Subject?.Name,
+            InstructorName = qrCode.Session?.Schedule?.Instructor != null ?
+                $"{qrCode.Session.Schedule.Instructor.Firstname} {qrCode.Session.Schedule.Instructor.Lastname}" : null
         };
     }
 
-    private async Task<string?> ValidateEntitiesExistAsync(int scheduleId, int sectionId, int actualRoomId)
+    /// <summary>
+    /// Validates that the session exists and is in active status.
+    /// </summary>
+    /// <param name="sessionId">The session ID to validate</param>
+    /// <returns>Error message if validation fails, null if session exists and is active</returns>
+    private async Task<string?> ValidateSessionExistsAsync(int sessionId)
     {
-        // Validate schedule exists
-        var schedule = await _scheduleRepository.GetScheduleByIdAsync(scheduleId).ConfigureAwait(false);
-        if (schedule == null)
+        // Validate session exists
+        var session = await _context.Sessions
+            .AsNoTracking()
+            .FirstOrDefaultAsync(s => s.Id == sessionId)
+            .ConfigureAwait(false);
+
+        if (session == null)
         {
-            _logger.LogWarning("Entity validation failed: Schedule with ID {ScheduleId} not found", scheduleId);
-            return "The specified schedule does not exist";
+            _logger.LogWarning("Session with ID {SessionId} not found", sessionId);
+            return "The specified session does not exist";
         }
 
-        // Validate section exists
-        var section = await _sectionRepository.GetSectionByIdAsync(sectionId).ConfigureAwait(false);
-        if (section == null)
+        // Validate session is active - provide clear error messages for each status
+        if (session.Status != "active")
         {
-            _logger.LogWarning("Entity validation failed: Section with ID {SectionId} not found", sectionId);
-            return "The specified section does not exist";
+            _logger.LogWarning("Session with ID {SessionId} is not active (status: {Status})", sessionId, session.Status);
+
+            return session.Status switch
+            {
+                "not_started" => "Session has not started yet. Please start the session before generating QR codes.",
+                "ended" => "Session has already ended. QR codes cannot be generated for completed sessions.",
+                "cancelled" => "Session has been cancelled. QR codes cannot be generated for cancelled sessions.",
+                _ => $"Session is not active. Current status: {session.Status}. Only active sessions can generate QR codes."
+            };
         }
 
-        // Validate classroom exists
-        var classroom = await _classroomRepository.GetClassroomByIdAsync(actualRoomId).ConfigureAwait(false);
-        if (classroom == null)
-        {
-            _logger.LogWarning("Entity validation failed: Classroom with ID {ClassroomId} not found", actualRoomId);
-            return "The specified classroom does not exist";
-        }
-
-        return null; // All validations passed
+        return null; // Session exists and is active
     }
 
     /// <summary>
