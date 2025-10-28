@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### 🎉 **Major Features**
+
+#### Session and Attendance Record Management
+- **Added** `Session` entity to represent actual class session occurrences
+  - Tracks when a class actually happens, including start/end times and room changes
+  - Supports session statuses: "not_started", "active", "ended", "cancelled"
+  - Includes session date, actual start/end times, attendance cutoff time, and room information
+- **Added** `AttendanceRecord` entity to track student attendance for sessions
+  - Records when students checked in and their attendance status
+  - Supports status values: "Present", "Late", "Excused", "Absent"
+  - Tracks whether attendance was manually entered or through QR code scan
+- **Refactored** QR code system to be tied to sessions rather than directly to schedules
+  - QR codes are now generated for specific `Session` instances instead of schedule/section/room combinations
+  - Improves tracking of actual class occurrences rather than recurring schedules
+- **Added** `SessionController` with full CRUD operations and room update functionality
+  - Includes endpoints to get sessions by schedule, status, or date
+  - Supports updating the actual room for active sessions
+  - Provides comprehensive session management capabilities
+
 ### 🐛 **Bug Fixes**
 
 #### Authentication Improvements
@@ -45,6 +64,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Added test quality metrics and coverage reports
 
 ### 🔧 **Technical Improvements**
+
+#### Entity Relationship Refactoring
+- **Refactored** QR code relationships to connect with Session instead of Schedule/Section/Room
+  - QR codes now connect to sessions for better tracking of actual class instances
+  - Updated all related services, repositories, and controllers to use SessionId
+  - Improved navigation property loading with `AsSplitQuery()` for performance
+- **Enhanced** database schema with proper Session and AttendanceRecord relationships
+  - Added foreign key constraints and indexes for optimal performance
+  - Implemented composite indexes to prevent duplicate attendance records
+  - Added cascading delete for attendance records when sessions are deleted
+
+#### Documentation Updates
+- **Updated** DBML ERD structure to reflect new Session and Attendance entities
+  - Added timestamp fields to instructors, students, and admins tables
+  - Updated schedules table to connect to subjects, sections, and instructors
+  - Modified sessions table with proper status values and date field type
+  - Refined QR table to connect with sessions instead of schedules
+  - Updated attendance table with proper foreign key relationships
+  - Added building and capacity fields to classrooms table
+  - Added max_usage, revocation tracking to QR table
+  - Improved foreign key constraints and nullability definitions
+
+#### Code Architecture Refactoring
+- **Modularized** Program.cs into extension methods for better organization
+  - Extracted configuration logic into 6 ServiceCollection extension files
+  - Created WebApplication extension files for middleware pipeline management
+  - Reduced Program.cs from 407 lines to 59 lines (85% reduction)
+  - Improved maintainability and readability with logical groupings
+  - Enhanced team collaboration with reduced merge conflicts
 
 #### Error Handling Enhancements
 - **Implemented** centralized global exception handler middleware
