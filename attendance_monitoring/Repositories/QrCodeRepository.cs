@@ -14,11 +14,21 @@ public class QrCodeRepository(ApplicationDbContext context, ILogger<QrCodeReposi
     {
         try
         {
+            // Use AsSplitQuery to avoid cartesian explosion with multiple ThenInclude chains
             return await context.QrCodes
                 .AsNoTracking()
-                .Include(q => q.Schedule)
-                .Include(q => q.Section)
-                .Include(q => q.ActualRoom)
+                .AsSplitQuery() // Executes separate queries for each Include to improve performance
+                .Include(q => q.Session)
+                    .ThenInclude(s => s.Schedule)
+                        .ThenInclude(sch => sch.Subject)
+                .Include(q => q.Session)
+                    .ThenInclude(s => s.Schedule)
+                        .ThenInclude(sch => sch.Section)
+                .Include(q => q.Session)
+                    .ThenInclude(s => s.Schedule)
+                        .ThenInclude(sch => sch.Instructor)
+                .Include(q => q.Session)
+                    .ThenInclude(s => s.ActualRoom)
                 .FirstOrDefaultAsync(q => q.Id == id)
                 .ConfigureAwait(false);
         }
@@ -35,11 +45,21 @@ public class QrCodeRepository(ApplicationDbContext context, ILogger<QrCodeReposi
     {
         try
         {
+            // Use AsSplitQuery to avoid cartesian explosion with multiple ThenInclude chains
             return await context.QrCodes
                 .AsNoTracking()
-                .Include(q => q.Schedule)
-                .Include(q => q.Section)
-                .Include(q => q.ActualRoom)
+                .AsSplitQuery() // Executes separate queries for each Include to improve performance
+                .Include(q => q.Session)
+                    .ThenInclude(s => s.Schedule)
+                        .ThenInclude(sch => sch.Subject)
+                .Include(q => q.Session)
+                    .ThenInclude(s => s.Schedule)
+                        .ThenInclude(sch => sch.Section)
+                .Include(q => q.Session)
+                    .ThenInclude(s => s.Schedule)
+                        .ThenInclude(sch => sch.Instructor)
+                .Include(q => q.Session)
+                    .ThenInclude(s => s.ActualRoom)
                 .FirstOrDefaultAsync(q => q.QrHash == qrHash)
                 .ConfigureAwait(false);
         }
@@ -58,10 +78,11 @@ public class QrCodeRepository(ApplicationDbContext context, ILogger<QrCodeReposi
         {
             return await context.QrCodes
                 .AsNoTracking()
-                .Include(q => q.Schedule)
-                .Include(q => q.Section)
-                .Include(q => q.ActualRoom)
-                .Where(q => q.ScheduleId == scheduleId)
+                .Include(q => q.Session)
+                    .ThenInclude(s => s.Schedule)
+                .Include(q => q.Session)
+                    .ThenInclude(s => s.ActualRoom)
+                .Where(q => q.Session.ScheduleId == scheduleId)
                 .ToListAsync()
                 .ConfigureAwait(false);
         }
@@ -80,10 +101,12 @@ public class QrCodeRepository(ApplicationDbContext context, ILogger<QrCodeReposi
         {
             return await context.QrCodes
                 .AsNoTracking()
-                .Include(q => q.Schedule)
-                .Include(q => q.Section)
-                .Include(q => q.ActualRoom)
-                .Where(q => q.SectionId == sectionId)
+                .Include(q => q.Session)
+                    .ThenInclude(s => s.Schedule)
+                        .ThenInclude(sch => sch.Section)
+                .Include(q => q.Session)
+                    .ThenInclude(s => s.ActualRoom)
+                .Where(q => q.Session.Schedule.SectionId == sectionId)
                 .ToListAsync()
                 .ConfigureAwait(false);
         }
@@ -103,9 +126,10 @@ public class QrCodeRepository(ApplicationDbContext context, ILogger<QrCodeReposi
             var currentTime = DateTime.UtcNow;
             return await context.QrCodes
                 .AsNoTracking()
-                .Include(q => q.Schedule)
-                .Include(q => q.Section)
-                .Include(q => q.ActualRoom)
+                .Include(q => q.Session)
+                    .ThenInclude(s => s.Schedule)
+                .Include(q => q.Session)
+                    .ThenInclude(s => s.ActualRoom)
                 .Where(q => q.IsActive && q.ExpiresAt > currentTime)
                 .ToListAsync()
                 .ConfigureAwait(false);
@@ -126,10 +150,11 @@ public class QrCodeRepository(ApplicationDbContext context, ILogger<QrCodeReposi
             var currentTime = DateTime.UtcNow;
             return await context.QrCodes
                 .AsNoTracking()
-                .Include(q => q.Schedule)
-                .Include(q => q.Section)
-                .Include(q => q.ActualRoom)
-                .Where(q => q.ScheduleId == scheduleId && q.IsActive && q.ExpiresAt > currentTime)
+                .Include(q => q.Session)
+                    .ThenInclude(s => s.Schedule)
+                .Include(q => q.Session)
+                    .ThenInclude(s => s.ActualRoom)
+                .Where(q => q.Session.ScheduleId == scheduleId && q.IsActive && q.ExpiresAt > currentTime)
                 .ToListAsync()
                 .ConfigureAwait(false);
         }
@@ -168,12 +193,13 @@ public class QrCodeRepository(ApplicationDbContext context, ILogger<QrCodeReposi
         {
             var currentTime = DateTime.UtcNow;
             var expirationThreshold = currentTime.Add(expiringWithin);
-            
+
             return await context.QrCodes
                 .AsNoTracking()
-                .Include(q => q.Schedule)
-                .Include(q => q.Section)
-                .Include(q => q.ActualRoom)
+                .Include(q => q.Session)
+                    .ThenInclude(s => s.Schedule)
+                .Include(q => q.Session)
+                    .ThenInclude(s => s.ActualRoom)
                 .Where(q => q.IsActive && q.ExpiresAt > currentTime && q.ExpiresAt <= expirationThreshold)
                 .ToListAsync()
                 .ConfigureAwait(false);
@@ -483,11 +509,21 @@ public class QrCodeRepository(ApplicationDbContext context, ILogger<QrCodeReposi
         try
         {
             var currentTime = DateTime.UtcNow;
+            // Use AsSplitQuery to avoid cartesian explosion with multiple ThenInclude chains
             var qrCode = await context.QrCodes
                 .AsNoTracking()
-                .Include(q => q.Schedule)
-                .Include(q => q.Section)
-                .Include(q => q.ActualRoom)
+                .AsSplitQuery() // Executes separate queries for each Include to improve performance
+                .Include(q => q.Session)
+                    .ThenInclude(s => s.Schedule)
+                        .ThenInclude(sch => sch.Subject)
+                .Include(q => q.Session)
+                    .ThenInclude(s => s.Schedule)
+                        .ThenInclude(sch => sch.Section)
+                .Include(q => q.Session)
+                    .ThenInclude(s => s.Schedule)
+                        .ThenInclude(sch => sch.Instructor)
+                .Include(q => q.Session)
+                    .ThenInclude(s => s.ActualRoom)
                 .FirstOrDefaultAsync(q => q.QrHash == qrHash)
                 .ConfigureAwait(false);
 
