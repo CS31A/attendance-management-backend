@@ -65,6 +65,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 🔧 **Technical Improvements**
 
+#### QrCodeService Dependency Injection Refactoring
+- **Refactored** `QrCodeService` to use `ISessionRepository` instead of direct `ApplicationDbContext` dependency
+  - Replaced `ApplicationDbContext _context` field with `ISessionRepository _sessionRepository`
+  - Updated constructor to inject `ISessionRepository` instead of `ApplicationDbContext`
+  - Refactored `ValidateSessionExistsAsync()` method to use `_sessionRepository.GetSessionByIdAsync()`
+  - Improves separation of concerns by removing data access logic from service layer
+  - Enhances testability by depending on repository interface instead of concrete DbContext
+  - Follows repository pattern consistently used throughout the codebase
+  - Better encapsulation of query logic centralized in repository layer
+  - Repository method includes comprehensive navigation property loading (`AsNoTracking`, `AsSplitQuery`)
+- **Impact**: No breaking changes, all 70 tests passing, improved code architecture and maintainability
+
 #### Entity Relationship Refactoring
 - **Refactored** QR code relationships to connect with Session instead of Schedule/Section/Room
   - QR codes now connect to sessions for better tracking of actual class instances
