@@ -1,0 +1,187 @@
+using attendance_monitoring.Exceptions;
+using attendance_monitoring.IServices;
+using attendance_monitoring.Models.DTO.Request;
+using attendance_monitoring.Models.DTO.Response;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+
+namespace attendance_monitoring.Controllers;
+
+/// <summary>
+/// Controller for managing session operations.
+/// Sessions represent actual class occurrences and track attendance.
+/// </summary>
+[Authorize]
+[ApiController]
+[Route("api/sessions")]
+public class SessionController(ISessionService sessionService, ILogger<SessionController> logger) : ControllerBase
+{
+    #region Get Operations
+
+    /// <summary>
+    /// Get all sessions.
+    /// </summary>
+    /// <returns>A list of sessions</returns>
+    /// <response code="200">Returns the list of sessions</response>
+    /// <response code="401">Not authorized</response>
+    /// <response code="500">Internal server error</response>
+    [HttpGet]
+    public async Task<ActionResult<IEnumerable<SessionResponseDto>>> GetAllSessions()
+    {
+        logger.LogInformation("Getting all sessions");
+
+        var sessions = await sessionService.GetAllSessionsAsync();
+        logger.LogInformation("Successfully retrieved {Count} sessions", sessions.Count());
+        return Ok(sessions);
+    }
+
+    /// <summary>
+    /// Get a specific session by ID.
+    /// </summary>
+    /// <param name="id">The ID of the session to retrieve</param>
+    /// <returns>The requested session</returns>
+    /// <response code="200">Returns the requested session</response>
+    /// <response code="404">Session not found</response>
+    /// <response code="401">Not authorized</response>
+    /// <response code="500">Internal server error</response>
+    [HttpGet("{id:int}")]
+    public async Task<ActionResult<SessionResponseDto>> GetSession(int id)
+    {
+        logger.LogInformation("Getting session with ID: {Id}", id);
+
+        try
+        {
+            var session = await sessionService.GetSessionByIdAsync(id);
+            logger.LogInformation("Successfully retrieved session with ID: {Id}", id);
+            return Ok(session);
+        }
+        catch (EntityNotFoundException<int> ex)
+        {
+            logger.LogWarning(ex, "Session with ID {Id} not found", id);
+            return NotFound(new { message = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Get sessions for a specific schedule.
+    /// </summary>
+    /// <param name="scheduleId">The schedule ID</param>
+    /// <returns>A list of sessions for the schedule</returns>
+    /// <response code="200">Returns the list of sessions</response>
+    /// <response code="401">Not authorized</response>
+    /// <response code="500">Internal server error</response>
+    [HttpGet("schedule/{scheduleId:int}")]
+    public async Task<ActionResult<IEnumerable<SessionResponseDto>>> GetSessionsBySchedule(int scheduleId)
+    {
+        logger.LogInformation("Getting sessions for schedule ID: {ScheduleId}", scheduleId);
+
+        var sessions = await sessionService.GetSessionsByScheduleIdAsync(scheduleId);
+        logger.LogInformation("Successfully retrieved {Count} sessions for schedule ID: {ScheduleId}",
+            sessions.Count(), scheduleId);
+        return Ok(sessions);
+    }
+
+    /// <summary>
+    /// Get sessions by status.
+    /// </summary>
+    /// <param name="status">The session status (not_started, active, ended, cancelled)</param>
+    /// <returns>A list of sessions with the specified status</returns>
+    /// <response code="200">Returns the list of sessions</response>
+    /// <response code="400">Invalid status value</response>
+    /// <response code="401">Not authorized</response>
+    /// <response code="500">Internal server error</response>
+    [HttpGet("status/{status}")]
+    public async Task<ActionResult<IEnumerable<SessionResponseDto>>> GetSessionsByStatus(string status)
+    {
+        logger.LogInformation("Getting sessions with status: {Status}", status);
+
+        // Validate status value
+        var validStatuses = new[] { "not_started", "active", "ended", "cancelled" };
+        if (!validStatuses.Contains(status.ToLowerInvariant()))
+        {
+            logger.LogWarning("Invalid status value: {Status}", status);
+            return BadRequest(new
+            {
+                message = $"Invalid status value. Valid values are: {string.Join(", ", validStatuses)}"
+            });
+        }
+
+        var sessions = await sessionService.GetSessionsByStatusAsync(status);
+        logger.LogInformation("Successfully retrieved {Count} sessions with status: {Status}",
+            sessions.Count(), status);
+        return Ok(sessions);
+    }
+
+    /// <summary>
+    /// Get sessions for a specific date.
+    /// </summary>
+    /// <param name="date">The session date (YYYY-MM-DD format)</param>
+    /// <returns>A list of sessions on the specified date</returns>
+    /// <response code="200">Returns the list of sessions</response>
+    /// <response code="400">Invalid date format</response>
+    /// <response code="401">Not authorized</response>
+    /// <response code="500">Internal server error</response>
+    [HttpGet("date/{date}")]
+    public async Task<ActionResult<IEnumerable<SessionResponseDto>>> GetSessionsByDate(DateTime date)
+    {
+        logger.LogInformation("Getting sessions for date: {Date:yyyy-MM-dd}", date);
+
+        var sessions = await sessionService.GetSessionsByDateAsync(date);
+        logger.LogInformation("Successfully retrieved {Count} sessions for date: {Date:yyyy-MM-dd}",
+            sessions.Count(), date);
+        return Ok(sessions);
+    }
+
+    #endregion
+
+    #region Update Operations
+
+    /// <summary>
+    /// Update the actual room for a session.
+    /// Only active sessions can have their room updated.
+    /// This addresses Issue #6 from the implementation requirements.
+    /// </summary>
+    /// <param name="id">The ID of the session to update</param>
+    /// <param name="updateRequest">The room update request</param>
+    /// <returns>The updated session</returns>
+    /// <response code="200">Returns the updated session</response>
+    /// <response code="400">Invalid input data or session not in active status</response>
+    /// <response code="404">Session or classroom not found</response>
+    /// <response code="401">Not authorized</response>
+    /// <response code="403">Not authorized to update this session</response>
+    /// <response code="500">Internal server error</response>
+    [HttpPatch("{id:int}/room")]
+    [Authorize(Policy = "InstructorPolicy")]
+    public async Task<ActionResult<SessionResponseDto>> UpdateSessionRoom(int id, UpdateSessionRoom updateRequest)
+    {
+        logger.LogInformation("Updating room for session ID: {SessionId} to classroom ID: {ClassroomId}",
+            id, updateRequest.ActualRoomId);
+
+        if (!ModelState.IsValid)
+        {
+            logger.LogWarning("Session room update failed due to invalid model state for session ID: {SessionId}", id);
+            return BadRequest(ModelState);
+        }
+
+        try
+        {
+            var (session, error) = await sessionService.UpdateSessionRoomAsync(id, updateRequest);
+
+            if (error != null)
+            {
+                logger.LogWarning("Session room update failed for session ID {SessionId}: {Error}", id, error);
+                return BadRequest(new { message = error });
+            }
+
+            logger.LogInformation("Successfully updated room for session ID: {SessionId}", id);
+            return Ok(session);
+        }
+        catch (EntityNotFoundException<int> ex)
+        {
+            logger.LogWarning(ex, "Session room update failed: Session with ID {SessionId} not found", id);
+            return NotFound(new { message = ex.Message });
+        }
+    }
+
+    #endregion
+}

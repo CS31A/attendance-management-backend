@@ -25,8 +25,8 @@ public class QrCodeController(
     {
         try
         {
-            logger.LogInformation("Generating QR code for schedule ID: {ScheduleId}, section ID: {SectionId}",
-                request.ScheduleId, request.SectionId);
+            logger.LogInformation("Generating QR code for session ID: {SessionId}",
+                request.SessionId);
 
             // Generate and save QR code to database
             var result = await qrCodeService.GenerateQrCodeAsync(request, User);
