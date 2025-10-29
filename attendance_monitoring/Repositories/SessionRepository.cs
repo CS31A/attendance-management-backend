@@ -158,6 +158,63 @@ public class SessionRepository(ApplicationDbContext context) : ISessionRepositor
     #region Utility Operations
 
     /// <summary>
+    /// Checks if a session exists for a specific schedule on a given date.
+    /// </summary>
+    public async Task<bool> SessionExistsForScheduleAndDateAsync(int scheduleId, DateTime sessionDate)
+    {
+        var dateOnly = sessionDate.Date;
+        
+        return await context.Sessions
+            .AsNoTracking()
+            .AnyAsync(s => s.ScheduleId == scheduleId && s.SessionDate.Date == dateOnly)
+            .ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Retrieves active sessions for a specific instructor.
+    /// </summary>
+    public async Task<IEnumerable<Session>> GetActiveSessionsByInstructorIdAsync(int instructorId)
+    {
+        return await context.Sessions
+            .AsNoTracking()
+            .AsSplitQuery()
+            .Include(s => s.Schedule)
+                .ThenInclude(sch => sch.Subject)
+            .Include(s => s.Schedule)
+                .ThenInclude(sch => sch.Section)
+            .Include(s => s.Schedule)
+                .ThenInclude(sch => sch.Classroom)
+            .Include(s => s.ActualRoom)
+            .Include(s => s.InstructorWhoStarted)
+            .Include(s => s.InstructorWhoEnded)
+            .Where(s => s.Status == "active" && s.Schedule.InstructorId == instructorId)
+            .OrderBy(s => s.ActualStartTime)
+            .ToListAsync()
+            .ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Retrieves a session by its ID without tracking (for read-only operations).
+    /// </summary>
+    public async Task<Session?> GetSessionByIdNoTrackingAsync(int id)
+    {
+        return await context.Sessions
+            .AsNoTracking()
+            .AsSplitQuery()
+            .Include(s => s.Schedule)
+                .ThenInclude(sch => sch.Subject)
+            .Include(s => s.Schedule)
+                .ThenInclude(sch => sch.Section)
+            .Include(s => s.Schedule)
+                .ThenInclude(sch => sch.Classroom)
+            .Include(s => s.ActualRoom)
+            .Include(s => s.InstructorWhoStarted)
+            .Include(s => s.InstructorWhoEnded)
+            .FirstOrDefaultAsync(s => s.Id == id)
+            .ConfigureAwait(false);
+    }
+
+    /// <summary>
     /// Saves all pending changes to the database.
     /// </summary>
     public async Task<int> SaveChangesAsync()
