@@ -91,6 +91,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Implemented composite indexes to prevent duplicate attendance records
   - Added cascading delete for attendance records when sessions are deleted
 
+#### Database Schema Optimization
+- **Removed** redundant composite index on StudentId and SessionId in AttendanceRecord table
+  - The composite index `[Index(nameof(StudentId), nameof(SessionId))]` was removed to optimize database performance
+  - Individual indexes on StudentId, SessionId, and CheckInTime remain for efficient querying
+  - Reduces database storage overhead and improves write performance
+
 #### Documentation Updates
 - **Updated** DBML ERD structure to reflect new Session and Attendance entities
   - Added timestamp fields to instructors, students, and admins tables
