@@ -11,35 +11,55 @@ public class StudentRepository(ApplicationDbContext context) : IStudentRepositor
     #region GetAllStudentsAsync
     public async Task<IList<Student>> GetAllStudentsAsync()
     {
-        return await context.Students.AsNoTracking().ToListAsync();
+        return await context.Students
+            .Include(s => s.User)
+            .AsNoTracking()
+            .ToListAsync();
     }
     #endregion
 
     #region GetAllNonDeletedStudentsAsync
     public async Task<IList<Student>> GetAllNonDeletedStudentsAsync()
     {
-        return await context.Students.AsNoTracking().Where(student => !student.IsDeleted).ToListAsync().ConfigureAwait(false);
+        return await context.Students
+            .Include(s => s.User)
+            .AsNoTracking()
+            .Where(student => !student.IsDeleted)
+            .ToListAsync()
+            .ConfigureAwait(false);
     }
     #endregion
 
     #region GetStudentByIdAsync
     public async Task<Student?> GetStudentByIdAsync(int id)
     {
-        return await context.Students.AsNoTracking().FirstOrDefaultAsync(s => s.Id == id && !s.IsDeleted).ConfigureAwait(false);
+        return await context.Students
+            .Include(s => s.User)
+            .AsNoTracking()
+            .FirstOrDefaultAsync(s => s.Id == id && !s.IsDeleted)
+            .ConfigureAwait(false);
     }
     #endregion
 
     #region GetStudentByUserIdAsync
     public async Task<Student?> GetStudentByUserIdAsync(string userId)
     {
-        return await context.Students.AsNoTracking().FirstOrDefaultAsync(s => s.UserId == userId && !s.IsDeleted).ConfigureAwait(false);
+        return await context.Students
+            .Include(s => s.User)
+            .AsNoTracking()
+            .FirstOrDefaultAsync(s => s.UserId == userId && !s.IsDeleted)
+            .ConfigureAwait(false);
     }
     #endregion
 
     #region GetStudentByIdIgnoreDeleteStatus
     public async Task<Student?> GetStudentByIdIgnoreDeleteStatus(int id)
     {
-        return await context.Students.AsNoTracking().FirstOrDefaultAsync(s => s.Id == id).ConfigureAwait(false);
+        return await context.Students
+            .Include(s => s.User)
+            .AsNoTracking()
+            .FirstOrDefaultAsync(s => s.Id == id)
+            .ConfigureAwait(false);
     }
     #endregion
 
@@ -122,6 +142,7 @@ public class StudentRepository(ApplicationDbContext context) : IStudentRepositor
                 (student, schedule) => schedule)
             .Include(schedule => schedule.Subject)
             .Include(schedule => schedule.Instructor)
+                .ThenInclude(i => i.User)
             .Include(schedule => schedule.Classroom)
             .Select(schedule => new ValueTuple<Subject, Schedules, Instructor, Classroom>(
                 schedule.Subject,

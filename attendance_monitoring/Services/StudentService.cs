@@ -157,7 +157,6 @@ namespace attendance_monitoring.Services
                 {
                     Firstname = createStudent.Firstname,
                     Lastname = createStudent.Lastname,
-                    Email = createStudent.Email,
                     IsRegular = createStudent.IsRegular,
                     UserId = userId,
                     SectionId = createStudent.SectionId,
@@ -238,11 +237,6 @@ namespace attendance_monitoring.Services
                 if (!string.IsNullOrEmpty(updateStudent.Lastname))
                 {
                     existingStudent.Lastname = updateStudent.Lastname;
-                }
-
-                if (!string.IsNullOrEmpty(updateStudent.Email))
-                {
-                    existingStudent.Email = updateStudent.Email;
                 }
 
                 if (updateStudent.IsRegular.HasValue)
@@ -534,7 +528,7 @@ namespace attendance_monitoring.Services
                         Id = data.Instructor.Id,
                         Firstname = data.Instructor.Firstname,
                         Lastname = data.Instructor.Lastname,
-                        Email = data.Instructor.Email
+                        Email = data.Instructor.User?.Email
                     },
                     Classroom = new ClassroomResponseDto
                     {

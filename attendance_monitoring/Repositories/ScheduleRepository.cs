@@ -18,6 +18,7 @@ namespace attendance_monitoring.Repositories
                 .Include(s => s.Classroom)
                 .Include(s => s.Section)
                 .Include(s => s.Instructor)
+                    .ThenInclude(i => i.User)
                 .ToListAsync();
         }
         #endregion
@@ -31,6 +32,7 @@ namespace attendance_monitoring.Repositories
                 .Include(s => s.Classroom)
                 .Include(s => s.Section)
                 .Include(s => s.Instructor)
+                    .ThenInclude(i => i.User)
                 .FirstOrDefaultAsync(s => s.Id == id);
         }
         #endregion
@@ -44,6 +46,7 @@ namespace attendance_monitoring.Repositories
                 .Include(s => s.Classroom)
                 .Include(s => s.Section)
                 .Include(s => s.Instructor)
+                    .ThenInclude(i => i.User)
                 .Where(s => s.InstructorId == instructorId)
                 .ToListAsync();
         }
