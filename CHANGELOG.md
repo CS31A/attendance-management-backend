@@ -25,6 +25,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Includes endpoints to get sessions by schedule, status, or date
   - Supports updating the actual room for active sessions
   - Provides comprehensive session management capabilities
+- **Implemented** session lifecycle endpoints for instructors
+  - Added create (`POST /api/sessions`), start (`PATCH /api/sessions/{id}/start`), end (`PATCH /api/sessions/{id}/end`), and cancel (`DELETE /api/sessions/{id}`) operations
+  - Introduced dedicated DTOs (`CreateSession`, `StartSession`, `EndSession`, `CancelSession`) with validation rules
+  - Connected controller workflows to new service and repository logic with explicit authorization, logging, and error handling
 
 ### 🐛 **Bug Fixes**
 
