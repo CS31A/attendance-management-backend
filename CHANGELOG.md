@@ -105,6 +105,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Individual indexes on StudentId, SessionId, and CheckInTime remain for efficient querying
   - Reduces database storage overhead and improves write performance
 
+#### Repository Navigation Property Enhancement
+- **Enhanced** SessionRepository with additional navigation property loading
+  - Added `Include(s => s.Schedule).ThenInclude(sch => sch.Instructor)` to multiple repository methods
+  - Ensures instructor information from schedule is loaded when retrieving sessions
+  - Improves data retrieval efficiency for session-related operations
+  - Applied consistently across GetSessionByIdAsync, GetSessionsByScheduleAsync, GetSessionsByStatusAsync, GetSessionsByDateAsync, GetSessionsWithAttendanceAsync, GetSessionWithDetailsAsync, and GetSessionForAttendanceValidationAsync methods
+
 #### Documentation Updates
 - **Updated** DBML ERD structure to reflect new Session and Attendance entities
   - Added timestamp fields to instructors, students, and admins tables
