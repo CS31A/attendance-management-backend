@@ -13,7 +13,6 @@ namespace attendance_monitoring.Classes;
 [Index(nameof(SessionId))]
 [Index(nameof(CheckInTime))]
 [Index(nameof(Status))]
-[Index(nameof(StudentId), nameof(SessionId))]
 public class AttendanceRecord
 {
     [Key]
