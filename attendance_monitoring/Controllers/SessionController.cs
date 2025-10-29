@@ -184,4 +184,198 @@ public class SessionController(ISessionService sessionService, ILogger<SessionCo
     }
 
     #endregion
+
+    #region Lifecycle Management Operations
+
+    /// <summary>
+    /// Create a new session for a schedule.
+    /// </summary>
+    /// <param name="request">The create session request</param>
+    /// <returns>The created session</returns>
+    /// <response code="201">Returns the newly created session</response>
+    /// <response code="400">Invalid input data or business rule violation</response>
+    /// <response code="404">Schedule not found</response>
+    /// <response code="401">Not authorized</response>
+    /// <response code="500">Internal server error</response>
+    [HttpPost]
+    [Authorize(Policy = "InstructorPolicy")]
+    public async Task<ActionResult<SessionResponseDto>> CreateSession([FromBody] CreateSession request)
+    {
+        logger.LogInformation("Creating session for schedule ID: {ScheduleId} on date: {SessionDate:yyyy-MM-dd}",
+            request.ScheduleId, request.SessionDate);
+
+        if (!ModelState.IsValid)
+        {
+            logger.LogWarning("Session creation failed due to invalid model state");
+            return BadRequest(ModelState);
+        }
+
+        try
+        {
+            var (session, error) = await sessionService.CreateSessionAsync(request);
+
+            if (error != null)
+            {
+                logger.LogWarning("Session creation failed: {Error}", error);
+                return BadRequest(new { message = error });
+            }
+
+            logger.LogInformation("Successfully created session ID: {SessionId}", session!.Id);
+            return CreatedAtAction(nameof(GetSession), new { id = session.Id }, session);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error occurred while creating session for schedule ID {ScheduleId}", request.ScheduleId);
+            return StatusCode(500, new { message = "An error occurred while creating the session" });
+        }
+    }
+
+    /// <summary>
+    /// Start a session, marking it as active.
+    /// </summary>
+    /// <param name="id">The ID of the session to start</param>
+    /// <param name="request">The start session request</param>
+    /// <returns>The updated session</returns>
+    /// <response code="200">Returns the started session</response>
+    /// <response code="400">Invalid input data or session cannot be started</response>
+    /// <response code="404">Session not found</response>
+    /// <response code="401">Not authorized</response>
+    /// <response code="403">Not authorized to start this session</response>
+    /// <response code="500">Internal server error</response>
+    [HttpPatch("{id:int}/start")]
+    [Authorize(Policy = "InstructorPolicy")]
+    public async Task<ActionResult<SessionResponseDto>> StartSession(int id, [FromBody] StartSession request)
+    {
+        logger.LogInformation("Starting session ID: {SessionId}", id);
+
+        if (!ModelState.IsValid)
+        {
+            logger.LogWarning("Session start failed due to invalid model state for session ID: {SessionId}", id);
+            return BadRequest(ModelState);
+        }
+
+        try
+        {
+            var (session, error) = await sessionService.StartSessionAsync(id, request);
+
+            if (error != null)
+            {
+                logger.LogWarning("Session start failed for session ID {SessionId}: {Error}", id, error);
+                return BadRequest(new { message = error });
+            }
+
+            logger.LogInformation("Successfully started session ID: {SessionId}", id);
+            return Ok(session);
+        }
+        catch (EntityNotFoundException<int> ex)
+        {
+            logger.LogWarning(ex, "Session start failed: Session with ID {SessionId} not found", id);
+            return NotFound(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error occurred while starting session ID {SessionId}", id);
+            return StatusCode(500, new { message = "An error occurred while starting the session" });
+        }
+    }
+
+    /// <summary>
+    /// End an active session.
+    /// </summary>
+    /// <param name="id">The ID of the session to end</param>
+    /// <param name="request">The end session request</param>
+    /// <returns>The updated session</returns>
+    /// <response code="200">Returns the ended session</response>
+    /// <response code="400">Invalid input data or session cannot be ended</response>
+    /// <response code="404">Session not found</response>
+    /// <response code="401">Not authorized</response>
+    /// <response code="403">Not authorized to end this session</response>
+    /// <response code="500">Internal server error</response>
+    [HttpPatch("{id:int}/end")]
+    [Authorize(Policy = "InstructorPolicy")]
+    public async Task<ActionResult<SessionResponseDto>> EndSession(int id, [FromBody] EndSession request)
+    {
+        logger.LogInformation("Ending session ID: {SessionId}", id);
+
+        if (!ModelState.IsValid)
+        {
+            logger.LogWarning("Session end failed due to invalid model state for session ID: {SessionId}", id);
+            return BadRequest(ModelState);
+        }
+
+        try
+        {
+            var (session, error) = await sessionService.EndSessionAsync(id, request);
+
+            if (error != null)
+            {
+                logger.LogWarning("Session end failed for session ID {SessionId}: {Error}", id, error);
+                return BadRequest(new { message = error });
+            }
+
+            logger.LogInformation("Successfully ended session ID: {SessionId}", id);
+            return Ok(session);
+        }
+        catch (EntityNotFoundException<int> ex)
+        {
+            logger.LogWarning(ex, "Session end failed: Session with ID {SessionId} not found", id);
+            return NotFound(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error occurred while ending session ID {SessionId}", id);
+            return StatusCode(500, new { message = "An error occurred while ending the session" });
+        }
+    }
+
+    /// <summary>
+    /// Cancel a session that has not started yet.
+    /// </summary>
+    /// <param name="id">The ID of the session to cancel</param>
+    /// <param name="request">The cancel session request</param>
+    /// <returns>The cancelled session</returns>
+    /// <response code="200">Returns the cancelled session</response>
+    /// <response code="400">Invalid input data or session cannot be cancelled</response>
+    /// <response code="404">Session not found</response>
+    /// <response code="401">Not authorized</response>
+    /// <response code="403">Not authorized to cancel this session</response>
+    /// <response code="500">Internal server error</response>
+    [HttpDelete("{id:int}")]
+    [Authorize(Policy = "InstructorPolicy")]
+    public async Task<ActionResult<SessionResponseDto>> CancelSession(int id, [FromBody] CancelSession request)
+    {
+        logger.LogInformation("Cancelling session ID: {SessionId}", id);
+
+        if (!ModelState.IsValid)
+        {
+            logger.LogWarning("Session cancellation failed due to invalid model state for session ID: {SessionId}", id);
+            return BadRequest(ModelState);
+        }
+
+        try
+        {
+            var (session, error) = await sessionService.CancelSessionAsync(id, request);
+
+            if (error != null)
+            {
+                logger.LogWarning("Session cancellation failed for session ID {SessionId}: {Error}", id, error);
+                return BadRequest(new { message = error });
+            }
+
+            logger.LogInformation("Successfully cancelled session ID: {SessionId}", id);
+            return Ok(session);
+        }
+        catch (EntityNotFoundException<int> ex)
+        {
+            logger.LogWarning(ex, "Session cancellation failed: Session with ID {SessionId} not found", id);
+            return NotFound(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error occurred while cancelling session ID {SessionId}", id);
+            return StatusCode(500, new { message = "An error occurred while cancelling the session" });
+        }
+    }
+
+    #endregion
 }

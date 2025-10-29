@@ -54,4 +54,26 @@ public interface ISessionRepository : ISaveableRepository
     /// <param name="session">The session entity to create</param>
     /// <returns>The created session</returns>
     Task<Session> CreateSessionAsync(Session session);
+
+    /// <summary>
+    /// Checks if a session exists for a specific schedule on a given date.
+    /// </summary>
+    /// <param name="scheduleId">The schedule ID</param>
+    /// <param name="sessionDate">The session date</param>
+    /// <returns>True if a session exists, false otherwise</returns>
+    Task<bool> SessionExistsForScheduleAndDateAsync(int scheduleId, DateTime sessionDate);
+
+    /// <summary>
+    /// Retrieves active sessions for a specific instructor.
+    /// </summary>
+    /// <param name="instructorId">The instructor ID</param>
+    /// <returns>Collection of active sessions for the instructor</returns>
+    Task<IEnumerable<Session>> GetActiveSessionsByInstructorIdAsync(int instructorId);
+
+    /// <summary>
+    /// Retrieves a session by its ID without tracking (for read-only operations).
+    /// </summary>
+    /// <param name="id">The session ID</param>
+    /// <returns>The session if found, null otherwise</returns>
+    Task<Session?> GetSessionByIdNoTrackingAsync(int id);
 }
