@@ -23,6 +23,8 @@ namespace attendance_monitoring.Data
         public DbSet<BlacklistedToken> BlacklistedTokens { get; set; } = null!;
         public DbSet<QrCode> QrCodes { get; set; } = null!;
         public DbSet<StudentEnrollment> StudentEnrollments { get; set; } = null!;
+        public DbSet<Session> Sessions { get; set; } = null!;
+        public DbSet<AttendanceRecord> AttendanceRecords { get; set; } = null!;
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
@@ -83,6 +85,71 @@ namespace attendance_monitoring.Data
                 .WithMany(s => s.StudentEnrollments)
                 .HasForeignKey(se => se.SubjectId)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            // Configure Session relationships
+            builder.Entity<Session>()
+                .HasOne(s => s.Schedule)
+                .WithMany()
+                .HasForeignKey(s => s.ScheduleId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            builder.Entity<Session>()
+                .HasOne(s => s.ActualRoom)
+                .WithMany()
+                .HasForeignKey(s => s.ActualRoomId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            builder.Entity<Session>()
+                .HasOne(s => s.InstructorWhoStarted)
+                .WithMany()
+                .HasForeignKey(s => s.StartedBy)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            builder.Entity<Session>()
+                .HasOne(s => s.InstructorWhoEnded)
+                .WithMany()
+                .HasForeignKey(s => s.EndedBy)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // Configure QrCode relationships
+            builder.Entity<QrCode>()
+                .HasOne(q => q.Session)
+                .WithMany(s => s.QrCodes)
+                .HasForeignKey(q => q.SessionId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // Ensure QR hash uniqueness - critical for security and preventing duplicate QR codes
+            // This index prevents multiple QR codes from having the same hash value
+            builder.Entity<QrCode>()
+                .HasIndex(q => q.QrHash)
+                .IsUnique()
+                .HasDatabaseName("IX_QrCodes_QrHash");
+
+            // Configure AttendanceRecord relationships
+            builder.Entity<AttendanceRecord>()
+                .HasOne(a => a.Student)
+                .WithMany()
+                .HasForeignKey(a => a.StudentId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            builder.Entity<AttendanceRecord>()
+                .HasOne(a => a.Session)
+                .WithMany(s => s.AttendanceRecords)
+                .HasForeignKey(a => a.SessionId)
+                .OnDelete(DeleteBehavior.Cascade); // Delete attendance when session is deleted
+
+            builder.Entity<AttendanceRecord>()
+                .HasOne(a => a.QrCode)
+                .WithMany(q => q.AttendanceRecords)
+                .HasForeignKey(a => a.QrCodeId)
+                .OnDelete(DeleteBehavior.SetNull); // Set to null if QR code is deleted
+
+            // Composite index for preventing duplicate attendance records
+            // Ensures a student can only have one attendance record per session
+            builder.Entity<AttendanceRecord>()
+                .HasIndex(a => new { a.StudentId, a.SessionId })
+                .IsUnique()
+                .HasDatabaseName("IX_AttendanceRecords_StudentId_SessionId");
         }
     }
 }
