@@ -51,4 +51,35 @@ public interface ISessionService
     /// <param name="updateRequest">The room update request</param>
     /// <returns>Tuple of updated session DTO and error message (if any)</returns>
     Task<(SessionResponseDto?, string?)> UpdateSessionRoomAsync(int sessionId, UpdateSessionRoom updateRequest);
+
+    /// <summary>
+    /// Creates a new session for a schedule.
+    /// </summary>
+    /// <param name="request">The create session request</param>
+    /// <returns>Tuple of created session DTO and error message (if any)</returns>
+    Task<(SessionResponseDto?, string?)> CreateSessionAsync(CreateSession request);
+
+    /// <summary>
+    /// Starts a session, marking it as active.
+    /// </summary>
+    /// <param name="sessionId">The session ID</param>
+    /// <param name="request">The start session request</param>
+    /// <returns>Tuple of updated session DTO and error message (if any)</returns>
+    Task<(SessionResponseDto?, string?)> StartSessionAsync(int sessionId, StartSession request);
+
+    /// <summary>
+    /// Ends an active session.
+    /// </summary>
+    /// <param name="sessionId">The session ID</param>
+    /// <param name="request">The end session request</param>
+    /// <returns>Tuple of updated session DTO and error message (if any)</returns>
+    Task<(SessionResponseDto?, string?)> EndSessionAsync(int sessionId, EndSession request);
+
+    /// <summary>
+    /// Cancels a session that has not started yet.
+    /// </summary>
+    /// <param name="sessionId">The session ID</param>
+    /// <param name="request">The cancel session request</param>
+    /// <returns>Tuple of updated session DTO and error message (if any)</returns>
+    Task<(SessionResponseDto?, string?)> CancelSessionAsync(int sessionId, CancelSession request);
 }
