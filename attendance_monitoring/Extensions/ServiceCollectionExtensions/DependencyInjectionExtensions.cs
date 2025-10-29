@@ -28,6 +28,7 @@ public static class DependencyInjectionExtensions
         services.AddScoped<IScheduleRepository, ScheduleRepository>();
         services.AddScoped<IQrCodeRepository, QrCodeRepository>();
         services.AddScoped<IStudentEnrollmentRepository, StudentEnrollmentRepository>();
+        services.AddScoped<ISessionRepository, SessionRepository>();
 
         return services;
     }
@@ -55,6 +56,7 @@ public static class DependencyInjectionExtensions
         services.AddScoped<ITokenValidationService, TokenValidationService>();
         services.AddScoped<ICookieOptionsService, CookieOptionsService>();
         services.AddScoped<IStudentEnrollmentService, StudentEnrollmentService>();
+        services.AddScoped<ISessionService, SessionService>();
 
         return services;
     }

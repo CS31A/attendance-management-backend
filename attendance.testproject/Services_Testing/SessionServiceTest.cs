@@ -1,0 +1,1024 @@
+using attendance_monitoring.Classes;
+using attendance_monitoring.Exceptions;
+using attendance_monitoring.IRepository;
+using attendance_monitoring.IServices;
+using attendance_monitoring.Models.DTO.Request;
+using attendance_monitoring.Models.DTO.Response;
+using attendance_monitoring.Services;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.Logging;
+using System.Security.Claims;
+
+namespace attendance.testproject.Services_Testing;
+
+/// <summary>
+/// Unit tests for SessionService
+/// </summary>
+public class SessionServiceTest
+{
+    private readonly Mock<ISessionRepository> _mockSessionRepository;
+    private readonly Mock<IScheduleRepository> _mockScheduleRepository;
+    private readonly Mock<IInstructorRepository> _mockInstructorRepository;
+    private readonly Mock<IClassroomRepository> _mockClassroomRepository;
+    private readonly Mock<IHttpContextAccessor> _mockHttpContextAccessor;
+    private readonly Mock<ILogger<SessionService>> _mockLogger;
+    private readonly Mock<UserManager<IdentityUser>> _mockUserManager;
+    private readonly UserContextService _userContextService;
+    private readonly SessionService _sessionService;
+    private readonly ClaimsPrincipal _testUser;
+    private readonly DefaultHttpContext _httpContext;
+
+    public SessionServiceTest()
+    {
+        _mockSessionRepository = new Mock<ISessionRepository>();
+        _mockScheduleRepository = new Mock<IScheduleRepository>();
+        _mockInstructorRepository = new Mock<IInstructorRepository>();
+        _mockClassroomRepository = new Mock<IClassroomRepository>();
+        _mockHttpContextAccessor = new Mock<IHttpContextAccessor>();
+        _mockLogger = new Mock<ILogger<SessionService>>();
+
+        // Mock UserManager for UserContextService
+        var mockUserStore = new Mock<IUserStore<IdentityUser>>();
+        _mockUserManager = new Mock<UserManager<IdentityUser>>(
+            mockUserStore.Object, null, null, null, null, null, null, null, null);
+
+        // Create real UserContextService with mocked UserManager
+        _userContextService = new UserContextService(_mockUserManager.Object);
+
+        // Setup test user with claims
+        _testUser = new ClaimsPrincipal(new ClaimsIdentity(new[]
+        {
+            new Claim(ClaimTypes.NameIdentifier, "user-123"),
+            new Claim(ClaimTypes.Role, "Instructor")
+        }, "TestAuthentication"));
+
+        // Setup HTTP context
+        _httpContext = new DefaultHttpContext
+        {
+            User = _testUser
+        };
+
+        _mockHttpContextAccessor.Setup(x => x.HttpContext).Returns(_httpContext);
+
+        _sessionService = new SessionService(
+            _mockSessionRepository.Object,
+            _mockScheduleRepository.Object,
+            _mockInstructorRepository.Object,
+            _mockClassroomRepository.Object,
+            _userContextService,
+            _mockHttpContextAccessor.Object,
+            _mockLogger.Object
+        );
+    }
+
+    #region GetSessionByIdAsync Tests
+
+    [Fact]
+    public async Task GetSessionByIdAsync_ReturnsSessionDto_WhenSessionExists()
+    {
+        // Arrange
+        int sessionId = 1;
+        var session = CreateTestSession(sessionId);
+
+        _mockSessionRepository
+            .Setup(r => r.GetSessionByIdAsync(sessionId))
+            .ReturnsAsync(session);
+
+        // Act
+        var result = await _sessionService.GetSessionByIdAsync(sessionId);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Equal(sessionId, result.Id);
+        Assert.Equal("not_started", result.Status);
+        _mockSessionRepository.Verify(r => r.GetSessionByIdAsync(sessionId), Times.Once);
+    }
+
+    [Fact]
+    public async Task GetSessionByIdAsync_ThrowsEntityNotFoundException_WhenSessionDoesNotExist()
+    {
+        // Arrange
+        int sessionId = 999;
+        _mockSessionRepository
+            .Setup(r => r.GetSessionByIdAsync(sessionId))
+            .ReturnsAsync((Session?)null);
+
+        // Act & Assert
+        await Assert.ThrowsAsync<EntityNotFoundException<int>>(
+            () => _sessionService.GetSessionByIdAsync(sessionId));
+    }
+
+    [Fact]
+    public async Task GetSessionByIdAsync_ThrowsEntityServiceException_WhenRepositoryThrowsException()
+    {
+        // Arrange
+        int sessionId = 1;
+        _mockSessionRepository
+            .Setup(r => r.GetSessionByIdAsync(sessionId))
+            .ThrowsAsync(new Exception("Database error"));
+
+        // Act & Assert
+        await Assert.ThrowsAsync<EntityServiceException>(
+            () => _sessionService.GetSessionByIdAsync(sessionId));
+    }
+
+    #endregion
+
+    #region GetAllSessionsAsync Tests
+
+    [Fact]
+    public async Task GetAllSessionsAsync_ReturnsAllSessions()
+    {
+        // Arrange
+        var sessions = new List<Session>
+        {
+            CreateTestSession(1),
+            CreateTestSession(2),
+            CreateTestSession(3)
+        };
+
+        _mockSessionRepository
+            .Setup(r => r.GetAllSessionsAsync())
+            .ReturnsAsync(sessions);
+
+        // Act
+        var result = await _sessionService.GetAllSessionsAsync();
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Equal(3, result.Count());
+        _mockSessionRepository.Verify(r => r.GetAllSessionsAsync(), Times.Once);
+    }
+
+    [Fact]
+    public async Task GetAllSessionsAsync_ReturnsEmptyList_WhenNoSessions()
+    {
+        // Arrange
+        _mockSessionRepository
+            .Setup(r => r.GetAllSessionsAsync())
+            .ReturnsAsync(new List<Session>());
+
+        // Act
+        var result = await _sessionService.GetAllSessionsAsync();
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Empty(result);
+    }
+
+    #endregion
+
+    #region GetSessionsByScheduleIdAsync Tests
+
+    [Fact]
+    public async Task GetSessionsByScheduleIdAsync_ReturnsSessionsForSchedule()
+    {
+        // Arrange
+        int scheduleId = 1;
+        var sessions = new List<Session>
+        {
+            CreateTestSession(1, scheduleId),
+            CreateTestSession(2, scheduleId)
+        };
+
+        _mockSessionRepository
+            .Setup(r => r.GetSessionsByScheduleIdAsync(scheduleId))
+            .ReturnsAsync(sessions);
+
+        // Act
+        var result = await _sessionService.GetSessionsByScheduleIdAsync(scheduleId);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Equal(2, result.Count());
+    }
+
+    #endregion
+
+    #region GetSessionsByStatusAsync Tests
+
+    [Fact]
+    public async Task GetSessionsByStatusAsync_ReturnsSessionsWithStatus()
+    {
+        // Arrange
+        string status = "active";
+        var sessions = new List<Session>
+        {
+            CreateTestSession(1, status: "active"),
+            CreateTestSession(2, status: "active")
+        };
+
+        _mockSessionRepository
+            .Setup(r => r.GetSessionsByStatusAsync(status))
+            .ReturnsAsync(sessions);
+
+        // Act
+        var result = await _sessionService.GetSessionsByStatusAsync(status);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Equal(2, result.Count());
+        Assert.All(result, s => Assert.Equal("active", s.Status));
+    }
+
+    #endregion
+
+    #region GetSessionsByDateAsync Tests
+
+    [Fact]
+    public async Task GetSessionsByDateAsync_ReturnsSessionsForDate()
+    {
+        // Arrange
+        var date = new DateTime(2024, 1, 15);
+        var sessions = new List<Session>
+        {
+            CreateTestSession(1, sessionDate: date),
+            CreateTestSession(2, sessionDate: date)
+        };
+
+        _mockSessionRepository
+            .Setup(r => r.GetSessionsByDateAsync(date))
+            .ReturnsAsync(sessions);
+
+        // Act
+        var result = await _sessionService.GetSessionsByDateAsync(date);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Equal(2, result.Count());
+    }
+
+    #endregion
+
+    #region CreateSessionAsync Tests
+
+    [Fact]
+    public async Task CreateSessionAsync_CreatesSession_WhenValidRequest()
+    {
+        // Arrange
+        // Calculate next Monday
+        var today = DateTime.UtcNow.Date;
+        var daysUntilMonday = ((int)DayOfWeek.Monday - (int)today.DayOfWeek + 7) % 7;
+        if (daysUntilMonday == 0) daysUntilMonday = 7; // If today is Monday, get next Monday
+        var nextMonday = today.AddDays(daysUntilMonday);
+
+        var request = new CreateSession
+        {
+            ScheduleId = 1,
+            SessionDate = nextMonday,
+            Description = "Test session"
+        };
+
+        var schedule = CreateTestSchedule(1, "Monday");
+        var createdSession = CreateTestSession(1, request.ScheduleId, sessionDate: request.SessionDate);
+
+        _mockScheduleRepository
+            .Setup(r => r.GetScheduleByIdAsync(request.ScheduleId))
+            .ReturnsAsync(schedule);
+
+        _mockSessionRepository
+            .Setup(r => r.SessionExistsForScheduleAndDateAsync(request.ScheduleId, request.SessionDate))
+            .ReturnsAsync(false);
+
+        _mockSessionRepository
+            .Setup(r => r.CreateSessionAsync(It.IsAny<Session>()))
+            .Callback<Session>(s => {
+                // Simulate database assigning an ID and setting timestamps
+                createdSession.Status = s.Status;
+                createdSession.ScheduleId = s.ScheduleId;
+                createdSession.SessionDate = s.SessionDate;
+                createdSession.Description = s.Description;
+            })
+            .ReturnsAsync(createdSession);
+
+        _mockSessionRepository
+            .Setup(r => r.SaveChangesAsync())
+            .ReturnsAsync(1);
+
+        _mockSessionRepository
+            .Setup(r => r.GetSessionByIdAsync(It.IsAny<int>()))
+            .ReturnsAsync(() => createdSession);
+
+        // Act
+        var (result, error) = await _sessionService.CreateSessionAsync(request);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Null(error);
+
+        // Verify schedule ID
+        Assert.Equal(request.ScheduleId, result.ScheduleId);
+
+        // Verify initial status
+        Assert.Equal("not_started", result.Status);
+
+        // Verify session date
+        Assert.Equal(request.SessionDate, result.SessionDate);
+
+        // Verify description
+        Assert.Equal(request.Description, result.Description);
+
+        // Verify repository method was called with correct session data
+        _mockSessionRepository.Verify(r => r.CreateSessionAsync(
+            It.Is<Session>(s =>
+                s.Status == "not_started" &&
+                s.ScheduleId == request.ScheduleId &&
+                s.SessionDate == request.SessionDate
+            )), Times.Once);
+    }
+
+    [Fact]
+    public async Task CreateSessionAsync_ReturnsError_WhenScheduleDoesNotExist()
+    {
+        // Arrange
+        var request = new CreateSession
+        {
+            ScheduleId = 999,
+            SessionDate = DateTime.UtcNow.Date.AddDays(1)
+        };
+
+        _mockScheduleRepository
+            .Setup(r => r.GetScheduleByIdAsync(request.ScheduleId))
+            .ReturnsAsync((Schedules?)null);
+
+        // Act
+        var (result, error) = await _sessionService.CreateSessionAsync(request);
+
+        // Assert
+        Assert.Null(result);
+        Assert.NotNull(error);
+        Assert.Contains("not found", error);
+    }
+
+    [Fact]
+    public async Task CreateSessionAsync_ReturnsError_WhenSessionAlreadyExists()
+    {
+        // Arrange
+        var request = new CreateSession
+        {
+            ScheduleId = 1,
+            SessionDate = DateTime.UtcNow.Date.AddDays(1)
+        };
+
+        var schedule = CreateTestSchedule(1, "Monday");
+
+        _mockScheduleRepository
+            .Setup(r => r.GetScheduleByIdAsync(request.ScheduleId))
+            .ReturnsAsync(schedule);
+
+        _mockSessionRepository
+            .Setup(r => r.SessionExistsForScheduleAndDateAsync(request.ScheduleId, request.SessionDate))
+            .ReturnsAsync(true);
+
+        // Act
+        var (result, error) = await _sessionService.CreateSessionAsync(request);
+
+        // Assert
+        Assert.Null(result);
+        Assert.NotNull(error);
+        Assert.Contains("already exists", error);
+    }
+
+    [Fact]
+    public async Task CreateSessionAsync_ReturnsError_WhenDateDoesNotMatchScheduleDayOfWeek()
+    {
+        // Arrange
+        var mondayDate = new DateTime(2024, 1, 15); // Monday
+        var request = new CreateSession
+        {
+            ScheduleId = 1,
+            SessionDate = mondayDate
+        };
+
+        var schedule = CreateTestSchedule(1, "Tuesday"); // Schedule is for Tuesday
+
+        _mockScheduleRepository
+            .Setup(r => r.GetScheduleByIdAsync(request.ScheduleId))
+            .ReturnsAsync(schedule);
+
+        _mockSessionRepository
+            .Setup(r => r.SessionExistsForScheduleAndDateAsync(request.ScheduleId, request.SessionDate))
+            .ReturnsAsync(false);
+
+        // Act
+        var (result, error) = await _sessionService.CreateSessionAsync(request);
+
+        // Assert
+        Assert.Null(result);
+        Assert.NotNull(error);
+        Assert.Contains("does not match", error);
+    }
+
+    [Fact]
+    public async Task CreateSessionAsync_ReturnsError_WhenDateIsInPast()
+    {
+        // Arrange
+        var pastDate = DateTime.UtcNow.Date.AddDays(-1);
+        var request = new CreateSession
+        {
+            ScheduleId = 1,
+            SessionDate = pastDate
+        };
+
+        var schedule = CreateTestSchedule(1, pastDate.DayOfWeek.ToString());
+
+        _mockScheduleRepository
+            .Setup(r => r.GetScheduleByIdAsync(request.ScheduleId))
+            .ReturnsAsync(schedule);
+
+        _mockSessionRepository
+            .Setup(r => r.SessionExistsForScheduleAndDateAsync(request.ScheduleId, request.SessionDate))
+            .ReturnsAsync(false);
+
+        // Act
+        var (result, error) = await _sessionService.CreateSessionAsync(request);
+
+        // Assert
+        Assert.Null(result);
+        Assert.NotNull(error);
+        Assert.Contains("past date", error);
+    }
+
+    #endregion
+
+    #region StartSessionAsync Tests
+
+    [Fact]
+    public async Task StartSessionAsync_StartsSession_WhenValidRequest()
+    {
+        // Arrange
+        int sessionId = 1;
+        var request = new StartSession
+        {
+            ActualRoomId = 1,
+            AttendanceCutoffMinutes = 15
+        };
+
+        var instructor = CreateTestInstructor(1, "user-123");
+        var classroom = CreateTestClassroom(1);
+        var session = CreateTestSession(sessionId, status: "not_started", sessionDate: DateTime.UtcNow.Date);
+        session.Schedule = CreateTestSchedule(1, DateTime.UtcNow.DayOfWeek.ToString());
+        session.Schedule.InstructorId = instructor.Id;
+
+        _mockInstructorRepository
+            .Setup(r => r.GetInstructorByUserIdAsync("user-123"))
+            .ReturnsAsync(instructor);
+
+        _mockSessionRepository
+            .Setup(r => r.GetSessionByIdAsync(sessionId))
+            .ReturnsAsync(session);
+
+        _mockClassroomRepository
+            .Setup(r => r.GetClassroomByIdAsync(request.ActualRoomId.Value))
+            .ReturnsAsync(classroom);
+
+        _mockSessionRepository
+            .Setup(r => r.UpdateSessionAsync(It.IsAny<Session>()))
+            .Callback<Session>(s => {
+                // Simulate the session being updated in the database
+                session.Status = s.Status;
+                session.ActualStartTime = s.ActualStartTime;
+                session.ActualRoomId = s.ActualRoomId;
+                session.AttendanceCutOff = s.AttendanceCutOff;
+                session.StartedBy = s.StartedBy;
+            })
+            .ReturnsAsync(session);
+
+        _mockSessionRepository
+            .Setup(r => r.SaveChangesAsync())
+            .ReturnsAsync(1);
+
+        _mockSessionRepository
+            .Setup(r => r.GetSessionByIdAsync(sessionId))
+            .ReturnsAsync(() => session); // Return the updated session
+
+        // Act
+        var beforeStart = DateTime.UtcNow;
+        var (result, error) = await _sessionService.StartSessionAsync(sessionId, request);
+        var afterStart = DateTime.UtcNow;
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Null(error);
+
+        // Verify status change
+        Assert.Equal("active", result.Status);
+
+        // Verify timestamps
+        Assert.NotNull(result.ActualStartTime);
+        Assert.InRange(result.ActualStartTime.Value, beforeStart.AddSeconds(-2), afterStart.AddSeconds(2));
+
+        // Verify room assignment
+        Assert.Equal(request.ActualRoomId, result.ActualRoomId);
+
+        // Verify instructor tracking
+        Assert.Equal(instructor.Id, result.StartedBy);
+
+        // Verify attendance cutoff calculation
+        Assert.NotNull(result.AttendanceCutOff);
+        var expectedCutoff = result.ActualStartTime.Value.AddMinutes(request.AttendanceCutoffMinutes ?? 15);
+        Assert.Equal(expectedCutoff, result.AttendanceCutOff.Value);
+
+        // Verify repository method was called with correct session state
+        _mockSessionRepository.Verify(r => r.UpdateSessionAsync(
+            It.Is<Session>(s =>
+                s.Status == "active" &&
+                s.ActualStartTime != null &&
+                s.StartedBy == instructor.Id &&
+                s.ActualRoomId == request.ActualRoomId
+            )), Times.Once);
+    }
+
+    [Fact]
+    public async Task StartSessionAsync_ReturnsError_WhenUserContextNotFound()
+    {
+        // Arrange
+        int sessionId = 1;
+        var request = new StartSession();
+
+        _mockHttpContextAccessor.Setup(x => x.HttpContext).Returns((HttpContext?)null);
+
+        // Act
+        var (result, error) = await _sessionService.StartSessionAsync(sessionId, request);
+
+        // Assert
+        Assert.Null(result);
+        Assert.NotNull(error);
+        Assert.Contains("User context not found", error);
+    }
+
+    [Fact]
+    public async Task StartSessionAsync_ReturnsError_WhenInstructorNotFound()
+    {
+        // Arrange
+        int sessionId = 1;
+        var request = new StartSession();
+
+        _mockInstructorRepository
+            .Setup(r => r.GetInstructorByUserIdAsync("user-123"))
+            .ReturnsAsync((Instructor?)null);
+
+        // Act
+        var (result, error) = await _sessionService.StartSessionAsync(sessionId, request);
+
+        // Assert
+        Assert.Null(result);
+        Assert.NotNull(error);
+        Assert.Contains("Instructor profile not found", error);
+    }
+
+    [Fact]
+    public async Task StartSessionAsync_ReturnsError_WhenInstructorNotAuthorized()
+    {
+        // Arrange
+        int sessionId = 1;
+        var request = new StartSession();
+
+        var instructor = CreateTestInstructor(1, "user-123");
+        var session = CreateTestSession(sessionId, status: "not_started");
+        session.Schedule = CreateTestSchedule(1, "Monday");
+        session.Schedule.InstructorId = 999; // Different instructor
+
+        _mockInstructorRepository
+            .Setup(r => r.GetInstructorByUserIdAsync("user-123"))
+            .ReturnsAsync(instructor);
+
+        _mockSessionRepository
+            .Setup(r => r.GetSessionByIdAsync(sessionId))
+            .ReturnsAsync(session);
+
+        // Act
+        var (result, error) = await _sessionService.StartSessionAsync(sessionId, request);
+
+        // Assert
+        Assert.Null(result);
+        Assert.NotNull(error);
+        Assert.Contains("not authorized", error);
+    }
+
+    [Fact]
+    public async Task StartSessionAsync_ReturnsError_WhenSessionAlreadyActive()
+    {
+        // Arrange
+        int sessionId = 1;
+        var request = new StartSession();
+
+        var instructor = CreateTestInstructor(1, "user-123");
+        var session = CreateTestSession(sessionId, status: "active");
+        session.Schedule = CreateTestSchedule(1, "Monday");
+        session.Schedule.InstructorId = instructor.Id;
+
+        _mockInstructorRepository
+            .Setup(r => r.GetInstructorByUserIdAsync("user-123"))
+            .ReturnsAsync(instructor);
+
+        _mockSessionRepository
+            .Setup(r => r.GetSessionByIdAsync(sessionId))
+            .ReturnsAsync(session);
+
+        // Act
+        var (result, error) = await _sessionService.StartSessionAsync(sessionId, request);
+
+        // Assert
+        Assert.Null(result);
+        Assert.NotNull(error);
+        Assert.Contains("already been started", error);
+    }
+
+    [Fact]
+    public async Task StartSessionAsync_ReturnsError_WhenSessionDateNotToday()
+    {
+        // Arrange
+        int sessionId = 1;
+        var request = new StartSession();
+
+        var instructor = CreateTestInstructor(1, "user-123");
+        var session = CreateTestSession(sessionId, status: "not_started", sessionDate: DateTime.UtcNow.Date.AddDays(1));
+        session.Schedule = CreateTestSchedule(1, "Monday");
+        session.Schedule.InstructorId = instructor.Id;
+
+        _mockInstructorRepository
+            .Setup(r => r.GetInstructorByUserIdAsync("user-123"))
+            .ReturnsAsync(instructor);
+
+        _mockSessionRepository
+            .Setup(r => r.GetSessionByIdAsync(sessionId))
+            .ReturnsAsync(session);
+
+        // Act
+        var (result, error) = await _sessionService.StartSessionAsync(sessionId, request);
+
+        // Assert
+        Assert.Null(result);
+        Assert.NotNull(error);
+        Assert.Contains("scheduled for", error);
+    }
+
+    #endregion
+
+    #region EndSessionAsync Tests
+
+    [Fact]
+    public async Task EndSessionAsync_EndsSession_WhenValidRequest()
+    {
+        // Arrange
+        int sessionId = 1;
+        var request = new EndSession
+        {
+            Description = "Session ended successfully"
+        };
+
+        var instructor = CreateTestInstructor(1, "user-123");
+        var session = CreateTestSession(sessionId, status: "active");
+        session.Schedule = CreateTestSchedule(1, "Monday");
+        session.Schedule.InstructorId = instructor.Id;
+
+        _mockInstructorRepository
+            .Setup(r => r.GetInstructorByUserIdAsync("user-123"))
+            .ReturnsAsync(instructor);
+
+        _mockSessionRepository
+            .Setup(r => r.GetSessionByIdAsync(sessionId))
+            .ReturnsAsync(session);
+
+        _mockSessionRepository
+            .Setup(r => r.UpdateSessionAsync(It.IsAny<Session>()))
+            .Callback<Session>(s => {
+                // Simulate the session being updated in the database
+                session.Status = s.Status;
+                session.ActualEndTime = s.ActualEndTime;
+                session.EndedBy = s.EndedBy;
+                session.Description = s.Description;
+            })
+            .ReturnsAsync(session);
+
+        _mockSessionRepository
+            .Setup(r => r.SaveChangesAsync())
+            .ReturnsAsync(1);
+
+        _mockSessionRepository
+            .Setup(r => r.GetSessionByIdAsync(sessionId))
+            .ReturnsAsync(() => session); // Return the updated session
+
+        // Act
+        var beforeEnd = DateTime.UtcNow;
+        var (result, error) = await _sessionService.EndSessionAsync(sessionId, request);
+        var afterEnd = DateTime.UtcNow;
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Null(error);
+
+        // Verify status change
+        Assert.Equal("ended", result.Status);
+
+        // Verify end timestamp
+        Assert.NotNull(result.ActualEndTime);
+        Assert.InRange(result.ActualEndTime.Value, beforeEnd.AddSeconds(-2), afterEnd.AddSeconds(2));
+
+        // Verify instructor tracking
+        Assert.Equal(instructor.Id, result.EndedBy);
+
+        // Verify description was updated
+        Assert.Contains(request.Description, result.Description);
+
+        // Verify repository method was called with correct session state
+        _mockSessionRepository.Verify(r => r.UpdateSessionAsync(
+            It.Is<Session>(s =>
+                s.Status == "ended" &&
+                s.ActualEndTime != null &&
+                s.EndedBy == instructor.Id
+            )), Times.Once);
+    }
+
+    [Fact]
+    public async Task EndSessionAsync_ReturnsError_WhenSessionNotActive()
+    {
+        // Arrange
+        int sessionId = 1;
+        var request = new EndSession();
+
+        var instructor = CreateTestInstructor(1, "user-123");
+        var session = CreateTestSession(sessionId, status: "not_started");
+        session.Schedule = CreateTestSchedule(1, "Monday");
+        session.Schedule.InstructorId = instructor.Id;
+
+        _mockInstructorRepository
+            .Setup(r => r.GetInstructorByUserIdAsync("user-123"))
+            .ReturnsAsync(instructor);
+
+        _mockSessionRepository
+            .Setup(r => r.GetSessionByIdAsync(sessionId))
+            .ReturnsAsync(session);
+
+        // Act
+        var (result, error) = await _sessionService.EndSessionAsync(sessionId, request);
+
+        // Assert
+        Assert.Null(result);
+        Assert.NotNull(error);
+        Assert.Contains("not been started", error);
+    }
+
+    #endregion
+
+    #region CancelSessionAsync Tests
+
+    [Fact]
+    public async Task CancelSessionAsync_CancelsSession_WhenValidRequest()
+    {
+        // Arrange
+        int sessionId = 1;
+        var request = new CancelSession
+        {
+            Reason = "Instructor unavailable"
+        };
+
+        var instructor = CreateTestInstructor(1, "user-123");
+        var session = CreateTestSession(sessionId, status: "not_started");
+        session.Schedule = CreateTestSchedule(1, "Monday");
+        session.Schedule.InstructorId = instructor.Id;
+
+        _mockInstructorRepository
+            .Setup(r => r.GetInstructorByUserIdAsync("user-123"))
+            .ReturnsAsync(instructor);
+
+        _mockSessionRepository
+            .Setup(r => r.GetSessionByIdAsync(sessionId))
+            .ReturnsAsync(session);
+
+        _mockSessionRepository
+            .Setup(r => r.UpdateSessionAsync(It.IsAny<Session>()))
+            .Callback<Session>(s => {
+                // Simulate the session being updated in the database
+                session.Status = s.Status;
+                session.Description = s.Description;
+            })
+            .ReturnsAsync(session);
+
+        _mockSessionRepository
+            .Setup(r => r.SaveChangesAsync())
+            .ReturnsAsync(1);
+
+        _mockSessionRepository
+            .Setup(r => r.GetSessionByIdAsync(sessionId))
+            .ReturnsAsync(() => session); // Return the updated session
+
+        // Act
+        var (result, error) = await _sessionService.CancelSessionAsync(sessionId, request);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Null(error);
+
+        // Verify status change
+        Assert.Equal("cancelled", result.Status);
+
+        // Verify cancellation reason was recorded
+        Assert.Contains(request.Reason, result.Description);
+
+        // Verify repository method was called with correct session state
+        _mockSessionRepository.Verify(r => r.UpdateSessionAsync(
+            It.Is<Session>(s =>
+                s.Status == "cancelled" &&
+                s.Description.Contains(request.Reason)
+            )), Times.Once);
+    }
+
+    [Fact]
+    public async Task CancelSessionAsync_ReturnsError_WhenSessionActive()
+    {
+        // Arrange
+        int sessionId = 1;
+        var request = new CancelSession { Reason = "Test" };
+
+        var instructor = CreateTestInstructor(1, "user-123");
+        var session = CreateTestSession(sessionId, status: "active");
+        session.Schedule = CreateTestSchedule(1, "Monday");
+        session.Schedule.InstructorId = instructor.Id;
+
+        _mockInstructorRepository
+            .Setup(r => r.GetInstructorByUserIdAsync("user-123"))
+            .ReturnsAsync(instructor);
+
+        _mockSessionRepository
+            .Setup(r => r.GetSessionByIdAsync(sessionId))
+            .ReturnsAsync(session);
+
+        // Act
+        var (result, error) = await _sessionService.CancelSessionAsync(sessionId, request);
+
+        // Assert
+        Assert.Null(result);
+        Assert.NotNull(error);
+        Assert.Contains("active session", error);
+    }
+
+    #endregion
+
+    #region UpdateSessionRoomAsync Tests
+
+    [Fact]
+    public async Task UpdateSessionRoomAsync_UpdatesRoom_WhenSessionActive()
+    {
+        // Arrange
+        int sessionId = 1;
+        var request = new UpdateSessionRoom { ActualRoomId = 2 };
+
+        var session = CreateTestSession(sessionId, status: "active");
+        var classroom = CreateTestClassroom(2);
+
+        _mockSessionRepository
+            .Setup(r => r.GetSessionByIdAsync(sessionId))
+            .ReturnsAsync(session);
+
+        _mockClassroomRepository
+            .Setup(r => r.GetClassroomByIdAsync(request.ActualRoomId))
+            .ReturnsAsync(classroom);
+
+        _mockSessionRepository
+            .Setup(r => r.UpdateSessionAsync(It.IsAny<Session>()))
+            .Callback<Session>(s => {
+                // Simulate the session being updated in the database
+                session.ActualRoomId = s.ActualRoomId;
+            })
+            .ReturnsAsync(session);
+
+        _mockSessionRepository
+            .Setup(r => r.SaveChangesAsync())
+            .ReturnsAsync(1);
+
+        _mockSessionRepository
+            .Setup(r => r.GetSessionByIdAsync(sessionId))
+            .ReturnsAsync(() => session); // Return the updated session
+
+        // Act
+        var (result, error) = await _sessionService.UpdateSessionRoomAsync(sessionId, request);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Null(error);
+
+        // Verify room was updated
+        Assert.Equal(request.ActualRoomId, result.ActualRoomId);
+
+        // Verify status remained active
+        Assert.Equal("active", result.Status);
+
+        // Verify repository method was called with correct room ID
+        _mockSessionRepository.Verify(r => r.UpdateSessionAsync(
+            It.Is<Session>(s => s.ActualRoomId == request.ActualRoomId)
+        ), Times.Once);
+    }
+
+    [Fact]
+    public async Task UpdateSessionRoomAsync_ReturnsError_WhenSessionNotActive()
+    {
+        // Arrange
+        int sessionId = 1;
+        var request = new UpdateSessionRoom { ActualRoomId = 2 };
+
+        var session = CreateTestSession(sessionId, status: "not_started");
+
+        _mockSessionRepository
+            .Setup(r => r.GetSessionByIdAsync(sessionId))
+            .ReturnsAsync(session);
+
+        // Act
+        var (result, error) = await _sessionService.UpdateSessionRoomAsync(sessionId, request);
+
+        // Assert
+        Assert.Null(result);
+        Assert.NotNull(error);
+        Assert.Contains("not started", error);
+    }
+
+    [Fact]
+    public async Task UpdateSessionRoomAsync_ReturnsError_WhenClassroomNotFound()
+    {
+        // Arrange
+        int sessionId = 1;
+        var request = new UpdateSessionRoom { ActualRoomId = 999 };
+
+        var session = CreateTestSession(sessionId, status: "active");
+
+        _mockSessionRepository
+            .Setup(r => r.GetSessionByIdAsync(sessionId))
+            .ReturnsAsync(session);
+
+        _mockClassroomRepository
+            .Setup(r => r.GetClassroomByIdAsync(request.ActualRoomId))
+            .ReturnsAsync((Classroom?)null);
+
+        // Act
+        var (result, error) = await _sessionService.UpdateSessionRoomAsync(sessionId, request);
+
+        // Assert
+        Assert.Null(result);
+        Assert.NotNull(error);
+        Assert.Contains("not found", error);
+    }
+
+    #endregion
+
+    #region Helper Methods
+
+    private Session CreateTestSession(
+        int id,
+        int scheduleId = 1,
+        string status = "not_started",
+        DateTime? sessionDate = null)
+    {
+        return new Session
+        {
+            Id = id,
+            ScheduleId = scheduleId,
+            Status = status,
+            SessionDate = sessionDate ?? DateTime.UtcNow.Date,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow,
+            Schedule = CreateTestSchedule(scheduleId, "Monday")
+        };
+    }
+
+    private Schedules CreateTestSchedule(int id, string dayOfWeek)
+    {
+        return new Schedules
+        {
+            Id = id,
+            DayOfWeek = dayOfWeek,
+            TimeIn = new TimeOnly(8, 0),
+            TimeOut = new TimeOnly(10, 0),
+            SubjectId = 1,
+            ClassroomId = 1,
+            SectionId = 1,
+            InstructorId = 1
+        };
+    }
+
+    private Instructor CreateTestInstructor(int id, string userId)
+    {
+        return new Instructor
+        {
+            Id = id,
+            UserId = userId,
+            Firstname = "John",
+            Lastname = "Doe",
+            Email = "john.doe@test.com"
+        };
+    }
+
+    private Classroom CreateTestClassroom(int id)
+    {
+        return new Classroom
+        {
+            Id = id,
+            Name = $"Room-{id}",
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+    }
+
+    #endregion
+}

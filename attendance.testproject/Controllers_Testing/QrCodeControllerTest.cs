@@ -29,10 +29,9 @@ public class QrCodeControllerTest
         // Arrange
         var request = new QrCodeRequest
         {
-            ScheduleId = 1001,
-            SectionId = 1,
-            ActualRoomId = 101,
-            ExpirationMinutes = 30
+            SessionId = 1, // Now uses SessionId instead of ScheduleId/SectionId/ActualRoomId
+            ExpirationMinutes = 30,
+            UniqueHash = "test-unique-hash"
         };
 
         // Mock service response
@@ -60,7 +59,7 @@ public class QrCodeControllerTest
             x => x.Log(
                 LogLevel.Information,
                 It.IsAny<EventId>(),
-                It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains($"Generating QR code for schedule ID: {request.ScheduleId}, section ID: {request.SectionId}")),
+                It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains($"Generating QR code for session ID: {request.SessionId}")),
                 null,
                 It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
             Times.Once);
@@ -133,10 +132,9 @@ public class QrCodeControllerTest
         // Arrange
         var request = new QrCodeRequest
         {
-            ScheduleId = 1004,
-            SectionId = 4,
-            ActualRoomId = 404,
-            ExpirationMinutes = 15
+            SessionId = 4, // Now uses SessionId
+            ExpirationMinutes = 15,
+            UniqueHash = "minimal-unique-hash"
         };
 
         // Mock service response
@@ -166,10 +164,9 @@ public class QrCodeControllerTest
         // Arrange
         var request = new QrCodeRequest
         {
-            ScheduleId = 1007,
-            SectionId = 7,
-            ActualRoomId = 101,
-            ExpirationMinutes = 60
+            SessionId = 7, // Now uses SessionId
+            ExpirationMinutes = 60,
+            UniqueHash = "log-test-unique-hash"
         };
 
         // Mock service response
