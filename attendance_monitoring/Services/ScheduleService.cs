@@ -314,7 +314,7 @@ namespace attendance_monitoring.Services
                     Id = schedule.Instructor.Id,
                     Firstname = schedule.Instructor.Firstname,
                     Lastname = schedule.Instructor.Lastname,
-                    Email = schedule.Instructor.Email
+                    Email = schedule.Instructor.User?.Email
                 },
                 CreatedAt = schedule.CreatedAt,
                 UpdatedAt = schedule.UpdatedAt

@@ -1004,8 +1004,7 @@ public class SessionServiceTest
             Id = id,
             UserId = userId,
             Firstname = "John",
-            Lastname = "Doe",
-            Email = "john.doe@test.com"
+            Lastname = "Doe"
         };
     }
 

@@ -542,8 +542,9 @@ namespace attendance_monitoring.Services
             if (role.Equals("Student", StringComparison.OrdinalIgnoreCase))
             {
                 var student = await context.Students
+                    .Include(s => s.User)
                     .Include(s => s.Section)
-                    .ThenInclude(sec => sec.Course)
+                        .ThenInclude(sec => sec.Course)
                     .FirstOrDefaultAsync(s => s.UserId == userId && !s.IsDeleted)
                     .ConfigureAwait(false);
 
@@ -554,7 +555,7 @@ namespace attendance_monitoring.Services
                         Id = student.Id,
                         Firstname = student.Firstname,
                         Lastname = student.Lastname,
-                        Email = student.Email,
+                        Email = student.User?.Email,
                         IsRegular = student.IsRegular,
                         SectionId = student.SectionId,
                         SectionName = student.Section?.Name ?? string.Empty,
@@ -577,7 +578,7 @@ namespace attendance_monitoring.Services
                         Id = instructor.Id,
                         Firstname = instructor.Firstname,
                         Lastname = instructor.Lastname,
-                        Email = instructor.Email,
+                        Email = instructor.User?.Email,
                         CreatedAt = instructor.CreatedAt,
                         UpdatedAt = instructor.UpdatedAt
                     };

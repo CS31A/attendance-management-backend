@@ -14,11 +14,6 @@ public class CreateStudent
     public string Lastname { get; set; } = string.Empty;
 
     [Required]
-    [EmailAddress]
-    [AllowedEmailDomains(ErrorMessage = "Email domain is not allowed. Please use an email address from an allowed domain.")]
-    public string Email { get; set; } = string.Empty;
-    
-    [Required]
     public bool IsRegular { get; set; } = true;
     
     [Required]
