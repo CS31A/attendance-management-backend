@@ -1,0 +1,752 @@
+using attendance_monitoring.Controllers;
+using attendance_monitoring.Exceptions;
+using attendance_monitoring.IServices;
+using attendance_monitoring.Models.DTO.Request;
+using attendance_monitoring.Models.DTO.Response;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
+
+namespace attendance.testproject.Controllers_Testing;
+
+/// <summary>
+/// Unit tests for SessionController
+/// </summary>
+public class SessionControllerTest
+{
+    private readonly Mock<ISessionService> _mockSessionService;
+    private readonly Mock<ILogger<SessionController>> _mockLogger;
+    private readonly SessionController _sessionController;
+
+    public SessionControllerTest()
+    {
+        _mockSessionService = new Mock<ISessionService>();
+        _mockLogger = new Mock<ILogger<SessionController>>();
+        _sessionController = new SessionController(_mockSessionService.Object, _mockLogger.Object);
+    }
+
+    #region GetAllSessions Tests
+
+    [Fact]
+    public async Task GetAllSessions_ReturnsOkResult_WithSessionList()
+    {
+        // Arrange
+        var sessions = new List<SessionResponseDto>
+        {
+            CreateTestSessionResponseDto(1),
+            CreateTestSessionResponseDto(2),
+            CreateTestSessionResponseDto(3)
+        };
+
+        _mockSessionService
+            .Setup(s => s.GetAllSessionsAsync())
+            .ReturnsAsync(sessions);
+
+        // Act
+        var result = await _sessionController.GetAllSessions();
+
+        // Assert
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        var returnedSessions = Assert.IsAssignableFrom<IEnumerable<SessionResponseDto>>(okResult.Value);
+        Assert.Equal(3, returnedSessions.Count());
+
+        _mockSessionService.Verify(s => s.GetAllSessionsAsync(), Times.Once);
+    }
+
+    [Fact]
+    public async Task GetAllSessions_ReturnsOkResult_WithEmptyList()
+    {
+        // Arrange
+        _mockSessionService
+            .Setup(s => s.GetAllSessionsAsync())
+            .ReturnsAsync(new List<SessionResponseDto>());
+
+        // Act
+        var result = await _sessionController.GetAllSessions();
+
+        // Assert
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        var returnedSessions = Assert.IsAssignableFrom<IEnumerable<SessionResponseDto>>(okResult.Value);
+        Assert.Empty(returnedSessions);
+    }
+
+    #endregion
+
+    #region GetSession Tests
+
+    [Fact]
+    public async Task GetSession_ReturnsOkResult_WithSession()
+    {
+        // Arrange
+        int sessionId = 1;
+        var expectedSession = CreateTestSessionResponseDto(sessionId);
+
+        _mockSessionService
+            .Setup(s => s.GetSessionByIdAsync(sessionId))
+            .ReturnsAsync(expectedSession);
+
+        // Act
+        var result = await _sessionController.GetSession(sessionId);
+
+        // Assert
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        var session = Assert.IsType<SessionResponseDto>(okResult.Value);
+        Assert.Equal(sessionId, session.Id);
+
+        _mockSessionService.Verify(s => s.GetSessionByIdAsync(sessionId), Times.Once);
+    }
+
+    [Fact]
+    public async Task GetSession_ReturnsNotFound_WhenSessionDoesNotExist()
+    {
+        // Arrange
+        int sessionId = 999;
+        _mockSessionService
+            .Setup(s => s.GetSessionByIdAsync(sessionId))
+            .ThrowsAsync(new EntityNotFoundException<int>("Session", sessionId));
+
+        // Act
+        var result = await _sessionController.GetSession(sessionId);
+
+        // Assert
+        var notFoundResult = Assert.IsType<NotFoundObjectResult>(result.Result);
+        Assert.NotNull(notFoundResult.Value);
+    }
+
+    #endregion
+
+    #region GetSessionsBySchedule Tests
+
+    [Fact]
+    public async Task GetSessionsBySchedule_ReturnsOkResult_WithSessions()
+    {
+        // Arrange
+        int scheduleId = 1;
+        var sessions = new List<SessionResponseDto>
+        {
+            CreateTestSessionResponseDto(1, scheduleId),
+            CreateTestSessionResponseDto(2, scheduleId)
+        };
+
+        _mockSessionService
+            .Setup(s => s.GetSessionsByScheduleIdAsync(scheduleId))
+            .ReturnsAsync(sessions);
+
+        // Act
+        var result = await _sessionController.GetSessionsBySchedule(scheduleId);
+
+        // Assert
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        var returnedSessions = Assert.IsAssignableFrom<IEnumerable<SessionResponseDto>>(okResult.Value);
+        Assert.Equal(2, returnedSessions.Count());
+        Assert.All(returnedSessions, s => Assert.Equal(scheduleId, s.ScheduleId));
+    }
+
+    #endregion
+
+    #region GetSessionsByStatus Tests
+
+    [Fact]
+    public async Task GetSessionsByStatus_ReturnsOkResult_WithSessions()
+    {
+        // Arrange
+        string status = "active";
+        var sessions = new List<SessionResponseDto>
+        {
+            CreateTestSessionResponseDto(1, status: "active"),
+            CreateTestSessionResponseDto(2, status: "active")
+        };
+
+        _mockSessionService
+            .Setup(s => s.GetSessionsByStatusAsync(status))
+            .ReturnsAsync(sessions);
+
+        // Act
+        var result = await _sessionController.GetSessionsByStatus(status);
+
+        // Assert
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        var returnedSessions = Assert.IsAssignableFrom<IEnumerable<SessionResponseDto>>(okResult.Value);
+        Assert.Equal(2, returnedSessions.Count());
+        Assert.All(returnedSessions, s => Assert.Equal("active", s.Status));
+    }
+
+    [Fact]
+    public async Task GetSessionsByStatus_ReturnsBadRequest_WhenStatusInvalid()
+    {
+        // Arrange
+        string invalidStatus = "invalid_status";
+
+        // Act
+        var result = await _sessionController.GetSessionsByStatus(invalidStatus);
+
+        // Assert
+        var badRequestResult = Assert.IsType<BadRequestObjectResult>(result.Result);
+        Assert.NotNull(badRequestResult.Value);
+    }
+
+    [Theory]
+    [InlineData("not_started")]
+    [InlineData("active")]
+    [InlineData("ended")]
+    [InlineData("cancelled")]
+    public async Task GetSessionsByStatus_AcceptsValidStatuses(string validStatus)
+    {
+        // Arrange
+        _mockSessionService
+            .Setup(s => s.GetSessionsByStatusAsync(validStatus))
+            .ReturnsAsync(new List<SessionResponseDto>());
+
+        // Act
+        var result = await _sessionController.GetSessionsByStatus(validStatus);
+
+        // Assert
+        Assert.IsType<OkObjectResult>(result.Result);
+    }
+
+    #endregion
+
+    #region GetSessionsByDate Tests
+
+    [Fact]
+    public async Task GetSessionsByDate_ReturnsOkResult_WithSessions()
+    {
+        // Arrange
+        var date = new DateTime(2024, 1, 15);
+        var sessions = new List<SessionResponseDto>
+        {
+            CreateTestSessionResponseDto(1, sessionDate: date),
+            CreateTestSessionResponseDto(2, sessionDate: date)
+        };
+
+        _mockSessionService
+            .Setup(s => s.GetSessionsByDateAsync(date))
+            .ReturnsAsync(sessions);
+
+        // Act
+        var result = await _sessionController.GetSessionsByDate(date);
+
+        // Assert
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        var returnedSessions = Assert.IsAssignableFrom<IEnumerable<SessionResponseDto>>(okResult.Value);
+        Assert.Equal(2, returnedSessions.Count());
+    }
+
+    #endregion
+
+    #region CreateSession Tests
+
+    [Fact]
+    public async Task CreateSession_ReturnsCreatedAtAction_WhenSuccessful()
+    {
+        // Arrange
+        var request = new CreateSession
+        {
+            ScheduleId = 1,
+            SessionDate = DateTime.UtcNow.Date.AddDays(1),
+            Description = "Test session"
+        };
+
+        var createdSession = CreateTestSessionResponseDto(1, request.ScheduleId);
+
+        _mockSessionService
+            .Setup(s => s.CreateSessionAsync(request))
+            .ReturnsAsync((createdSession, null));
+
+        // Act
+        var result = await _sessionController.CreateSession(request);
+
+        // Assert
+        var createdAtActionResult = Assert.IsType<CreatedAtActionResult>(result.Result);
+        Assert.Equal(nameof(_sessionController.GetSession), createdAtActionResult.ActionName);
+        var session = Assert.IsType<SessionResponseDto>(createdAtActionResult.Value);
+        Assert.Equal(1, session.Id);
+
+        _mockSessionService.Verify(s => s.CreateSessionAsync(request), Times.Once);
+    }
+
+    [Fact]
+    public async Task CreateSession_ReturnsBadRequest_WhenModelStateInvalid()
+    {
+        // Arrange
+        var request = new CreateSession();
+        _sessionController.ModelState.AddModelError("ScheduleId", "Required");
+
+        // Act
+        var result = await _sessionController.CreateSession(request);
+
+        // Assert
+        var badRequestResult = Assert.IsType<BadRequestObjectResult>(result.Result);
+        Assert.IsType<SerializableError>(badRequestResult.Value);
+    }
+
+    [Fact]
+    public async Task CreateSession_ReturnsBadRequest_WhenServiceReturnsError()
+    {
+        // Arrange
+        var request = new CreateSession
+        {
+            ScheduleId = 1,
+            SessionDate = DateTime.UtcNow.Date.AddDays(1)
+        };
+
+        _mockSessionService
+            .Setup(s => s.CreateSessionAsync(request))
+            .ReturnsAsync((null, "Schedule not found"));
+
+        // Act
+        var result = await _sessionController.CreateSession(request);
+
+        // Assert
+        var badRequestResult = Assert.IsType<BadRequestObjectResult>(result.Result);
+        Assert.NotNull(badRequestResult.Value);
+        var messageProperty = badRequestResult.Value.GetType().GetProperty("message");
+        Assert.NotNull(messageProperty);
+        var message = messageProperty.GetValue(badRequestResult.Value) as string;
+        Assert.Equal("Schedule not found", message);
+    }
+
+    [Fact]
+    public async Task CreateSession_ReturnsInternalServerError_WhenExceptionThrown()
+    {
+        // Arrange
+        var request = new CreateSession
+        {
+            ScheduleId = 1,
+            SessionDate = DateTime.UtcNow.Date.AddDays(1)
+        };
+
+        _mockSessionService
+            .Setup(s => s.CreateSessionAsync(request))
+            .ThrowsAsync(new Exception("Database error"));
+
+        // Act
+        var result = await _sessionController.CreateSession(request);
+
+        // Assert
+        var statusCodeResult = Assert.IsType<ObjectResult>(result.Result);
+        Assert.Equal(500, statusCodeResult.StatusCode);
+    }
+
+    #endregion
+
+    #region StartSession Tests
+
+    [Fact]
+    public async Task StartSession_ReturnsOkResult_WhenSuccessful()
+    {
+        // Arrange
+        int sessionId = 1;
+        var request = new StartSession
+        {
+            ActualRoomId = 1,
+            AttendanceCutoffMinutes = 15
+        };
+
+        var startedSession = CreateTestSessionResponseDto(sessionId, status: "active");
+
+        _mockSessionService
+            .Setup(s => s.StartSessionAsync(sessionId, request))
+            .ReturnsAsync((startedSession, null));
+
+        // Act
+        var result = await _sessionController.StartSession(sessionId, request);
+
+        // Assert
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        var session = Assert.IsType<SessionResponseDto>(okResult.Value);
+        Assert.Equal("active", session.Status);
+
+        _mockSessionService.Verify(s => s.StartSessionAsync(sessionId, request), Times.Once);
+    }
+
+    [Fact]
+    public async Task StartSession_ReturnsBadRequest_WhenModelStateInvalid()
+    {
+        // Arrange
+        int sessionId = 1;
+        var request = new StartSession();
+        _sessionController.ModelState.AddModelError("ActualRoomId", "Required");
+
+        // Act
+        var result = await _sessionController.StartSession(sessionId, request);
+
+        // Assert
+        var badRequestResult = Assert.IsType<BadRequestObjectResult>(result.Result);
+        Assert.IsType<SerializableError>(badRequestResult.Value);
+    }
+
+    [Fact]
+    public async Task StartSession_ReturnsBadRequest_WhenServiceReturnsError()
+    {
+        // Arrange
+        int sessionId = 1;
+        var request = new StartSession();
+
+        _mockSessionService
+            .Setup(s => s.StartSessionAsync(sessionId, request))
+            .ReturnsAsync((null, "Session already started"));
+
+        // Act
+        var result = await _sessionController.StartSession(sessionId, request);
+
+        // Assert
+        var badRequestResult = Assert.IsType<BadRequestObjectResult>(result.Result);
+        Assert.NotNull(badRequestResult.Value);
+    }
+
+    [Fact]
+    public async Task StartSession_ReturnsNotFound_WhenSessionDoesNotExist()
+    {
+        // Arrange
+        int sessionId = 999;
+        var request = new StartSession();
+
+        _mockSessionService
+            .Setup(s => s.StartSessionAsync(sessionId, request))
+            .ThrowsAsync(new EntityNotFoundException<int>("Session", sessionId));
+
+        // Act
+        var result = await _sessionController.StartSession(sessionId, request);
+
+        // Assert
+        var notFoundResult = Assert.IsType<NotFoundObjectResult>(result.Result);
+        Assert.NotNull(notFoundResult.Value);
+    }
+
+    [Fact]
+    public async Task StartSession_ReturnsInternalServerError_WhenExceptionThrown()
+    {
+        // Arrange
+        int sessionId = 1;
+        var request = new StartSession();
+
+        _mockSessionService
+            .Setup(s => s.StartSessionAsync(sessionId, request))
+            .ThrowsAsync(new Exception("Database error"));
+
+        // Act
+        var result = await _sessionController.StartSession(sessionId, request);
+
+        // Assert
+        var statusCodeResult = Assert.IsType<ObjectResult>(result.Result);
+        Assert.Equal(500, statusCodeResult.StatusCode);
+    }
+
+    #endregion
+
+    #region EndSession Tests
+
+    [Fact]
+    public async Task EndSession_ReturnsOkResult_WhenSuccessful()
+    {
+        // Arrange
+        int sessionId = 1;
+        var request = new EndSession
+        {
+            Description = "Session ended successfully"
+        };
+
+        var endedSession = CreateTestSessionResponseDto(sessionId, status: "ended");
+
+        _mockSessionService
+            .Setup(s => s.EndSessionAsync(sessionId, request))
+            .ReturnsAsync((endedSession, null));
+
+        // Act
+        var result = await _sessionController.EndSession(sessionId, request);
+
+        // Assert
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        var session = Assert.IsType<SessionResponseDto>(okResult.Value);
+        Assert.Equal("ended", session.Status);
+
+        _mockSessionService.Verify(s => s.EndSessionAsync(sessionId, request), Times.Once);
+    }
+
+    [Fact]
+    public async Task EndSession_ReturnsBadRequest_WhenModelStateInvalid()
+    {
+        // Arrange
+        int sessionId = 1;
+        var request = new EndSession();
+        _sessionController.ModelState.AddModelError("Description", "Invalid");
+
+        // Act
+        var result = await _sessionController.EndSession(sessionId, request);
+
+        // Assert
+        var badRequestResult = Assert.IsType<BadRequestObjectResult>(result.Result);
+        Assert.IsType<SerializableError>(badRequestResult.Value);
+    }
+
+    [Fact]
+    public async Task EndSession_ReturnsBadRequest_WhenServiceReturnsError()
+    {
+        // Arrange
+        int sessionId = 1;
+        var request = new EndSession();
+
+        _mockSessionService
+            .Setup(s => s.EndSessionAsync(sessionId, request))
+            .ReturnsAsync((null, "Session not active"));
+
+        // Act
+        var result = await _sessionController.EndSession(sessionId, request);
+
+        // Assert
+        var badRequestResult = Assert.IsType<BadRequestObjectResult>(result.Result);
+        Assert.NotNull(badRequestResult.Value);
+    }
+
+    [Fact]
+    public async Task EndSession_ReturnsNotFound_WhenSessionDoesNotExist()
+    {
+        // Arrange
+        int sessionId = 999;
+        var request = new EndSession();
+
+        _mockSessionService
+            .Setup(s => s.EndSessionAsync(sessionId, request))
+            .ThrowsAsync(new EntityNotFoundException<int>("Session", sessionId));
+
+        // Act
+        var result = await _sessionController.EndSession(sessionId, request);
+
+        // Assert
+        var notFoundResult = Assert.IsType<NotFoundObjectResult>(result.Result);
+        Assert.NotNull(notFoundResult.Value);
+    }
+
+    [Fact]
+    public async Task EndSession_ReturnsInternalServerError_WhenExceptionThrown()
+    {
+        // Arrange
+        int sessionId = 1;
+        var request = new EndSession();
+
+        _mockSessionService
+            .Setup(s => s.EndSessionAsync(sessionId, request))
+            .ThrowsAsync(new Exception("Database error"));
+
+        // Act
+        var result = await _sessionController.EndSession(sessionId, request);
+
+        // Assert
+        var statusCodeResult = Assert.IsType<ObjectResult>(result.Result);
+        Assert.Equal(500, statusCodeResult.StatusCode);
+    }
+
+    #endregion
+
+    #region CancelSession Tests
+
+    [Fact]
+    public async Task CancelSession_ReturnsOkResult_WhenSuccessful()
+    {
+        // Arrange
+        int sessionId = 1;
+        var request = new CancelSession
+        {
+            Reason = "Instructor unavailable"
+        };
+
+        var cancelledSession = CreateTestSessionResponseDto(sessionId, status: "cancelled");
+
+        _mockSessionService
+            .Setup(s => s.CancelSessionAsync(sessionId, request))
+            .ReturnsAsync((cancelledSession, null));
+
+        // Act
+        var result = await _sessionController.CancelSession(sessionId, request);
+
+        // Assert
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        var session = Assert.IsType<SessionResponseDto>(okResult.Value);
+        Assert.Equal("cancelled", session.Status);
+
+        _mockSessionService.Verify(s => s.CancelSessionAsync(sessionId, request), Times.Once);
+    }
+
+    [Fact]
+    public async Task CancelSession_ReturnsBadRequest_WhenModelStateInvalid()
+    {
+        // Arrange
+        int sessionId = 1;
+        var request = new CancelSession();
+        _sessionController.ModelState.AddModelError("Reason", "Required");
+
+        // Act
+        var result = await _sessionController.CancelSession(sessionId, request);
+
+        // Assert
+        var badRequestResult = Assert.IsType<BadRequestObjectResult>(result.Result);
+        Assert.IsType<SerializableError>(badRequestResult.Value);
+    }
+
+    [Fact]
+    public async Task CancelSession_ReturnsBadRequest_WhenServiceReturnsError()
+    {
+        // Arrange
+        int sessionId = 1;
+        var request = new CancelSession { Reason = "Test" };
+
+        _mockSessionService
+            .Setup(s => s.CancelSessionAsync(sessionId, request))
+            .ReturnsAsync((null, "Cannot cancel active session"));
+
+        // Act
+        var result = await _sessionController.CancelSession(sessionId, request);
+
+        // Assert
+        var badRequestResult = Assert.IsType<BadRequestObjectResult>(result.Result);
+        Assert.NotNull(badRequestResult.Value);
+    }
+
+    [Fact]
+    public async Task CancelSession_ReturnsNotFound_WhenSessionDoesNotExist()
+    {
+        // Arrange
+        int sessionId = 999;
+        var request = new CancelSession { Reason = "Test" };
+
+        _mockSessionService
+            .Setup(s => s.CancelSessionAsync(sessionId, request))
+            .ThrowsAsync(new EntityNotFoundException<int>("Session", sessionId));
+
+        // Act
+        var result = await _sessionController.CancelSession(sessionId, request);
+
+        // Assert
+        var notFoundResult = Assert.IsType<NotFoundObjectResult>(result.Result);
+        Assert.NotNull(notFoundResult.Value);
+    }
+
+    [Fact]
+    public async Task CancelSession_ReturnsInternalServerError_WhenExceptionThrown()
+    {
+        // Arrange
+        int sessionId = 1;
+        var request = new CancelSession { Reason = "Test" };
+
+        _mockSessionService
+            .Setup(s => s.CancelSessionAsync(sessionId, request))
+            .ThrowsAsync(new Exception("Database error"));
+
+        // Act
+        var result = await _sessionController.CancelSession(sessionId, request);
+
+        // Assert
+        var statusCodeResult = Assert.IsType<ObjectResult>(result.Result);
+        Assert.Equal(500, statusCodeResult.StatusCode);
+    }
+
+    #endregion
+
+    #region UpdateSessionRoom Tests
+
+    [Fact]
+    public async Task UpdateSessionRoom_ReturnsOkResult_WhenSuccessful()
+    {
+        // Arrange
+        int sessionId = 1;
+        var request = new UpdateSessionRoom { ActualRoomId = 2 };
+
+        var updatedSession = CreateTestSessionResponseDto(sessionId, actualRoomId: 2);
+
+        _mockSessionService
+            .Setup(s => s.UpdateSessionRoomAsync(sessionId, request))
+            .ReturnsAsync((updatedSession, null));
+
+        // Act
+        var result = await _sessionController.UpdateSessionRoom(sessionId, request);
+
+        // Assert
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        var session = Assert.IsType<SessionResponseDto>(okResult.Value);
+        Assert.Equal(2, session.ActualRoomId);
+
+        _mockSessionService.Verify(s => s.UpdateSessionRoomAsync(sessionId, request), Times.Once);
+    }
+
+    [Fact]
+    public async Task UpdateSessionRoom_ReturnsBadRequest_WhenModelStateInvalid()
+    {
+        // Arrange
+        int sessionId = 1;
+        var request = new UpdateSessionRoom();
+        _sessionController.ModelState.AddModelError("ActualRoomId", "Required");
+
+        // Act
+        var result = await _sessionController.UpdateSessionRoom(sessionId, request);
+
+        // Assert
+        var badRequestResult = Assert.IsType<BadRequestObjectResult>(result.Result);
+        Assert.IsType<SerializableError>(badRequestResult.Value);
+    }
+
+    [Fact]
+    public async Task UpdateSessionRoom_ReturnsBadRequest_WhenServiceReturnsError()
+    {
+        // Arrange
+        int sessionId = 1;
+        var request = new UpdateSessionRoom { ActualRoomId = 2 };
+
+        _mockSessionService
+            .Setup(s => s.UpdateSessionRoomAsync(sessionId, request))
+            .ReturnsAsync((null, "Session not active"));
+
+        // Act
+        var result = await _sessionController.UpdateSessionRoom(sessionId, request);
+
+        // Assert
+        var badRequestResult = Assert.IsType<BadRequestObjectResult>(result.Result);
+        Assert.NotNull(badRequestResult.Value);
+    }
+
+    [Fact]
+    public async Task UpdateSessionRoom_ReturnsNotFound_WhenSessionDoesNotExist()
+    {
+        // Arrange
+        int sessionId = 999;
+        var request = new UpdateSessionRoom { ActualRoomId = 2 };
+
+        _mockSessionService
+            .Setup(s => s.UpdateSessionRoomAsync(sessionId, request))
+            .ThrowsAsync(new EntityNotFoundException<int>("Session", sessionId));
+
+        // Act
+        var result = await _sessionController.UpdateSessionRoom(sessionId, request);
+
+        // Assert
+        var notFoundResult = Assert.IsType<NotFoundObjectResult>(result.Result);
+        Assert.NotNull(notFoundResult.Value);
+    }
+
+    #endregion
+
+    #region Helper Methods
+
+    private SessionResponseDto CreateTestSessionResponseDto(
+        int id,
+        int scheduleId = 1,
+        string status = "not_started",
+        DateTime? sessionDate = null,
+        int? actualRoomId = null)
+    {
+        return new SessionResponseDto
+        {
+            Id = id,
+            ScheduleId = scheduleId,
+            Status = status,
+            SessionDate = sessionDate ?? DateTime.UtcNow.Date,
+            ActualRoomId = actualRoomId,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow,
+            SubjectCode = "CS101",
+            SubjectName = "Computer Science",
+            SectionName = "A"
+        };
+    }
+
+    #endregion
+}
