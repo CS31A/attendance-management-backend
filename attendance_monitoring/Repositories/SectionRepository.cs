@@ -45,6 +45,7 @@ namespace attendance_monitoring.Repositories
             try
             {
                 return await context.Students
+                    .Include(s => s.User)
                     .AsNoTracking()
                     .Where(s => s.SectionId == sectionId && !s.IsDeleted)
                     .ToListAsync().ConfigureAwait(false);
@@ -63,6 +64,7 @@ namespace attendance_monitoring.Repositories
             try
             {
                 return await context.Students
+                    .Include(s => s.User)
                     .AsNoTracking()
                     .Where(s => s.SectionId == sectionId)
                     .ToListAsync().ConfigureAwait(false);

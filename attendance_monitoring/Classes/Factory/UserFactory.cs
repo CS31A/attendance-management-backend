@@ -116,7 +116,6 @@ public class UserFactory(IAccountRepository accountRepository) : IUserFactory
             UserId = identityUser.Id,
             Firstname = firstName,
             Lastname = lastName,
-            Email = email,
             IsRegular = true,
             SectionId = sectionId.Value,
             CreatedAt = DateTime.UtcNow,
@@ -157,7 +156,6 @@ public class UserFactory(IAccountRepository accountRepository) : IUserFactory
             UserId = identityUser.Id,
             Firstname = firstName,
             Lastname = lastName,
-            Email = email,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
@@ -196,7 +194,6 @@ public class UserFactory(IAccountRepository accountRepository) : IUserFactory
             UserId = identityUser.Id,
             Firstname = firstName,
             Lastname = lastName,
-            Email = email,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };

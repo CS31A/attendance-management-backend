@@ -10,7 +10,6 @@ Table instructors {
   id integer [primary key]
   firstname varchar
   lastname varchar
-  email varchar
   user_id varchar [ref: - users.id]
   created_at timestamp
   updated_at timestamp
@@ -21,7 +20,6 @@ Table students {
   user_id varchar [ref: - users.id]
   firstname varchar
   lastname varchar
-  email varchar
   created_at timestamp
   updated_at timestamp
 }
@@ -31,7 +29,6 @@ Table admins {
   user_id varchar [ref: - users.id]
   firstname varchar
   lastname varchar
-  email varchar
   created_at timestamp
   updated_at timestamp
 }
