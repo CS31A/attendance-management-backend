@@ -184,7 +184,7 @@ namespace attendance_monitoring.Services
                     Id = instructor.Id,
                     Firstname = instructor.Firstname,
                     Lastname = instructor.Lastname,
-                    Email = instructor.Email,
+                    Email = instructor.User?.Email,
                     CreatedAt = instructor.CreatedAt,
                     UpdatedAt = instructor.UpdatedAt
                 };
@@ -215,19 +215,11 @@ namespace attendance_monitoring.Services
                 createInstructor.Firstname, createInstructor.Lastname);
 
             // Validate basic user information
-            if (string.IsNullOrWhiteSpace(createInstructor.Firstname) || 
-                string.IsNullOrWhiteSpace(createInstructor.Lastname) ||
-                string.IsNullOrWhiteSpace(createInstructor.Email))
+            if (string.IsNullOrWhiteSpace(createInstructor.Firstname) ||
+                string.IsNullOrWhiteSpace(createInstructor.Lastname))
             {
-                _logger.LogWarning("Instructor creation failed: First name, last name, and email are required");
-                return (null, "First name, last name, and email are required");
-            }
-
-            // Validate email format
-            if (!IsValidEmail(createInstructor.Email))
-            {
-                _logger.LogWarning("Instructor creation failed: Invalid email format");
-                return (null, "Invalid email format");
+                _logger.LogWarning("Instructor creation failed: First name and last name are required");
+                return (null, "First name and last name are required");
             }
 
             var userId = await _userContextService.GetUserIdAsync(userPrincipal).ConfigureAwait(false);
@@ -249,7 +241,6 @@ namespace attendance_monitoring.Services
             {
                 Firstname = createInstructor.Firstname,
                 Lastname = createInstructor.Lastname,
-                Email = createInstructor.Email,
                 UserId = userId,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
@@ -319,11 +310,6 @@ namespace attendance_monitoring.Services
                 if (!string.IsNullOrEmpty(updateInstructor.Lastname))
                 {
                     existingInstructor.Lastname = updateInstructor.Lastname;
-                }
-
-                if (!string.IsNullOrEmpty(updateInstructor.Email))
-                {
-                    existingInstructor.Email = updateInstructor.Email;
                 }
 
                 existingInstructor.UpdatedAt = DateTime.UtcNow;

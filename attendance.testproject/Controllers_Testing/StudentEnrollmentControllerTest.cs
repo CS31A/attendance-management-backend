@@ -55,7 +55,7 @@ public class StudentEnrollmentControllerTest
             EnrolledAt = DateTime.UtcNow,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow,
-            Student = new Student { Id = 1, Firstname = "John", Lastname = "Doe", Email = "john@test.com" },
+            Student = new Student { Id = 1, Firstname = "John", Lastname = "Doe" },
             Section = new Section { Id = 2, Name = "CS-3B" },
             Subject = new Subject { Id = 3, Name = "Database Systems", Code = "CS301" }
         };
@@ -260,7 +260,7 @@ public class StudentEnrollmentControllerTest
                 EnrolledAt = DateTime.UtcNow,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow,
-                Student = new Student { Id = 1, Firstname = "John", Lastname = "Doe", Email = "john@test.com" },
+                Student = new Student { Id = 1, Firstname = "John", Lastname = "Doe" },
                 Section = new Section { Id = sectionId, Name = "CS-3B" },
                 Subject = new Subject { Id = 3, Name = "Database Systems", Code = "CS301" }
             },
@@ -275,7 +275,7 @@ public class StudentEnrollmentControllerTest
                 EnrolledAt = DateTime.UtcNow,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow,
-                Student = new Student { Id = 2, Firstname = "Jane", Lastname = "Smith", Email = "jane@test.com" },
+                Student = new Student { Id = 2, Firstname = "Jane", Lastname = "Smith" },
                 Section = new Section { Id = sectionId, Name = "CS-3B" },
                 Subject = new Subject { Id = 4, Name = "Web Development", Code = "CS302" }
             }
