@@ -170,6 +170,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Updated unit tests to reflect email field removal in models
   - Improved data consistency by centralizing email storage in Identity user
 
+#### User Profile Response DTO Enhancement
+- **Removed** redundant email properties from UserProfileResponseDto
+  - Removed `Email` property from `StudentProfileInfo` in `UserProfileResponseDto.cs`
+  - Removed `Email` property from `InstructorProfileInfo` in `UserProfileResponseDto.cs`
+  - Updated `AccountService` to stop mapping email from user entity to profile response
+  - Maintains consistent approach with centralized email storage in Identity user
+  - Reduces data redundancy in API responses
+
 ---
 
 ## [Current State - v1.4.0] - 2025-10-26
