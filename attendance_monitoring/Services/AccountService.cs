@@ -555,7 +555,6 @@ namespace attendance_monitoring.Services
                         Id = student.Id,
                         Firstname = student.Firstname,
                         Lastname = student.Lastname,
-                        Email = student.User?.Email,
                         IsRegular = student.IsRegular,
                         SectionId = student.SectionId,
                         SectionName = student.Section?.Name ?? string.Empty,
@@ -578,7 +577,6 @@ namespace attendance_monitoring.Services
                         Id = instructor.Id,
                         Firstname = instructor.Firstname,
                         Lastname = instructor.Lastname,
-                        Email = instructor.User?.Email,
                         CreatedAt = instructor.CreatedAt,
                         UpdatedAt = instructor.UpdatedAt
                     };
