@@ -18,6 +18,7 @@ public class StudentEnrollmentRepository : IStudentEnrollmentRepository
     {
         return await _context.StudentEnrollments
             .Include(se => se.Student)
+                .ThenInclude(s => s.User)
             .Include(se => se.Section)
             .Include(se => se.Subject)
             .ToListAsync();
@@ -27,6 +28,7 @@ public class StudentEnrollmentRepository : IStudentEnrollmentRepository
     {
         return await _context.StudentEnrollments
             .Include(se => se.Student)
+                .ThenInclude(s => s.User)
             .Include(se => se.Section)
             .Include(se => se.Subject)
             .FirstOrDefaultAsync(se => se.Id == id);
@@ -76,6 +78,7 @@ public class StudentEnrollmentRepository : IStudentEnrollmentRepository
     {
         return await _context.StudentEnrollments
             .Include(se => se.Student)
+                .ThenInclude(s => s.User)
             .Include(se => se.Subject)
             .Where(se => se.SectionId == sectionId)
             .ToListAsync();
@@ -85,6 +88,7 @@ public class StudentEnrollmentRepository : IStudentEnrollmentRepository
     {
         return await _context.StudentEnrollments
             .Include(se => se.Student)
+                .ThenInclude(s => s.User)
             .Include(se => se.Section)
             .Where(se => se.SubjectId == subjectId)
             .ToListAsync();
@@ -94,6 +98,7 @@ public class StudentEnrollmentRepository : IStudentEnrollmentRepository
     {
         return await _context.StudentEnrollments
             .Include(se => se.Student)
+                .ThenInclude(s => s.User)
             .Include(se => se.Section)
             .Include(se => se.Subject)
             .Where(se => se.SectionId == sectionId && se.IsActive)
@@ -104,6 +109,7 @@ public class StudentEnrollmentRepository : IStudentEnrollmentRepository
     {
         return await _context.StudentEnrollments
             .Include(se => se.Student)
+                .ThenInclude(s => s.User)
             .Include(se => se.Section)
             .Where(se => se.SubjectId == subjectId && se.IsActive)
             .ToListAsync();
@@ -113,10 +119,11 @@ public class StudentEnrollmentRepository : IStudentEnrollmentRepository
     {
         return await _context.StudentEnrollments
             .Include(se => se.Student)
+                .ThenInclude(s => s.User)
             .Include(se => se.Section)
             .Include(se => se.Subject)
-            .FirstOrDefaultAsync(se => se.StudentId == studentId && 
-                               se.SectionId == sectionId && 
+            .FirstOrDefaultAsync(se => se.StudentId == studentId &&
+                               se.SectionId == sectionId &&
                                se.SubjectId == subjectId);
     }
 

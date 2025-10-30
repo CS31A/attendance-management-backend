@@ -54,7 +54,6 @@ public class StudentProfileInfo
     public int Id { get; set; }
     public string? Firstname { get; set; }
     public string? Lastname { get; set; }
-    public string? Email { get; set; }
     public bool IsRegular { get; set; }
     public int SectionId { get; set; }
     public string SectionName { get; set; } = string.Empty;
@@ -72,7 +71,6 @@ public class InstructorProfileInfo
     public int Id { get; set; }
     public string? Firstname { get; set; }
     public string? Lastname { get; set; }
-    public string? Email { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
 }

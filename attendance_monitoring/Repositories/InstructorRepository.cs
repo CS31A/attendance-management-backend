@@ -13,6 +13,7 @@ public class InstructorRepository(ApplicationDbContext context) : IInstructorRep
     public async Task<IEnumerable<Instructor>> GetAllInstructorsAsync()
     {
         return await context.Instructors
+            .Include(i => i.User)
             .AsNoTracking()
             .Where(i => !i.IsDeleted) // Only return non-deleted instructors
             .OrderBy(i => i.Id)
@@ -23,21 +24,33 @@ public class InstructorRepository(ApplicationDbContext context) : IInstructorRep
     #region GetInstructorByIdAsync
     public async Task<Instructor?> GetInstructorByIdAsync(int id)
     {
-        return await context.Instructors.AsNoTracking().FirstOrDefaultAsync(i => i.Id == id && !i.IsDeleted).ConfigureAwait(false);
+        return await context.Instructors
+            .Include(i => i.User)
+            .AsNoTracking()
+            .FirstOrDefaultAsync(i => i.Id == id && !i.IsDeleted)
+            .ConfigureAwait(false);
     }
     #endregion
 
     #region GetInstructorByUserIdAsync
     public async Task<Instructor?> GetInstructorByUserIdAsync(string userId)
     {
-        return await context.Instructors.AsNoTracking().FirstOrDefaultAsync(i => i.UserId == userId && !i.IsDeleted).ConfigureAwait(false);
+        return await context.Instructors
+            .Include(i => i.User)
+            .AsNoTracking()
+            .FirstOrDefaultAsync(i => i.UserId == userId && !i.IsDeleted)
+            .ConfigureAwait(false);
     }
     #endregion
 
     #region GetInstructorByIdIgnoreDeleteStatus
     public async Task<Instructor?> GetInstructorByIdIgnoreDeleteStatus(int id)
     {
-        return await context.Instructors.AsNoTracking().FirstOrDefaultAsync(i => i.Id == id).ConfigureAwait(false);
+        return await context.Instructors
+            .Include(i => i.User)
+            .AsNoTracking()
+            .FirstOrDefaultAsync(i => i.Id == id)
+            .ConfigureAwait(false);
     }
     #endregion
 

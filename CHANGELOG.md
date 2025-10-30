@@ -156,6 +156,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Enhanced IDE-specific file exclusions
   - Better organization with categorized sections
 
+#### User Model Architecture Enhancement
+- **Removed** redundant email fields from user models
+  - Removed `Email` property from `Admin`, `Instructor`, and `Student` model classes
+  - Eliminated duplicate email storage in favor of using ASP.NET Identity's email field
+  - Updated `UserFactory` to remove email parameter when creating users
+  - Updated `CreateStudent`, `UpdateStudent`, `CreateInstructor`, and `UpdateInstructor` DTOs to remove email properties
+  - Created database migration to remove email columns from Admins, Instructors, and Students tables
+- **Enhanced** email access via Identity user relationship
+  - Updated repositories to include User navigation property for email access
+  - Modified service methods to access email from Identity user instead of local email property
+  - Updated controller methods to access email via User navigation property
+  - Updated unit tests to reflect email field removal in models
+  - Improved data consistency by centralizing email storage in Identity user
+
+#### User Profile Response DTO Enhancement
+- **Removed** redundant email properties from UserProfileResponseDto
+  - Removed `Email` property from `StudentProfileInfo` in `UserProfileResponseDto.cs`
+  - Removed `Email` property from `InstructorProfileInfo` in `UserProfileResponseDto.cs`
+  - Updated `AccountService` to stop mapping email from user entity to profile response
+  - Maintains consistent approach with centralized email storage in Identity user
+  - Reduces data redundancy in API responses
+
 ---
 
 ## [Current State - v1.4.0] - 2025-10-26
