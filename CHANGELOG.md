@@ -231,6 +231,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### 🎉 **Major Features**
+
+#### Comprehensive Attendance Tracking System
+- **Added** complete attendance tracking system with full CRUD operations
+- **Added** `AttendanceRecord` entity to track student attendance for sessions
+  - Records check-in times and attendance status (Present, Late, Excused, Absent)
+  - Tracks whether attendance was manually entered or through QR code scan
+  - Supports duplicate prevention with QR code validation
+- **Added** `AttendanceController` with endpoints for attendance management
+  - `GET /api/Attendance` - Retrieve attendance records with filtering and pagination
+  - `GET /api/Attendance/{id}` - Get specific attendance record
+  - `POST /api/Attendance` - Create new attendance record
+  - `PUT /api/Attendance/{id}` - Update existing attendance record
+  - `DELETE /api/Attendance/{id}` - Delete attendance record
+  - `GET /api/Attendance/student/{studentId}` - Get student's attendance history
+  - `GET /api/Attendance/session/{sessionId}/summary` - Get session attendance summary
+- **Added** new DTOs for attendance management:
+  - `CreateAttendanceRequest` - Request DTO for creating attendance records
+  - `UpdateAttendanceRequest` - Request DTO for updating attendance records
+  - `AttendanceRecordResponseDto` - Response DTO for attendance records
+  - `AttendanceSummaryDto` - Response DTO for attendance summaries
+  - `StudentAttendanceHistoryDto` - Response DTO for student history
+  - `SessionAttendanceDto` - Response DTO for session attendance
+  - `AttendanceFilterRequest` - Request DTO for filtering attendance records
+  - `PagedResult` - Generic DTO for paginated results
+- **Added** `AttendanceService` and `AttendanceRepository` with full business logic
+- **Integrated** attendance system with QR code scanning for automatic check-ins
+- **Added** role-based authorization for attendance management (Student, Instructor, Admin)
+- **Implemented** attendance statistics and session overview functionality
+- **Enhanced** QR code service to link attendance records automatically
+
 ### 🐛 **Bug Fixes**
 
 #### Email Update Functionality

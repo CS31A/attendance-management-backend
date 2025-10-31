@@ -12,4 +12,7 @@ public class QrCodeScanResponseDto
     public string RoomName { get; set; } = string.Empty;
     public string InstructorName { get; set; } = string.Empty;
     public int RemainingScans { get; set; }
+    public int? AttendanceRecordId { get; set; }
+    public string? AttendanceStatus { get; set; }
+    public bool IsDuplicateScan { get; set; } = false;
 }
