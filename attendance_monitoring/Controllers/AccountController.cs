@@ -460,6 +460,133 @@ namespace attendance_monitoring.Controllers
         }
         #endregion
 
+        #region PATCH: api/account/profile
+        /// <summary>
+        /// Update the authenticated user's own profile
+        /// </summary>
+        /// <param name="updateProfileDto">Profile update data</param>
+        /// <returns>Updated profile information</returns>
+        /// <response code="200">Profile updated successfully</response>
+        /// <response code="400">Invalid input data or validation error</response>
+        /// <response code="401">User not authenticated</response>
+        /// <response code="404">User not found</response>
+        [Authorize]
+        [HttpPatch("profile")]
+        [ProducesResponseType(typeof(UpdateProfileResponse), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(UpdateProfileResponse), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(UpdateProfileResponse), StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(typeof(UpdateProfileResponse), StatusCodes.Status404NotFound)]
+        public async Task<ActionResult<UpdateProfileResponse>> UpdateProfile(Models.DTO.Request.UpdateProfile updateProfileDto)
+        {
+            logger.LogInformation("Profile update request received.");
+
+            if (!ModelState.IsValid)
+            {
+                logger.LogWarning("Profile update failed due to invalid model state.");
+                return BadRequest(new UpdateProfileResponse { Success = false, Message = "Invalid request data" });
+            }
+
+            var userId = GetUserId(User);
+            if (string.IsNullOrEmpty(userId))
+            {
+                logger.LogWarning("Profile update failed: User not found from claims.");
+                return Unauthorized(new UpdateProfileResponse { Success = false, Message = "User not authenticated" });
+            }
+
+            var (success, profile, errorMessage) = await accountService.UpdateUserProfileAsync(userId, updateProfileDto);
+
+            if (!success)
+            {
+                logger.LogWarning("Profile update failed for user {UserId}: {Error}", userId, errorMessage);
+
+                // Return 404 if user not found, 400 for validation errors
+                if (errorMessage?.Contains("not found", StringComparison.OrdinalIgnoreCase) == true)
+                {
+                    return NotFound(new UpdateProfileResponse { Success = false, Message = errorMessage });
+                }
+
+                return BadRequest(new UpdateProfileResponse { Success = false, Message = errorMessage ?? "Profile update failed" });
+            }
+
+            logger.LogInformation("Profile updated successfully for user {UserId}.", userId);
+            return Ok(new UpdateProfileResponse
+            {
+                Success = true,
+                Message = "Profile updated successfully",
+                UpdatedProfile = profile
+            });
+        }
+        #endregion
+
+        #region PATCH: api/account/admin/users/{userId}
+        /// <summary>
+        /// Admin endpoint to update another user's profile
+        /// </summary>
+        /// <param name="userId">Target user ID to update</param>
+        /// <param name="adminUpdateDto">Profile update data</param>
+        /// <returns>Updated profile information</returns>
+        /// <response code="200">Profile updated successfully</response>
+        /// <response code="400">Invalid input data or validation error</response>
+        /// <response code="401">User not authenticated</response>
+        /// <response code="403">User is not an admin</response>
+        /// <response code="404">Target user not found</response>
+        [Authorize(Roles = "Admin")]
+        [HttpPatch("admin/users/{userId}")]
+        [ProducesResponseType(typeof(UpdateProfileResponse), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(UpdateProfileResponse), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(UpdateProfileResponse), StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(typeof(UpdateProfileResponse), StatusCodes.Status403Forbidden)]
+        [ProducesResponseType(typeof(UpdateProfileResponse), StatusCodes.Status404NotFound)]
+        public async Task<ActionResult<UpdateProfileResponse>> AdminUpdateUser(string userId, Models.DTO.Request.AdminUpdateUser adminUpdateDto)
+        {
+            logger.LogInformation("Admin profile update request received for user {TargetUserId}.", userId);
+
+            if (!ModelState.IsValid)
+            {
+                logger.LogWarning("Admin profile update failed due to invalid model state.");
+                return BadRequest(new UpdateProfileResponse { Success = false, Message = "Invalid request data" });
+            }
+
+            var adminId = GetUserId(User);
+            if (string.IsNullOrEmpty(adminId))
+            {
+                logger.LogWarning("Admin profile update failed: Admin not found from claims.");
+                return Unauthorized(new UpdateProfileResponse { Success = false, Message = "Admin not authenticated" });
+            }
+
+            // Override DTO userId with route parameter to prevent mismatch
+            adminUpdateDto.UserId = userId;
+
+            var (success, profile, errorMessage) = await accountService.AdminUpdateUserProfileAsync(adminId, adminUpdateDto);
+
+            if (!success)
+            {
+                logger.LogWarning("Admin profile update failed for user {TargetUserId}: {Error}", userId, errorMessage);
+
+                // Return appropriate status code based on error
+                if (errorMessage?.Contains("not found", StringComparison.OrdinalIgnoreCase) == true)
+                {
+                    return NotFound(new UpdateProfileResponse { Success = false, Message = errorMessage });
+                }
+
+                if (errorMessage?.Contains("Unauthorized", StringComparison.OrdinalIgnoreCase) == true)
+                {
+                    return StatusCode(StatusCodes.Status403Forbidden, new UpdateProfileResponse { Success = false, Message = errorMessage });
+                }
+
+                return BadRequest(new UpdateProfileResponse { Success = false, Message = errorMessage ?? "Profile update failed" });
+            }
+
+            logger.LogInformation("Admin {AdminId} successfully updated profile for user {TargetUserId}.", adminId, userId);
+            return Ok(new UpdateProfileResponse
+            {
+                Success = true,
+                Message = "Profile updated successfully by admin",
+                UpdatedProfile = profile
+            });
+        }
+        #endregion
+
         #endregion
 
         #region Private Methods
