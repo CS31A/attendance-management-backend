@@ -85,28 +85,28 @@ namespace attendance_monitoring.Services
             try
             {
                 // Validate relationships if needed
-                var subjectExists = await context.Subjects.AnyAsync(s => s.Id == createSchedule.SubjectId);
+                var subjectExists = await context.Subjects.AsNoTracking().AnyAsync(s => s.Id == createSchedule.SubjectId);
                 if (!subjectExists)
                 {
                     logger.LogWarning("Schedule creation failed: Subject with ID {SubjectId} not found", createSchedule.SubjectId);
                     return (null, "Subject not found");
                 }
 
-                var classroomExists = await context.Classrooms.AnyAsync(c => c.Id == createSchedule.ClassroomId);
+                var classroomExists = await context.Classrooms.AsNoTracking().AnyAsync(c => c.Id == createSchedule.ClassroomId);
                 if (!classroomExists)
                 {
                     logger.LogWarning("Schedule creation failed: Classroom with ID {ClassroomId} not found", createSchedule.ClassroomId);
                     return (null, "Classroom not found");
                 }
 
-                var sectionExists = await context.Sections.AnyAsync(s => s.Id == createSchedule.SectionId);
+                var sectionExists = await context.Sections.AsNoTracking().AnyAsync(s => s.Id == createSchedule.SectionId);
                 if (!sectionExists)
                 {
                     logger.LogWarning("Schedule creation failed: Section with ID {SectionId} not found", createSchedule.SectionId);
                     return (null, "Section not found");
                 }
 
-                var instructorExists = await context.Instructors.AnyAsync(i => i.Id == createSchedule.InstructorId);
+                var instructorExists = await context.Instructors.AsNoTracking().AnyAsync(i => i.Id == createSchedule.InstructorId);
                 if (!instructorExists)
                 {
                     logger.LogWarning("Schedule creation failed: Instructor with ID {InstructorId} not found", createSchedule.InstructorId);
@@ -155,28 +155,28 @@ namespace attendance_monitoring.Services
                 }
 
                 // Validate relationships if needed
-                var subjectExists = await context.Subjects.AnyAsync(s => s.Id == updateSchedule.SubjectId);
+                var subjectExists = await context.Subjects.AsNoTracking().AnyAsync(s => s.Id == updateSchedule.SubjectId);
                 if (!subjectExists)
                 {
                     logger.LogWarning("Schedule update failed: Subject with ID {SubjectId} not found", updateSchedule.SubjectId);
                     return (null, "Subject not found");
                 }
 
-                var classroomExists = await context.Classrooms.AnyAsync(c => c.Id == updateSchedule.ClassroomId);
+                var classroomExists = await context.Classrooms.AsNoTracking().AnyAsync(c => c.Id == updateSchedule.ClassroomId);
                 if (!classroomExists)
                 {
                     logger.LogWarning("Schedule update failed: Classroom with ID {ClassroomId} not found", updateSchedule.ClassroomId);
                     return (null, "Classroom not found");
                 }
 
-                var sectionExists = await context.Sections.AnyAsync(s => s.Id == updateSchedule.SectionId);
+                var sectionExists = await context.Sections.AsNoTracking().AnyAsync(s => s.Id == updateSchedule.SectionId);
                 if (!sectionExists)
                 {
                     logger.LogWarning("Schedule update failed: Section with ID {SectionId} not found", updateSchedule.SectionId);
                     return (null, "Section not found");
                 }
 
-                var instructorExists = await context.Instructors.AnyAsync(i => i.Id == updateSchedule.InstructorId);
+                var instructorExists = await context.Instructors.AsNoTracking().AnyAsync(i => i.Id == updateSchedule.InstructorId);
                 if (!instructorExists)
                 {
                     logger.LogWarning("Schedule update failed: Instructor with ID {InstructorId} not found", updateSchedule.InstructorId);
