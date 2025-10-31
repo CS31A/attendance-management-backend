@@ -9,6 +9,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 🎉 **Major Features**
 
+#### User Profile Update System
+- **Added** comprehensive user profile update functionality for authenticated users
+  - Users can update their own profiles including email, password, and personal information
+  - Includes password change with current password verification
+  - Supports role-specific profile updates (Student, Instructor, Admin)
+- **Added** admin update user capabilities allowing administrators to modify any user's profile
+  - Admins can reset passwords without requiring current password
+  - Supports updating user details, role-specific information, and soft delete operations
+  - Includes enhanced authorization controls and audit logging
+- **Added** new DTOs for profile management:
+  - `UpdateProfile` - Request DTO for user profile updates
+  - `AdminUpdateUser` - Request DTO for admin user updates
+  - `UpdateProfileResponse` - Response DTO with updated profile information
+- **Enhanced** `AccountService` with profile update methods:
+  - `UpdateUserProfileAsync` - Handles authenticated user profile updates
+  - `AdminUpdateUserProfileAsync` - Handles administrative user updates
+  - Improved error handling and validation logic
+- **Enhanced** `AccountRepository` with profile update methods for all user types
+- **Added** new endpoints in `AccountController`:
+  - `PUT /api/Account/profile` - User profile update
+  - `PUT /api/Account/admin-update/{userId}` - Admin user update
+- **Added** `UpdateUser.md` documentation for profile update implementation details
+
+### 🐛 **Bug Fixes**
+
+#### Email Uniqueness Race Condition Fix
+- **Fixed** potential race condition in email uniqueness validation during user registration and profile updates
+- **Added** database-level unique constraint on `NormalizedEmail` in `AspNetUsers` table
+  - Prevents duplicate emails at the database level using unique index with filter for non-null values
+  - Includes migration to clean up existing duplicates before applying constraint
+- **Enhanced** error handling in `AccountService` to catch and handle `DbUpdateException` for unique constraint violations
+  - Provides user-friendly error messages instead of generic database errors
+  - Wraps update operations in try-catch blocks with specific exception filtering
+- **Updated** `ApplicationDbContext` with Fluent API configuration for the unique email index
+- **Improved** `AccountRepository` and service methods to handle constraint violations gracefully
+
+### 🔧 **Technical Improvements**
+
 #### Session and Attendance Record Management
 - **Added** `Session` entity to represent actual class session occurrences
   - Tracks when a class actually happens, including start/end times and room changes
