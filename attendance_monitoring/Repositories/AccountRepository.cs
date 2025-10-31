@@ -170,6 +170,7 @@ namespace attendance_monitoring.Repositories
         public async Task<Student?> GetStudentByUserIdAsync(string userId)
         {
             return await context.Students
+                .AsNoTracking()
                 .Include(s => s.Section)
                 .ThenInclude(s => s.Course)
                 .FirstOrDefaultAsync(s => s.UserId == userId && !s.IsDeleted)
@@ -181,6 +182,7 @@ namespace attendance_monitoring.Repositories
         public async Task<Instructor?> GetInstructorByUserIdAsync(string userId)
         {
             return await context.Instructors
+                .AsNoTracking()
                 .FirstOrDefaultAsync(i => i.UserId == userId && !i.IsDeleted)
                 .ConfigureAwait(false);
         }
