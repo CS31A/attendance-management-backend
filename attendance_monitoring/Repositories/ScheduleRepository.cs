@@ -37,6 +37,19 @@ namespace attendance_monitoring.Repositories
         }
         #endregion
 
+        #region GetScheduleByIdTrackedAsync
+        public async Task<Schedules?> GetScheduleByIdTrackedAsync(int id)
+        {
+            return await context.Schedules
+                .Include(s => s.Subject)
+                .Include(s => s.Classroom)
+                .Include(s => s.Section)
+                .Include(s => s.Instructor)
+                    .ThenInclude(i => i.User)
+                .FirstOrDefaultAsync(s => s.Id == id);
+        }
+        #endregion
+
         #region GetSchedulesByInstructorIdAsync
         public async Task<IEnumerable<Schedules>> GetSchedulesByInstructorIdAsync(int instructorId)
         {
