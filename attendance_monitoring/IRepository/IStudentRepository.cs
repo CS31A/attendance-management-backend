@@ -26,6 +26,13 @@ public interface IStudentRepository : ISaveableRepository
     Task<Student?> GetStudentByIdAsync(int id);
 
     /// <summary>
+    /// Retrieves a student by their ID with change tracking enabled for updates.
+    /// </summary>
+    /// <param name="id">The student ID.</param>
+    /// <returns>The student if found; otherwise, null.</returns>
+    Task<Student?> GetStudentByIdTrackedAsync(int id);
+
+    /// <summary>
     /// Retrieves a student by their user ID.
     /// </summary>
     /// <param name="userId">The user ID.</param>

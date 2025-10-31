@@ -190,21 +190,12 @@ public class AttendanceService(
             }
         }
 
-        // Build filtered query
-        var records = await GetFilteredAttendanceRecordsAsync(filter).ConfigureAwait(false);
-
-        // Get total count for pagination
-        var totalCount = records.Count;
-
-        // Apply pagination
-        var pagedRecords = records
-            .Skip((filter.PageNumber - 1) * filter.PageSize)
-            .Take(filter.PageSize)
-            .ToList();
+        // Build filtered query with pagination applied at database level
+        var (records, totalCount) = await GetFilteredAttendanceRecordsAsync(filter).ConfigureAwait(false);
 
         return new PagedResult<AttendanceRecordResponseDto>
         {
-            Items = pagedRecords.Select(MapToResponseDto).ToList(),
+            Items = records.Select(MapToResponseDto).ToList(),
             TotalCount = totalCount,
             PageNumber = filter.PageNumber,
             PageSize = filter.PageSize
@@ -362,15 +353,19 @@ public class AttendanceService(
             }
         }
 
-        // Get filtered records
-        var records = await GetFilteredAttendanceRecordsAsync(filter).ConfigureAwait(false);
-
-        // Calculate statistics
-        var totalPresent = records.Count(r => r.Status == "Present");
-        var totalLate = records.Count(r => r.Status == "Late");
-        var totalAbsent = records.Count(r => r.Status == "Absent");
-        var totalExcused = records.Count(r => r.Status == "Excused");
-        var totalSessions = records.Count;
+        // Get statistics from database (optimized - no records loaded into memory)
+        var (totalSessions, totalPresent, totalLate, totalAbsent, totalExcused, avgCheckInTicks) =
+            await attendanceRepository.GetStatisticsAsync(
+                studentId: filter.StudentId,
+                sessionId: filter.SessionId,
+                scheduleId: filter.ScheduleId,
+                sectionId: filter.SectionId,
+                subjectId: filter.SubjectId,
+                status: filter.Status,
+                startDate: filter.StartDate,
+                endDate: filter.EndDate,
+                isManualEntry: filter.IsManualEntry
+            ).ConfigureAwait(false);
 
         var attendanceRate = totalSessions > 0
             ? Math.Round((decimal)(totalPresent + totalLate) / totalSessions * 100, 2)
@@ -378,18 +373,25 @@ public class AttendanceService(
 
         // Calculate average check-in time
         string? averageCheckInTime = null;
-        if (records.Any())
+        if (totalSessions > 0)
         {
-            var avgTicks = (long)records.Average(r => r.CheckInTime.TimeOfDay.Ticks);
-            var avgTimeSpan = TimeSpan.FromTicks(avgTicks);
+            var avgTimeSpan = TimeSpan.FromTicks(avgCheckInTicks);
             averageCheckInTime = avgTimeSpan.ToString(@"hh\:mm\:ss");
         }
 
-        // Find most frequent status
-        var statusGroups = records.GroupBy(r => r.Status)
-            .OrderByDescending(g => g.Count())
-            .FirstOrDefault();
-        var mostFrequentStatus = statusGroups?.Key ?? "Present";
+        // Determine most frequent status from counts
+        var statusCounts = new Dictionary<string, int>
+        {
+            { "Present", totalPresent },
+            { "Late", totalLate },
+            { "Absent", totalAbsent },
+            { "Excused", totalExcused }
+        };
+
+        // Mashinay but better
+        var mostFrequentStatus = statusCounts.Any(kvp => kvp.Value > 0)
+            ? statusCounts.OrderByDescending(kvp => kvp.Value).First().Key
+            : "Present"; // Safe default value
 
         return new AttendanceSummaryDto
         {
@@ -415,7 +417,7 @@ public class AttendanceService(
     {
         logger.LogInformation("Updating attendance record with ID: {Id}", id);
 
-        var record = await attendanceRepository.GetByIdAsync(id).ConfigureAwait(false);
+        var record = await attendanceRepository.GetByIdTrackedAsync(id).ConfigureAwait(false);
         if (record == null)
         {
             logger.LogWarning("Attendance record with ID {Id} not found", id);
@@ -581,61 +583,25 @@ public class AttendanceService(
         return false;
     }
 
-    private async Task<List<AttendanceRecord>> GetFilteredAttendanceRecordsAsync(AttendanceFilterRequest filter)
+    /// <summary>
+    /// Retrieves filtered attendance records using optimized database-level filtering.
+    /// All filters are applied at the database level before loading data.
+    /// </summary>
+    private async Task<(List<AttendanceRecord> Records, int TotalCount)> GetFilteredAttendanceRecordsAsync(AttendanceFilterRequest filter)
     {
-        List<AttendanceRecord> records;
-
-        // Start with appropriate base query
-        if (filter.StudentId.HasValue)
-        {
-            records = await attendanceRepository.GetByStudentIdAsync(filter.StudentId.Value).ConfigureAwait(false);
-        }
-        else if (filter.SessionId.HasValue)
-        {
-            records = await attendanceRepository.GetBySessionIdAsync(filter.SessionId.Value).ConfigureAwait(false);
-        }
-        else
-        {
-            records = await attendanceRepository.GetAllAsync(1, int.MaxValue).ConfigureAwait(false);
-        }
-
-        // Apply additional filters
-        if (filter.ScheduleId.HasValue)
-        {
-            records = records.Where(r => r.Session.ScheduleId == filter.ScheduleId.Value).ToList();
-        }
-
-        if (filter.SectionId.HasValue)
-        {
-            records = records.Where(r => r.Session.Schedule.SectionId == filter.SectionId.Value).ToList();
-        }
-
-        if (filter.SubjectId.HasValue)
-        {
-            records = records.Where(r => r.Session.Schedule.SubjectId == filter.SubjectId.Value).ToList();
-        }
-
-        if (!string.IsNullOrWhiteSpace(filter.Status))
-        {
-            records = records.Where(r => r.Status == filter.Status).ToList();
-        }
-
-        if (filter.StartDate.HasValue)
-        {
-            records = records.Where(r => r.CheckInTime >= filter.StartDate.Value).ToList();
-        }
-
-        if (filter.EndDate.HasValue)
-        {
-            records = records.Where(r => r.CheckInTime <= filter.EndDate.Value).ToList();
-        }
-
-        if (filter.IsManualEntry.HasValue)
-        {
-            records = records.Where(r => r.IsManualEntry == filter.IsManualEntry.Value).ToList();
-        }
-
-        return records;
+        return await attendanceRepository.GetFilteredAsync(
+            studentId: filter.StudentId,
+            sessionId: filter.SessionId,
+            scheduleId: filter.ScheduleId,
+            sectionId: filter.SectionId,
+            subjectId: filter.SubjectId,
+            status: filter.Status,
+            startDate: filter.StartDate,
+            endDate: filter.EndDate,
+            isManualEntry: filter.IsManualEntry,
+            pageNumber: filter.PageNumber,
+            pageSize: filter.PageSize
+        ).ConfigureAwait(false);
     }
 
     private static AttendanceRecordResponseDto MapToResponseDto(AttendanceRecord record)

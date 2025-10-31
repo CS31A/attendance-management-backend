@@ -36,6 +36,16 @@ public class StudentEnrollmentRepository : IStudentEnrollmentRepository
             .FirstOrDefaultAsync(se => se.Id == id);
     }
 
+    public async Task<StudentEnrollment?> GetByIdTrackedAsync(int id)
+    {
+        return await _context.StudentEnrollments
+            .Include(se => se.Student)
+                .ThenInclude(s => s.User)
+            .Include(se => se.Section)
+            .Include(se => se.Subject)
+            .FirstOrDefaultAsync(se => se.Id == id);
+    }
+
     public async Task<StudentEnrollment> CreateAsync(StudentEnrollment enrollment)
     {
         enrollment.CreatedAt = DateTime.UtcNow;
