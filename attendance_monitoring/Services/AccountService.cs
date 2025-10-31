@@ -542,6 +542,7 @@ namespace attendance_monitoring.Services
             if (role.Equals("Student", StringComparison.OrdinalIgnoreCase))
             {
                 var student = await context.Students
+                    .AsNoTracking()
                     .Include(s => s.User)
                     .Include(s => s.Section)
                         .ThenInclude(sec => sec.Course)
