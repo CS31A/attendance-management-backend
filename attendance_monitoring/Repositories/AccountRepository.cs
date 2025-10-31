@@ -130,6 +130,93 @@ namespace attendance_monitoring.Repositories
 
         #endregion
 
+        #region User Update Methods
+
+        #region EmailExistsAsync
+        public async Task<bool> EmailExistsAsync(string email, string? excludeUserId = null)
+        {
+            var existingUser = await userManager.FindByEmailAsync(email).ConfigureAwait(false);
+
+            if (existingUser == null)
+            {
+                return false;
+            }
+
+            // If excludeUserId is provided, check if the found user is the excluded one
+            if (!string.IsNullOrEmpty(excludeUserId) && existingUser.Id == excludeUserId)
+            {
+                return false;
+            }
+
+            return true;
+        }
+        #endregion
+
+        #region UpdateUserAsync
+        public async Task<IdentityResult> UpdateUserAsync(IdentityUser user)
+        {
+            return await userManager.UpdateAsync(user).ConfigureAwait(false);
+        }
+        #endregion
+
+        #region ChangePasswordAsync
+        public async Task<IdentityResult> ChangePasswordAsync(IdentityUser user, string currentPassword, string newPassword)
+        {
+            return await userManager.ChangePasswordAsync(user, currentPassword, newPassword).ConfigureAwait(false);
+        }
+        #endregion
+
+        #region GetStudentByUserIdAsync
+        public async Task<Student?> GetStudentByUserIdAsync(string userId)
+        {
+            return await context.Students
+                .Include(s => s.Section)
+                .ThenInclude(s => s.Course)
+                .FirstOrDefaultAsync(s => s.UserId == userId && !s.IsDeleted)
+                .ConfigureAwait(false);
+        }
+        #endregion
+
+        #region GetInstructorByUserIdAsync
+        public async Task<Instructor?> GetInstructorByUserIdAsync(string userId)
+        {
+            return await context.Instructors
+                .FirstOrDefaultAsync(i => i.UserId == userId && !i.IsDeleted)
+                .ConfigureAwait(false);
+        }
+        #endregion
+
+        #region UpdateStudentProfileAsync
+        public Task UpdateStudentProfileAsync(Student student)
+        {
+            student.UpdatedAt = DateTime.UtcNow;
+            context.Students.Update(student);
+            return Task.CompletedTask;
+        }
+        #endregion
+
+        #region UpdateInstructorProfileAsync
+        public Task UpdateInstructorProfileAsync(Instructor instructor)
+        {
+            instructor.UpdatedAt = DateTime.UtcNow;
+            context.Instructors.Update(instructor);
+            return Task.CompletedTask;
+        }
+        #endregion
+
+        #region AdminResetPasswordAsync
+        public async Task<IdentityResult> AdminResetPasswordAsync(IdentityUser user, string newPassword)
+        {
+            // Generate password reset token
+            var resetToken = await userManager.GeneratePasswordResetTokenAsync(user).ConfigureAwait(false);
+
+            // Reset password using the token
+            return await userManager.ResetPasswordAsync(user, resetToken, newPassword).ConfigureAwait(false);
+        }
+        #endregion
+
+        #endregion
+
         #region Utility Methods
 
         #region SaveChangesAsync

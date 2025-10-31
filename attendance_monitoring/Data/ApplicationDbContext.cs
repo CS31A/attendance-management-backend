@@ -30,6 +30,14 @@ namespace attendance_monitoring.Data
         {
             base.OnModelCreating(builder);
 
+            // Configure unique index for email in AspNetUsers table
+            // This prevents duplicate emails at the database level to avoid race conditions
+            builder.Entity<IdentityUser>()
+                .HasIndex(u => u.NormalizedEmail)
+                .IsUnique()
+                .HasDatabaseName("IX_AspNetUsers_NormalizedEmail")
+                .HasFilter("[NormalizedEmail] IS NOT NULL");
+
             // Configure index for RefreshToken TokenHash for fast lookups
             builder.Entity<RefreshToken>()
                 .HasIndex(r => r.TokenHash)

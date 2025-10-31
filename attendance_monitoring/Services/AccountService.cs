@@ -591,5 +591,325 @@ namespace attendance_monitoring.Services
         }
         #endregion
         #endregion
+
+        #region Profile Update Methods
+        #region UpdateUserProfileAsync
+        public async Task<(bool Success, UserProfileResponseDto? Profile, string? ErrorMessage)> UpdateUserProfileAsync(
+            string userId,
+            Models.DTO.Request.UpdateProfile updateProfileDto)
+        {
+            logger.LogInformation("User profile update attempt for user ID: {UserId}", userId);
+
+            // Validate user exists
+            var user = await accountRepository.FindUserByIdAsync(userId).ConfigureAwait(false);
+            if (user == null)
+            {
+                logger.LogWarning("Profile update failed: User not found for ID {UserId}", userId);
+                return (false, null, "User not found");
+            }
+
+            // Get user role
+            var roles = await accountRepository.GetUserRolesAsync(user).ConfigureAwait(false);
+            var role = roles.FirstOrDefault() ?? "Student";
+
+            // Validate email uniqueness if email is being changed
+            if (!string.IsNullOrEmpty(updateProfileDto.Email) &&
+                !updateProfileDto.Email.Equals(user.Email, StringComparison.OrdinalIgnoreCase))
+            {
+                var emailExists = await accountRepository.EmailExistsAsync(updateProfileDto.Email, userId).ConfigureAwait(false);
+                if (emailExists)
+                {
+                    logger.LogWarning("Profile update failed: Email {Email} already exists", updateProfileDto.Email);
+                    return (false, null, "Email address already in use");
+                }
+
+                // Update email
+                user.Email = updateProfileDto.Email;
+                user.NormalizedEmail = updateProfileDto.Email.ToUpperInvariant();
+            }
+
+            // Validate and update password if provided
+            if (!string.IsNullOrEmpty(updateProfileDto.NewPassword))
+            {
+                // Validate current password is provided
+                if (string.IsNullOrEmpty(updateProfileDto.CurrentPassword))
+                {
+                    logger.LogWarning("Profile update failed: Current password required for password change");
+                    return (false, null, "Current password is required to change password");
+                }
+
+                // Validate new password matches confirmation
+                if (updateProfileDto.NewPassword != updateProfileDto.ConfirmNewPassword)
+                {
+                    logger.LogWarning("Profile update failed: New password and confirmation do not match");
+                    return (false, null, "New password and confirmation password do not match");
+                }
+
+                // Verify current password
+                var passwordCheck = await accountRepository.CheckPasswordAsync(user, updateProfileDto.CurrentPassword).ConfigureAwait(false);
+                if (!passwordCheck.Succeeded)
+                {
+                    logger.LogWarning("Profile update failed: Invalid current password for user {UserId}", userId);
+                    return (false, null, "Current password is incorrect");
+                }
+
+                // Change password
+                var passwordResult = await accountRepository.ChangePasswordAsync(
+                    user,
+                    updateProfileDto.CurrentPassword,
+                    updateProfileDto.NewPassword).ConfigureAwait(false);
+
+                if (!passwordResult.Succeeded)
+                {
+                    var errors = string.Join("; ", passwordResult.Errors.Select(e => e.Description));
+                    logger.LogWarning("Profile update failed: Password change error - {Errors}", errors);
+                    return (false, null, $"Password change failed: {errors}");
+                }
+
+                logger.LogInformation("Password updated successfully for user {UserId}", userId);
+            }
+
+            // Update user in Identity
+            try
+            {
+                var updateResult = await accountRepository.UpdateUserAsync(user).ConfigureAwait(false);
+                if (!updateResult.Succeeded)
+                {
+                    var errors = string.Join("; ", updateResult.Errors.Select(e => e.Description));
+                    logger.LogWarning("Profile update failed: User update error - {Errors}", errors);
+                    return (false, null, $"Profile update failed: {errors}");
+                }
+            }
+            catch (Microsoft.EntityFrameworkCore.DbUpdateException ex) when (ex.InnerException?.Message.Contains("duplicate") == true || 
+                                                                           ex.InnerException?.Message.Contains("unique") == true ||
+                                                                           ex.InnerException?.Message.Contains("IX_AspNetUsers_NormalizedEmail") == true)
+            {
+                logger.LogWarning("Profile update failed: Email already exists for another user - {Email}", updateProfileDto.Email);
+                return (false, null, "Email address already in use");
+            }
+
+            // Update role-specific profile
+            if (role.Equals("Student", StringComparison.OrdinalIgnoreCase))
+            {
+                var student = await accountRepository.GetStudentByUserIdAsync(userId).ConfigureAwait(false);
+                if (student != null)
+                {
+                    // Update student-specific fields if provided
+                    if (!string.IsNullOrEmpty(updateProfileDto.Firstname))
+                    {
+                        student.Firstname = updateProfileDto.Firstname;
+                    }
+                    if (!string.IsNullOrEmpty(updateProfileDto.Lastname))
+                    {
+                        student.Lastname = updateProfileDto.Lastname;
+                    }
+                    if (updateProfileDto.SectionId.HasValue)
+                    {
+                        // Validate section exists
+                        var section = await sectionRepository.GetSectionByIdAsync(updateProfileDto.SectionId.Value).ConfigureAwait(false);
+                        if (section == null)
+                        {
+                            logger.LogWarning("Profile update failed: Section {SectionId} does not exist", updateProfileDto.SectionId.Value);
+                            return (false, null, "The specified section does not exist");
+                        }
+                        student.SectionId = updateProfileDto.SectionId.Value;
+                    }
+                    if (updateProfileDto.IsRegular.HasValue)
+                    {
+                        student.IsRegular = updateProfileDto.IsRegular.Value;
+                    }
+
+                    await accountRepository.UpdateStudentProfileAsync(student).ConfigureAwait(false);
+                }
+            }
+            else if (role.Equals("Teacher", StringComparison.OrdinalIgnoreCase))
+            {
+                var instructor = await accountRepository.GetInstructorByUserIdAsync(userId).ConfigureAwait(false);
+                if (instructor != null)
+                {
+                    // Update instructor-specific fields if provided
+                    if (!string.IsNullOrEmpty(updateProfileDto.Firstname))
+                    {
+                        instructor.Firstname = updateProfileDto.Firstname;
+                    }
+                    if (!string.IsNullOrEmpty(updateProfileDto.Lastname))
+                    {
+                        instructor.Lastname = updateProfileDto.Lastname;
+                    }
+
+                    await accountRepository.UpdateInstructorProfileAsync(instructor).ConfigureAwait(false);
+                }
+            }
+
+            // Save all changes
+            await accountRepository.SaveChangesAsync().ConfigureAwait(false);
+
+            logger.LogInformation("Profile updated successfully for user {UserId}", userId);
+
+            // Return updated profile
+            var (updatedProfile, _) = await GetUserProfileAsync(userId).ConfigureAwait(false);
+            return (true, updatedProfile, null);
+        }
+        #endregion
+
+        #region AdminUpdateUserProfileAsync
+        public async Task<(bool Success, UserProfileResponseDto? Profile, string? ErrorMessage)> AdminUpdateUserProfileAsync(
+            string adminId,
+            Models.DTO.Request.AdminUpdateUser adminUpdateDto)
+        {
+            logger.LogInformation("Admin profile update attempt by admin {AdminId} for user {TargetUserId}", adminId, adminUpdateDto.UserId);
+
+            // Verify admin has Admin role
+            var admin = await accountRepository.FindUserByIdAsync(adminId).ConfigureAwait(false);
+            if (admin == null)
+            {
+                logger.LogWarning("Admin profile update failed: Admin not found for ID {AdminId}", adminId);
+                return (false, null, "Admin user not found");
+            }
+
+            var adminRoles = await accountRepository.GetUserRolesAsync(admin).ConfigureAwait(false);
+            if (!adminRoles.Contains("Admin", StringComparer.OrdinalIgnoreCase))
+            {
+                logger.LogWarning("Admin profile update failed: User {AdminId} is not an admin", adminId);
+                return (false, null, "Unauthorized: Admin role required");
+            }
+
+            // Validate target user exists
+            var targetUser = await accountRepository.FindUserByIdAsync(adminUpdateDto.UserId).ConfigureAwait(false);
+            if (targetUser == null)
+            {
+                logger.LogWarning("Admin profile update failed: Target user not found for ID {TargetUserId}", adminUpdateDto.UserId);
+                return (false, null, "Target user not found");
+            }
+
+            // Get target user role
+            var targetRoles = await accountRepository.GetUserRolesAsync(targetUser).ConfigureAwait(false);
+            var targetRole = targetRoles.FirstOrDefault() ?? "Student";
+
+            // Validate email uniqueness if email is being changed
+            if (!string.IsNullOrEmpty(adminUpdateDto.Email) &&
+                !adminUpdateDto.Email.Equals(targetUser.Email, StringComparison.OrdinalIgnoreCase))
+            {
+                var emailExists = await accountRepository.EmailExistsAsync(adminUpdateDto.Email, adminUpdateDto.UserId).ConfigureAwait(false);
+                if (emailExists)
+                {
+                    logger.LogWarning("Admin profile update failed: Email {Email} already exists", adminUpdateDto.Email);
+                    return (false, null, "Email address already in use");
+                }
+
+                // Update email
+                targetUser.Email = adminUpdateDto.Email;
+                targetUser.NormalizedEmail = adminUpdateDto.Email.ToUpperInvariant();
+            }
+
+            // Admin password reset (no current password required)
+            if (!string.IsNullOrEmpty(adminUpdateDto.NewPassword))
+            {
+                // Reset password using admin privilege (no current password needed)
+                var resetResult = await accountRepository.AdminResetPasswordAsync(targetUser, adminUpdateDto.NewPassword).ConfigureAwait(false);
+
+                if (!resetResult.Succeeded)
+                {
+                    var errors = string.Join("; ", resetResult.Errors.Select(e => e.Description));
+                    logger.LogWarning("Admin profile update failed: Password reset error - {Errors}", errors);
+                    return (false, null, $"Password reset failed: {errors}");
+                }
+
+                logger.LogInformation("Admin {AdminId} reset password for user {TargetUserId}", adminId, adminUpdateDto.UserId);
+            }
+
+            // Update user in Identity
+            try
+            {
+                var updateResult = await accountRepository.UpdateUserAsync(targetUser).ConfigureAwait(false);
+                if (!updateResult.Succeeded)
+                {
+                    var errors = string.Join("; ", updateResult.Errors.Select(e => e.Description));
+                    logger.LogWarning("Admin profile update failed: User update error - {Errors}", errors);
+                    return (false, null, $"Profile update failed: {errors}");
+                }
+            }
+            catch (Microsoft.EntityFrameworkCore.DbUpdateException ex) when (ex.InnerException?.Message.Contains("duplicate") == true || 
+                                                                           ex.InnerException?.Message.Contains("unique") == true ||
+                                                                           ex.InnerException?.Message.Contains("IX_AspNetUsers_NormalizedEmail") == true)
+            {
+                logger.LogWarning("Admin profile update failed: Email already exists for another user - {Email}", adminUpdateDto.Email);
+                return (false, null, "Email address already in use");
+            }
+
+            // Update role-specific profile
+            if (targetRole.Equals("Student", StringComparison.OrdinalIgnoreCase))
+            {
+                var student = await accountRepository.GetStudentByUserIdAsync(adminUpdateDto.UserId).ConfigureAwait(false);
+                if (student != null)
+                {
+                    // Update student-specific fields if provided
+                    if (!string.IsNullOrEmpty(adminUpdateDto.Firstname))
+                    {
+                        student.Firstname = adminUpdateDto.Firstname;
+                    }
+                    if (!string.IsNullOrEmpty(adminUpdateDto.Lastname))
+                    {
+                        student.Lastname = adminUpdateDto.Lastname;
+                    }
+                    if (adminUpdateDto.SectionId.HasValue)
+                    {
+                        // Validate section exists
+                        var section = await sectionRepository.GetSectionByIdAsync(adminUpdateDto.SectionId.Value).ConfigureAwait(false);
+                        if (section == null)
+                        {
+                            logger.LogWarning("Admin profile update failed: Section {SectionId} does not exist", adminUpdateDto.SectionId.Value);
+                            return (false, null, "The specified section does not exist");
+                        }
+                        student.SectionId = adminUpdateDto.SectionId.Value;
+                    }
+                    if (adminUpdateDto.IsRegular.HasValue)
+                    {
+                        student.IsRegular = adminUpdateDto.IsRegular.Value;
+                    }
+                    if (adminUpdateDto.IsDeleted.HasValue)
+                    {
+                        student.IsDeleted = adminUpdateDto.IsDeleted.Value;
+                        student.DeletedAt = adminUpdateDto.IsDeleted.Value ? DateTime.UtcNow : null;
+                    }
+
+                    await accountRepository.UpdateStudentProfileAsync(student).ConfigureAwait(false);
+                }
+            }
+            else if (targetRole.Equals("Teacher", StringComparison.OrdinalIgnoreCase))
+            {
+                var instructor = await accountRepository.GetInstructorByUserIdAsync(adminUpdateDto.UserId).ConfigureAwait(false);
+                if (instructor != null)
+                {
+                    // Update instructor-specific fields if provided
+                    if (!string.IsNullOrEmpty(adminUpdateDto.Firstname))
+                    {
+                        instructor.Firstname = adminUpdateDto.Firstname;
+                    }
+                    if (!string.IsNullOrEmpty(adminUpdateDto.Lastname))
+                    {
+                        instructor.Lastname = adminUpdateDto.Lastname;
+                    }
+                    if (adminUpdateDto.IsDeleted.HasValue)
+                    {
+                        instructor.IsDeleted = adminUpdateDto.IsDeleted.Value;
+                        instructor.DeletedAt = adminUpdateDto.IsDeleted.Value ? DateTime.UtcNow : null;
+                    }
+
+                    await accountRepository.UpdateInstructorProfileAsync(instructor).ConfigureAwait(false);
+                }
+            }
+
+            // Save all changes
+            await accountRepository.SaveChangesAsync().ConfigureAwait(false);
+
+            logger.LogInformation("Admin {AdminId} successfully updated profile for user {TargetUserId}", adminId, adminUpdateDto.UserId);
+
+            // Return updated profile
+            var (updatedProfile, _) = await GetUserProfileAsync(adminUpdateDto.UserId).ConfigureAwait(false);
+            return (true, updatedProfile, null);
+        }
+        #endregion
+        #endregion
     }
 }
