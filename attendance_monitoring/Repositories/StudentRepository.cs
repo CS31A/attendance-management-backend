@@ -41,6 +41,16 @@ public class StudentRepository(ApplicationDbContext context) : IStudentRepositor
     }
     #endregion
 
+    #region GetStudentByIdTrackedAsync
+    public async Task<Student?> GetStudentByIdTrackedAsync(int id)
+    {
+        return await context.Students
+            .Include(s => s.User)
+            .FirstOrDefaultAsync(s => s.Id == id && !s.IsDeleted)
+            .ConfigureAwait(false);
+    }
+    #endregion
+
     #region GetStudentByUserIdAsync
     public async Task<Student?> GetStudentByUserIdAsync(string userId)
     {

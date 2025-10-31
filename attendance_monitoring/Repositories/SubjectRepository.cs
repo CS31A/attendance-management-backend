@@ -23,6 +23,13 @@ public class SubjectRepository(ApplicationDbContext context) : ISubjectRepositor
     }
     #endregion
 
+    #region GetSubjectByIdTrackedAsync
+    public async Task<Subject?> GetSubjectByIdTrackedAsync(int id)
+    {
+        return await context.Subjects.FirstOrDefaultAsync(s => s.Id == id).ConfigureAwait(false);
+    }
+    #endregion
+
     #region GetSubjectByCodeAsync
     public async Task<Subject?> GetSubjectByCodeAsync(string code)
     {
