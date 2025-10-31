@@ -17,6 +17,7 @@ public class StudentEnrollmentRepository : IStudentEnrollmentRepository
     public async Task<IEnumerable<StudentEnrollment>> GetAllAsync()
     {
         return await _context.StudentEnrollments
+            .AsNoTracking()
             .Include(se => se.Student)
                 .ThenInclude(s => s.User)
             .Include(se => se.Section)
@@ -27,6 +28,7 @@ public class StudentEnrollmentRepository : IStudentEnrollmentRepository
     public async Task<StudentEnrollment?> GetByIdAsync(int id)
     {
         return await _context.StudentEnrollments
+            .AsNoTracking()
             .Include(se => se.Student)
                 .ThenInclude(s => s.User)
             .Include(se => se.Section)
@@ -68,6 +70,7 @@ public class StudentEnrollmentRepository : IStudentEnrollmentRepository
     public async Task<IEnumerable<StudentEnrollment>> GetStudentEnrollmentsAsync(int studentId)
     {
         return await _context.StudentEnrollments
+            .AsNoTracking()
             .Include(se => se.Section)
             .Include(se => se.Subject)
             .Where(se => se.StudentId == studentId)
@@ -77,6 +80,7 @@ public class StudentEnrollmentRepository : IStudentEnrollmentRepository
     public async Task<IEnumerable<StudentEnrollment>> GetSectionEnrollmentsAsync(int sectionId)
     {
         return await _context.StudentEnrollments
+            .AsNoTracking()
             .Include(se => se.Student)
                 .ThenInclude(s => s.User)
             .Include(se => se.Subject)
@@ -87,6 +91,7 @@ public class StudentEnrollmentRepository : IStudentEnrollmentRepository
     public async Task<IEnumerable<StudentEnrollment>> GetSubjectEnrollmentsAsync(int subjectId)
     {
         return await _context.StudentEnrollments
+            .AsNoTracking()
             .Include(se => se.Student)
                 .ThenInclude(s => s.User)
             .Include(se => se.Section)
@@ -97,6 +102,7 @@ public class StudentEnrollmentRepository : IStudentEnrollmentRepository
     public async Task<IEnumerable<StudentEnrollment>> GetActiveSectionEnrollmentsAsync(int sectionId)
     {
         return await _context.StudentEnrollments
+            .AsNoTracking()
             .Include(se => se.Student)
                 .ThenInclude(s => s.User)
             .Include(se => se.Section)
@@ -108,6 +114,7 @@ public class StudentEnrollmentRepository : IStudentEnrollmentRepository
     public async Task<IEnumerable<StudentEnrollment>> GetActiveSubjectEnrollmentsAsync(int subjectId)
     {
         return await _context.StudentEnrollments
+            .AsNoTracking()
             .Include(se => se.Student)
                 .ThenInclude(s => s.User)
             .Include(se => se.Section)
@@ -118,6 +125,7 @@ public class StudentEnrollmentRepository : IStudentEnrollmentRepository
     public async Task<StudentEnrollment?> GetEnrollmentAsync(int studentId, int sectionId, int subjectId)
     {
         return await _context.StudentEnrollments
+            .AsNoTracking()
             .Include(se => se.Student)
                 .ThenInclude(s => s.User)
             .Include(se => se.Section)
@@ -129,16 +137,18 @@ public class StudentEnrollmentRepository : IStudentEnrollmentRepository
 
     public async Task<bool> IsStudentEnrolledAsync(int studentId, int sectionId, int subjectId)
     {
-        return await _context.StudentEnrollments
-            .AnyAsync(se => se.StudentId == studentId && 
-                      se.SectionId == sectionId && 
-                      se.SubjectId == subjectId && 
-                      se.IsActive);
+    return await _context.StudentEnrollments
+    .AsNoTracking()
+    .AnyAsync(se => se.StudentId == studentId &&
+    se.SectionId == sectionId &&
+    se.SubjectId == subjectId &&
+                       se.IsActive);
     }
 
     public async Task<IEnumerable<StudentEnrollment>> GetActiveEnrollmentsAsync(int studentId)
     {
         return await _context.StudentEnrollments
+            .AsNoTracking()
             .Include(se => se.Section)
             .Include(se => se.Subject)
             .Where(se => se.StudentId == studentId && se.IsActive)
@@ -148,6 +158,7 @@ public class StudentEnrollmentRepository : IStudentEnrollmentRepository
     public async Task<IEnumerable<Section>> GetStudentSectionsAsync(int studentId)
     {
         return await _context.StudentEnrollments
+            .AsNoTracking()
             .Include(se => se.Section)
             .Where(se => se.StudentId == studentId && se.IsActive)
             .Select(se => se.Section)
@@ -158,6 +169,7 @@ public class StudentEnrollmentRepository : IStudentEnrollmentRepository
     public async Task<IEnumerable<Subject>> GetStudentSubjectsAsync(int studentId)
     {
         return await _context.StudentEnrollments
+            .AsNoTracking()
             .Include(se => se.Subject)
             .Where(se => se.StudentId == studentId && se.IsActive)
             .Select(se => se.Subject)

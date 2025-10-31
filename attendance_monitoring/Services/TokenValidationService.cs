@@ -19,7 +19,7 @@ public class TokenValidationService : ITokenValidationService
     #region IsTokenBlacklistedAsync
     public async Task<bool> IsTokenBlacklistedAsync(string jti)
     {
-        return await _context.BlacklistedTokens.AnyAsync(bt => bt.Jti == jti).ConfigureAwait(false);
+        return await _context.BlacklistedTokens.AsNoTracking().AnyAsync(bt => bt.Jti == jti).ConfigureAwait(false);
     }
     #endregion
 
