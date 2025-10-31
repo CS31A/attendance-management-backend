@@ -28,8 +28,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Improved error handling and validation logic
 - **Enhanced** `AccountRepository` with profile update methods for all user types
 - **Added** new endpoints in `AccountController`:
-  - `PUT /api/Account/profile` - User profile update
-  - `PUT /api/Account/admin-update/{userId}` - Admin user update
+  - `PATCH /api/Account/profile` - User profile update
+  - `PATCH /api/Account/admin/users/{userId}` - Admin user update
 - **Added** `UpdateUser.md` documentation for profile update implementation details
 
 ### 🐛 **Bug Fixes**
