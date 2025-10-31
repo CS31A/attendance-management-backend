@@ -15,6 +15,8 @@ This document lists all the API endpoints for the attendance monitoring system.
 - `GET /api/account/me`: Get the current authenticated user's profile information
 - `POST /api/account/web/logout`: Logout user by clearing HTTP-only cookies and blacklisting the access token
 - `POST /api/account/logout`: Logout user by blacklisting the access token and revoking all refresh tokens
+- `PATCH /api/Account/profile`: Update the current user's profile
+- `PATCH /api/Account/admin/users/{userId}`: Update any user's profile (admin only)
 
 ## ClassroomController
 
