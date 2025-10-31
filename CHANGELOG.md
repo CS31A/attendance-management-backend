@@ -194,6 +194,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Enhanced IDE-specific file exclusions
   - Better organization with categorized sections
 
+#### Performance Optimizations with AsNoTracking
+- **Added** `.AsNoTracking()` to all read-only database queries for performance improvement
+  - Applied to AccountRepository for student and instructor retrieval methods
+  - Applied to StudentEnrollmentRepository for all read operations
+  - Applied to AccountService for user profile retrieval
+  - Applied to BlacklistedTokenCleanupService for expired token cleanup
+  - Applied to ScheduleService for validation queries
+  - Applied to TokenValidationService for token validation
+  - Significantly reduces entity tracking overhead for read operations
+  - Improves response times and memory usage for frequently accessed data
+
 #### User Model Architecture Enhancement
 - **Removed** redundant email fields from user models
   - Removed `Email` property from `Admin`, `Instructor`, and `Student` model classes
