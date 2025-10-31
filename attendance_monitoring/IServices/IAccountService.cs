@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using System.Threading.Tasks;
 using attendance_monitoring.Models.DTO;
+using attendance_monitoring.Models.DTO.Request;
 using attendance_monitoring.Models.DTO.Response;
 using Microsoft.AspNetCore.Identity;
 
@@ -16,5 +17,21 @@ namespace attendance_monitoring.IServices
         Task<LogoutResponseDto> WebLogoutAsync(string userId, string? accessToken);
         Task BlacklistTokenAsync(string jti, DateTime expiresAt);
         Task<(UserProfileResponseDto?, string?)> GetUserProfileAsync(string userId);
+
+        /// <summary>
+        /// Updates a user's own profile information
+        /// </summary>
+        /// <param name="userId">The ID of the user updating their profile</param>
+        /// <param name="updateProfileDto">The profile update data</param>
+        /// <returns>Tuple containing success status, updated profile, and error message if applicable</returns>
+        Task<(bool Success, UserProfileResponseDto? Profile, string? ErrorMessage)> UpdateUserProfileAsync(string userId, UpdateProfile updateProfileDto);
+
+        /// <summary>
+        /// Admin updates another user's profile information
+        /// </summary>
+        /// <param name="adminId">The ID of the admin performing the update</param>
+        /// <param name="adminUpdateDto">The profile update data including target user ID</param>
+        /// <returns>Tuple containing success status, updated profile, and error message if applicable</returns>
+        Task<(bool Success, UserProfileResponseDto? Profile, string? ErrorMessage)> AdminUpdateUserProfileAsync(string adminId, AdminUpdateUser adminUpdateDto);
     }
 }
