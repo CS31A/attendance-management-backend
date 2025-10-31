@@ -5,7 +5,7 @@ All notable changes to the Attendance Monitoring System project will be document
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [v1.5.0] - 2025-10-31
 
 ### 🎉 **Major Features**
 
@@ -218,7 +218,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [Current State - v1.4.0] - 2025-10-26
+## [Unreleased]
+
+### 🐛 **Bug Fixes**
+
+#### Email Update Functionality
+- **Fixed** email update functionality in user profile updates (Patch #19)
+
+#### API Documentation Corrections
+- **Corrected** HTTP methods in API documentation from PUT to PATCH where appropriate
+
+---
+
+## [v1.4.0] - 2025-10-26
 
 ### 🎉 **Major Features**
 
