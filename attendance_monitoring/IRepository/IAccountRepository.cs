@@ -97,5 +97,64 @@ namespace attendance_monitoring.IRepository
         /// <returns>The refresh token entity if found; otherwise, null.</returns>
         Task<RefreshToken?> FindRefreshTokenByHashAsync(string tokenHash);
 
+        /// <summary>
+        /// Checks if an email address already exists, optionally excluding a specific user.
+        /// </summary>
+        /// <param name="email">The email address to check.</param>
+        /// <param name="excludeUserId">Optional user ID to exclude from the check (for updates).</param>
+        /// <returns>True if the email exists; otherwise, false.</returns>
+        Task<bool> EmailExistsAsync(string email, string? excludeUserId = null);
+
+        /// <summary>
+        /// Updates a user's information.
+        /// </summary>
+        /// <param name="user">The user with updated information.</param>
+        /// <returns>The result of the update operation.</returns>
+        Task<IdentityResult> UpdateUserAsync(IdentityUser user);
+
+        /// <summary>
+        /// Changes a user's password.
+        /// </summary>
+        /// <param name="user">The user whose password to change.</param>
+        /// <param name="currentPassword">The user's current password.</param>
+        /// <param name="newPassword">The new password.</param>
+        /// <returns>The result of the password change operation.</returns>
+        Task<IdentityResult> ChangePasswordAsync(IdentityUser user, string currentPassword, string newPassword);
+
+        /// <summary>
+        /// Gets a student profile by user ID.
+        /// </summary>
+        /// <param name="userId">The user ID.</param>
+        /// <returns>The student profile if found; otherwise, null.</returns>
+        Task<Student?> GetStudentByUserIdAsync(string userId);
+
+        /// <summary>
+        /// Gets an instructor profile by user ID.
+        /// </summary>
+        /// <param name="userId">The user ID.</param>
+        /// <returns>The instructor profile if found; otherwise, null.</returns>
+        Task<Instructor?> GetInstructorByUserIdAsync(string userId);
+
+        /// <summary>
+        /// Updates a student profile.
+        /// </summary>
+        /// <param name="student">The student profile with updated information.</param>
+        /// <returns>A task representing the asynchronous operation.</returns>
+        Task UpdateStudentProfileAsync(Student student);
+
+        /// <summary>
+        /// Updates an instructor profile.
+        /// </summary>
+        /// <param name="instructor">The instructor profile with updated information.</param>
+        /// <returns>A task representing the asynchronous operation.</returns>
+        Task UpdateInstructorProfileAsync(Instructor instructor);
+
+        /// <summary>
+        /// Resets a user's password (admin operation - no current password required).
+        /// </summary>
+        /// <param name="user">The user whose password to reset.</param>
+        /// <param name="newPassword">The new password.</param>
+        /// <returns>The result of the password reset operation.</returns>
+        Task<IdentityResult> AdminResetPasswordAsync(IdentityUser user, string newPassword);
     }
 }
