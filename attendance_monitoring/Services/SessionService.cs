@@ -256,8 +256,11 @@ public class SessionService : ISessionService
     /// </summary>
     public async Task<(SessionResponseDto?, string?)> CreateSessionAsync(CreateSession request)
     {
+        // Use provided date or default to current date
+        var effectiveSessionDate = request.SessionDate ?? DateTime.UtcNow.Date;
+        
         _logger.LogInformation("Creating session for schedule ID: {ScheduleId} on date: {SessionDate:yyyy-MM-dd}",
-            request.ScheduleId, request.SessionDate);
+            request.ScheduleId, effectiveSessionDate);
 
         try
         {
@@ -272,26 +275,26 @@ public class SessionService : ISessionService
 
             // Check if a session already exists for this schedule on this date
             var sessionExists = await _sessionRepository.SessionExistsForScheduleAndDateAsync(
-                request.ScheduleId, request.SessionDate).ConfigureAwait(false);
+                request.ScheduleId, effectiveSessionDate).ConfigureAwait(false);
 
             if (sessionExists)
             {
-                var errorMessage = $"A session already exists for schedule ID {request.ScheduleId} on {request.SessionDate:yyyy-MM-dd}.";
+                var errorMessage = $"A session already exists for schedule ID {request.ScheduleId} on {effectiveSessionDate:yyyy-MM-dd}.";
                 _logger.LogWarning("Session creation failed: {ErrorMessage}", errorMessage);
                 return (null, errorMessage);
             }
 
             // Validate that the session date matches the schedule's day of week
-            var sessionDayOfWeek = request.SessionDate.DayOfWeek.ToString();
+            var sessionDayOfWeek = effectiveSessionDate.DayOfWeek.ToString();
             if (!schedule.DayOfWeek.Equals(sessionDayOfWeek, StringComparison.OrdinalIgnoreCase))
             {
-                var errorMessage = $"Session date {request.SessionDate:yyyy-MM-dd} ({sessionDayOfWeek}) does not match the schedule's day of week ({schedule.DayOfWeek}).";
+                var errorMessage = $"Session date {effectiveSessionDate:yyyy-MM-dd} ({sessionDayOfWeek}) does not match the schedule's day of week ({schedule.DayOfWeek}).";
                 _logger.LogWarning("Session creation failed: {ErrorMessage}", errorMessage);
                 return (null, errorMessage);
             }
 
             // Validate that the session date is not in the past
-            if (request.SessionDate.Date < DateTime.UtcNow.Date)
+            if (effectiveSessionDate.Date < DateTime.UtcNow.Date)
             {
                 var errorMessage = "Cannot create a session for a past date.";
                 _logger.LogWarning("Session creation failed: {ErrorMessage}", errorMessage);
@@ -302,7 +305,7 @@ public class SessionService : ISessionService
             var session = new Session
             {
                 ScheduleId = request.ScheduleId,
-                SessionDate = request.SessionDate.Date,
+                SessionDate = effectiveSessionDate.Date,
                 Status = "not_started",
                 Description = request.Description
             };
