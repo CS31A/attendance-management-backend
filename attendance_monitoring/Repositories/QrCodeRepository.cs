@@ -566,6 +566,56 @@ public class QrCodeRepository(ApplicationDbContext context, ILogger<QrCodeReposi
 
     #endregion
 
+    #region Atomic Operations
+
+    #region AtomicIncrementUsageAsync
+    /// <summary>
+    /// Atomically increments the usage count for a QR code with all validations in a single database operation.
+    /// This prevents race conditions where multiple concurrent requests could pass validation.
+    /// </summary>
+    public async Task<int> AtomicIncrementUsageAsync(string qrHash, DateTime currentTime)
+    {
+        try
+        {
+            // Execute atomic UPDATE with all validations in WHERE clause
+            // This ensures only one request can increment when conditions are met
+            var result = await context.Database.ExecuteSqlInterpolatedAsync(
+                $@"UPDATE QrCodes
+                   SET UsageCount = UsageCount + 1, UpdatedAt = {currentTime}
+                   WHERE QrHash = {qrHash}
+                     AND IsActive = 1
+                     AND ExpiresAt > {currentTime}
+                     AND (MaxUsage IS NULL OR UsageCount < MaxUsage)")
+                .ConfigureAwait(false);
+
+            logger.LogInformation("Atomic increment result for QR hash {QrHash}: {Result} rows affected", qrHash, result);
+            return result;
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "An error occurred during atomic increment for QR code with hash {QrHash}", qrHash);
+            throw;
+        }
+    }
+    #endregion
+
+    #region BeginTransactionAsync
+    public async Task<Microsoft.EntityFrameworkCore.Storage.IDbContextTransaction> BeginTransactionAsync()
+    {
+        try
+        {
+            return await context.Database.BeginTransactionAsync().ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "An error occurred while beginning database transaction");
+            throw;
+        }
+    }
+    #endregion
+
+    #endregion
+
     #region Utility Operations
 
     #region SaveChangesAsync

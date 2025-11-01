@@ -278,7 +278,7 @@ public class SessionServiceTest
             .ReturnsAsync(schedule);
 
         _mockSessionRepository
-            .Setup(r => r.SessionExistsForScheduleAndDateAsync(request.ScheduleId, request.SessionDate))
+            .Setup(r => r.SessionExistsForScheduleAndDateAsync(request.ScheduleId, request.SessionDate!.Value))
             .ReturnsAsync(false);
 
         _mockSessionRepository
@@ -368,7 +368,7 @@ public class SessionServiceTest
             .ReturnsAsync(schedule);
 
         _mockSessionRepository
-            .Setup(r => r.SessionExistsForScheduleAndDateAsync(request.ScheduleId, request.SessionDate))
+            .Setup(r => r.SessionExistsForScheduleAndDateAsync(request.ScheduleId, request.SessionDate!.Value))
             .ReturnsAsync(true);
 
         // Act
@@ -398,7 +398,7 @@ public class SessionServiceTest
             .ReturnsAsync(schedule);
 
         _mockSessionRepository
-            .Setup(r => r.SessionExistsForScheduleAndDateAsync(request.ScheduleId, request.SessionDate))
+            .Setup(r => r.SessionExistsForScheduleAndDateAsync(request.ScheduleId, request.SessionDate!.Value))
             .ReturnsAsync(false);
 
         // Act
@@ -428,7 +428,7 @@ public class SessionServiceTest
             .ReturnsAsync(schedule);
 
         _mockSessionRepository
-            .Setup(r => r.SessionExistsForScheduleAndDateAsync(request.ScheduleId, request.SessionDate))
+            .Setup(r => r.SessionExistsForScheduleAndDateAsync(request.ScheduleId, request.SessionDate!.Value))
             .ReturnsAsync(false);
 
         // Act
@@ -1017,6 +1017,58 @@ public class SessionServiceTest
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
+    }
+
+    [Fact]
+    public async Task CreateSessionAsync_UsesCurrentDate_WhenSessionDateIsNull()
+    {
+        // Arrange
+        var today = DateTime.UtcNow.Date;
+        var request = new CreateSession
+        {
+            ScheduleId = 1,
+            SessionDate = null, // This should default to today
+            Description = "Test session with null date"
+        };
+
+        var schedule = CreateTestSchedule(1, today.DayOfWeek.ToString());
+        var createdSession = CreateTestSession(1, request.ScheduleId, sessionDate: today);
+
+        _mockScheduleRepository
+            .Setup(r => r.GetScheduleByIdAsync(request.ScheduleId))
+            .ReturnsAsync(schedule);
+
+        _mockSessionRepository
+            .Setup(r => r.SessionExistsForScheduleAndDateAsync(request.ScheduleId, today))
+            .ReturnsAsync(false);
+
+        _mockSessionRepository
+            .Setup(r => r.CreateSessionAsync(It.IsAny<Session>()))
+            .Callback<Session>(s => {
+                // Simulate database assigning an ID and setting timestamps
+                createdSession.Status = s.Status;
+                createdSession.ScheduleId = s.ScheduleId;
+                createdSession.SessionDate = s.SessionDate;
+                createdSession.Description = s.Description;
+            })
+            .ReturnsAsync(createdSession);
+
+        _mockSessionRepository
+            .Setup(r => r.SaveChangesAsync())
+            .ReturnsAsync(1);
+
+        _mockSessionRepository
+            .Setup(r => r.GetSessionByIdAsync(It.IsAny<int>()))
+            .ReturnsAsync(createdSession);
+
+        // Act
+        var (result, error) = await _sessionService.CreateSessionAsync(request);
+
+        // Assert
+        Assert.Null(error);
+        Assert.NotNull(result);
+        Assert.Equal(today, result.SessionDate.Date);
+        _mockSessionRepository.Verify(r => r.SessionExistsForScheduleAndDateAsync(request.ScheduleId, today), Times.Once);
     }
 
     #endregion
