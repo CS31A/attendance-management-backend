@@ -16,9 +16,9 @@ public class CreateSession
 
     /// <summary>
     /// The date when the session will take place.
+    /// If not provided, defaults to the current date.
     /// </summary>
-    [Required(ErrorMessage = "Session date is required")]
-    public DateTime SessionDate { get; set; }
+    public DateTime? SessionDate { get; set; }
 
     /// <summary>
     /// Optional description or notes for the session.

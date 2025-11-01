@@ -201,8 +201,9 @@ public class SessionController(ISessionService sessionService, ILogger<SessionCo
     [Authorize(Policy = "InstructorPolicy")]
     public async Task<ActionResult<SessionResponseDto>> CreateSession([FromBody] CreateSession request)
     {
+        var sessionDate = request.SessionDate ?? DateTime.UtcNow.Date;
         logger.LogInformation("Creating session for schedule ID: {ScheduleId} on date: {SessionDate:yyyy-MM-dd}",
-            request.ScheduleId, request.SessionDate);
+            request.ScheduleId, sessionDate);
 
         if (!ModelState.IsValid)
         {
