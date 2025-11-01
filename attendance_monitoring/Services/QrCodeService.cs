@@ -797,20 +797,90 @@ public class QrCodeService : IQrCodeService
 
     public async Task<QrCodeScanResponseDto> ScanQrCodeAsync(ValidateQrCode validateQrCode, ClaimsPrincipal user)
     {
+        var utcNow = DateTime.UtcNow;
+
+        // Start transaction for atomic operations
+        using var transaction = await _qrCodeRepository.BeginTransactionAsync().ConfigureAwait(false);
+
         try
         {
             _logger.LogInformation("Scanning QR code with hash: {QrHash} for student ID: {StudentId}",
                 validateQrCode.QrHash, validateQrCode.StudentId);
 
-            // Validate QR code first
-            var qrCode = await _qrCodeRepository.ValidateQrCodeForUsageAsync(validateQrCode.QrHash).ConfigureAwait(false);
-            if (qrCode == null)
+            // Atomic update with all validations - prevents race condition
+            var result = await _qrCodeRepository.AtomicIncrementUsageAsync(
+                validateQrCode.QrHash,
+                utcNow
+            ).ConfigureAwait(false);
+
+            if (result == 0)
             {
-                _logger.LogWarning("QR code scan failed: Invalid QR code");
+                // Provide specific error message by checking QR code state
+                var qrCode = await _qrCodeRepository.GetQrCodeByHashAsync(validateQrCode.QrHash).ConfigureAwait(false);
+
+                if (qrCode == null)
+                {
+                    _logger.LogWarning("QR code scan failed: QR code not found");
+                    return new QrCodeScanResponseDto
+                    {
+                        Success = false,
+                        Message = "QR code not found",
+                        AttendanceMarked = false
+                    };
+                }
+
+                if (!qrCode.IsActive)
+                {
+                    _logger.LogWarning("QR code scan failed: QR code is inactive");
+                    return new QrCodeScanResponseDto
+                    {
+                        Success = false,
+                        Message = "QR code is inactive",
+                        AttendanceMarked = false
+                    };
+                }
+
+                if (qrCode.ExpiresAt <= utcNow)
+                {
+                    _logger.LogWarning("QR code scan failed: QR code has expired");
+                    return new QrCodeScanResponseDto
+                    {
+                        Success = false,
+                        Message = "QR code has expired",
+                        AttendanceMarked = false
+                    };
+                }
+
+                if (qrCode.MaxUsage.HasValue && qrCode.UsageCount >= qrCode.MaxUsage.Value)
+                {
+                    _logger.LogWarning("QR code scan failed: QR code usage limit reached");
+                    return new QrCodeScanResponseDto
+                    {
+                        Success = false,
+                        Message = "QR code usage limit reached",
+                        AttendanceMarked = false
+                    };
+                }
+
+                _logger.LogWarning("QR code scan failed: Unable to scan QR code");
                 return new QrCodeScanResponseDto
                 {
                     Success = false,
-                    Message = "QR code is invalid, expired, or has reached its usage limit",
+                    Message = "Unable to scan QR code",
+                    AttendanceMarked = false
+                };
+            }
+
+            // Re-fetch QR code with full navigation properties after successful increment
+            var validatedQrCode = await _qrCodeRepository.GetQrCodeByHashAsync(validateQrCode.QrHash).ConfigureAwait(false);
+            if (validatedQrCode == null)
+            {
+                await transaction.RollbackAsync().ConfigureAwait(false);
+                _logger.LogError("QR code disappeared after atomic increment");
+                return new QrCodeScanResponseDto
+                {
+                    Success = false,
+                    Message = "An error occurred while processing the QR code scan",
                     AttendanceMarked = false
                 };
             }
@@ -819,6 +889,7 @@ public class QrCodeService : IQrCodeService
             var student = await _studentRepository.GetStudentByIdAsync(validateQrCode.StudentId).ConfigureAwait(false);
             if (student == null)
             {
+                await transaction.RollbackAsync().ConfigureAwait(false);
                 _logger.LogWarning("QR code scan failed: Student not found");
                 return new QrCodeScanResponseDto
                 {
@@ -830,21 +901,22 @@ public class QrCodeService : IQrCodeService
 
             // Check if student is authorized for this section
             // Student is authorized if they are in their primary section OR enrolled via StudentEnrollment
-            var sectionId = qrCode.Session?.Schedule?.SectionId ?? 0;
+            var sectionId = validatedQrCode.Session?.Schedule?.SectionId ?? 0;
             bool isAuthorized = student.SectionId == sectionId;
 
-            if (!isAuthorized && qrCode.Session?.Schedule != null)
+            if (!isAuthorized && validatedQrCode.Session?.Schedule != null)
             {
                 // Check if student is enrolled in this section-subject combination (for irregular students)
                 isAuthorized = await IsStudentEnrolledInSectionSubjectAsync(
                     validateQrCode.StudentId,
                     sectionId,
-                    qrCode.Session.Schedule.SubjectId
+                    validatedQrCode.Session.Schedule.SubjectId
                 ).ConfigureAwait(false);
             }
 
             if (!isAuthorized)
             {
+                await transaction.RollbackAsync().ConfigureAwait(false);
                 _logger.LogWarning("QR code scan failed: Student {StudentId} is not authorized for section {SectionId}",
                     validateQrCode.StudentId, sectionId);
                 return new QrCodeScanResponseDto
@@ -857,23 +929,21 @@ public class QrCodeService : IQrCodeService
             }
 
             // Create attendance record
-            var checkInTime = DateTime.UtcNow;
             try
             {
                 var attendanceRecord = await _attendanceService.CreateAttendanceFromQrScanAsync(
                     validateQrCode.StudentId,
-                    qrCode.SessionId,
-                    qrCode.Id,
-                    checkInTime
+                    validatedQrCode.SessionId,
+                    validatedQrCode.Id,
+                    utcNow
                 ).ConfigureAwait(false);
 
-                // Increment usage count
-                await _qrCodeRepository.IncrementUsageCountByHashAsync(validateQrCode.QrHash).ConfigureAwait(false);
                 await _qrCodeRepository.SaveChangesAsync().ConfigureAwait(false);
+                await transaction.CommitAsync().ConfigureAwait(false);
 
                 // Calculate remaining scans
-                var remainingScans = qrCode.MaxUsage.HasValue ?
-                    Math.Max(0, qrCode.MaxUsage.Value - (qrCode.UsageCount + 1)) :
+                var remainingScans = validatedQrCode.MaxUsage.HasValue ?
+                    Math.Max(0, validatedQrCode.MaxUsage.Value - validatedQrCode.UsageCount) :
                     int.MaxValue;
 
                 var responseDto = new QrCodeScanResponseDto
@@ -881,13 +951,13 @@ public class QrCodeService : IQrCodeService
                     Success = true,
                     Message = "Attendance marked successfully",
                     AttendanceMarked = true,
-                    AttendanceTime = checkInTime,
+                    AttendanceTime = utcNow,
                     StudentName = $"{student.Firstname} {student.Lastname}",
-                    ClassName = qrCode.Session?.Schedule?.Section?.Name ?? "Unknown",
-                    SubjectName = qrCode.Session?.Schedule?.Subject?.Name ?? "Unknown",
-                    RoomName = qrCode.Session?.ActualRoom?.Name ?? "Unknown",
-                    InstructorName = qrCode.Session?.Schedule?.Instructor != null ?
-                        $"{qrCode.Session.Schedule.Instructor.Firstname} {qrCode.Session.Schedule.Instructor.Lastname}" : "Unknown",
+                    ClassName = validatedQrCode.Session?.Schedule?.Section?.Name ?? "Unknown",
+                    SubjectName = validatedQrCode.Session?.Schedule?.Subject?.Name ?? "Unknown",
+                    RoomName = validatedQrCode.Session?.ActualRoom?.Name ?? "Unknown",
+                    InstructorName = validatedQrCode.Session?.Schedule?.Instructor != null ?
+                        $"{validatedQrCode.Session.Schedule.Instructor.Firstname} {validatedQrCode.Session.Schedule.Instructor.Lastname}" : "Unknown",
                     RemainingScans = remainingScans,
                     AttendanceRecordId = attendanceRecord.Id,
                     AttendanceStatus = attendanceRecord.Status,
@@ -899,12 +969,14 @@ public class QrCodeService : IQrCodeService
             }
             catch (InvalidOperationException ex) when (ex.Message.Contains("duplicate"))
             {
+                await transaction.RollbackAsync().ConfigureAwait(false);
+
                 // Student already checked in
                 _logger.LogWarning("Duplicate QR scan detected for student ID: {StudentId}", validateQrCode.StudentId);
 
                 // Calculate remaining scans
-                var remainingScans = qrCode.MaxUsage.HasValue ?
-                    Math.Max(0, qrCode.MaxUsage.Value - qrCode.UsageCount) :
+                var remainingScans = validatedQrCode.MaxUsage.HasValue ?
+                    Math.Max(0, validatedQrCode.MaxUsage.Value - validatedQrCode.UsageCount) :
                     int.MaxValue;
 
                 return new QrCodeScanResponseDto
@@ -912,13 +984,13 @@ public class QrCodeService : IQrCodeService
                     Success = true,
                     Message = "You have already checked in for this session",
                     AttendanceMarked = false,
-                    AttendanceTime = checkInTime,
+                    AttendanceTime = utcNow,
                     StudentName = $"{student.Firstname} {student.Lastname}",
-                    ClassName = qrCode.Session?.Schedule?.Section?.Name ?? "Unknown",
-                    SubjectName = qrCode.Session?.Schedule?.Subject?.Name ?? "Unknown",
-                    RoomName = qrCode.Session?.ActualRoom?.Name ?? "Unknown",
-                    InstructorName = qrCode.Session?.Schedule?.Instructor != null ?
-                        $"{qrCode.Session.Schedule.Instructor.Firstname} {qrCode.Session.Schedule.Instructor.Lastname}" : "Unknown",
+                    ClassName = validatedQrCode.Session?.Schedule?.Section?.Name ?? "Unknown",
+                    SubjectName = validatedQrCode.Session?.Schedule?.Subject?.Name ?? "Unknown",
+                    RoomName = validatedQrCode.Session?.ActualRoom?.Name ?? "Unknown",
+                    InstructorName = validatedQrCode.Session?.Schedule?.Instructor != null ?
+                        $"{validatedQrCode.Session.Schedule.Instructor.Firstname} {validatedQrCode.Session.Schedule.Instructor.Lastname}" : "Unknown",
                     RemainingScans = remainingScans,
                     IsDuplicateScan = true
                 };
@@ -926,7 +998,9 @@ public class QrCodeService : IQrCodeService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error occurred while scanning QR code");
+            await transaction.RollbackAsync().ConfigureAwait(false);
+            _logger.LogError(ex, "Failed to scan QR code {QrHash} for student {StudentId}",
+                validateQrCode.QrHash, validateQrCode.StudentId);
             return new QrCodeScanResponseDto
             {
                 Success = false,

@@ -143,4 +143,19 @@ public interface IQrCodeRepository : ISaveableRepository
     /// <param name="qrHash">The QR code hash to validate.</param>
     /// <returns>The QR code if valid and usable; otherwise, null.</returns>
     Task<QrCode?> ValidateQrCodeForUsageAsync(string qrHash);
+
+    /// <summary>
+    /// Atomically increments the usage count for a QR code with validation in a single database operation.
+    /// Prevents race conditions by performing validation and increment atomically.
+    /// </summary>
+    /// <param name="qrHash">The QR code hash.</param>
+    /// <param name="currentTime">The current UTC time for expiration checking.</param>
+    /// <returns>The number of rows affected (1 if successful, 0 if validation failed).</returns>
+    Task<int> AtomicIncrementUsageAsync(string qrHash, DateTime currentTime);
+
+    /// <summary>
+    /// Begins a database transaction for atomic operations.
+    /// </summary>
+    /// <returns>A database transaction.</returns>
+    Task<Microsoft.EntityFrameworkCore.Storage.IDbContextTransaction> BeginTransactionAsync();
 }
