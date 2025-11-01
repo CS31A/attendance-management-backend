@@ -21,10 +21,17 @@ public interface IInstructorRepository : ISaveableRepository
     Task<Instructor?> GetInstructorByIdAsync(int id);
     
     /// <summary>
-    /// Retri
+    /// Retrieves an instructor by their ID with change tracking enabled for updates.
     /// </summary>
-    /// <param name="id"></param>
-    /// <returns></returns>
+    /// <param name="id">The instructor ID.</param>
+    /// <returns>The instructor if found; otherwise, null.</returns>
+    Task<Instructor?> GetInstructorByIdTrackedAsync(int id);
+
+    /// <summary>
+    /// Retrieves an instructor by their ID, ignoring the delete status.
+    /// </summary>
+    /// <param name="id">The instructor ID.</param>
+    /// <returns>The instructor if found; otherwise, null.</returns>
     Task<Instructor?> GetInstructorByIdIgnoreDeleteStatus(int id);
 
     /// <summary>

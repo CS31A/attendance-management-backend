@@ -32,6 +32,16 @@ public class InstructorRepository(ApplicationDbContext context) : IInstructorRep
     }
     #endregion
 
+    #region GetInstructorByIdTrackedAsync
+    public async Task<Instructor?> GetInstructorByIdTrackedAsync(int id)
+    {
+        return await context.Instructors
+            .Include(i => i.User)
+            .FirstOrDefaultAsync(i => i.Id == id && !i.IsDeleted)
+            .ConfigureAwait(false);
+    }
+    #endregion
+
     #region GetInstructorByUserIdAsync
     public async Task<Instructor?> GetInstructorByUserIdAsync(string userId)
     {

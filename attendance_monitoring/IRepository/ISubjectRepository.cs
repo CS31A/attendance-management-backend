@@ -21,6 +21,13 @@ public interface ISubjectRepository : ISaveableRepository
     Task<Subject?> GetSubjectByIdAsync(int id);
 
     /// <summary>
+    /// Retrieves a subject by its ID with change tracking enabled for updates.
+    /// </summary>
+    /// <param name="id">The subject ID.</param>
+    /// <returns>The subject if found; otherwise, null.</returns>
+    Task<Subject?> GetSubjectByIdTrackedAsync(int id);
+
+    /// <summary>
     /// Creates a new subject.
     /// </summary>
     /// <param name="subject">The subject to create.</param>
