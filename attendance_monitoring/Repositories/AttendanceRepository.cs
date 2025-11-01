@@ -543,7 +543,7 @@ public class AttendanceRepository(ApplicationDbContext context) : IAttendanceRep
     /// <summary>
     /// Applies all navigation property includes for full attendance record data.
     /// Use for single-record queries where a single JOIN query is more efficient.
-    /// Loads: Student, Session, Schedule, Subject, Section, Classroom, Instructor, QrCode.
+    /// Loads: Student, Session, Schedule, Subject, Section, Classroom, Instructor, ActualRoom, QrCode.
     /// </summary>
     /// <param name="query">The base queryable to apply includes to</param>
     /// <returns>Queryable with all includes applied</returns>
@@ -563,14 +563,16 @@ public class AttendanceRepository(ApplicationDbContext context) : IAttendanceRep
             .Include(a => a.Session)
                 .ThenInclude(s => s.Schedule)
                     .ThenInclude(sch => sch.Instructor)
+            .Include(a => a.Session)
+                .ThenInclude(s => s.ActualRoom)
             .Include(a => a.QrCode);
     }
 
     /// <summary>
     /// Applies all navigation property includes with split query optimization.
     /// Use for multi-record queries to avoid cartesian explosion.
-    /// Generates ~8 separate SQL queries for better performance with collections.
-    /// Loads: Student, Session, Schedule, Subject, Section, Classroom, Instructor, QrCode.
+    /// Generates ~9 separate SQL queries for better performance with collections.
+    /// Loads: Student, Session, Schedule, Subject, Section, Classroom, Instructor, ActualRoom, QrCode.
     /// </summary>
     /// <param name="query">The base queryable to apply includes to</param>
     /// <returns>Queryable with all includes and split query applied</returns>
@@ -591,6 +593,8 @@ public class AttendanceRepository(ApplicationDbContext context) : IAttendanceRep
             .Include(a => a.Session)
                 .ThenInclude(s => s.Schedule)
                     .ThenInclude(sch => sch.Instructor)
+            .Include(a => a.Session)
+                .ThenInclude(s => s.ActualRoom)
             .Include(a => a.QrCode);
     }
 
