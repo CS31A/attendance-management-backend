@@ -189,16 +189,23 @@ public class AttendanceService(
         var userRole = user.FindFirst(ClaimTypes.Role)?.Value;
         if (userRole == "Student")
         {
-            // Students can only see their own attendance
+            // Students can only see their own attendance - fail-secure pattern
             var userId = await userContextService.GetUserIdAsync(user).ConfigureAwait(false);
-            if (userId != null)
+            if (userId == null)
             {
-                var student = await studentRepository.GetStudentByUserIdAsync(userId).ConfigureAwait(false);
-                if (student != null)
-                {
-                    filter.StudentId = student.Id;
-                }
+                logger.LogWarning("Unable to retrieve user ID for student role");
+                throw new UnauthorizedAccessException("Unable to verify user identity");
             }
+
+            var student = await studentRepository.GetStudentByUserIdAsync(userId).ConfigureAwait(false);
+            if (student == null)
+            {
+                logger.LogWarning("Student profile not found for user ID: {UserId}", userId);
+                throw new EntityNotFoundException<string>("Student", userId,
+                    "Student profile not found for authenticated user");
+            }
+
+            filter.StudentId = student.Id;
         }
 
         // Build filtered query with pagination applied at database level
@@ -228,14 +235,22 @@ public class AttendanceService(
             throw new EntityNotFoundException<int>("Student", studentId);
         }
 
-        // Authorization check
-        var userId = await userContextService.GetUserIdAsync(user).ConfigureAwait(false);
+        // Authorization check - fail-secure pattern
         var userRole = user.FindFirst(ClaimTypes.Role)?.Value;
-
-        if (userRole == "Student" && student.UserId != userId)
+        if (userRole == "Student")
         {
-            logger.LogWarning("Student user not authorized to view other student's attendance");
-            throw new UnauthorizedAccessException("You can only view your own attendance history");
+            var userId = await userContextService.GetUserIdAsync(user).ConfigureAwait(false);
+            if (userId == null)
+            {
+                logger.LogWarning("Unable to retrieve user ID for student role in attendance history");
+                throw new UnauthorizedAccessException("Unable to verify user identity");
+            }
+
+            if (student.UserId != userId)
+            {
+                logger.LogWarning("Student user not authorized to view other student's attendance");
+                throw new UnauthorizedAccessException("You can only view your own attendance history");
+            }
         }
 
         // Get all attendance records for student
@@ -367,15 +382,23 @@ public class AttendanceService(
         var userRole = user.FindFirst(ClaimTypes.Role)?.Value;
         if (userRole == "Student")
         {
+            // Students can only see their own attendance - fail-secure pattern
             var userId = await userContextService.GetUserIdAsync(user).ConfigureAwait(false);
-            if (userId != null)
+            if (userId == null)
             {
-                var student = await studentRepository.GetStudentByUserIdAsync(userId).ConfigureAwait(false);
-                if (student != null)
-                {
-                    filter.StudentId = student.Id;
-                }
+                logger.LogWarning("Unable to retrieve user ID for student role in summary");
+                throw new UnauthorizedAccessException("Unable to verify user identity");
             }
+
+            var student = await studentRepository.GetStudentByUserIdAsync(userId).ConfigureAwait(false);
+            if (student == null)
+            {
+                logger.LogWarning("Student profile not found for user ID: {UserId} in summary", userId);
+                throw new EntityNotFoundException<string>("Student", userId,
+                    "Student profile not found for authenticated user");
+            }
+
+            filter.StudentId = student.Id;
         }
 
         // Get statistics from database (optimized - no records loaded into memory)
@@ -627,17 +650,25 @@ public class AttendanceService(
             return record.Session.Schedule.InstructorId == instructor.Id;
         }
 
-        // Students can view their own attendance
+        // Students can view their own attendance - fail-secure pattern
         if (userRole == "Student")
         {
             var userId = await userContextService.GetUserIdAsync(user).ConfigureAwait(false);
             if (userId == null)
             {
-                return false;
+                logger.LogWarning("Unable to retrieve user ID for student role in view authorization");
+                throw new UnauthorizedAccessException("Unable to verify user identity");
             }
             
             var student = await studentRepository.GetStudentByUserIdAsync(userId).ConfigureAwait(false);
-            return student != null && record.StudentId == student.Id;
+            if (student == null)
+            {
+                logger.LogWarning("Student profile not found for user ID: {UserId} in view authorization", userId);
+                throw new EntityNotFoundException<string>("Student", userId,
+                    "Student profile not found for authenticated user");
+            }
+
+            return record.StudentId == student.Id;
         }
 
         return false;

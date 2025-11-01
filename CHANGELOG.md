@@ -135,6 +135,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Fixed** missing navigation property loading causing runtime errors
 - **Resolved** issues with ActualRoom not being included in queries
 
+### 🔒 **Security Enhancements**
+
+#### Fail-Secure Authorization Pattern
+- **Implemented** fail-secure pattern in `AttendanceService` to prevent unauthorized data access
+- **Added** comprehensive authorization tests for attendance service edge cases
+- **Enhanced** security by validating user identity before allowing access to attendance data
+- **Added** proper error handling for missing user identity and student profiles
+- **Fixed** potential authorization bypass in `GetAllAttendanceAsync()` and `GetAttendanceSummaryAsync()` methods
+- **Added** tests for null user ID scenarios and student profile verification
+
 ### ⚠️ **Known Issues**
 
 #### Security - Authorization Silent Failure (Identified, Not Yet Fixed)
@@ -147,7 +157,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 🔮 **Upcoming Changes**
 
-- Fix for authorization silent failure pattern (v1.6.1)
 - Additional test coverage for edge cases and security scenarios
 - Performance monitoring and logging enhancements
 - Load testing for concurrent QR scanning scenarios
@@ -410,6 +419,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Added** role-based authorization for attendance management (Student, Instructor, Admin)
 - **Implemented** attendance statistics and session overview functionality
 - **Enhanced** QR code service to link attendance records automatically
+
+### 🔒 **Security Enhancements**
+
+#### Fail-Secure Authorization Pattern
+- **Implemented** fail-secure pattern in `AttendanceService` to prevent unauthorized data access
+- **Added** comprehensive authorization tests for attendance service edge cases
+- **Enhanced** security by validating user identity before allowing access to attendance data
+- **Added** proper error handling for missing user identity and student profiles
+- **Fixed** potential authorization bypass in `GetAllAttendanceAsync()` and `GetAttendanceSummaryAsync()` methods
+- **Added** tests for null user ID scenarios and student profile verification
 
 ### 🐛 **Bug Fixes**
 
