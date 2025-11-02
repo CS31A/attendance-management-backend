@@ -111,6 +111,28 @@ public class UserFactory(IAccountRepository accountRepository) : IUserFactory
             };
         }
 
+        // Validate that Firstname is provided for students
+        if (string.IsNullOrWhiteSpace(firstName))
+        {
+            await accountRepository.DeleteUserAsync(identityUser).ConfigureAwait(false);
+            return new UserCreationResult
+            {
+                Success = false,
+                Errors = ["Firstname is required for student registration"]
+            };
+        }
+
+        // Validate that Lastname is provided for students
+        if (string.IsNullOrWhiteSpace(lastName))
+        {
+            await accountRepository.DeleteUserAsync(identityUser).ConfigureAwait(false);
+            return new UserCreationResult
+            {
+                Success = false,
+                Errors = ["Lastname is required for student registration"]
+            };
+        }
+
         var student = new Student
         {
             UserId = identityUser.Id,
