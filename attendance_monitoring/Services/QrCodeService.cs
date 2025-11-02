@@ -186,62 +186,83 @@ public class QrCodeService : IQrCodeService
 
     public async Task<(QrCodeResponseDto?, string?)> CreateQrCodeAsync(CreateQrCode createQrCode, ClaimsPrincipal user)
     {
-        try
+        const int maxRetries = 3;
+        const int retryDelayMs = 100;
+
+        for (int attempt = 1; attempt <= maxRetries; attempt++)
         {
-            _logger.LogInformation("Creating QR code for session ID: {SessionId}", createQrCode.SessionId);
-
-            // Validate user authorization
-            var userId = await _userContextService.GetUserIdAsync(user).ConfigureAwait(false);
-            if (string.IsNullOrEmpty(userId))
+            try
             {
-                _logger.LogWarning("QR code creation failed: User ID not found in token");
-                return (null, "User ID not found in token");
+                _logger.LogInformation("Creating QR code for session ID: {SessionId} (Attempt {Attempt})",
+                    createQrCode.SessionId, attempt);
+
+                // Validate user authorization
+                var userId = await _userContextService.GetUserIdAsync(user).ConfigureAwait(false);
+                if (string.IsNullOrEmpty(userId))
+                {
+                    _logger.LogWarning("QR code creation failed: User ID not found in token");
+                    return (null, "User ID not found in token");
+                }
+
+                var isAuthorized = await _userContextService.IsAuthorizedAsync(user, userId, "Admin", "Instructor").ConfigureAwait(false);
+                if (!isAuthorized)
+                {
+                    _logger.LogWarning("QR code creation failed: User not authorized");
+                    return (null, "You are not authorized to create QR codes");
+                }
+
+                // Validate session exists and is active
+                var validationError = await ValidateSessionExistsAsync(createQrCode.SessionId).ConfigureAwait(false);
+                if (validationError != null)
+                {
+                    return (null, validationError);
+                }
+
+                // REMOVED: Manual hash existence check - let database constraint handle it
+
+                // Create QR code entity
+                var qrCode = new QrCode
+                {
+                    SessionId = createQrCode.SessionId,
+                    QrHash = createQrCode.QrHash,
+                    ExpiresAt = createQrCode.ExpiresAt,
+                    MaxUsage = createQrCode.MaxUsage
+                };
+
+                var createdQrCode = await _qrCodeRepository.CreateQrCodeAsync(qrCode).ConfigureAwait(false);
+                await _qrCodeRepository.SaveChangesAsync().ConfigureAwait(false);
+
+                var responseDto = MapToResponseDto(createdQrCode);
+                _logger.LogInformation("Successfully created QR code with ID: {QrCodeId}", createdQrCode.Id);
+
+                return (responseDto, null);
             }
-
-            var isAuthorized = await _userContextService.IsAuthorizedAsync(user, userId, "Admin", "Instructor").ConfigureAwait(false);
-            if (!isAuthorized)
+            catch (DbUpdateException ex) when (IsUniqueConstraintViolation(ex) && attempt < maxRetries)
             {
-                _logger.LogWarning("QR code creation failed: User not authorized");
-                return (null, "You are not authorized to create QR codes");
+                _logger.LogWarning(ex, "Hash collision on attempt {Attempt}/{MaxRetries} for session {SessionId}, retrying...",
+                    attempt, maxRetries, createQrCode.SessionId);
+
+                // Exponential backoff with jitter to prevent thundering herd
+                var jitter = Random.Shared.Next(0, 50);
+                await Task.Delay(retryDelayMs * attempt + jitter).ConfigureAwait(false);
+
+                // Regenerate hash WITHOUT database check - let the constraint catch duplicates
+                var entropy = $"{createQrCode.SessionId}{attempt}{DateTime.UtcNow.Ticks}";
+                createQrCode.QrHash = GenerateQrHash(entropy);
             }
-
-            // Validate session exists and is active
-            var validationError = await ValidateSessionExistsAsync(createQrCode.SessionId).ConfigureAwait(false);
-            if (validationError != null)
+            catch (DbUpdateException ex) when (IsUniqueConstraintViolation(ex))
             {
-                return (null, validationError);
+                _logger.LogError(ex, "Failed to create QR code after {MaxRetries} attempts due to hash collision", maxRetries);
+                return (null, "Unable to create QR code due to high system load. Please try again in a moment.");
             }
-
-            // Check if QR hash already exists
-            var hashExists = await _qrCodeRepository.QrHashExistsAsync(createQrCode.QrHash).ConfigureAwait(false);
-            if (hashExists)
+            catch (Exception ex)
             {
-                _logger.LogWarning("QR code creation failed: QR hash already exists");
-                return (null, "QR code hash already exists");
+                _logger.LogError(ex, "Error occurred while creating QR code");
+                return (null, "An error occurred while creating the QR code");
             }
-
-            // Create QR code entity
-            var qrCode = new QrCode
-            {
-                SessionId = createQrCode.SessionId,
-                QrHash = createQrCode.QrHash,
-                ExpiresAt = createQrCode.ExpiresAt,
-                MaxUsage = createQrCode.MaxUsage
-            };
-
-            var createdQrCode = await _qrCodeRepository.CreateQrCodeAsync(qrCode).ConfigureAwait(false);
-            await _qrCodeRepository.SaveChangesAsync().ConfigureAwait(false);
-
-            var responseDto = MapToResponseDto(createdQrCode);
-            _logger.LogInformation("Successfully created QR code with ID: {QrCodeId}", createdQrCode.Id);
-
-            return (responseDto, null);
         }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error occurred while creating QR code");
-            return (null, "An error occurred while creating the QR code");
-        }
+
+        return (null, "Failed to create QR code after multiple attempts");
     }
 
     public async Task<QrCodeGenerationResponseDto> GenerateQrCodeAsync(QrCodeRequest qrCodeRequest, ClaimsPrincipal user)
@@ -1271,6 +1292,30 @@ public class QrCodeService : IQrCodeService
                 studentId, sectionId, subjectId);
             return false; // Default to not enrolled if there's an error
         }
+    }
+
+    /// <summary>
+    /// Determines if a DbUpdateException is caused by a unique constraint violation.
+    /// Supports both SQL Server and SQLite error messages.
+    /// </summary>
+    /// <param name="ex">The DbUpdateException to check</param>
+    /// <returns>True if the exception is caused by a unique constraint violation</returns>
+    private static bool IsUniqueConstraintViolation(DbUpdateException ex)
+    {
+        // Check for SQL Server and SQLite unique constraint violations
+        var innerException = ex.InnerException;
+        if (innerException == null) return false;
+
+        var message = innerException.Message;
+        var lowerMessage = message.ToLowerInvariant();
+
+        return lowerMessage.Contains("unique constraint") ||
+               lowerMessage.Contains("duplicate key") ||
+               lowerMessage.Contains("cannot insert duplicate key") ||
+               lowerMessage.Contains("unique index") ||
+               lowerMessage.Contains("violation of unique key constraint") ||
+               message.Contains("IX_QrCodes_QrHash") ||  // SQL Server (case-sensitive check)
+               lowerMessage.Contains("ix_qrcodes_qrhash");  // Lowercase variant or SQLite
     }
 
     #endregion
