@@ -1,8 +1,11 @@
 using attendance_monitoring.Classes;
+using Dapper;
 using attendance_monitoring.Data;
 using attendance_monitoring.IRepository;
+using attendance_monitoring.Models.DTO.Response;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using System.Data;
 
 namespace attendance_monitoring.Repositories
 {
@@ -14,6 +17,90 @@ namespace attendance_monitoring.Repositories
         )
         : IAccountRepository
     {
+
+        /// <summary>
+        /// This is experimental dapper implementation for possible migrations in the future.
+        /// </summary>
+        public async Task<IEnumerable<GetAllUsersDto>> GetAllUsersAsyncBetter()
+        {
+            var sql = @"
+                SELECT 
+                    u.Id AS UserId,
+                    u.UserName AS Username,
+                    u.Email,
+                    ISNULL(r.Name, 'Unknown') AS Role,
+                    COALESCE(s.Id, i.Id, a.Id) AS ProfileId,
+                    COALESCE(s.Firstname, i.Firstname, a.Firstname) AS Firstname,
+                    COALESCE(s.Lastname, i.Lastname, a.Lastname) AS Lastname,
+                    COALESCE(s.CreatedAt, i.CreatedAt, a.CreatedAt, GETUTCDATE()) AS CreatedAt,
+                    COALESCE(s.UpdatedAt, i.UpdatedAt, a.UpdatedAt, GETUTCDATE()) AS UpdatedAt
+                FROM Users u
+                LEFT JOIN UserRoles ur ON u.Id = ur.UserId
+                LEFT JOIN Roles r ON ur.RoleId = r.Id
+                LEFT JOIN Students s ON u.Id = s.UserId AND s.IsDeleted = 0
+                LEFT JOIN Instructors i ON u.Id = i.UserId AND i.IsDeleted = 0
+                LEFT JOIN Admins a ON u.Id = a.UserId
+            ";
+
+            var users = await context.Database.GetDbConnection().QueryAsync<GetAllUsersDto>(sql);
+            return users;
+        }
+
+        public async Task<IEnumerable<GetAllUsersDto>> GetAllUsersAsync()
+        {
+            var users = await (
+            from user in context.Users.AsNoTracking()
+            
+            // Get role
+            join userRole in context.UserRoles on user.Id equals userRole.UserId into userRoles
+            from userRole in userRoles.DefaultIfEmpty()
+            join role in context.Roles on userRole.RoleId equals role.Id into roles
+            from role in roles.DefaultIfEmpty()
+            
+            // Get student profile
+            join student in context.Students.Where(s => !s.IsDeleted) 
+                on user.Id equals student.UserId into students
+            from student in students.DefaultIfEmpty()
+            
+            // Get instructor profile
+            join instructor in context.Instructors.Where(i => !i.IsDeleted) 
+                on user.Id equals instructor.UserId into instructors
+            from instructor in instructors.DefaultIfEmpty()
+            
+            // Get admin profile
+            join admin in context.Admins 
+                on user.Id equals admin.UserId into admins
+            from admin in admins.DefaultIfEmpty()
+            
+            select new GetAllUsersDto
+            {
+                UserId = user.Id,
+                Username = user.UserName ?? string.Empty,
+                Email = user.Email ?? string.Empty,
+                Role = role.Name ?? "Unknown",
+                ProfileId = student != null ? (int?)student.Id :
+                            instructor != null ? (int?)instructor.Id :
+                            admin != null ? (int?)admin.Id : null,
+                Firstname = student != null ? student.Firstname :
+                            instructor != null ? instructor.Firstname :
+                            admin != null ? admin.Firstname : null,
+                Lastname = student != null ? student.Lastname :
+                        instructor != null ? instructor.Lastname :
+                        admin != null ? admin.Lastname : null,
+                CreatedAt = student != null ? student.CreatedAt :
+                            instructor != null ? instructor.CreatedAt :
+                            admin != null ? admin.CreatedAt : DateTime.UtcNow,
+                UpdatedAt = student != null ? student.UpdatedAt :
+                            instructor != null ? instructor.UpdatedAt :
+                            admin != null ? admin.UpdatedAt : DateTime.UtcNow
+            })
+            .ToListAsync()
+            .ConfigureAwait(false);
+
+        return users;
+
+        }
+
         #region User Lookup Methods
 
         #region FindUserByIdAsync
