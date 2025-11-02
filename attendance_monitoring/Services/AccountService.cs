@@ -141,7 +141,7 @@ namespace attendance_monitoring.Services
 
         #region Login Methods
         #region LoginAsync
-        public async Task<(TokenResponseDto?, string?, string?)> LoginAsync(LoginDto loginDto)
+        public async Task<(TokenResponseDto?, string?, string?, string?)> LoginAsync(LoginDto loginDto)
         {
             logger.LogInformation("Login attempt for identifier: {Identifier}", loginDto.Username);
 
@@ -169,14 +169,22 @@ namespace attendance_monitoring.Services
             if (user == null)
             {
                 logger.LogWarning("Login failed for identifier {Identifier}: Invalid email or username or password", loginDto.Username);
-                return (null, null, "Invalid email or username or password");
+                return (null, null, null, "Invalid email or username or password");
             }
 
             var result = await accountRepository.CheckPasswordAsync(user, loginDto.Password).ConfigureAwait(false);
             if (!result.Succeeded)
             {
                 logger.LogWarning("Login failed for user {Username}: Invalid password", user.UserName);
-                return (null, null, "Invalid email or username or password");
+                return (null, null, null, "Invalid email or username or password");
+            }
+
+            var roles = await accountRepository.GetUserRolesAsync(user).ConfigureAwait(false);
+            var role = roles.FirstOrDefault();
+            if (string.IsNullOrEmpty(role))
+            {
+                logger.LogWarning("Login failed: User {Username} (ID: {UserId}) has no assigned roles.", user.UserName, user.Id);
+                return (null, null, null, "User has no assigned roles and cannot be authenticated.");
             }
 
             var accessToken = await GenerateJwtToken(user).ConfigureAwait(false);
@@ -188,7 +196,7 @@ namespace attendance_monitoring.Services
                 AccessToken = accessToken,
                 RefreshToken = refreshToken
             };
-            return (tokenResponse, user.UserName, null);
+            return (tokenResponse, user.UserName, role, null);
         }
         #endregion
         #endregion
@@ -549,7 +557,13 @@ namespace attendance_monitoring.Services
 
             // Get user roles
             var roles = await accountRepository.GetUserRolesAsync(user).ConfigureAwait(false);
-            var role = roles.FirstOrDefault() ?? "Student"; // Default to Student if no role found
+            var role = roles.FirstOrDefault();
+            if (string.IsNullOrEmpty(role))
+            {
+                logger.LogWarning("User {Username} (ID: {UserId}) has no assigned roles.", user.UserName, user.Id);
+                role = "Unknown"; // Use "Unknown" since this could be a case where the user had roles when authenticated
+                           // but roles were removed later while tokens are still valid
+            }
 
             // Build base profile
             var profile = new UserProfileResponseDto
@@ -635,7 +649,13 @@ namespace attendance_monitoring.Services
 
             // Get user role
             var roles = await accountRepository.GetUserRolesAsync(user).ConfigureAwait(false);
-            var role = roles.FirstOrDefault() ?? "Student";
+            var role = roles.FirstOrDefault();
+            if (string.IsNullOrEmpty(role))
+            {
+                logger.LogWarning("User {Username} (ID: {UserId}) has no assigned roles during profile update.", user.UserName, user.Id);
+                role = "Unknown"; // Use "Unknown" since this could be a case where the user had roles when authenticated
+                           // but roles were removed later while tokens are still valid
+            }
 
             // Validate email uniqueness if email is being changed
             if (!string.IsNullOrEmpty(updateProfileDto.Email) &&
@@ -822,7 +842,12 @@ namespace attendance_monitoring.Services
 
             // Get target user role
             var targetRoles = await accountRepository.GetUserRolesAsync(targetUser).ConfigureAwait(false);
-            var targetRole = targetRoles.FirstOrDefault() ?? "Student";
+            var targetRole = targetRoles.FirstOrDefault();
+            if (string.IsNullOrEmpty(targetRole))
+            {
+                logger.LogWarning("Target user (ID: {TargetUserId}) has no assigned roles during admin profile update.", targetUser.Id);
+                targetRole = "Unknown"; // Use "Unknown" for admin updates to handle cases where roles were removed
+            }
 
             // Validate email uniqueness if email is being changed
             if (!string.IsNullOrEmpty(adminUpdateDto.Email) &&
