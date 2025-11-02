@@ -93,7 +93,7 @@ namespace attendance_monitoring.Controllers
                 return BadRequest(new LoginResponseDto { Success = false, Message = "Invalid request data" });
             }
 
-            var (tokenResponse, username, error) = await accountService.LoginAsync(loginDto);
+            var (tokenResponse, username, role, error) = await accountService.LoginAsync(loginDto);
 
             if (tokenResponse == null)
             {
@@ -108,7 +108,8 @@ namespace attendance_monitoring.Controllers
                 Message = "Login successful",
                 AccessToken = tokenResponse.AccessToken,
                 RefreshToken = tokenResponse.RefreshToken,
-                User = username ?? string.Empty
+                User = username ?? string.Empty,
+                Role = role ?? string.Empty
             });
         }
         #endregion
@@ -142,7 +143,7 @@ namespace attendance_monitoring.Controllers
                 Password = webLoginDto.Password
             };
 
-            var (tokenResponse, _, error) = await accountService.LoginAsync(loginDto);
+            var (tokenResponse, username, role, error) = await accountService.LoginAsync(loginDto);
 
             if (tokenResponse == null)
             {
@@ -154,7 +155,13 @@ namespace attendance_monitoring.Controllers
             cookieOptionsService.SetTokenCookies(Response, tokenResponse.AccessToken, tokenResponse.RefreshToken);
 
             logger.LogInformation("User logged in successfully via web login");
-            return Ok(new WebLoginResponseDto { Success = true, Message = "Login successful" });
+            return Ok(new WebLoginResponseDto 
+            { 
+                Success = true, 
+                Message = "Login successful",
+                Username = username ?? string.Empty,
+                Role = role ?? string.Empty
+            });
         }
         #endregion
 
