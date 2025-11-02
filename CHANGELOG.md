@@ -10,6 +10,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### 🚀 **Upcoming Features**
 - TBD
 
+## [v0.6.2] - 2025-11-02
+
+### 🐛 **Bug Fixes**
+
+#### QR Code Creation Race Condition Fix
+- **Fixed** critical race condition in `QrCodeService.CreateQrCodeAsync()` that could cause duplicate QR codes under high concurrency
+- **Eliminated** Time-of-Check-Time-of-Use (TOCTOU) vulnerability by removing manual hash existence check
+- **Implemented** database-driven uniqueness validation using unique constraints instead of application-level checks
+- **Added** retry logic with exponential backoff and jitter for hash collision handling:
+  - Maximum 3 retry attempts with increasing delays (100ms, 200ms, 300ms)
+  - Random jitter (0-50ms) to prevent thundering herd problems
+  - Direct hash regeneration without additional database queries on collisions
+- **Added** `IsUniqueConstraintViolation()` helper method for cross-database compatibility (SQL Server and SQLite)
+- **Enhanced** error messages for hash collisions with user-friendly feedback
+- **Improved** performance by eliminating one database round-trip in the success path
+- **Maintained** atomicity through database constraint enforcement rather than application logic
+
+### 🔧 **Technical Improvements**
+
+#### Concurrency Handling
+- **Implemented** robust concurrency control for QR code generation
+- **Added** structured logging for retry attempts and collision detection
+- **Enhanced** error handling with specific exception types for constraint violations
+- **Improved** code maintainability with dedicated helper methods for constraint checking
+
 ## [v0.6.1] - 2025-11-02
 
 ### 🎉 **Major Features**
