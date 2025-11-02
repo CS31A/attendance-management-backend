@@ -82,7 +82,7 @@ public class AccountControllerTest
         // Arrange
         var loginDto = new LoginDto { Username = "test@test.com", Password = "Test@123" };
         var tokenResponseDto = new TokenResponseDto { AccessToken = "access_token", RefreshToken = "refresh_token" };
-        _mockAccountService.Setup(s => s.LoginAsync(loginDto)).ReturnsAsync((tokenResponseDto, "testuser", null));
+        _mockAccountService.Setup(s => s.LoginAsync(loginDto)).ReturnsAsync((tokenResponseDto, "testuser", "Student", null));
 
         // Act
         var result = await _accountController.Login(loginDto);
@@ -92,6 +92,7 @@ public class AccountControllerTest
         var responseDto = Assert.IsType<LoginResponseDto>(okResult.Value);
         Assert.True(responseDto.Success);
         Assert.Equal("testuser", responseDto.User);
+        Assert.Equal("Student", responseDto.Role);
     }
     #endregion
 }
