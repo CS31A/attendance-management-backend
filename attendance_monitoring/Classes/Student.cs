@@ -14,8 +14,13 @@ public class Student
     [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
     public int Id { get; set; }
 
-    public string? Firstname { get; set; }
-    public string? Lastname { get; set; }
+    [Required]
+    [StringLength(100)]
+    public string Firstname { get; set; } = string.Empty;
+
+    [Required]
+    [StringLength(100)]
+    public string Lastname { get; set; } = string.Empty;
     public bool IsRegular { get; set; }
     // Foreign key to Identity user - should not be nullable
     public string UserId { get; set; } = string.Empty;
