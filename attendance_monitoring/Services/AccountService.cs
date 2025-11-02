@@ -87,6 +87,30 @@ namespace attendance_monitoring.Services
                     var result = IdentityResult.Failed(new IdentityError { Code = "InvalidSection", Description = "The specified section does not exist" });
                     return (result, null);
                 }
+
+                // Validate that Firstname is provided for students
+                if (string.IsNullOrWhiteSpace(registerDto.Firstname))
+                {
+                    logger.LogWarning("Student registration failed for username {Username}: Firstname is required", registerDto.Username);
+                    var result = IdentityResult.Failed(new IdentityError 
+                    { 
+                        Code = "RequiredField", 
+                        Description = "Firstname is required for student registration" 
+                    });
+                    return (result, null);
+                }
+
+                // Validate that Lastname is provided for students
+                if (string.IsNullOrWhiteSpace(registerDto.Lastname))
+                {
+                    logger.LogWarning("Student registration failed for username {Username}: Lastname is required", registerDto.Username);
+                    var result = IdentityResult.Failed(new IdentityError 
+                    { 
+                        Code = "RequiredField", 
+                        Description = "Lastname is required for student registration" 
+                    });
+                    return (result, null);
+                }
             }
 
             // Use UserFactory to create the user with appropriate role and profile
@@ -696,13 +720,26 @@ namespace attendance_monitoring.Services
                 if (student != null)
                 {
                     // Update student-specific fields if provided
-                    if (!string.IsNullOrEmpty(updateProfileDto.Firstname))
+                    if (!string.IsNullOrWhiteSpace(updateProfileDto.Firstname))
                     {
                         student.Firstname = updateProfileDto.Firstname;
                     }
-                    if (!string.IsNullOrEmpty(updateProfileDto.Lastname))
+                    else if (updateProfileDto.Firstname != null)
+                    {
+                        // Firstname was provided but is empty or whitespace
+                        logger.LogWarning("Profile update failed: Firstname is required for students");
+                        return (false, null, "Firstname is required and cannot be empty or whitespace");
+                    }
+
+                    if (!string.IsNullOrWhiteSpace(updateProfileDto.Lastname))
                     {
                         student.Lastname = updateProfileDto.Lastname;
+                    }
+                    else if (updateProfileDto.Lastname != null)
+                    {
+                        // Lastname was provided but is empty or whitespace
+                        logger.LogWarning("Profile update failed: Lastname is required for students");
+                        return (false, null, "Lastname is required and cannot be empty or whitespace");
                     }
                     if (updateProfileDto.SectionId.HasValue)
                     {
@@ -845,13 +882,26 @@ namespace attendance_monitoring.Services
                 if (student != null)
                 {
                     // Update student-specific fields if provided
-                    if (!string.IsNullOrEmpty(adminUpdateDto.Firstname))
+                    if (!string.IsNullOrWhiteSpace(adminUpdateDto.Firstname))
                     {
                         student.Firstname = adminUpdateDto.Firstname;
                     }
-                    if (!string.IsNullOrEmpty(adminUpdateDto.Lastname))
+                    else if (adminUpdateDto.Firstname != null)
+                    {
+                        // Firstname was provided but is empty or whitespace
+                        logger.LogWarning("Admin profile update failed: Firstname is required for students");
+                        return (false, null, "Firstname is required and cannot be empty or whitespace");
+                    }
+
+                    if (!string.IsNullOrWhiteSpace(adminUpdateDto.Lastname))
                     {
                         student.Lastname = adminUpdateDto.Lastname;
+                    }
+                    else if (adminUpdateDto.Lastname != null)
+                    {
+                        // Lastname was provided but is empty or whitespace
+                        logger.LogWarning("Admin profile update failed: Lastname is required for students");
+                        return (false, null, "Lastname is required and cannot be empty or whitespace");
                     }
                     if (adminUpdateDto.SectionId.HasValue)
                     {
