@@ -28,6 +28,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Filters out soft-deleted students and instructors with `IsDeleted = 0` check
   - Utilizes `AsNoTracking()` for optimized read-only queries
 
+### 🧪 **Testing Improvements**
+
+#### Comprehensive Test Coverage for User Management
+- **Added** comprehensive unit tests for `UserController` in `UserControllerTest.cs`
+  - Tests successful retrieval of user lists with proper data mapping
+  - Tests empty list scenarios when no users exist in the system
+  - Tests error handling with proper 500 status code responses for internal exceptions
+  - Tests handling of nullable profile fields for users with incomplete profile data
+  - Uses mocking framework to isolate controller logic from service dependencies
+  - Validates response structure and status codes for all scenarios
+
 ### 🔧 **Technical Improvements**
 
 #### Query Optimization
