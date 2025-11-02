@@ -5,10 +5,44 @@ All notable changes to the Attendance Monitoring System project will be document
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [v0.6.3] - 2025-11-02
 
-### 🚀 **Upcoming Features**
-- TBD
+### 🚀 **New Features**
+
+#### Role Information in Login Response
+- **Added** role information to login API responses for both mobile and web authentication
+  - Extended `LoginResponseDto` with `Role` property to return user role on successful login
+  - Extended `WebLoginResponseDto` with `Username` and `Role` properties for web authentication
+  - Modified `AccountController.Login()` and `AccountController.WebLogin()` to include role in response
+  - Updated test cases to verify role information is properly returned in login responses
+
+#### Enhanced Role Validation in Authentication Flow
+- **Added** role validation during login process in `AccountService.LoginAsync()`
+  - Implemented check to ensure user has assigned roles before successful authentication
+  - Added logging for users without assigned roles to help with debugging access issues
+  - Returns specific error message when user has no assigned roles
+  - Improved security by preventing authentication of users with no role assignments
+
+#### Improved Role Handling in Profile Operations
+- **Enhanced** role retrieval in profile-related operations with better null handling
+  - Updated `GetUserProfileAsync()` with proper role validation and "Unknown" fallback
+  - Enhanced `UpdateUserProfileAsync()` with role validation during profile updates
+  - Improved `AdminUpdateUserProfileAsync()` with proper role handling for admin updates
+  - Added comprehensive logging for role-related scenarios during profile operations
+
+### 🔧 **Technical Improvements**
+
+#### Service Layer Enhancements
+- **Updated** `IAccountService.LoginAsync()` method signature to return role information
+  - Changed return type from `(TokenResponseDto?, string?, string?)` to `(TokenResponseDto?, string?, string?, string?)`
+  - Added role as third element in tuple return value
+  - Maintained backward compatibility for error handling scenarios
+
+#### Test Coverage Improvements
+- **Updated** `AccountControllerTest.cs` to validate role information in login responses
+  - Modified mock setup to include role information in test scenario
+  - Added assertion to verify role property is correctly populated in response
+  - Ensures test coverage for the new role information functionality
 
 ## [v0.6.2] - 2025-11-02
 
