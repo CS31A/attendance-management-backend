@@ -713,7 +713,9 @@ namespace attendance_monitoring.Migrations
                         .HasColumnType("datetime2");
 
                     b.Property<string>("Firstname")
-                        .HasColumnType("nvarchar(max)");
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
 
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
@@ -722,7 +724,9 @@ namespace attendance_monitoring.Migrations
                         .HasColumnType("bit");
 
                     b.Property<string>("Lastname")
-                        .HasColumnType("nvarchar(max)");
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
 
                     b.Property<int>("SectionId")
                         .HasColumnType("int");

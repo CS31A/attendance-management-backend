@@ -5,7 +5,59 @@ All notable changes to the Attendance Monitoring System project will be document
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [v1.6.0] - 2025-11-01
+## [Unreleased]
+
+### 🚀 **Upcoming Features**
+- TBD
+
+## [v0.6.1] - 2025-11-02
+
+### 🎉 **Major Features**
+
+#### Student Name Validation Enhancement
+- **Made** `Firstname` and `Lastname` required fields for Student entity
+  - Added `[Required]` and `[StringLength(100)]` attributes to Student model
+  - Changed fields from nullable (`string?`) to non-nullable (`string`)
+  - Database columns now enforce NOT NULL constraint with maxLength 100
+- **Added** comprehensive validation at multiple layers:
+  - Early validation in `AccountService.RegisterAsync()` for student registration
+  - Factory-level validation in `UserFactory.CreateStudentProfileAsync()`
+  - Profile update validation in `UpdateUserProfileAsync()` and `AdminUpdateUserProfileAsync()`
+  - Prevents clearing required name fields during updates
+  - Uses `IsNullOrWhiteSpace` to catch empty strings and whitespace-only values
+- **Created** database migration `20251102033712_MakeStudentNamesRequired`:
+  - Automatically deletes student records with NULL or empty names (data cleanup)
+  - Alters `Firstname` and `Lastname` columns to NOT NULL with maxLength 100
+  - Includes rollback capability to restore nullable fields if needed
+- **Enhanced** error messages:
+  - Clear feedback when student registration fails due to missing names
+  - Descriptive errors when attempting to clear required fields or set to whitespace
+  - Proper logging at all validation points
+- **Note**: Instructor and Admin name fields remain nullable (unchanged)
+
+### 🔧 **Technical Improvements**
+
+#### Data Validation
+- **Implemented** multi-layer validation strategy:
+  - DTO-level validation (already existed in `CreateStudent`)
+  - Service-level early validation (prevents unnecessary processing)
+  - Factory-level validation (maintains transactional integrity)
+  - Profile update guards (prevents data corruption)
+- **Enhanced** transaction safety:
+  - Identity user deletion on validation failure in UserFactory
+  - Maintains data consistency across Identity and application tables
+
+#### Database Schema
+- **Updated** Student table schema:
+  - `Firstname`: `nvarchar(max)` nullable → `nvarchar(100)` NOT NULL
+  - `Lastname`: `nvarchar(max)` nullable → `nvarchar(100)` NOT NULL
+- **Updated** ApplicationDbContextModelSnapshot with new constraints
+
+### 📝 **Documentation**
+- Implemented changes according to `STUDENT_NAME_REQUIRED_PLAN.md`
+- All validation points documented with XML comments and logging
+
+## [v0.6.0] - 2025-11-01
 
 ### 🎉 **Major Features**
 
@@ -163,7 +215,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [v1.5.0] - 2025-10-31
+## [v0.5.0] - 2025-10-31
 
 ### 🎉 **Major Features**
 
@@ -430,7 +482,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [v1.4.0] - 2025-10-26
+## [v0.4.0] - 2025-10-26
 
 ### 🎉 **Major Features**
 
@@ -618,22 +670,22 @@ DotNetEnv 3.1.1
 
 ## Previous Development History
 
-### [v1.3.0] - 2025-10-20
+## [v0.3.0] - 2025-10-20
 - QR Code revocation audit trail implementation
 - Enhanced security with token family revocation
 - Performance optimizations with AsNoTracking queries
 
-### [v1.2.0] - 2025-10-19
+## [v0.2.0] - 2025-10-19
 - Section-Instructor relationship fixes
 - Composite indexes and performance improvements
 - Enhanced model validation
 
-### [v1.1.0] - 2025-10-16
+## [v0.1.0] - 2025-10-16
 - Student irregular classification system
 - Enhanced QR code generation with retry logic
 - Improved error handling and logging
 
-### [v1.0.0] - 2025-08-15
+## [v0.0.1] - 2025-08-15
 - Initial system implementation
 - Basic authentication and authorization
 - Core CRUD operations for all entities
