@@ -28,6 +28,11 @@ namespace attendance_monitoring.Services
         : IAccountService
     {
 
+        public async Task<IEnumerable<GetAllUsersDto>> GetAllUsersAsync()
+        {
+            return await accountRepository.GetAllUsersAsync().ConfigureAwait(false);
+        }
+
         #region Registration Methods
         #region RegisterAsync
         public async Task<(IdentityResult, RegisterResponseDto?)> RegisterAsync(RegisterDto registerDto)
