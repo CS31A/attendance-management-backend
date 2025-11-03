@@ -441,15 +441,10 @@ namespace attendance_monitoring.Services
             {
                 var tokenHandler = new JwtSecurityTokenHandler();
 
-                var issuer = configuration["AppSettings:Issuer"];
-                var audience = configuration["AppSettings:Audience"];
-                var tokenKey = configuration["AppSettings:Token"];
-
-                if (string.IsNullOrEmpty(issuer) || string.IsNullOrEmpty(audience) || string.IsNullOrEmpty(tokenKey))
-                {
-                    logger.LogWarning("Token validation failed: Missing configuration values for issuer, audience, or token key.");
-                    throw new InvalidOperationException("Token validation configuration is incomplete.");
-                }
+                // Use validated configuration values
+                var issuer = JwtConfigurationValidator.GetValidatedIssuer(configuration);
+                var audience = JwtConfigurationValidator.GetValidatedAudience(configuration);
+                var tokenKey = JwtConfigurationValidator.GetValidatedToken(configuration);
 
                 var tokenValidationParameters = new TokenValidationParameters
                 {
@@ -503,18 +498,17 @@ namespace attendance_monitoring.Services
             // for improved readability and better performance than adding items individually in a loop.
             claims.AddRange(roles.Select(role => new Claim(ClaimTypes.Role, role)));
 
-            var tokenKey = configuration["AppSettings:Token"] ?? string.Empty;
-            if (string.IsNullOrEmpty(tokenKey))
-            {
-                throw new InvalidOperationException("Token key is not configured properly in AppSettings.");
-            }
+            // Use validated token key
+            var tokenKey = JwtConfigurationValidator.GetValidatedToken(configuration);
+            var issuer = JwtConfigurationValidator.GetValidatedIssuer(configuration);
+            var audience = JwtConfigurationValidator.GetValidatedAudience(configuration);
 
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(tokenKey));
             var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
             var token = new JwtSecurityToken(
-                issuer: configuration["AppSettings:Issuer"],
-                audience: configuration["AppSettings:Audience"],
+                issuer: issuer,
+                audience: audience,
                 claims: claims,
                 expires: DateTime.UtcNow.AddMinutes(TokenConstants.AccessTokenExpirationMinutes),
                 signingCredentials: credentials);
