@@ -10,6 +10,7 @@ public static class StartupExtensions
     /// <summary>
     /// Initializes the application by performing startup tasks.
     /// Currently initializes roles using IRoleInitializationService.
+    /// Note: JWT configuration validation occurs earlier during service registration in AuthenticationServiceExtensions.
     /// </summary>
     /// <param name="app">The web application to initialize.</param>
     /// <returns>A task representing the asynchronous initialization operation.</returns>

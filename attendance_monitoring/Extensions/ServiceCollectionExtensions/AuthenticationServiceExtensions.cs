@@ -1,4 +1,5 @@
 using attendance_monitoring.IServices;
+using attendance_monitoring.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 
@@ -20,6 +21,14 @@ public static class AuthenticationServiceExtensions
         this IServiceCollection services,
         IConfiguration configuration)
     {
+        // Validate JWT configuration before setting up authentication
+        JwtConfigurationValidator.ValidateJwtConfiguration(configuration);
+
+        // Get validated configuration values
+        var token = JwtConfigurationValidator.GetValidatedToken(configuration);
+        var issuer = JwtConfigurationValidator.GetValidatedIssuer(configuration);
+        var audience = JwtConfigurationValidator.GetValidatedAudience(configuration);
+
         services.AddAuthentication(options =>
         {
             options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -33,10 +42,10 @@ public static class AuthenticationServiceExtensions
                 ValidateAudience = true,
                 ValidateLifetime = true,
                 ValidateIssuerSigningKey = true,
-                ValidIssuer = configuration["AppSettings:Issuer"],
-                ValidAudience = configuration["AppSettings:Audience"],
+                ValidIssuer = issuer,
+                ValidAudience = audience,
                 IssuerSigningKey = new SymmetricSecurityKey(
-                    System.Text.Encoding.UTF8.GetBytes(configuration["AppSettings:Token"]!))
+                    System.Text.Encoding.UTF8.GetBytes(token))
             };
             
             // Add cookie authentication for web login
