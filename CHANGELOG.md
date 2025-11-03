@@ -5,6 +5,85 @@ All notable changes to the Attendance Monitoring System project will be document
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.6.4] - 2025-11-02
+
+### 🚀 **New Features**
+
+#### Admin User Management Endpoint
+- **Added** new admin-only endpoint `GET /api/users` to retrieve all users with their role and profile information
+  - Created `UserController` with admin policy authorization (`AdminPolicy`)
+  - Returns comprehensive user list including UserId, Username, Email, Role, ProfileId, Firstname, Lastname, and timestamps
+  - Implemented proper error handling and logging for user retrieval operations
+  - Protected endpoint ensures only administrators can access complete user listings
+
+#### Enhanced User Retrieval with Role-Specific Information
+- **Added** `GetAllUsersDto` response model for structured user list data
+  - Includes user identity information (UserId, Username, Email)
+  - Contains role information and profile details (ProfileId, Firstname, Lastname)
+  - Provides audit timestamps (CreatedAt, UpdatedAt)
+- **Implemented** `GetAllUsersAsync()` method across repository, service, and controller layers
+  - Added to `IAccountRepository` and `AccountRepository`
+  - Added to `IAccountService` and `AccountService`
+  - Uses efficient LINQ query with left joins to fetch user data across all profile types (Student, Instructor, Admin)
+  - Filters out soft-deleted students and instructors with `IsDeleted = 0` check
+  - Utilizes `AsNoTracking()` for optimized read-only queries
+
+### 🧪 **Testing Improvements**
+
+#### Comprehensive Test Coverage for User Management
+- **Added** comprehensive unit tests for `UserController` in `UserControllerTest.cs`
+  - Tests successful retrieval of user lists with proper data mapping
+  - Tests empty list scenarios when no users exist in the system
+  - Tests error handling with proper 500 status code responses for internal exceptions
+  - Tests handling of nullable profile fields for users with incomplete profile data
+  - Uses mocking framework to isolate controller logic from service dependencies
+  - Validates response structure and status codes for all scenarios
+
+### 🔧 **Technical Improvements**
+
+#### Query Optimization
+- **Implemented** efficient multi-table query using LINQ with projection
+  - Single database query to retrieve all user information
+  - Left joins across Users, UserRoles, Roles, Students, Instructors, and Admins tables
+  - Proper handling of nullable profile data with coalesce logic
+  - AsNoTracking enabled for improved performance on read operations
+
+#### Experimental Dapper Implementation
+- **Added** `GetAllUsersAsyncBetter()` experimental method using Dapper for potential future migration
+  - Raw SQL implementation as alternative to EF Core LINQ
+  - Demonstrates performance comparison approach for complex queries
+  - Uses `COALESCE` for consistent null handling across SQL Server
+  - Commented as experimental for future consideration
+
+#### Dependency Management
+- **Added** Dapper 2.1.66 package to project dependencies
+  - Enables micro-ORM capabilities for performance-critical queries
+  - Provides foundation for future query optimization opportunities
+
+### 📋 **API Changes**
+
+#### New Endpoint
+```
+GET /api/users
+Authorization: Admin only (AdminPolicy)
+Response: 200 OK with List<GetAllUsersDto>
+```
+
+#### Response Structure
+```json
+{
+  "userId": "string",
+  "username": "string",
+  "email": "string",
+  "role": "string",
+  "profileId": "int?",
+  "firstname": "string?",
+  "lastname": "string?",
+  "createdAt": "datetime",
+  "updatedAt": "datetime"
+}
+```
+
 ## [v0.6.3] - 2025-11-02
 
 ### 🚀 **New Features**
