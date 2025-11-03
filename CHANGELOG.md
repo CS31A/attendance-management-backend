@@ -5,6 +5,21 @@ All notable changes to the Attendance Monitoring System project will be document
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.6.7] - 2025-11-04
+
+### 🐛 **Bug Fixes**
+
+#### QR Code Scanning Timing Fix
+- **Fixed** critical timing issue in QR code scanning that could cause duplicate attendance records under high concurrency
+- **Implemented** reorganized validation steps to separate QR code validation from usage counter increment
+- **Added** proper duplicate attendance check before incrementing QR code usage counter to prevent race conditions
+- **Enhanced** QR code validation process to validate QR code state before any modifications
+- **Improved** transaction handling to prevent race conditions by validating QR code state first
+- **Added** detailed logging for QR code validation and scanning process to help with debugging
+- **Updated** QrCodeService to include dependency on IAttendanceRepository for duplicate checking
+- **Added** IsDuplicateScan flag in QrCodeScanResponseDto to indicate when a duplicate scan is detected
+- **Enhanced** error handling with more specific error messages for different failure scenarios
+
 ## [v0.6.6] - 2025-11-03
 
 ### 🔒 **Security Enhancements**
