@@ -57,17 +57,31 @@ public class RegisterDto : IValidatableObject
 
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
     {
-        // Only require SectionId for Student role (role defaults to Student if null/empty)
-        // Instructor is an alias for Teacher, so treat it as such
+        // Determine effective role (defaults to Student if not specified)
         var effectiveRole = string.IsNullOrEmpty(Role) ? "Student" : Role;
+
+        // Normalize Instructor alias to Teacher
         if (effectiveRole.Equals("Instructor", StringComparison.OrdinalIgnoreCase))
         {
             effectiveRole = "Teacher";
         }
-        
+
+        // Validation 1: Students MUST have a valid SectionId
         if (string.Equals(effectiveRole, "Student", StringComparison.OrdinalIgnoreCase) && (SectionId is null or <= 0))
         {
-            yield return new ValidationResult("SectionId is required for student registration", new[] { nameof(SectionId) });
+            yield return new ValidationResult(
+                "SectionId is required for student registration",
+                new[] { nameof(SectionId) }
+            );
+        }
+
+        // Validation 2: Non-students MUST NOT have a SectionId
+        if (!string.Equals(effectiveRole, "Student", StringComparison.OrdinalIgnoreCase) && SectionId.HasValue)
+        {
+            yield return new ValidationResult(
+                $"SectionId should not be provided for {effectiveRole} role",
+                new[] { nameof(SectionId) }
+            );
         }
     }
 }
