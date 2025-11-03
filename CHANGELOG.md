@@ -5,6 +5,36 @@ All notable changes to the Attendance Monitoring System project will be document
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.6.6] - 2025-11-03
+
+### 🔒 **Security Enhancements**
+
+#### Enhanced JWT Configuration Validation at Startup
+- **Added** strict 32-byte token length validation for JWT security keys
+  - Validates JWT configuration requirements before application starts
+  - Prevents runtime security failures due to misconfigured tokens
+  - Ensures consistent token key length across the application
+- **Implemented** centralized configuration key management in `TokenConstants`
+  - Consolidated all JWT-related constants in a single location
+  - Improved maintainability and consistency of token configuration
+  - Reduced magic numbers and hardcoded values throughout the codebase
+- **Enhanced** error handling and user feedback for JWT configuration issues:
+  - Detailed error messages with step-by-step resolution guidance
+  - Startup validation prevents application launch with invalid configuration
+  - Clear feedback when JWT keys don't meet security requirements
+- **Updated** `.env.example` with comprehensive JWT configuration guidance
+  - Added documentation for required JWT security settings
+  - Provided example values and security best practices
+  - Improved developer onboarding for JWT configuration
+
+### 🔧 **Technical Improvements**
+
+#### Configuration Management
+- **Enhanced** startup validation logic for critical security settings
+- **Added** centralized constant management for JWT configuration
+- **Improved** error messaging with actionable guidance for configuration issues
+- **Strengthened** application security by preventing invalid JWT configurations
+
 ## [v0.6.5] - 2025-11-03
 
 ### 🚀 **New Features**
