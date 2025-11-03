@@ -27,6 +27,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 🔧 **Technical Improvements**
 
+#### EF Core Design-Time Factory Implementation
+- **Added** `ApplicationDbContextFactory` to enable EF Core design-time operations
+  - Implements `IDesignTimeDbContextFactory<ApplicationDbContext>` for migration tooling
+  - Enables `dotnet ef migrations add` and other EF Core CLI commands
+  - Matches application configuration pattern for environment variables and connection strings
+  - Falls back to in-memory database for design-time operations when no connection string is available
+  - Improves development workflow by supporting database migrations and schema updates
+
 #### Registration Process Enhancements
 - **Updated** `RegisterDto` validation logic with role-aware SectionId handling
   - Students: SectionId is required and must be valid (> 0)
