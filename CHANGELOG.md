@@ -5,6 +5,45 @@ All notable changes to the Attendance Monitoring System project will be document
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.6.5] - 2025-11-03
+
+### 🚀 **New Features**
+
+#### Enhanced Registration Validation for Role-Based SectionId Requirements
+- **Improved** registration validation logic to enforce role-specific SectionId requirements
+  - Students MUST provide a valid SectionId during registration
+  - Teachers, Instructors, and Admins MUST NOT provide a SectionId (validation now prevents this)
+  - Added comprehensive validation at DTO level with custom `IValidatableObject` implementation
+  - Enhanced service-level validation with defensive checks to prevent invalid role-section combinations
+- **Added** comprehensive test coverage for registration validation scenarios:
+  - Tests for student registration with/without valid SectionId
+  - Tests for teacher/admin registration rejecting SectionId provision
+  - Tests for instructor role (alias for Teacher) validation
+  - Updated existing registration tests to include RepeatedPassword field
+- **Enhanced** error handling and user feedback:
+  - Clear validation messages for SectionId requirements based on role
+  - Proper logging for validation failures and security concerns
+  - Improved API responses for invalid registration attempts
+
+### 🔧 **Technical Improvements**
+
+#### Registration Process Enhancements
+- **Updated** `RegisterDto` validation logic with role-aware SectionId handling
+  - Students: SectionId is required and must be valid (> 0)
+  - Non-students: SectionId must be null/omitted to prevent data inconsistencies
+  - Added role normalization (Instructor → Teacher) in validation
+- **Enhanced** `AccountService.RegisterAsync()` with additional defensive validation
+  - Pre-registration checks for role-SectionId compatibility
+  - Improved error messages and logging for validation failures
+  - Better transaction safety and data consistency
+
+#### Test Infrastructure Improvements
+- **Expanded** `AccountControllerTest.cs` with 8 new comprehensive test cases
+  - Covers all registration validation scenarios
+  - Tests both successful and failed registration attempts
+  - Validates proper ModelState integration with custom validation
+  - Ensures API responses match expected behavior
+
 ## [v0.6.4] - 2025-11-02
 
 ### 🚀 **New Features**
