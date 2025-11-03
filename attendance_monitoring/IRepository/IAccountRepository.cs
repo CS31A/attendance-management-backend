@@ -1,4 +1,5 @@
 using attendance_monitoring.Classes;
+using attendance_monitoring.Models.DTO.Response;
 using Microsoft.AspNetCore.Identity;
 
 namespace attendance_monitoring.IRepository
@@ -8,6 +9,13 @@ namespace attendance_monitoring.IRepository
     /// </summary>
     public interface IAccountRepository : ISaveableRepository
     {
+
+        /// <summary>
+        /// Retrieves all users with role-specific information using projection.
+        /// </summary>
+        /// <returns>A collection of user DTOs with role and profile information.</returns>
+        Task<IEnumerable<GetAllUsersDto>> GetAllUsersAsync();
+
         /// <summary>
         /// Finds a user by their ID.
         /// </summary>
