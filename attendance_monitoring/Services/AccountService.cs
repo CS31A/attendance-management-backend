@@ -74,6 +74,19 @@ namespace attendance_monitoring.Services
                 roleToAssign = requestedRole;
             }
 
+            // Defensive validation: Non-students should not have a SectionId
+            if (!roleToAssign.Equals("Student", StringComparison.OrdinalIgnoreCase) && registerDto.SectionId.HasValue)
+            {
+                logger.LogWarning("Registration blocked for username {Username}: SectionId provided for non-student role {Role}",
+                    registerDto.Username, roleToAssign);
+                var result = IdentityResult.Failed(new IdentityError
+                {
+                    Code = "InvalidSectionForRole",
+                    Description = $"SectionId should not be provided for {roleToAssign} role"
+                });
+                return (result, null);
+            }
+
             // For students, validate that the SectionId exists before attempting user creation
             if (roleToAssign.Equals("Student", StringComparison.OrdinalIgnoreCase))
             {
