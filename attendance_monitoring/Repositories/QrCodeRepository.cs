@@ -614,6 +614,123 @@ public class QrCodeRepository(ApplicationDbContext context, ILogger<QrCodeReposi
     }
     #endregion
 
+    #region GetScanHistoryAsync
+    public async Task<attendance_monitoring.Models.DTO.Response.PagedResult<AttendanceRecord>> GetScanHistoryAsync(
+        int qrCodeId,
+        int pageNumber,
+        int pageSize)
+    {
+        try
+        {
+            var query = context.AttendanceRecords
+                .Where(ar => ar.QrCodeId == qrCodeId)
+                .Include(ar => ar.Student)
+                .Include(ar => ar.Session)
+                    .ThenInclude(s => s!.Schedule)
+                        .ThenInclude(sch => sch!.Subject)
+                .Include(ar => ar.Session)
+                    .ThenInclude(s => s!.Schedule)
+                        .ThenInclude(sch => sch!.Section)
+                .OrderByDescending(ar => ar.CheckInTime);
+
+            var totalCount = await query.CountAsync().ConfigureAwait(false);
+
+            var items = await query
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .AsNoTracking()
+                .ToListAsync()
+                .ConfigureAwait(false);
+
+            return new attendance_monitoring.Models.DTO.Response.PagedResult<AttendanceRecord>
+            {
+                Items = items,
+                TotalCount = totalCount,
+                PageNumber = pageNumber,
+                PageSize = pageSize
+            };
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "An error occurred while retrieving scan history for QR code ID {QrCodeId}", qrCodeId);
+            throw;
+        }
+    }
+    #endregion
+
+    #region GetScanHistoryByHashAsync
+    public async Task<attendance_monitoring.Models.DTO.Response.PagedResult<AttendanceRecord>> GetScanHistoryByHashAsync(
+        string qrHash,
+        int pageNumber,
+        int pageSize)
+    {
+        try
+        {
+            // First, find the QR code by hash
+            var qrCode = await context.QrCodes
+                .AsNoTracking()
+                .FirstOrDefaultAsync(qr => qr.QrHash == qrHash)
+                .ConfigureAwait(false);
+
+            if (qrCode == null)
+            {
+                return new attendance_monitoring.Models.DTO.Response.PagedResult<AttendanceRecord>
+                {
+                    Items = new List<AttendanceRecord>(),
+                    TotalCount = 0,
+                    PageNumber = pageNumber,
+                    PageSize = pageSize
+                };
+            }
+
+            // Reuse the ID-based method
+            return await GetScanHistoryAsync(qrCode.Id, pageNumber, pageSize).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "An error occurred while retrieving scan history for QR hash {QrHash}", qrHash);
+            throw;
+        }
+    }
+    #endregion
+
+    #region GetScanStatisticsAsync
+    public async Task<(int totalScans, int uniqueStudents, Dictionary<string, int> statusBreakdown, DateTime? firstScan, DateTime? lastScan)> GetScanStatisticsAsync(
+        int qrCodeId)
+    {
+        try
+        {
+            var scans = await context.AttendanceRecords
+                .Where(ar => ar.QrCodeId == qrCodeId)
+                .AsNoTracking()
+                .ToListAsync()
+                .ConfigureAwait(false);
+
+            if (!scans.Any())
+            {
+                return (0, 0, new Dictionary<string, int>(), null, null);
+            }
+
+            var totalScans = scans.Count;
+            var uniqueStudents = scans.Select(s => s.StudentId).Distinct().Count();
+
+            var statusBreakdown = scans
+                .GroupBy(s => s.Status.ToString())
+                .ToDictionary(g => g.Key, g => g.Count());
+
+            var firstScan = scans.Min(s => s.CheckInTime);
+            var lastScan = scans.Max(s => s.CheckInTime);
+
+            return (totalScans, uniqueStudents, statusBreakdown, firstScan, lastScan);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "An error occurred while retrieving scan statistics for QR code ID {QrCodeId}", qrCodeId);
+            throw;
+        }
+    }
+    #endregion
+
     #endregion
 
     #region Utility Operations
