@@ -253,4 +253,114 @@ public class QrCodeController(
         return Ok(result);
         // No try-catch - global handler will catch any unexpected errors
     }
+
+    /// <summary>
+    /// Get scan history for a QR code by ID
+    /// </summary>
+    /// <param name="id">QR Code ID</param>
+    /// <param name="pageNumber">Page number (default: 1)</param>
+    /// <param name="pageSize">Page size (default: 50, max: 100)</param>
+    /// <returns>Paginated scan history with statistics</returns>
+    [HttpGet("{id}/scan-history")]
+    [Authorize(Policy = "PrivilegedPolicy")]
+    [ProducesResponseType(typeof(attendance_monitoring.Models.DTO.Response.QrCodeScanHistoryResponseDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult> GetScanHistory(
+        int id,
+        [FromQuery] int pageNumber = 1,
+        [FromQuery] int pageSize = 50)
+    {
+        try
+        {
+            var userId = int.Parse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "0");
+            var userRole = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value ?? "Unknown";
+
+            logger.LogInformation(
+                "User {UserId} ({UserRole}) requesting scan history for QR code {QrCodeId}",
+                userId, userRole, id);
+
+            var result = await qrCodeService.GetScanHistoryAsync(
+                id, userId, userRole, pageNumber, pageSize);
+
+            return Ok(result);
+        }
+        catch (EntityNotFoundException<int> ex)
+        {
+            logger.LogWarning("QR code not found: {Message}", ex.Message);
+            return NotFound(new { message = ex.Message, errorCode = "QRCODE_NOT_FOUND" });
+        }
+        catch (EntityUnauthorizedException ex)
+        {
+            logger.LogWarning("Unauthorized access attempt: {Message}", ex.Message);
+            return StatusCode(StatusCodes.Status403Forbidden,
+                new { message = "You do not have permission to view this scan history", errorCode = "FORBIDDEN" });
+        }
+        catch (Exceptions.ValidationException ex)
+        {
+            logger.LogWarning("Validation error: {Message}", ex.Message);
+            return BadRequest(new { message = ex.Message, errorCode = "VALIDATION_ERROR" });
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error retrieving scan history for QR code {Id}", id);
+            return StatusCode(500, new { message = "An error occurred while retrieving scan history" });
+        }
+    }
+
+    /// <summary>
+    /// Get scan history for a QR code by hash
+    /// </summary>
+    /// <param name="qrHash">QR Code hash</param>
+    /// <param name="pageNumber">Page number (default: 1)</param>
+    /// <param name="pageSize">Page size (default: 50, max: 100)</param>
+    /// <returns>Paginated scan history with statistics</returns>
+    [HttpGet("hash/{qrHash}/scan-history")]
+    [Authorize(Policy = "PrivilegedPolicy")]
+    [ProducesResponseType(typeof(attendance_monitoring.Models.DTO.Response.QrCodeScanHistoryResponseDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult> GetScanHistoryByHash(
+        string qrHash,
+        [FromQuery] int pageNumber = 1,
+        [FromQuery] int pageSize = 50)
+    {
+        try
+        {
+            var userId = int.Parse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "0");
+            var userRole = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value ?? "Unknown";
+
+            logger.LogInformation(
+                "User {UserId} ({UserRole}) requesting scan history for QR hash {QrHash}",
+                userId, userRole, qrHash);
+
+            var result = await qrCodeService.GetScanHistoryByHashAsync(
+                qrHash, userId, userRole, pageNumber, pageSize);
+
+            return Ok(result);
+        }
+        catch (EntityNotFoundException<string> ex)
+        {
+            logger.LogWarning("QR code not found: {Message}", ex.Message);
+            return NotFound(new { message = ex.Message, errorCode = "QRCODE_NOT_FOUND" });
+        }
+        catch (EntityUnauthorizedException ex)
+        {
+            logger.LogWarning("Unauthorized access attempt: {Message}", ex.Message);
+            return StatusCode(StatusCodes.Status403Forbidden,
+                new { message = "You do not have permission to view this scan history", errorCode = "FORBIDDEN" });
+        }
+        catch (Exceptions.ValidationException ex)
+        {
+            logger.LogWarning("Validation error: {Message}", ex.Message);
+            return BadRequest(new { message = ex.Message, errorCode = "VALIDATION_ERROR" });
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error retrieving scan history for QR hash {Hash}", qrHash);
+            return StatusCode(500, new { message = "An error occurred while retrieving scan history" });
+        }
+    }
 }
