@@ -624,7 +624,9 @@ public class QrCodeRepository(ApplicationDbContext context, ILogger<QrCodeReposi
         {
             var query = context.AttendanceRecords
                 .Where(ar => ar.QrCodeId == qrCodeId)
+                .Where(ar => !ar.Student.IsDeleted)
                 .Include(ar => ar.Student)
+                    .ThenInclude(s => s.User)
                 .Include(ar => ar.Session)
                     .ThenInclude(s => s!.Schedule)
                         .ThenInclude(sch => sch!.Subject)
@@ -702,6 +704,7 @@ public class QrCodeRepository(ApplicationDbContext context, ILogger<QrCodeReposi
         {
             var scans = await context.AttendanceRecords
                 .Where(ar => ar.QrCodeId == qrCodeId)
+                .Where(ar => !ar.Student.IsDeleted)
                 .AsNoTracking()
                 .ToListAsync()
                 .ConfigureAwait(false);
