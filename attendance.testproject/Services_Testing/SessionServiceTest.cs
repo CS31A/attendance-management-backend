@@ -10,6 +10,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using System.Security.Claims;
 
 namespace attendance.testproject.Services_Testing;
@@ -43,7 +44,15 @@ public class SessionServiceTest
         // Mock UserManager for UserContextService
         var mockUserStore = new Mock<IUserStore<IdentityUser>>();
         _mockUserManager = new Mock<UserManager<IdentityUser>>(
-            mockUserStore.Object, null, null, null, null, null, null, null, null);
+            mockUserStore.Object,
+            Options.Create(new IdentityOptions()),
+            new Mock<IPasswordHasher<IdentityUser>>().Object,
+            Array.Empty<IUserValidator<IdentityUser>>(),
+            Array.Empty<IPasswordValidator<IdentityUser>>(),
+            new Mock<ILookupNormalizer>().Object,
+            new Mock<IdentityErrorDescriber>().Object,
+            new Mock<IServiceProvider>().Object,
+            new Mock<ILogger<UserManager<IdentityUser>>>().Object);
 
         var options = new DbContextOptionsBuilder<ApplicationDbContext>()
             .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
@@ -823,13 +832,13 @@ public class SessionServiceTest
         Assert.Equal("cancelled", result.Status);
 
         // Verify cancellation reason was recorded
-        Assert.Contains(request.Reason, result.Description);
+        Assert.Contains(request.Reason, result.Description!);
 
         // Verify repository method was called with correct session state
         _mockSessionRepository.Verify(r => r.UpdateSessionAsync(
             It.Is<Session>(s =>
                 s.Status == "cancelled" &&
-                s.Description.Contains(request.Reason)
+                s.Description != null && s.Description.Contains(request.Reason)
             )), Times.Once);
     }
 

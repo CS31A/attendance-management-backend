@@ -9,6 +9,7 @@ using attendance_monitoring.Services;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using System.Security.Claims;
 
 namespace attendance.testproject.Services_Testing;
@@ -41,7 +42,15 @@ public class AttendanceAuthorizationTests
         // Mock UserManager for UserContextService
         var mockUserStore = new Mock<IUserStore<IdentityUser>>();
         _mockUserManager = new Mock<UserManager<IdentityUser>>(
-            mockUserStore.Object, null, null, null, null, null, null, null, null);
+            mockUserStore.Object,
+            Options.Create(new IdentityOptions()),
+            new Mock<IPasswordHasher<IdentityUser>>().Object,
+            Array.Empty<IUserValidator<IdentityUser>>(),
+            Array.Empty<IPasswordValidator<IdentityUser>>(),
+            new Mock<ILookupNormalizer>().Object,
+            new Mock<IdentityErrorDescriber>().Object,
+            new Mock<IServiceProvider>().Object,
+            new Mock<ILogger<UserManager<IdentityUser>>>().Object);
 
         var options = new DbContextOptionsBuilder<ApplicationDbContext>()
             .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
