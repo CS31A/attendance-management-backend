@@ -63,6 +63,9 @@ public static class ExceptionHandlingExtensions
                          true),
 
                     // Validation exceptions
+                    ValidationException ex =>
+                        (StatusCodes.Status400BadRequest, ex.Message, false),
+
                     ArgumentNullException ex =>
                         (StatusCodes.Status400BadRequest,
                          $"Missing required parameter: {ex.ParamName}",
