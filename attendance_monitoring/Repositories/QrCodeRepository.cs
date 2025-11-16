@@ -224,7 +224,7 @@ public class QrCodeRepository(ApplicationDbContext context, ILogger<QrCodeReposi
             qrCode.GeneratedAt = DateTime.UtcNow;
             qrCode.CreatedAt = DateTime.UtcNow;
             qrCode.UpdatedAt = DateTime.UtcNow;
-            
+
             var entry = await context.QrCodes.AddAsync(qrCode).ConfigureAwait(false);
             return entry.Entity;
         }
@@ -268,7 +268,7 @@ public class QrCodeRepository(ApplicationDbContext context, ILogger<QrCodeReposi
             qrCode.IsActive = false;
             qrCode.UpdatedAt = DateTime.UtcNow;
             // Note: RevokedBy and RevocationReason should be set by the service layer
-            
+
             context.QrCodes.Update(qrCode);
             return true;
         }
@@ -288,7 +288,7 @@ public class QrCodeRepository(ApplicationDbContext context, ILogger<QrCodeReposi
             var qrCode = await context.QrCodes
                 .FirstOrDefaultAsync(q => q.QrHash == qrHash)
                 .ConfigureAwait(false);
-                
+
             if (qrCode == null)
             {
                 logger.LogWarning("QR code with hash {QrHash} not found for deactivation in database.", qrHash);
@@ -298,7 +298,7 @@ public class QrCodeRepository(ApplicationDbContext context, ILogger<QrCodeReposi
             qrCode.IsActive = false;
             qrCode.UpdatedAt = DateTime.UtcNow;
             // Note: RevokedBy and RevocationReason should be set by the service layer
-            
+
             context.QrCodes.Update(qrCode);
             return true;
         }
@@ -327,7 +327,7 @@ public class QrCodeRepository(ApplicationDbContext context, ILogger<QrCodeReposi
             qrCode.RevokedBy = null;
             qrCode.RevocationReason = null;
             qrCode.UpdatedAt = DateTime.UtcNow;
-            
+
             context.QrCodes.Update(qrCode);
             logger.LogInformation("Reactivated QR code with ID {QrCodeId} in database.", id);
             return true;
@@ -348,7 +348,7 @@ public class QrCodeRepository(ApplicationDbContext context, ILogger<QrCodeReposi
             var qrCode = await context.QrCodes
                 .FirstOrDefaultAsync(q => q.QrHash == qrHash)
                 .ConfigureAwait(false);
-                
+
             if (qrCode == null)
             {
                 logger.LogWarning("QR code with hash {QrHash} not found for reactivation in database.", qrHash);
@@ -360,7 +360,7 @@ public class QrCodeRepository(ApplicationDbContext context, ILogger<QrCodeReposi
             qrCode.RevokedBy = null;
             qrCode.RevocationReason = null;
             qrCode.UpdatedAt = DateTime.UtcNow;
-            
+
             context.QrCodes.Update(qrCode);
             logger.LogInformation("Reactivated QR code with hash {QrHash} in database.", qrHash);
             return true;
@@ -387,7 +387,7 @@ public class QrCodeRepository(ApplicationDbContext context, ILogger<QrCodeReposi
 
             qrCode.UsageCount++;
             qrCode.UpdatedAt = DateTime.UtcNow;
-            
+
             context.QrCodes.Update(qrCode);
             return qrCode;
         }
@@ -407,7 +407,7 @@ public class QrCodeRepository(ApplicationDbContext context, ILogger<QrCodeReposi
             var qrCode = await context.QrCodes
                 .FirstOrDefaultAsync(q => q.QrHash == qrHash)
                 .ConfigureAwait(false);
-                
+
             if (qrCode == null)
             {
                 logger.LogWarning("QR code with hash {QrHash} not found for usage increment in database.", qrHash);
@@ -416,7 +416,7 @@ public class QrCodeRepository(ApplicationDbContext context, ILogger<QrCodeReposi
 
             qrCode.UsageCount++;
             qrCode.UpdatedAt = DateTime.UtcNow;
-            
+
             context.QrCodes.Update(qrCode);
             return qrCode;
         }
@@ -702,29 +702,38 @@ public class QrCodeRepository(ApplicationDbContext context, ILogger<QrCodeReposi
     {
         try
         {
-            var scans = await context.AttendanceRecords
+            // Get aggregated statistics directly from SQL
+            var stats = await context.AttendanceRecords
                 .Where(ar => ar.QrCodeId == qrCodeId)
                 .Where(ar => !ar.Student.IsDeleted)
+                .GroupBy(ar => 1) // Group all records together
+                .Select(g => new
+                {
+                    TotalScans = g.Count(),
+                    UniqueStudents = g.Select(ar => ar.StudentId).Distinct().Count(),
+                    FirstScan = g.Min(ar => ar.CheckInTime),
+                    LastScan = g.Max(ar => ar.CheckInTime)
+                })
                 .AsNoTracking()
-                .ToListAsync()
+                .FirstOrDefaultAsync()
                 .ConfigureAwait(false);
 
-            if (!scans.Any())
+            if (stats == null)
             {
                 return (0, 0, new Dictionary<string, int>(), null, null);
             }
 
-            var totalScans = scans.Count;
-            var uniqueStudents = scans.Select(s => s.StudentId).Distinct().Count();
+            // Get status breakdown separately (can't be combined with above due to EF limitations)
+            var statusBreakdown = await context.AttendanceRecords
+                .Where(ar => ar.QrCodeId == qrCodeId)
+                .Where(ar => !ar.Student.IsDeleted)
+                .GroupBy(ar => ar.Status)
+                .Select(g => new { Status = g.Key, Count = g.Count() })
+                .AsNoTracking()
+                .ToDictionaryAsync(x => x.Status.ToString(), x => x.Count)
+                .ConfigureAwait(false);
 
-            var statusBreakdown = scans
-                .GroupBy(s => s.Status.ToString())
-                .ToDictionary(g => g.Key, g => g.Count());
-
-            var firstScan = scans.Min(s => s.CheckInTime);
-            var lastScan = scans.Max(s => s.CheckInTime);
-
-            return (totalScans, uniqueStudents, statusBreakdown, firstScan, lastScan);
+            return (stats.TotalScans, stats.UniqueStudents, statusBreakdown, stats.FirstScan, stats.LastScan);
         }
         catch (Exception ex)
         {

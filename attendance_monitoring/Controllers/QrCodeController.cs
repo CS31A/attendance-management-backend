@@ -12,6 +12,7 @@ namespace attendance_monitoring.Controllers;
 [Route("api/[controller]")]
 public class QrCodeController(
     IQrCodeService qrCodeService,
+    UserContextService userContextService,
     ILogger<QrCodeController> logger) : ControllerBase
 {
     /// <summary>
@@ -274,15 +275,21 @@ public class QrCodeController(
     {
         try
         {
-            var userId = int.Parse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "0");
+            var instructorId = await userContextService.GetInstructorIdAsync(User);
+            if (!instructorId.HasValue)
+            {
+                return StatusCode(StatusCodes.Status403Forbidden,
+                    new { message = "User is not an instructor", errorCode = "NOT_INSTRUCTOR" });
+            }
+
             var userRole = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value ?? "Unknown";
 
             logger.LogInformation(
-                "User {UserId} ({UserRole}) requesting scan history for QR code {QrCodeId}",
-                userId, userRole, id);
+                "Instructor {InstructorId} ({UserRole}) requesting scan history for QR code {QrCodeId}",
+                instructorId.Value, userRole, id);
 
             var result = await qrCodeService.GetScanHistoryAsync(
-                id, userId, userRole, pageNumber, pageSize);
+                id, instructorId.Value, userRole, pageNumber, pageSize);
 
             return Ok(result);
         }
@@ -329,15 +336,21 @@ public class QrCodeController(
     {
         try
         {
-            var userId = int.Parse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "0");
+            var instructorId = await userContextService.GetInstructorIdAsync(User);
+            if (!instructorId.HasValue)
+            {
+                return StatusCode(StatusCodes.Status403Forbidden,
+                    new { message = "User is not an instructor", errorCode = "NOT_INSTRUCTOR" });
+            }
+
             var userRole = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value ?? "Unknown";
 
             logger.LogInformation(
-                "User {UserId} ({UserRole}) requesting scan history for QR hash {QrHash}",
-                userId, userRole, qrHash);
+                "Instructor {InstructorId} ({UserRole}) requesting scan history for QR hash {QrHash}",
+                instructorId.Value, userRole, qrHash);
 
             var result = await qrCodeService.GetScanHistoryByHashAsync(
-                qrHash, userId, userRole, pageNumber, pageSize);
+                qrHash, instructorId.Value, userRole, pageNumber, pageSize);
 
             return Ok(result);
         }
