@@ -16,6 +16,7 @@ help: ## Show this help message
 	@echo "  make test                   - Run all tests"
 	@echo "  make test-specific          - Run specific test class (StudentControllerTest)"
 	@echo "  make build                  - Build the solution"
+	@echo "  make check                  - Run build and test"
 	@echo "  make clean                  - Clean build artifacts"
 	@echo "  make restore                - Restore NuGet packages"
 	@echo ""
@@ -35,6 +36,11 @@ test-specific: ## Run specific test class
 .PHONY: build
 build: ## Build the solution
 	$(DOTNET) build $(SOLUTION)
+
+.PHONY: check
+check: ## Run build and test
+	make build
+	make test
 
 .PHONY: clean
 clean: ## Clean build artifacts
