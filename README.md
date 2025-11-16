@@ -7,6 +7,10 @@ A comprehensive attendance tracking system built with ASP.NET Core 9.0, Entity F
 - **User Management**: Student, Instructor, and Admin role-based authentication
 - **Course Management**: Create and manage courses, sections, and subjects
 - **Schedule Management**: Assign classrooms and time slots to sections
+- **Session Management**: Create, start, end, and cancel class sessions
+- **Student Enrollment**: Enroll students in sections and track enrollment status
+- **Attendance Recording**: Record and track student attendance for sessions
+- **Attendance Reports**: View attendance history, summaries, and statistics
 - **QR Code Integration**: Generate QR codes for attendance tracking
 - **Soft Delete**: Safe deletion and restoration of students and instructors
 - **Token Security**: JWT authentication with refresh tokens and blacklist system
@@ -173,7 +177,7 @@ dotnet ef database update
 
 The system automatically creates the following roles on startup:
 - **Admin**: Full system access
-- **Teacher**: Manage sections and attendance
+- **Instructor**: Manage sections and attendance
 - **Student**: View own attendance records
 
 ### API Authentication
@@ -186,7 +190,7 @@ The API uses JWT Bearer tokens. To authenticate for mobile:
 
 For web:
 
-1. Register a new user via `/api/account/web/register`
+1. Register a new user via `/api/account/register`
 2. Login via `/api/account/web/login`, the tokens will automatically be stored in your cookies
 3. The tokens will automatically be included in your requests
 
