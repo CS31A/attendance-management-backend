@@ -1,4 +1,5 @@
 using attendance_monitoring.Classes;
+using attendance_monitoring.Data;
 using attendance_monitoring.Exceptions;
 using attendance_monitoring.IRepository;
 using attendance_monitoring.IServices;
@@ -6,6 +7,7 @@ using attendance_monitoring.Models.DTO.Request;
 using attendance_monitoring.Models.DTO.Response;
 using attendance_monitoring.Services;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using System.Security.Claims;
 
@@ -41,8 +43,13 @@ public class AttendanceAuthorizationTests
         _mockUserManager = new Mock<UserManager<IdentityUser>>(
             mockUserStore.Object, null, null, null, null, null, null, null, null);
 
-        // Create real UserContextService with mocked UserManager
-        _userContextService = new UserContextService(_mockUserManager.Object);
+        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
+            .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
+            .Options;
+        var mockContext = new Mock<ApplicationDbContext>(options);
+
+        // Create real UserContextService with mocked UserManager and context
+        _userContextService = new UserContextService(_mockUserManager.Object, mockContext.Object);
 
         _attendanceService = new AttendanceService(
             _mockAttendanceRepository.Object,
