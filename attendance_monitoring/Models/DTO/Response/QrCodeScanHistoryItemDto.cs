@@ -16,9 +16,9 @@ public class QrCodeScanHistoryItemDto
     public int StudentId { get; set; }
 
     /// <summary>
-    /// Student ID number (e.g., "2021-001234")
+    /// Student email address
     /// </summary>
-    public string StudentIdNumber { get; set; } = string.Empty;
+    public string StudentEmail { get; set; } = string.Empty;
 
     /// <summary>
     /// Full name of the student
