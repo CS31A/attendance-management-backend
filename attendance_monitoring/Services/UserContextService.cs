@@ -1,21 +1,24 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
+using attendance_monitoring.Data;
 
 namespace attendance_monitoring.Services;
 
 /// <summary>
 /// Service to handle user context operations and extract user information from claims
 /// </summary>
-public class UserContextService(UserManager<IdentityUser> userManager)
+public class UserContextService(UserManager<IdentityUser> userManager, ApplicationDbContext context)
 {
     private readonly UserManager<IdentityUser> _userManager = userManager ?? throw new ArgumentNullException(nameof(userManager));
-    
+    private readonly ApplicationDbContext _context = context ?? throw new ArgumentNullException(nameof(context));
+
     private static readonly HashSet<string> ValidRoles = new(StringComparer.OrdinalIgnoreCase)
     {
         "Student", "Teacher", "Admin", "Instructor"
     };
-    
+
     // Equivalent na ani, basin malimot ka
     // private static readonly HashSet<string> ValidRoles = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
     // {
@@ -61,6 +64,31 @@ public class UserContextService(UserManager<IdentityUser> userManager)
         return userPrincipal?.FindFirst(ClaimTypes.Role)?.Value;
     }
 
+    #endregion
+
+    #region Instructor Operations
+    /// <summary>
+    /// Gets the instructor ID associated with the current user
+    /// </summary>
+    /// <param name="userPrincipal">The user's claims principal</param>
+    /// <returns>Instructor ID if user is an instructor, null otherwise</returns>
+    public async Task<int?> GetInstructorIdAsync(ClaimsPrincipal userPrincipal)
+    {
+        var userId = await GetUserIdAsync(userPrincipal).ConfigureAwait(false);
+        if (string.IsNullOrEmpty(userId))
+        {
+            return null;
+        }
+
+        var instructor = await _context.Instructors
+            .AsNoTracking()
+            .Where(i => i.UserId == userId && !i.IsDeleted)
+            .Select(i => i.Id)
+            .FirstOrDefaultAsync()
+            .ConfigureAwait(false);
+
+        return instructor == 0 ? null : instructor;
+    }
     #endregion
 
     #region Authorization Operations

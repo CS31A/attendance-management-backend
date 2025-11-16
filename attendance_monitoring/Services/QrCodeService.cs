@@ -27,6 +27,7 @@ public class QrCodeService : IQrCodeService
     private readonly ISessionRepository _sessionRepository;
     private readonly IAttendanceService _attendanceService;
     private readonly IAttendanceRepository _attendanceRepository;
+    private readonly ApplicationDbContext _context;
     private readonly ILogger<QrCodeService> _logger;
 
     /// <summary>
@@ -43,6 +44,7 @@ public class QrCodeService : IQrCodeService
         ISessionRepository sessionRepository,
         IAttendanceService attendanceService,
         IAttendanceRepository attendanceRepository,
+        ApplicationDbContext context,
         ILogger<QrCodeService> logger)
     {
         _qrCodeRepository = qrCodeRepository ?? throw new ArgumentNullException(nameof(qrCodeRepository));
@@ -55,6 +57,7 @@ public class QrCodeService : IQrCodeService
         _sessionRepository = sessionRepository ?? throw new ArgumentNullException(nameof(sessionRepository));
         _attendanceService = attendanceService ?? throw new ArgumentNullException(nameof(attendanceService));
         _attendanceRepository = attendanceRepository ?? throw new ArgumentNullException(nameof(attendanceRepository));
+        _context = context ?? throw new ArgumentNullException(nameof(context));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
@@ -180,6 +183,212 @@ public class QrCodeService : IQrCodeService
         {
             _logger.LogError(ex, "Error occurred while retrieving active QR codes");
             throw new EntityServiceException("QrCode", "GetActiveQrCodes", "An error occurred while retrieving active QR codes", ex);
+        }
+    }
+
+    public async Task<QrCodeScanHistoryResponseDto> GetScanHistoryAsync(
+        int qrCodeId,
+        int instructorId,
+        string userRole,
+        int pageNumber = 1,
+        int pageSize = 50)
+    {
+        _logger.LogInformation(
+            "Retrieving scan history for QR code {QrCodeId} by instructor {InstructorId} with role {UserRole}",
+            qrCodeId, instructorId, userRole);
+
+        try
+        {
+            // Validate pagination parameters
+            if (pageNumber < 1)
+            {
+                throw new ValidationException("Page number must be greater than 0");
+            }
+
+            if (pageSize < 1 || pageSize > 100)
+            {
+                throw new ValidationException("Page size must be between 1 and 100");
+            }
+
+            // Get the QR code
+            var qrCode = await _qrCodeRepository.GetQrCodeByIdAsync(qrCodeId);
+            if (qrCode == null)
+            {
+                throw new EntityNotFoundException<int>("QrCode", qrCodeId);
+            }
+
+            // Authorization check - only instructors/admins for their own sections
+            if (userRole == "Instructor")
+            {
+                var authSession = await _context.Sessions
+                    .Include(s => s.Schedule)
+                    .FirstOrDefaultAsync(s => s.Id == qrCode.SessionId);
+
+                if (authSession == null || authSession.Schedule.InstructorId != instructorId)
+                {
+                    throw new EntityUnauthorizedException(
+                        "QrCode",
+                        qrCodeId.ToString(),
+                        "You do not have permission to view scan history for this QR code");
+                }
+            }
+
+            // Get scan history from repository
+            var scanHistory = await _qrCodeRepository.GetScanHistoryAsync(
+                qrCodeId, pageNumber, pageSize);
+
+            // Get statistics
+            var statistics = await _qrCodeRepository.GetScanStatisticsAsync(qrCodeId);
+
+            // Build QR code info DTO
+            var session = await _context.Sessions
+                .Include(s => s.Schedule)
+                    .ThenInclude(sch => sch!.Subject)
+                .FirstOrDefaultAsync(s => s.Id == qrCode.SessionId);
+
+            var qrCodeInfo = new QrCodeInfoDto
+            {
+                Id = qrCode.Id,
+                Hash = qrCode.QrHash,
+                SessionId = qrCode.SessionId,
+                SessionDate = session?.SessionDate ?? DateTime.MinValue,
+                SessionSubject = session?.Schedule?.Subject?.Name ?? "Unknown",
+                GeneratedAt = qrCode.GeneratedAt,
+                ExpiresAt = qrCode.ExpiresAt,
+                IsActive = qrCode.IsActive,
+                TotalScans = statistics.totalScans,
+                UniqueStudents = statistics.uniqueStudents
+            };
+
+            // Calculate proper average scan time from all records
+            DateTime? averageScanTime = null;
+            if (statistics.totalScans > 0)
+            {
+                var allScanTimes = await _context.AttendanceRecords
+                    .Where(ar => ar.QrCodeId == qrCodeId)
+                    .Where(ar => !ar.Student.IsDeleted)
+                    .Select(ar => ar.CheckInTime)
+                    .ToListAsync();
+
+                if (allScanTimes.Any())
+                {
+                    // Calculate average by summing all ticks and dividing by count
+                    var totalTicks = allScanTimes.Sum(dt => dt.Ticks);
+                    var avgTicks = totalTicks / allScanTimes.Count;
+                    averageScanTime = new DateTime(avgTicks);
+                }
+            }
+
+            // Build statistics DTO
+            var scanStatistics = new QrCodeStatisticsDto
+            {
+                TotalScans = statistics.totalScans,
+                UniqueStudents = statistics.uniqueStudents,
+                PresentCount = statistics.statusBreakdown.GetValueOrDefault("Present", 0),
+                LateCount = statistics.statusBreakdown.GetValueOrDefault("Late", 0),
+                ExcusedCount = statistics.statusBreakdown.GetValueOrDefault("Excused", 0),
+                FirstScanAt = statistics.firstScan,
+                LastScanAt = statistics.lastScan,
+                AverageScanTime = averageScanTime
+            };
+
+            // Map attendance records to DTOs
+            var scanItems = scanHistory.Items.Select(ar => new QrCodeScanHistoryItemDto
+            {
+                AttendanceRecordId = ar.Id,
+                StudentId = ar.StudentId,
+                StudentEmail = ar.Student?.User?.Email ?? "Unknown",
+                StudentName = $"{ar.Student?.Firstname} {ar.Student?.Lastname}".Trim(),
+                ScannedAt = ar.CheckInTime,
+                Status = ar.Status.ToString(),
+                SessionId = ar.SessionId,
+                SessionDate = ar.Session?.SessionDate ?? DateTime.MinValue,
+                SessionSubject = ar.Session?.Schedule?.Subject?.Name ?? "Unknown",
+                SessionSection = ar.Session?.Schedule?.Section?.Name ?? "Unknown"
+            }).ToList();
+
+            // Build paginated result
+            var pagedScans = new PagedResult<QrCodeScanHistoryItemDto>
+            {
+                Items = scanItems,
+                TotalCount = scanHistory.TotalCount,
+                PageNumber = scanHistory.PageNumber,
+                PageSize = scanHistory.PageSize
+            };
+
+            _logger.LogInformation(
+                "Successfully retrieved {Count} scan records for QR code {QrCodeId}",
+                scanItems.Count, qrCodeId);
+
+            return new QrCodeScanHistoryResponseDto
+            {
+                QrCodeInfo = qrCodeInfo,
+                ScanStatistics = scanStatistics,
+                Scans = pagedScans
+            };
+        }
+        catch (ValidationException)
+        {
+            throw;
+        }
+        catch (EntityNotFoundException<int>)
+        {
+            throw;
+        }
+        catch (EntityUnauthorizedException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error occurred while retrieving scan history for QR code {QrCodeId}", qrCodeId);
+            throw new EntityServiceException("QrCode", "GetScanHistory", "An error occurred while retrieving scan history", ex);
+        }
+    }
+
+    public async Task<QrCodeScanHistoryResponseDto> GetScanHistoryByHashAsync(
+        string qrHash,
+        int instructorId,
+        string userRole,
+        int pageNumber = 1,
+        int pageSize = 50)
+    {
+        _logger.LogInformation(
+            "Retrieving scan history for QR hash {QrHash} by instructor {InstructorId}",
+            qrHash, instructorId);
+
+        try
+        {
+            // Get QR code by hash
+            var qrCode = await _qrCodeRepository.GetQrCodeByHashAsync(qrHash);
+            if (qrCode == null)
+            {
+                throw new EntityNotFoundException<string>("QrCode", qrHash);
+            }
+
+            // Delegate to ID-based method
+            return await GetScanHistoryAsync(qrCode.Id, instructorId, userRole, pageNumber, pageSize);
+        }
+        catch (ValidationException)
+        {
+            throw;
+        }
+        catch (EntityNotFoundException<int>)
+        {
+            throw;
+        }
+        catch (EntityNotFoundException<string>)
+        {
+            throw;
+        }
+        catch (EntityUnauthorizedException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error occurred while retrieving scan history for QR hash {QrHash}", qrHash);
+            throw new EntityServiceException("QrCode", "GetScanHistoryByHash", "An error occurred while retrieving scan history", ex);
         }
     }
 
@@ -833,7 +1042,7 @@ public class QrCodeService : IQrCodeService
 
             // TIMING FIX: Step 1 - Get and validate QR code WITHOUT incrementing usage counter
             var qrCode = await _qrCodeRepository.GetQrCodeByHashAsync(validateQrCode.QrHash).ConfigureAwait(false);
-            
+
             if (qrCode == null)
             {
                 _logger.LogWarning("QR code scan failed: QR code not found");
@@ -928,9 +1137,9 @@ public class QrCodeService : IQrCodeService
             // TIMING FIX: Step 3 - Check for duplicate attendance BEFORE incrementing usage counter
             _logger.LogDebug("Checking for duplicate attendance: StudentId={StudentId}, SessionId={SessionId}",
                 validateQrCode.StudentId, qrCode.SessionId);
-            
+
             var existingRecord = await _attendanceRepository.HasAttendanceRecordAsync(
-                validateQrCode.StudentId, 
+                validateQrCode.StudentId,
                 qrCode.SessionId
             ).ConfigureAwait(false);
 
@@ -984,7 +1193,7 @@ public class QrCodeService : IQrCodeService
             // TIMING FIX: Step 5 - Create attendance record after successful increment
             _logger.LogDebug("Creating attendance record: StudentId={StudentId}, SessionId={SessionId}",
                 validateQrCode.StudentId, qrCode.SessionId);
-            
+
             try
             {
                 var attendanceRecord = await _attendanceService.CreateAttendanceFromQrScanAsync(

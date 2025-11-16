@@ -158,4 +158,36 @@ public interface IQrCodeRepository : ISaveableRepository
     /// </summary>
     /// <returns>A database transaction.</returns>
     Task<Microsoft.EntityFrameworkCore.Storage.IDbContextTransaction> BeginTransactionAsync();
+
+    /// <summary>
+    /// Get paginated scan history for a QR code by ID
+    /// </summary>
+    /// <param name="qrCodeId">The QR code ID</param>
+    /// <param name="pageNumber">Page number (1-based)</param>
+    /// <param name="pageSize">Number of items per page</param>
+    /// <returns>Paginated list of attendance records for the QR code</returns>
+    Task<attendance_monitoring.Models.DTO.Response.PagedResult<attendance_monitoring.Classes.AttendanceRecord>> GetScanHistoryAsync(
+        int qrCodeId,
+        int pageNumber,
+        int pageSize);
+
+    /// <summary>
+    /// Get paginated scan history for a QR code by hash
+    /// </summary>
+    /// <param name="qrHash">The QR code hash</param>
+    /// <param name="pageNumber">Page number (1-based)</param>
+    /// <param name="pageSize">Number of items per page</param>
+    /// <returns>Paginated list of attendance records for the QR code</returns>
+    Task<attendance_monitoring.Models.DTO.Response.PagedResult<attendance_monitoring.Classes.AttendanceRecord>> GetScanHistoryByHashAsync(
+        string qrHash,
+        int pageNumber,
+        int pageSize);
+
+    /// <summary>
+    /// Get statistical information about QR code scans
+    /// </summary>
+    /// <param name="qrCodeId">The QR code ID</param>
+    /// <returns>Tuple containing total scans, unique students, status breakdown, and scan time range</returns>
+    Task<(int totalScans, int uniqueStudents, Dictionary<string, int> statusBreakdown, DateTime? firstScan, DateTime? lastScan)> GetScanStatisticsAsync(
+        int qrCodeId);
 }
