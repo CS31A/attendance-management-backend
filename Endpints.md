@@ -18,6 +18,17 @@ This document lists all the API endpoints for the attendance monitoring system.
 - `PATCH /api/Account/profile`: Update the current user's profile
 - `PATCH /api/Account/admin/users/{userId}`: Update any user's profile (admin only)
 
+## AttendanceController
+
+- `POST /api/attendance`: Create a new attendance record manually (Admin, Instructor only)
+- `GET /api/attendance/{id}`: Get a specific attendance record by ID
+- `GET /api/attendance`: Get all attendance records with optional filtering and pagination
+- `GET /api/attendance/student/{studentId}`: Get attendance history for a specific student
+- `GET /api/attendance/session/{sessionId}`: Get attendance overview for a specific session (Admin, Instructor only)
+- `GET /api/attendance/summary`: Get attendance summary statistics
+- `PUT /api/attendance/{id}`: Update an existing attendance record (Admin, Instructor only)
+- `DELETE /api/attendance/{id}`: Delete an attendance record (Admin only)
+
 ## ClassroomController
 
 - `GET /api/classrooms`: Get a list of all classrooms
@@ -76,6 +87,19 @@ This document lists all the API endpoints for the attendance monitoring system.
 - `GET /api/sections/{sectionId}/active-students`: Get a list of all active students in a section
 - `GET /api/sections/{sectionId}/all-students`: Get a list of all students (active and inactive) in a section
 
+## SessionController
+
+- `GET /api/sessions`: Get all sessions
+- `GET /api/sessions/{id}`: Get a specific session by ID
+- `GET /api/sessions/schedule/{scheduleId}`: Get sessions for a specific schedule
+- `GET /api/sessions/status/{status}`: Get sessions by status (not_started, active, ended, cancelled)
+- `GET /api/sessions/date/{date}`: Get sessions for a specific date (YYYY-MM-DD format)
+- `POST /api/sessions`: Create a new session for a schedule (Instructor only)
+- `PATCH /api/sessions/{id}/start`: Start a session, marking it as active (Instructor only)
+- `PATCH /api/sessions/{id}/end`: End an active session (Instructor only)
+- `PATCH /api/sessions/{id}/room`: Update the actual room for a session (Instructor only)
+- `DELETE /api/sessions/{id}`: Cancel a session that has not started yet (Instructor only)
+
 ## StudentController
 
 - `GET /api/students`: Get a list of all non-deleted students
@@ -85,6 +109,15 @@ This document lists all the API endpoints for the attendance monitoring system.
 - `DELETE /api/students/{id}`: Hard delete a student record
 - `PATCH /api/students/{id}/restore`: Restore a soft-deleted student record
 
+## StudentEnrollmentController
+
+- `POST /api/StudentEnrollment/enroll`: Enroll a student in a section-subject combination (Admin, Instructor only)
+- `GET /api/StudentEnrollment/student/{studentId}`: Get all enrollments for a specific student
+- `GET /api/StudentEnrollment/section/{sectionId}/students`: Get all active students enrolled in a specific section (Admin, Instructor only)
+- `PATCH /api/StudentEnrollment/{enrollmentId}/drop`: Drop a student from a specific enrollment (Admin, Instructor only)
+- `PATCH /api/StudentEnrollment/{enrollmentId}/reenroll`: Re-enroll a student (reactivate enrollment) (Admin, Instructor only)
+- `GET /api/StudentEnrollment/check`: Check if a student is enrolled in a specific section-subject combination
+
 ## SubjectController
 
 - `GET /api/subjects`: Get a list of all subjects
@@ -92,4 +125,8 @@ This document lists all the API endpoints for the attendance monitoring system.
 - `POST /api/subjects`: Create a new subject
 - `PATCH /api/subjects/{id}`: Update a subject record
 - `DELETE /api/subjects/{id}`: Delete a subject by ID
+
+## UserController
+
+- `GET /api/users`: Get all users with their role and profile information (Admin only)
 
