@@ -16,4 +16,6 @@ public interface IStudentService
     Task<string?> HardDeleteStudentAsync(int id, ClaimsPrincipal user);
     Task<string?> RestoreStudentAsync(int id, ClaimsPrincipal user);
     Task<IEnumerable<StudentSubjectResponseDto>> GetStudentSubjectsAsync(ClaimsPrincipal user);
+    Task<IEnumerable<Student>> SearchStudentsByNameAsync(string searchTerm, int pageNumber, int pageSize);
+    Task<IEnumerable<Student>> SearchStudentsByEmailAsync(string searchTerm, int pageNumber, int pageSize);
 }
