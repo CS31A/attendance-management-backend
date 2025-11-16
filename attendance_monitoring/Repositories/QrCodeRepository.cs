@@ -224,7 +224,7 @@ public class QrCodeRepository(ApplicationDbContext context, ILogger<QrCodeReposi
             qrCode.GeneratedAt = DateTime.UtcNow;
             qrCode.CreatedAt = DateTime.UtcNow;
             qrCode.UpdatedAt = DateTime.UtcNow;
-            
+
             var entry = await context.QrCodes.AddAsync(qrCode).ConfigureAwait(false);
             return entry.Entity;
         }
@@ -268,7 +268,7 @@ public class QrCodeRepository(ApplicationDbContext context, ILogger<QrCodeReposi
             qrCode.IsActive = false;
             qrCode.UpdatedAt = DateTime.UtcNow;
             // Note: RevokedBy and RevocationReason should be set by the service layer
-            
+
             context.QrCodes.Update(qrCode);
             return true;
         }
@@ -288,7 +288,7 @@ public class QrCodeRepository(ApplicationDbContext context, ILogger<QrCodeReposi
             var qrCode = await context.QrCodes
                 .FirstOrDefaultAsync(q => q.QrHash == qrHash)
                 .ConfigureAwait(false);
-                
+
             if (qrCode == null)
             {
                 logger.LogWarning("QR code with hash {QrHash} not found for deactivation in database.", qrHash);
@@ -298,7 +298,7 @@ public class QrCodeRepository(ApplicationDbContext context, ILogger<QrCodeReposi
             qrCode.IsActive = false;
             qrCode.UpdatedAt = DateTime.UtcNow;
             // Note: RevokedBy and RevocationReason should be set by the service layer
-            
+
             context.QrCodes.Update(qrCode);
             return true;
         }
@@ -327,7 +327,7 @@ public class QrCodeRepository(ApplicationDbContext context, ILogger<QrCodeReposi
             qrCode.RevokedBy = null;
             qrCode.RevocationReason = null;
             qrCode.UpdatedAt = DateTime.UtcNow;
-            
+
             context.QrCodes.Update(qrCode);
             logger.LogInformation("Reactivated QR code with ID {QrCodeId} in database.", id);
             return true;
@@ -348,7 +348,7 @@ public class QrCodeRepository(ApplicationDbContext context, ILogger<QrCodeReposi
             var qrCode = await context.QrCodes
                 .FirstOrDefaultAsync(q => q.QrHash == qrHash)
                 .ConfigureAwait(false);
-                
+
             if (qrCode == null)
             {
                 logger.LogWarning("QR code with hash {QrHash} not found for reactivation in database.", qrHash);
@@ -360,7 +360,7 @@ public class QrCodeRepository(ApplicationDbContext context, ILogger<QrCodeReposi
             qrCode.RevokedBy = null;
             qrCode.RevocationReason = null;
             qrCode.UpdatedAt = DateTime.UtcNow;
-            
+
             context.QrCodes.Update(qrCode);
             logger.LogInformation("Reactivated QR code with hash {QrHash} in database.", qrHash);
             return true;
@@ -387,7 +387,7 @@ public class QrCodeRepository(ApplicationDbContext context, ILogger<QrCodeReposi
 
             qrCode.UsageCount++;
             qrCode.UpdatedAt = DateTime.UtcNow;
-            
+
             context.QrCodes.Update(qrCode);
             return qrCode;
         }
@@ -407,7 +407,7 @@ public class QrCodeRepository(ApplicationDbContext context, ILogger<QrCodeReposi
             var qrCode = await context.QrCodes
                 .FirstOrDefaultAsync(q => q.QrHash == qrHash)
                 .ConfigureAwait(false);
-                
+
             if (qrCode == null)
             {
                 logger.LogWarning("QR code with hash {QrHash} not found for usage increment in database.", qrHash);
@@ -416,7 +416,7 @@ public class QrCodeRepository(ApplicationDbContext context, ILogger<QrCodeReposi
 
             qrCode.UsageCount++;
             qrCode.UpdatedAt = DateTime.UtcNow;
-            
+
             context.QrCodes.Update(qrCode);
             return qrCode;
         }
@@ -609,6 +609,135 @@ public class QrCodeRepository(ApplicationDbContext context, ILogger<QrCodeReposi
         catch (Exception ex)
         {
             logger.LogError(ex, "An error occurred while beginning database transaction");
+            throw;
+        }
+    }
+    #endregion
+
+    #region GetScanHistoryAsync
+    public async Task<attendance_monitoring.Models.DTO.Response.PagedResult<AttendanceRecord>> GetScanHistoryAsync(
+        int qrCodeId,
+        int pageNumber,
+        int pageSize)
+    {
+        try
+        {
+            var query = context.AttendanceRecords
+                .Where(ar => ar.QrCodeId == qrCodeId)
+                .Where(ar => !ar.Student.IsDeleted)
+                .Include(ar => ar.Student)
+                    .ThenInclude(s => s.User)
+                .Include(ar => ar.Session)
+                    .ThenInclude(s => s!.Schedule)
+                        .ThenInclude(sch => sch!.Subject)
+                .Include(ar => ar.Session)
+                    .ThenInclude(s => s!.Schedule)
+                        .ThenInclude(sch => sch!.Section)
+                .OrderByDescending(ar => ar.CheckInTime);
+
+            var totalCount = await query.CountAsync().ConfigureAwait(false);
+
+            var items = await query
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .AsNoTracking()
+                .ToListAsync()
+                .ConfigureAwait(false);
+
+            return new attendance_monitoring.Models.DTO.Response.PagedResult<AttendanceRecord>
+            {
+                Items = items,
+                TotalCount = totalCount,
+                PageNumber = pageNumber,
+                PageSize = pageSize
+            };
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "An error occurred while retrieving scan history for QR code ID {QrCodeId}", qrCodeId);
+            throw;
+        }
+    }
+    #endregion
+
+    #region GetScanHistoryByHashAsync
+    public async Task<attendance_monitoring.Models.DTO.Response.PagedResult<AttendanceRecord>> GetScanHistoryByHashAsync(
+        string qrHash,
+        int pageNumber,
+        int pageSize)
+    {
+        try
+        {
+            // First, find the QR code by hash
+            var qrCode = await context.QrCodes
+                .AsNoTracking()
+                .FirstOrDefaultAsync(qr => qr.QrHash == qrHash)
+                .ConfigureAwait(false);
+
+            if (qrCode == null)
+            {
+                return new attendance_monitoring.Models.DTO.Response.PagedResult<AttendanceRecord>
+                {
+                    Items = new List<AttendanceRecord>(),
+                    TotalCount = 0,
+                    PageNumber = pageNumber,
+                    PageSize = pageSize
+                };
+            }
+
+            // Reuse the ID-based method
+            return await GetScanHistoryAsync(qrCode.Id, pageNumber, pageSize).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "An error occurred while retrieving scan history for QR hash {QrHash}", qrHash);
+            throw;
+        }
+    }
+    #endregion
+
+    #region GetScanStatisticsAsync
+    public async Task<(int totalScans, int uniqueStudents, Dictionary<string, int> statusBreakdown, DateTime? firstScan, DateTime? lastScan)> GetScanStatisticsAsync(
+        int qrCodeId)
+    {
+        try
+        {
+            // Get aggregated statistics directly from SQL
+            var stats = await context.AttendanceRecords
+                .Where(ar => ar.QrCodeId == qrCodeId)
+                .Where(ar => !ar.Student.IsDeleted)
+                .GroupBy(ar => 1) // Group all records together
+                .Select(g => new
+                {
+                    TotalScans = g.Count(),
+                    UniqueStudents = g.Select(ar => ar.StudentId).Distinct().Count(),
+                    FirstScan = g.Min(ar => ar.CheckInTime),
+                    LastScan = g.Max(ar => ar.CheckInTime)
+                })
+                .AsNoTracking()
+                .FirstOrDefaultAsync()
+                .ConfigureAwait(false);
+
+            if (stats == null)
+            {
+                return (0, 0, new Dictionary<string, int>(), null, null);
+            }
+
+            // Get status breakdown separately (can't be combined with above due to EF limitations)
+            var statusBreakdown = await context.AttendanceRecords
+                .Where(ar => ar.QrCodeId == qrCodeId)
+                .Where(ar => !ar.Student.IsDeleted)
+                .GroupBy(ar => ar.Status)
+                .Select(g => new { Status = g.Key, Count = g.Count() })
+                .AsNoTracking()
+                .ToDictionaryAsync(x => x.Status.ToString(), x => x.Count)
+                .ConfigureAwait(false);
+
+            return (stats.TotalScans, stats.UniqueStudents, statusBreakdown, stats.FirstScan, stats.LastScan);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "An error occurred while retrieving scan statistics for QR code ID {QrCodeId}", qrCodeId);
             throw;
         }
     }
