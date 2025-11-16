@@ -26,3 +26,6 @@ jobs:
     
     - name: Test
       run: dotnet test --no-restore --verbosity normal
+
+    - name: Check
+      run: make check
