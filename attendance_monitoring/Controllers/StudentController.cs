@@ -305,4 +305,88 @@ public class StudentController(IStudentService studentService, ILogger<StudentCo
             return StatusCode(500, "An error occurred while retrieving your subjects");
         }
     }
+
+    /// <summary>
+    /// Search students by name with pagination
+    /// </summary>
+    /// <param name="query">The search term to match against first or last name (minimum 2 characters)</param>
+    /// <param name="pageNumber">The page number (1-based, default: 1)</param>
+    /// <param name="pageSize">The number of items per page (1-100, default: 50)</param>
+    /// <returns>A paginated list of students matching the search criteria</returns>
+    /// <response code="200">Returns the paginated list of students (empty list if no matches)</response>
+    /// <response code="400">Invalid query parameter or pagination values</response>
+    /// <response code="401">User is not authenticated or not authorized</response>
+    /// <response code="500">Internal server error</response>
+    // GET: api/students/search/name?query=john&pageNumber=1&pageSize=50
+    [HttpGet("search/name")]
+    [Authorize(Policy = "PrivilegedPolicy")]
+    public async Task<ActionResult<IEnumerable<Student>>> SearchStudentsByName(
+        [FromQuery] string query,
+        [FromQuery] int pageNumber = 1,
+        [FromQuery] int pageSize = 50)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(query))
+            {
+                logger.LogWarning("Student name search failed: Query parameter is required");
+                return BadRequest("Query parameter is required");
+            }
+
+            logger.LogInformation("Searching students by name with query: {Query}, page: {PageNumber}, size: {PageSize}",
+                query, pageNumber, pageSize);
+
+            var students = await studentService.SearchStudentsByNameAsync(query, pageNumber, pageSize);
+
+            logger.LogInformation("Successfully retrieved students for name search query: {Query}", query);
+            return Ok(students);
+        }
+        catch (EntityServiceException ex)
+        {
+            logger.LogError(ex, "Service error occurred while searching students by name");
+            return BadRequest(ex.Message);
+        }
+    }
+
+    /// <summary>
+    /// Search students by email with pagination
+    /// </summary>
+    /// <param name="query">The search term to match against user email (minimum 2 characters)</param>
+    /// <param name="pageNumber">The page number (1-based, default: 1)</param>
+    /// <param name="pageSize">The number of items per page (1-100, default: 50)</param>
+    /// <returns>A paginated list of students matching the search criteria</returns>
+    /// <response code="200">Returns the paginated list of students (empty list if no matches)</response>
+    /// <response code="400">Invalid query parameter or pagination values</response>
+    /// <response code="401">User is not authenticated or not authorized</response>
+    /// <response code="500">Internal server error</response>
+    // GET: api/students/search/email?query=@example.com&pageNumber=1&pageSize=50
+    [HttpGet("search/email")]
+    [Authorize(Policy = "PrivilegedPolicy")]
+    public async Task<ActionResult<IEnumerable<Student>>> SearchStudentsByEmail(
+        [FromQuery] string query,
+        [FromQuery] int pageNumber = 1,
+        [FromQuery] int pageSize = 50)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(query))
+            {
+                logger.LogWarning("Student email search failed: Query parameter is required");
+                return BadRequest("Query parameter is required");
+            }
+
+            logger.LogInformation("Searching students by email with query: {Query}, page: {PageNumber}, size: {PageSize}",
+                query, pageNumber, pageSize);
+
+            var students = await studentService.SearchStudentsByEmailAsync(query, pageNumber, pageSize);
+
+            logger.LogInformation("Successfully retrieved students for email search query: {Query}", query);
+            return Ok(students);
+        }
+        catch (EntityServiceException ex)
+        {
+            logger.LogError(ex, "Service error occurred while searching students by email");
+            return BadRequest(ex.Message);
+        }
+    }
 }
