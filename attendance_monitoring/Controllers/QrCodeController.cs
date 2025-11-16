@@ -2,6 +2,7 @@ using System.Text.Json;
 using attendance_monitoring.IServices;
 using attendance_monitoring.Models.DTO.Request;
 using attendance_monitoring.Exceptions;
+using attendance_monitoring.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using QRCoder;

@@ -268,7 +268,6 @@ public class QrCodeService : IQrCodeService
                     .Where(ar => ar.QrCodeId == qrCodeId)
                     .Where(ar => !ar.Student.IsDeleted)
                     .Select(ar => ar.CheckInTime)
-                    .AsNoTracking()
                     .ToListAsync();
 
                 if (allScanTimes.Any())
