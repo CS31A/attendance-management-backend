@@ -163,4 +163,39 @@ public class StudentRepository(ApplicationDbContext context) : IStudentRepositor
             .ConfigureAwait(false);
     }
     #endregion
+
+    #region SearchStudentsByNameAsync
+    public async Task<IEnumerable<Student>> SearchStudentsByNameAsync(string searchTerm, int pageNumber, int pageSize)
+    {
+        return await context.Students
+            .Include(s => s.User)
+            .AsNoTracking()
+            .Where(s => !s.IsDeleted &&
+                   (EF.Functions.Like(s.Firstname, $"%{searchTerm}%") ||
+                    EF.Functions.Like(s.Lastname, $"%{searchTerm}%")))
+            .OrderBy(s => s.Lastname)
+            .ThenBy(s => s.Firstname)
+            .Skip((pageNumber - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync()
+            .ConfigureAwait(false);
+    }
+    #endregion
+
+    #region SearchStudentsByEmailAsync
+    public async Task<IEnumerable<Student>> SearchStudentsByEmailAsync(string searchTerm, int pageNumber, int pageSize)
+    {
+        return await context.Students
+            .Include(s => s.User)
+            .AsNoTracking()
+            .Where(s => !s.IsDeleted &&
+                   s.User != null &&
+                   EF.Functions.Like(s.User.Email!, $"%{searchTerm}%"))
+            .OrderBy(s => s.User!.Email)
+            .Skip((pageNumber - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync()
+            .ConfigureAwait(false);
+    }
+    #endregion
 }
