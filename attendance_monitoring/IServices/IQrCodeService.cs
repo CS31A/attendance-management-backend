@@ -50,14 +50,14 @@ public interface IQrCodeService
     /// Get scan history for a QR code by ID
     /// </summary>
     /// <param name="qrCodeId">The QR code ID</param>
-    /// <param name="userId">The authenticated user's ID</param>
+    /// <param name="instructorId">The authenticated instructor's ID</param>
     /// <param name="userRole">The authenticated user's role</param>
     /// <param name="pageNumber">Page number (default: 1)</param>
     /// <param name="pageSize">Page size (default: 50, max: 100)</param>
     /// <returns>Complete scan history response with pagination and statistics</returns>
     Task<QrCodeScanHistoryResponseDto> GetScanHistoryAsync(
         int qrCodeId,
-        int userId,
+        int instructorId,
         string userRole,
         int pageNumber = 1,
         int pageSize = 50);
@@ -66,14 +66,14 @@ public interface IQrCodeService
     /// Get scan history for a QR code by hash
     /// </summary>
     /// <param name="qrHash">The QR code hash</param>
-    /// <param name="userId">The authenticated user's ID</param>
+    /// <param name="instructorId">The authenticated instructor's ID</param>
     /// <param name="userRole">The authenticated user's role</param>
     /// <param name="pageNumber">Page number (default: 1)</param>
     /// <param name="pageSize">Page size (default: 50, max: 100)</param>
     /// <returns>Complete scan history response with pagination and statistics</returns>
     Task<QrCodeScanHistoryResponseDto> GetScanHistoryByHashAsync(
         string qrHash,
-        int userId,
+        int instructorId,
         string userRole,
         int pageNumber = 1,
         int pageSize = 50);
