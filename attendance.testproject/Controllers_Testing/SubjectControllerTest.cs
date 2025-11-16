@@ -52,11 +52,11 @@ public class SubjectControllerTest
         // Arrange
         _mockSubjectService
             .Setup(s => s.GetAllSubjectsAsync())
-            .ThrowsAsync(new SubjectServiceException("GetAllSubjects", "Service error"));
+            .ThrowsAsync(new EntityServiceException("Subject", "GetAllSubjects", "Service error"));
 
         // Act & Assert
         // The controller no longer catches generic exceptions - they propagate to the global handler
-        await Assert.ThrowsAsync<SubjectServiceException>(() => _controller.GetSubjects());
+        await Assert.ThrowsAsync<EntityServiceException>(() => _controller.GetSubjects());
     }
 
     #endregion
