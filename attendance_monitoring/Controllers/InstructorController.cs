@@ -141,6 +141,30 @@ public class InstructorController(IInstructorService instructorService, ILogger<
         }
     }
 
+    // GET: api/instructors/me/schedules
+    [HttpGet("me/schedules")]
+    [Authorize(Policy = "PrivilegedPolicy")]
+    public async Task<ActionResult<IEnumerable<ScheduleResponseDto>>> GetMySchedules()
+    {
+        try
+        {
+            logger.LogInformation("Getting schedules for authenticated instructor");
+            var schedules = await instructorService.GetSchedulesByInstructorAsync(User);
+            logger.LogInformation("Successfully retrieved {Count} schedules for authenticated instructor", schedules.Count());
+            return Ok(schedules);
+        }
+        catch (EntityNotFoundException<string> ex)
+        {
+            logger.LogWarning(ex, "Instructor not found for authenticated user");
+            return NotFound("No instructor record found for the current user");
+        }
+        catch (EntityServiceException ex)
+        {
+            logger.LogError(ex, "Service error occurred while retrieving instructor schedules");
+            return StatusCode(500, "An error occurred while retrieving the schedules");
+        }
+    }
+
     #endregion
 
     #region Update Operations
