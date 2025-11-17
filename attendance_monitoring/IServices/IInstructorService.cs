@@ -10,6 +10,7 @@ public interface IInstructorService
     Task<IEnumerable<Instructor>> GetAllInstructorsAsync();
     Task<Instructor> GetInstructorByIdAsync(int id);
     Task<IEnumerable<SubjectResponseDto>> GetSubjectsByInstructorIdAsync(int instructorId);
+    Task<IEnumerable<ScheduleResponseDto>> GetSchedulesByInstructorAsync(ClaimsPrincipal user);
     Task<InstructorProfileResponseDto?> GetInstructorProfileAsync(ClaimsPrincipal user);
     Task<(Instructor?, string?)> CreateInstructorAsync(CreateInstructor createInstructor, ClaimsPrincipal user);
     Task<Instructor> UpdateInstructorAsync(int id, UpdateInstructor updateInstructor, ClaimsPrincipal user);
