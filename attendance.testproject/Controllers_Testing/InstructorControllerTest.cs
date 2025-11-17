@@ -59,4 +59,105 @@ public class InstructorControllerTest
     }
 
     #endregion
+
+    #region GetMySchedules Tests
+
+    [Fact]
+    public async Task GetMySchedules_ReturnsOkResult_WithSchedulesList()
+    {
+        // Arrange
+        var expectedSchedules = new List<ScheduleResponseDto>
+        {
+            new ScheduleResponseDto
+            {
+                Id = 1,
+                TimeIn = new TimeOnly(8, 0),
+                TimeOut = new TimeOnly(10, 0),
+                DayOfWeek = "Monday",
+                Subject = new SubjectResponseDto { Id = 1, Name = "Math", Code = "MATH101" },
+                Classroom = new ClassroomResponseDto { Id = 1, Name = "Room 101" },
+                Section = new SectionResponseDto { Id = 1, Name = "Section A", CourseId = 1 },
+                Instructor = new InstructorResponseDto { Id = 1, Firstname = "John", Lastname = "Doe" }
+            },
+            new ScheduleResponseDto
+            {
+                Id = 2,
+                TimeIn = new TimeOnly(10, 0),
+                TimeOut = new TimeOnly(12, 0),
+                DayOfWeek = "Tuesday",
+                Subject = new SubjectResponseDto { Id = 2, Name = "Science", Code = "SCI101" },
+                Classroom = new ClassroomResponseDto { Id = 2, Name = "Room 102" },
+                Section = new SectionResponseDto { Id = 2, Name = "Section B", CourseId = 1 },
+                Instructor = new InstructorResponseDto { Id = 1, Firstname = "John", Lastname = "Doe" }
+            }
+        };
+        _mockInstructorService
+            .Setup(s => s.GetSchedulesByInstructorAsync(It.IsAny<ClaimsPrincipal>()))
+            .ReturnsAsync(expectedSchedules);
+
+        // Act
+        var result = await _instructorController.GetMySchedules();
+
+        // Assert
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        var schedules = Assert.IsAssignableFrom<IEnumerable<ScheduleResponseDto>>(okResult.Value);
+        Assert.Equal(2, schedules.Count());
+        _mockInstructorService.Verify(s => s.GetSchedulesByInstructorAsync(It.IsAny<ClaimsPrincipal>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task GetMySchedules_ReturnsOkResult_WithEmptyList_WhenNoSchedules()
+    {
+        // Arrange
+        var expectedSchedules = new List<ScheduleResponseDto>();
+        _mockInstructorService
+            .Setup(s => s.GetSchedulesByInstructorAsync(It.IsAny<ClaimsPrincipal>()))
+            .ReturnsAsync(expectedSchedules);
+
+        // Act
+        var result = await _instructorController.GetMySchedules();
+
+        // Assert
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        var schedules = Assert.IsAssignableFrom<IEnumerable<ScheduleResponseDto>>(okResult.Value);
+        Assert.Empty(schedules);
+        _mockInstructorService.Verify(s => s.GetSchedulesByInstructorAsync(It.IsAny<ClaimsPrincipal>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task GetMySchedules_ReturnsNotFound_WhenInstructorNotFound()
+    {
+        // Arrange
+        _mockInstructorService
+            .Setup(s => s.GetSchedulesByInstructorAsync(It.IsAny<ClaimsPrincipal>()))
+            .ThrowsAsync(new attendance_monitoring.Exceptions.EntityNotFoundException<string>("Instructor", "UserId: 1"));
+
+        // Act
+        var result = await _instructorController.GetMySchedules();
+
+        // Assert
+        var notFoundResult = Assert.IsType<NotFoundObjectResult>(result.Result);
+        Assert.Equal("No instructor record found for the current user", notFoundResult.Value);
+        _mockInstructorService.Verify(s => s.GetSchedulesByInstructorAsync(It.IsAny<ClaimsPrincipal>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task GetMySchedules_ReturnsInternalServerError_WhenServiceExceptionOccurs()
+    {
+        // Arrange
+        _mockInstructorService
+            .Setup(s => s.GetSchedulesByInstructorAsync(It.IsAny<ClaimsPrincipal>()))
+            .ThrowsAsync(new attendance_monitoring.Exceptions.EntityServiceException("Instructor", "GetSchedulesByInstructor", "Service error"));
+
+        // Act
+        var result = await _instructorController.GetMySchedules();
+
+        // Assert
+        var statusCodeResult = Assert.IsType<ObjectResult>(result.Result);
+        Assert.Equal(500, statusCodeResult.StatusCode);
+        Assert.Equal("An error occurred while retrieving the schedules", statusCodeResult.Value);
+        _mockInstructorService.Verify(s => s.GetSchedulesByInstructorAsync(It.IsAny<ClaimsPrincipal>()), Times.Once);
+    }
+
+    #endregion
 }
