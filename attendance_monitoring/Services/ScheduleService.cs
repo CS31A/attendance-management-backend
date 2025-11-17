@@ -278,7 +278,7 @@ namespace attendance_monitoring.Services
         
         #region Helper Methods
         
-        private static ScheduleResponseDto MapToResponseDto(Schedules schedule)
+        public static ScheduleResponseDto MapToResponseDto(Schedules schedule)
         {
             return new ScheduleResponseDto
             {
