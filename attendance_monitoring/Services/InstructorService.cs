@@ -149,6 +149,58 @@ namespace attendance_monitoring.Services
         }
         #endregion
 
+        #region GetSchedulesByInstructorAsync
+        /// <summary>
+        /// Retrieves all schedules for the current authenticated instructor
+        /// </summary>
+        /// <param name="userPrincipal">The claims principal of the current user</param>
+        /// <returns>A collection of schedules for the instructor</returns>
+        /// <exception cref="T:attendance_monitoring.Exceptions.EntityNotFoundException{System.String}">Thrown when the instructor is not found</exception>
+        /// <exception cref="EntityServiceException">Thrown when an error occurs during retrieval</exception>
+        public async Task<IEnumerable<ScheduleResponseDto>> GetSchedulesByInstructorAsync(ClaimsPrincipal userPrincipal)
+        {
+            try
+            {
+                _logger.LogInformation("Retrieving schedules for authenticated instructor");
+                
+                // Extract user ID from JWT claims
+                var userId = await _userContextService.GetUserIdAsync(userPrincipal).ConfigureAwait(false);
+                if (string.IsNullOrEmpty(userId))
+                {
+                    _logger.LogWarning("User ID not found in JWT claims");
+                    throw new EntityNotFoundException<string>("User", userId ?? "null");
+                }
+
+                // Get instructor by user ID
+                var instructor = await _instructorRepository.GetInstructorByUserIdAsync(userId).ConfigureAwait(false);
+                if (instructor == null)
+                {
+                    _logger.LogWarning("No instructor record found for user ID: {UserId}", userId);
+                    throw new EntityNotFoundException<string>("Instructor", $"UserId: {userId}");
+                }
+
+                // Get schedules for instructor
+                var schedules = await _scheduleRepository.GetSchedulesByInstructorIdAsync(instructor.Id).ConfigureAwait(false);
+                var scheduleDtos = schedules.Select(ScheduleService.MapToResponseDto).ToList();
+
+                _logger.LogInformation("Successfully retrieved {Count} schedules for instructor ID: {InstructorId}", 
+                    scheduleDtos.Count, instructor.Id);
+                return scheduleDtos;
+            }
+            catch (EntityNotFoundException<string>)
+            {
+                // Re-throw EntityNotFoundException as-is
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error occurred while retrieving schedules for authenticated instructor");
+                throw new EntityServiceException("Instructor", "GetSchedulesByInstructor", 
+                    "An error occurred while retrieving instructor schedules", ex);
+            }
+        }
+        #endregion
+
         #region GetInstructorProfileAsync
         /// <summary>
         /// Retrieves the instructor profile for the current authenticated user
