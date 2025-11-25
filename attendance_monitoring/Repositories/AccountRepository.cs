@@ -101,6 +101,20 @@ namespace attendance_monitoring.Repositories
 
         }
 
+        public async Task<IEnumerable<GetAllUsersDto>> GetAllUsersAsyncSP()
+        {
+            var connection = context.Database.GetDbConnection();
+
+            if (connection.State != ConnectionState.Open)
+                await connection.OpenAsync();
+
+            var users = await connection.QueryAsync<GetAllUsersDto>(
+                "sp_GetAllUsers",
+                commandType: CommandType.StoredProcedure
+            );
+            return users;
+        }
+
         #region User Lookup Methods
 
         #region FindUserByIdAsync
