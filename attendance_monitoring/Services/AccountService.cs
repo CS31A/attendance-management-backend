@@ -30,7 +30,7 @@ namespace attendance_monitoring.Services
 
         public async Task<IEnumerable<GetAllUsersDto>> GetAllUsersAsync()
         {
-            return await accountRepository.GetAllUsersAsync().ConfigureAwait(false);
+            return await accountRepository.GetAllUsersAsyncSP().ConfigureAwait(false);
         }
 
         #region Registration Methods
