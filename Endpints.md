@@ -55,6 +55,7 @@ This document lists all the API endpoints for the attendance monitoring system.
 - `GET /api/instructors/{id}`: Get a specific instructor by ID
 - `GET /api/instructors/{instructorId}/subjects`: Get all subjects assigned to a specific instructor
 - `GET /api/instructors/profile`: Get the profile of the currently authenticated instructor
+- `GET /api/instructors/me/schedules`: Get schedules for the currently authenticated instructor
 - `PATCH /api/instructors/{id}`: Update an instructor record
 - `PATCH /api/instructors/{id}/soft-delete`: Soft delete an instructor record
 - `DELETE /api/instructors/{id}`: Hard delete an instructor record
@@ -63,10 +64,16 @@ This document lists all the API endpoints for the attendance monitoring system.
 ## QrCodeController
 
 - `POST /api/QrCode/generate`: Generates a new QR code, saves it to database, and returns the PNG image
+- `POST /api/QrCode/scan`: Scans a QR code and records attendance for a student
+- `GET /api/QrCode/validate/{qrHash}`: Validates a QR code without recording attendance
 - `PATCH /api/QrCode/{id}/revoke`: Revokes a QR code by ID
 - `PATCH /api/QrCode/hash/{qrHash}/revoke`: Revokes a QR code by hash
 - `PATCH /api/QrCode/{id}/reactivate`: Reactivates a previously revoked QR code by ID
 - `PATCH /api/QrCode/hash/{qrHash}/reactivate`: Reactivates a previously revoked QR code by hash
+- `GET /api/QrCode/{id}`: Gets a QR code by its ID
+- `GET /api/QrCode/hash/{qrHash}`: Gets a QR code by its hash
+- `GET /api/QrCode/{id}/scan-history`: Get scan history for a QR code by ID
+- `GET /api/QrCode/hash/{qrHash}/scan-history`: Get scan history for a QR code by hash
 
 ## ScheduleController
 
@@ -104,6 +111,9 @@ This document lists all the API endpoints for the attendance monitoring system.
 
 - `GET /api/students`: Get a list of all non-deleted students
 - `GET /api/students/{id}`: Get a specific student by ID
+- `GET /api/students/my-subjects`: Get subjects for the currently authenticated student
+- `GET /api/students/search/name`: Search students by name
+- `GET /api/students/search/email`: Search students by email
 - `PATCH /api/students/{id}`: Update a student record
 - `PATCH /api/students/{id}/soft-delete`: Soft delete a student record
 - `DELETE /api/students/{id}`: Hard delete a student record
