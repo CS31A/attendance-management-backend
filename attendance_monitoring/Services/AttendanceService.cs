@@ -47,16 +47,6 @@ public class AttendanceService(
             throw new EntityNotFoundException<int>("Session", request.SessionId);
         }
 
-        // Check if attendance record already exists
-        var existingRecord = await attendanceRepository.HasAttendanceRecordAsync(request.StudentId, request.SessionId)
-            .ConfigureAwait(false);
-        if (existingRecord)
-        {
-            logger.LogWarning("Attendance record already exists for StudentId: {StudentId}, SessionId: {SessionId}",
-                request.StudentId, request.SessionId);
-            throw new InvalidOperationException("Attendance record already exists for this student and session");
-        }
-
         // Verify student is enrolled in the session's section/subject
         var isEnrolled = await VerifyStudentEnrollmentAsync(request.StudentId, session).ConfigureAwait(false);
         if (!isEnrolled)
@@ -82,18 +72,30 @@ public class AttendanceService(
             EnteredBy = currentUserId
         };
 
-        var createdRecord = await attendanceRepository.CreateAsync(attendanceRecord).ConfigureAwait(false);
-        await attendanceRepository.SaveChangesAsync().ConfigureAwait(false);
-
-        logger.LogInformation("Successfully created attendance record with ID: {Id}", createdRecord.Id);
-
-        // Reload with navigation properties
-        var recordWithNav = await attendanceRepository.GetByIdAsync(createdRecord.Id).ConfigureAwait(false);
-        if (recordWithNav == null)
+        // Create attendance record - rely on database composite unique index to prevent duplicates
+        try
         {
-            throw new EntityNotFoundException<int>("AttendanceRecord", createdRecord.Id, $"Attendance record with ID {createdRecord.Id} was not found after creation");
+            var createdRecord = await attendanceRepository.CreateAsync(attendanceRecord).ConfigureAwait(false);
+            await attendanceRepository.SaveChangesAsync().ConfigureAwait(false);
+
+            logger.LogInformation("Successfully created attendance record with ID: {Id}", createdRecord.Id);
+
+            // Reload with navigation properties
+            var recordWithNav = await attendanceRepository.GetByIdAsync(createdRecord.Id).ConfigureAwait(false);
+            if (recordWithNav == null)
+            {
+                throw new EntityNotFoundException<int>("AttendanceRecord", createdRecord.Id, $"Attendance record with ID {createdRecord.Id} was not found after creation");
+            }
+            return MapToResponseDto(recordWithNav);
         }
-        return MapToResponseDto(recordWithNav);
+        catch (DbUpdateException ex) when (ex.InnerException?.Message.Contains("UNIQUE constraint") == true ||
+                                            ex.InnerException?.Message.Contains("duplicate key") == true ||
+                                            ex.InnerException?.Message.Contains("IX_AttendanceRecords_StudentId_SessionId") == true)
+        {
+            logger.LogWarning(ex, "Duplicate attendance - race condition detected for StudentId: {StudentId}, SessionId: {SessionId}",
+                request.StudentId, request.SessionId);
+            throw new InvalidOperationException("Attendance record already exists for this student and session");
+        }
     }
 
     /// <summary>
@@ -103,16 +105,6 @@ public class AttendanceService(
     {
         logger.LogInformation("Creating attendance record from QR scan for StudentId: {StudentId}, SessionId: {SessionId}",
             studentId, sessionId);
-
-        // Check if attendance record already exists
-        var existingRecord = await attendanceRepository.HasAttendanceRecordAsync(studentId, sessionId)
-            .ConfigureAwait(false);
-        if (existingRecord)
-        {
-            logger.LogWarning("Duplicate QR scan - attendance already exists for StudentId: {StudentId}, SessionId: {SessionId}",
-                studentId, sessionId);
-            throw new InvalidOperationException("duplicate - Attendance record already exists for this student and session");
-        }
 
         // Get session to determine status
         var session = await sessionRepository.GetSessionByIdAsync(sessionId).ConfigureAwait(false);
@@ -136,18 +128,30 @@ public class AttendanceService(
             IsManualEntry = false
         };
 
-        var createdRecord = await attendanceRepository.CreateAsync(attendanceRecord).ConfigureAwait(false);
-        await attendanceRepository.SaveChangesAsync().ConfigureAwait(false);
-
-        logger.LogInformation("Successfully created attendance record from QR scan with ID: {Id}", createdRecord.Id);
-
-        // Reload with navigation properties
-        var recordWithNav = await attendanceRepository.GetByIdAsync(createdRecord.Id).ConfigureAwait(false);
-        if (recordWithNav == null)
+        // Create attendance record - rely on database composite unique index to prevent duplicates
+        try
         {
-            throw new EntityNotFoundException<int>("AttendanceRecord", createdRecord.Id, $"Attendance record with ID {createdRecord.Id} was not found after creation");
+            var createdRecord = await attendanceRepository.CreateAsync(attendanceRecord).ConfigureAwait(false);
+            await attendanceRepository.SaveChangesAsync().ConfigureAwait(false);
+
+            logger.LogInformation("Successfully created attendance record from QR scan with ID: {Id}", createdRecord.Id);
+
+            // Reload with navigation properties
+            var recordWithNav = await attendanceRepository.GetByIdAsync(createdRecord.Id).ConfigureAwait(false);
+            if (recordWithNav == null)
+            {
+                throw new EntityNotFoundException<int>("AttendanceRecord", createdRecord.Id, $"Attendance record with ID {createdRecord.Id} was not found after creation");
+            }
+            return MapToResponseDto(recordWithNav);
         }
-        return MapToResponseDto(recordWithNav);
+        catch (DbUpdateException ex) when (ex.InnerException?.Message.Contains("UNIQUE constraint") == true ||
+                                            ex.InnerException?.Message.Contains("duplicate key") == true ||
+                                            ex.InnerException?.Message.Contains("IX_AttendanceRecords_StudentId_SessionId") == true)
+        {
+            logger.LogWarning(ex, "Duplicate QR scan - race condition detected for StudentId: {StudentId}, SessionId: {SessionId}",
+                studentId, sessionId);
+            throw new InvalidOperationException("duplicate - Attendance record already exists for this student and session");
+        }
     }
 
     #endregion
