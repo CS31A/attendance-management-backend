@@ -17,6 +17,12 @@ namespace attendance_monitoring.IRepository
         Task<IEnumerable<GetAllUsersDto>> GetAllUsersAsync();
 
         /// <summary>
+        /// Retrieves all users with role-specific information using stored procedure.
+        /// </summary>
+        /// <returns>A collection of user DTOs with role and profile information.</returns>
+        Task<IEnumerable<GetAllUsersDto>> GetAllUsersAsyncSP();
+
+        /// <summary>
         /// Finds a user by their ID.
         /// </summary>
         /// <param name="id">The user ID.</param>
