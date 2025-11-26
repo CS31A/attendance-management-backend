@@ -318,17 +318,114 @@ namespace attendance_monitoring.Repositories
         }
         #endregion
 
-        #endregion
-
-        #region Utility Methods
-
-        #region SaveChangesAsync
+        /// <summary>
+        /// Saves changes to the database.
+        /// </summary>
         public async Task<int> SaveChangesAsync()
         {
             return await context.SaveChangesAsync().ConfigureAwait(false);
         }
+
+        /// <summary>
+        /// Soft deletes a user by marking their profile as deleted using stored procedure
+        /// </summary>
+        public async Task<(bool Success, string Message)> DeleteUserAsyncSP(string userId)
+        {
+            using var connection = context.Database.GetDbConnection();
+            if (connection.State != ConnectionState.Open)
+                await connection.OpenAsync().ConfigureAwait(false);
+
+            var parameters = new { UserId = userId };
+
+            try
+            {
+                var result = await connection.QueryFirstOrDefaultAsync<dynamic>(
+                    "sp_DeleteUser",
+                    parameters,
+                    commandType: CommandType.StoredProcedure
+                ).ConfigureAwait(false);
+
+                if (result != null)
+                {
+                    bool success = result.Success;
+                    string message = result.Message ?? "Unknown error";
+                    return (success, message);
+                }
+
+                return (false, "No response from stored procedure");
+            }
+            catch (Exception ex)
+            {
+                return (false, $"Database error: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Updates user profile using stored procedure
+        /// </summary>
+        public async Task<(bool Success, GetAllUsersDto? User, string Message)> UpdateUserAsyncSP(
+            string userId,
+            string? email = null,
+            string? firstname = null,
+            string? lastname = null,
+            int? sectionId = null,
+            bool? isRegular = null)
+        {
+            using var connection = context.Database.GetDbConnection();
+            if (connection.State != ConnectionState.Open)
+                await connection.OpenAsync().ConfigureAwait(false);
+
+            var parameters = new
+            {
+                UserId = userId,
+                Email = email,
+                Firstname = firstname,
+                Lastname = lastname,
+                SectionId = sectionId,
+                IsRegular = isRegular
+            };
+
+            try
+            {
+                var result = await connection.QueryFirstOrDefaultAsync<dynamic>(
+                    "sp_UpdateUser",
+                    parameters,
+                    commandType: CommandType.StoredProcedure
+                ).ConfigureAwait(false);
+
+                if (result != null)
+                {
+                    bool success = result.Success;
+                    string message = result.Message ?? "Unknown error";
+
+                    if (success)
+                    {
+                        var userDto = new GetAllUsersDto
+                        {
+                            UserId = result.UserId,
+                            Username = result.Username,
+                            Email = result.Email,
+                            Role = result.Role,
+                            ProfileId = result.ProfileId,
+                            Firstname = result.Firstname,
+                            Lastname = result.Lastname,
+                            CreatedAt = result.CreatedAt,
+                            UpdatedAt = result.UpdatedAt
+                        };
+                        return (true, userDto, message);
+                    }
+
+                    return (false, null, message);
+                }
+
+                return (false, null, "No response from stored procedure");
+            }
+            catch (Exception ex)
+            {
+                return (false, null, $"Database error: {ex.Message}");
+            }
+        }
         #endregion
 
-        #endregion
     }
 }

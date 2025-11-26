@@ -342,7 +342,7 @@ public class SessionController(ISessionService sessionService, ILogger<SessionCo
     /// <response code="403">Not authorized to cancel this session</response>
     /// <response code="500">Internal server error</response>
     [HttpDelete("{id:int}")]
-    [Authorize(Policy = "InstructorPolicy")]
+    [Authorize(Policy = "PrivilegedPolicy")]
     public async Task<ActionResult<SessionResponseDto>> CancelSession(int id, [FromBody] CancelSession request)
     {
         logger.LogInformation("Cancelling session ID: {SessionId}", id);

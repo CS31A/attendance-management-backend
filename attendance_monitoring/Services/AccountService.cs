@@ -998,6 +998,80 @@ namespace attendance_monitoring.Services
             return (true, updatedProfile, null);
         }
         #endregion
+
+        #region AdminDeleteUserAsync
+        public async Task<(bool Success, string Message)> AdminDeleteUserAsync(string adminId, string targetUserId)
+        {
+            logger.LogInformation("Admin delete user attempt by admin {AdminId} for user {TargetUserId}", adminId, targetUserId);
+
+            // Verify admin has Admin role
+            var admin = await accountRepository.FindUserByIdAsync(adminId).ConfigureAwait(false);
+            if (admin == null)
+            {
+                logger.LogWarning("Admin delete failed: Admin not found for ID {AdminId}", adminId);
+                return (false, "Admin user not found");
+            }
+
+            var adminRoles = await accountRepository.GetUserRolesAsync(admin).ConfigureAwait(false);
+            if (!adminRoles.Contains("Admin", StringComparer.OrdinalIgnoreCase))
+            {
+                logger.LogWarning("Admin delete failed: User {AdminId} is not an admin", adminId);
+                return (false, "Unauthorized: Admin role required");
+            }
+
+            // Prevent admin from deleting themselves
+            if (adminId.Equals(targetUserId, StringComparison.OrdinalIgnoreCase))
+            {
+                logger.LogWarning("Admin {AdminId} attempted to delete themselves", adminId);
+                return (false, "Cannot delete your own account");
+            }
+
+            // Validate target user exists
+            var targetUser = await accountRepository.FindUserByIdAsync(targetUserId).ConfigureAwait(false);
+            if (targetUser == null)
+            {
+                logger.LogWarning("Admin delete failed: Target user not found for ID {TargetUserId}", targetUserId);
+                return (false, "Target user not found");
+            }
+
+            // Perform soft delete using stored procedure
+            var (success, message) = await accountRepository.DeleteUserAsyncSP(targetUserId).ConfigureAwait(false);
+
+            if (!success)
+            {
+                logger.LogWarning("Admin {AdminId} failed to delete user {TargetUserId}: {Message}", adminId, targetUserId, message);
+                return (false, message);
+            }
+
+            // Revoke all active refresh tokens for the deleted user
+            try
+            {
+                var activeRefreshTokens = await context.RefreshTokens
+                    .Where(rt => rt.UserId == targetUserId && !rt.IsRevoked && rt.ExpiresAt > DateTime.UtcNow)
+                    .ToListAsync().ConfigureAwait(false);
+
+                foreach (var token in activeRefreshTokens)
+                {
+                    token.IsRevoked = true;
+                    token.RevokedAt = DateTime.UtcNow;
+                }
+
+                if (activeRefreshTokens.Count > 0)
+                {
+                    await context.SaveChangesAsync().ConfigureAwait(false);
+                    logger.LogInformation("Revoked {TokenCount} active refresh tokens for deleted user {TargetUserId}", activeRefreshTokens.Count, targetUserId);
+                }
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "Failed to revoke tokens for deleted user {TargetUserId}, but user was deleted successfully", targetUserId);
+                // Continue - user is deleted even if token revocation fails
+            }
+
+            logger.LogInformation("Admin {AdminId} successfully deleted user {TargetUserId}", adminId, targetUserId);
+            return (true, message);
+        }
+        #endregion
         #endregion
     }
 }
