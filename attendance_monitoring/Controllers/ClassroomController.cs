@@ -10,7 +10,7 @@ namespace attendance_monitoring.Controllers;
 /// <summary>
 /// Controller for managing classroom records
 /// </summary>
-[Authorize(Policy = "AdminPolicy")]
+[Authorize(Policy = "PrivilegedPolicy")]
 [ApiController]
 [Route("api/classrooms")]
 public class ClassroomController(IClassroomService classroomService, ILogger<ClassroomController> logger) : ControllerBase
