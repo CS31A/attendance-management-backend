@@ -59,19 +59,12 @@ namespace attendance_monitoring.Services
                 return (result, null);
             }
 
-            // Map Instructor to Teacher (Instructor is an alias for Teacher)
-            var requestedRole = registerDto.Role;
-            if (!string.IsNullOrEmpty(requestedRole) && requestedRole.Equals("Instructor", StringComparison.OrdinalIgnoreCase))
-            {
-                requestedRole = "Teacher";
-            }
-
             var validRoles = new[] { "Admin", "Teacher", "Student" };
             // Role assignment logic (roles are now ensured to exist at application startup)
             var roleToAssign = "Student";
-            if (!string.IsNullOrEmpty(requestedRole) && validRoles.Contains(requestedRole, StringComparer.OrdinalIgnoreCase))
+            if (!string.IsNullOrEmpty(registerDto.Role) && validRoles.Contains(registerDto.Role, StringComparer.OrdinalIgnoreCase))
             {
-                roleToAssign = requestedRole;
+                roleToAssign = registerDto.Role;
             }
 
             // Defensive validation: Non-students should not have a SectionId

@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Configuration;
@@ -261,6 +261,37 @@ public class AccountControllerTest
         // Assert
         var badRequestResult = Assert.IsType<BadRequestObjectResult>(result.Result);
         Assert.NotNull(badRequestResult.Value);
+    }
+
+    [Fact]
+    public async Task Register_NormalizesInstructorToTeacher_BeforeCallingService()
+    {
+        // Arrange
+        var registerDto = new RegisterDto
+        {
+            Username = "instructoruser",
+            Password = "Test@123",
+            Email = "instructor@test.com",
+            RepeatedPassword = "Test@123",
+            Role = "Instructor"
+        };
+
+        RegisterDto capturedDto = null;
+        var identityResult = IdentityResult.Success;
+        var response = new RegisterResponseDto { Success = true, Message = "User registered successfully" };
+
+        _mockAccountService
+            .Setup(s => s.RegisterAsync(It.IsAny<RegisterDto>()))
+            .Callback<RegisterDto>(dto => capturedDto = dto) // Capture the DTO
+            .ReturnsAsync((identityResult, response));
+
+        // Act
+        await _accountController.Register(registerDto);
+
+        // Assert
+        Assert.NotNull(capturedDto);
+        Assert.Equal("Teacher", capturedDto.Role);
+        _mockAccountService.Verify(s => s.RegisterAsync(It.IsAny<RegisterDto>()), Times.Once);
     }
     #endregion
 
