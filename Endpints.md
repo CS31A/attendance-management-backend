@@ -17,6 +17,7 @@ This document lists all the API endpoints for the attendance monitoring system.
 - `POST /api/account/logout`: Logout user by blacklisting the access token and revoking all refresh tokens
 - `PATCH /api/Account/profile`: Update the current user's profile
 - `PATCH /api/Account/admin/users/{userId}`: Update any user's profile (admin only)
+- `DELETE /api/account/admin/users/{userId}`: Delete a user (soft delete) (admin only)
 
 ## AttendanceController
 
@@ -71,6 +72,8 @@ This document lists all the API endpoints for the attendance monitoring system.
 - `PATCH /api/QrCode/{id}/reactivate`: Reactivates a previously revoked QR code by ID
 - `PATCH /api/QrCode/hash/{qrHash}/reactivate`: Reactivates a previously revoked QR code by hash
 - `GET /api/QrCode/{id}`: Gets a QR code by its ID
+- `GET /api/QrCode/{id}/image`: Gets a QR code image by its ID
+- `GET /api/QrCode/session/{sessionId}`: Gets all QR codes for a specific session
 - `GET /api/QrCode/hash/{qrHash}`: Gets a QR code by its hash
 - `GET /api/QrCode/{id}/scan-history`: Get scan history for a QR code by ID
 - `GET /api/QrCode/hash/{qrHash}/scan-history`: Get scan history for a QR code by hash
