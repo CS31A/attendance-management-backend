@@ -59,6 +59,12 @@ public static class DependencyInjectionExtensions
         services.AddScoped<IStudentEnrollmentService, StudentEnrollmentService>();
         services.AddScoped<ISessionService, SessionService>();
         services.AddScoped<IAttendanceService, AttendanceService>();
+        services.AddScoped<IDataSeederService, DataSeederService>();
+
+        // SignalR and Notification services
+        services.AddSingleton<IUserConnectionManager, UserConnectionManager>();
+        services.AddSingleton<INotificationPreferenceService, InMemoryPreferenceService>();
+        services.AddScoped<INotificationService, NotificationService>();
 
         return services;
     }

@@ -22,6 +22,10 @@ public static class StartupExtensions
             var roleInitializationService = scope.ServiceProvider
                 .GetRequiredService<IRoleInitializationService>();
             await roleInitializationService.InitializeRolesAsync();
+
+            var dataSeederService = scope.ServiceProvider
+                .GetRequiredService<IDataSeederService>();
+            await dataSeederService.SeedDataAsync();
         }
     }
 }
