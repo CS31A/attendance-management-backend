@@ -170,5 +170,30 @@ namespace attendance_monitoring.IRepository
         /// <param name="newPassword">The new password.</param>
         /// <returns>The result of the password reset operation.</returns>
         Task<IdentityResult> AdminResetPasswordAsync(IdentityUser user, string newPassword);
+
+        /// <summary>
+        /// Soft deletes a user by marking their profile as deleted using stored procedure.
+        /// </summary>
+        /// <param name="userId">The user ID to delete.</param>
+        /// <returns>Tuple containing success flag and message.</returns>
+        Task<(bool Success, string Message)> DeleteUserAsyncSP(string userId);
+
+        /// <summary>
+        /// Updates user profile using stored procedure.
+        /// </summary>
+        /// <param name="userId">The user ID to update.</param>
+        /// <param name="email">New email (optional).</param>
+        /// <param name="firstname">New firstname (optional).</param>
+        /// <param name="lastname">New lastname (optional).</param>
+        /// <param name="sectionId">New section ID for students (optional).</param>
+        /// <param name="isRegular">New isRegular status for students (optional).</param>
+        /// <returns>Tuple containing success flag, updated user DTO, and message.</returns>
+        Task<(bool Success, GetAllUsersDto? User, string Message)> UpdateUserAsyncSP(
+            string userId,
+            string? email = null,
+            string? firstname = null,
+            string? lastname = null,
+            int? sectionId = null,
+            bool? isRegular = null);
     }
 }

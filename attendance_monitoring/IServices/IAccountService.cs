@@ -34,5 +34,13 @@ namespace attendance_monitoring.IServices
         /// <param name="adminUpdateDto">The profile update data including target user ID</param>
         /// <returns>Tuple containing success status, updated profile, and error message if applicable</returns>
         Task<(bool Success, UserProfileResponseDto? Profile, string? ErrorMessage)> AdminUpdateUserProfileAsync(string adminId, AdminUpdateUser adminUpdateDto);
+
+        /// <summary>
+        /// Admin deletes a user (soft delete)
+        /// </summary>
+        /// <param name="adminId">The ID of the admin performing the deletion</param>
+        /// <param name="targetUserId">The ID of the user to delete</param>
+        /// <returns>Tuple containing success status and message</returns>
+        Task<(bool Success, string Message)> AdminDeleteUserAsync(string adminId, string targetUserId);
     }
 }

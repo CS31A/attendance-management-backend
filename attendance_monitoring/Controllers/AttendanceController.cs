@@ -11,7 +11,7 @@ namespace attendance_monitoring.Controllers;
 /// Controller for managing attendance record operations.
 /// Handles CRUD operations for attendance tracking and reporting.
 /// </summary>
-[Authorize]
+[Authorize(Policy = "PrivilegedPolicy")]
 [ApiController]
 [Route("api/attendance")]
 public class AttendanceController(IAttendanceService attendanceService, ILogger<AttendanceController> logger) : ControllerBase
@@ -32,7 +32,6 @@ public class AttendanceController(IAttendanceService attendanceService, ILogger<
     /// <response code="409">Attendance record already exists</response>
     /// <response code="500">Internal server error</response>
     [HttpPost]
-    [Authorize(Roles = "Admin,Instructor")]
     public async Task<ActionResult<AttendanceRecordResponseDto>> CreateAttendance([FromBody] CreateAttendanceRequest request)
     {
         logger.LogInformation("Creating attendance record for StudentId: {StudentId}, SessionId: {SessionId}",
@@ -160,7 +159,6 @@ public class AttendanceController(IAttendanceService attendanceService, ILogger<
     /// <response code="404">Session not found</response>
     /// <response code="500">Internal server error</response>
     [HttpGet("session/{sessionId:int}")]
-    [Authorize(Roles = "Admin,Instructor")]
     public async Task<ActionResult<SessionAttendanceDto>> GetSessionAttendance(int sessionId)
     {
         logger.LogInformation("Getting session attendance for SessionId: {SessionId}", sessionId);
@@ -221,7 +219,6 @@ public class AttendanceController(IAttendanceService attendanceService, ILogger<
     /// <response code="404">Attendance record not found</response>
     /// <response code="500">Internal server error</response>
     [HttpPut("{id:int}")]
-    [Authorize(Roles = "Admin,Instructor")]
     public async Task<ActionResult<AttendanceRecordResponseDto>> UpdateAttendance(int id, [FromBody] UpdateAttendanceRequest request)
     {
         logger.LogInformation("Updating attendance record with ID: {Id}", id);
@@ -260,7 +257,6 @@ public class AttendanceController(IAttendanceService attendanceService, ILogger<
     /// <response code="404">Attendance record not found</response>
     /// <response code="500">Internal server error</response>
     [HttpDelete("{id:int}")]
-    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> DeleteAttendance(int id)
     {
         logger.LogInformation("Deleting attendance record with ID: {Id}", id);
