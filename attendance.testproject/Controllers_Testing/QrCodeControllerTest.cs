@@ -271,4 +271,109 @@ public class QrCodeControllerTest
                 It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
             Times.Exactly(2)); // Once for start, once for success
     }
+
+    [Fact]
+    public async Task GetQrCodeImage_WithValidId_ReturnsFileResult()
+    {
+        // Arrange
+        var qrCodeId = 1;
+        var mockQrCode = new attendance_monitoring.Models.DTO.Response.QrCodeResponseDto
+        {
+            Id = qrCodeId,
+            QrHash = "test-hash-123",
+            SessionId = 1,
+            GeneratedAt = DateTime.UtcNow,
+            ExpiresAt = DateTime.UtcNow.AddMinutes(30),
+            IsActive = true
+        };
+
+        _mockQrCodeService.Setup(s => s.GetQrCodeByIdAsync(qrCodeId))
+            .ReturnsAsync(mockQrCode);
+
+        // Act
+        var result = await _qrCodeController.GetQrCodeImage(qrCodeId);
+
+        // Assert
+        var fileResult = Assert.IsType<FileContentResult>(result);
+        Assert.Equal("image/png", fileResult.ContentType);
+        Assert.NotNull(fileResult.FileContents);
+        Assert.True(fileResult.FileContents.Length > 0);
+
+        // Verify logging
+        _mockLogger.Verify(
+            x => x.Log(
+                LogLevel.Information,
+                It.IsAny<EventId>(),
+                It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains($"Retrieving QR code image for ID: {qrCodeId}")),
+                null,
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+            Times.Once);
+
+        _mockLogger.Verify(
+            x => x.Log(
+                LogLevel.Information,
+                It.IsAny<EventId>(),
+                It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains($"Successfully generated image for QR code ID: {qrCodeId}")),
+                null,
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task GetQrCodeImage_WithInvalidId_ReturnsNotFound()
+    {
+        // Arrange
+        var qrCodeId = 999;
+        _mockQrCodeService.Setup(s => s.GetQrCodeByIdAsync(qrCodeId))
+            .ReturnsAsync((attendance_monitoring.Models.DTO.Response.QrCodeResponseDto?)null);
+
+        // Act
+        var result = await _qrCodeController.GetQrCodeImage(qrCodeId);
+
+        // Assert
+        var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
+        Assert.NotNull(notFoundResult.Value);
+
+        // Verify logging
+        _mockLogger.Verify(
+            x => x.Log(
+                LogLevel.Warning,
+                It.IsAny<EventId>(),
+                It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains($"QR code with ID {qrCodeId} not found")),
+                null,
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task GetQrCodeImage_ReturnsValidPngImage()
+    {
+        // Arrange
+        var qrCodeId = 5;
+        var mockQrCode = new attendance_monitoring.Models.DTO.Response.QrCodeResponseDto
+        {
+            Id = qrCodeId,
+            QrHash = "valid-hash-for-image-test",
+            SessionId = 1,
+            GeneratedAt = DateTime.UtcNow,
+            ExpiresAt = DateTime.UtcNow.AddMinutes(30),
+            IsActive = true
+        };
+
+        _mockQrCodeService.Setup(s => s.GetQrCodeByIdAsync(qrCodeId))
+            .ReturnsAsync(mockQrCode);
+
+        // Act
+        var result = await _qrCodeController.GetQrCodeImage(qrCodeId);
+
+        // Assert
+        var fileResult = Assert.IsType<FileContentResult>(result);
+        
+        // Verify PNG header (PNG files start with specific bytes: 89 50 4E 47)
+        Assert.True(fileResult.FileContents.Length > 8, "Image should have at least 8 bytes");
+        Assert.Equal(0x89, fileResult.FileContents[0]); // PNG signature byte 1
+        Assert.Equal(0x50, fileResult.FileContents[1]); // 'P'
+        Assert.Equal(0x4E, fileResult.FileContents[2]); // 'N'
+        Assert.Equal(0x47, fileResult.FileContents[3]); // 'G'
+    }
 }

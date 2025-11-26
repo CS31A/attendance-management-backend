@@ -198,6 +198,38 @@ public class QrCodeController(
     }
 
     /// <summary>
+    /// Gets a QR code image by its ID.
+    /// Regenerates the QR code image from the stored hash.
+    /// </summary>
+    /// <param name="id">The QR code ID.</param>
+    /// <returns>QR code image as PNG file.</returns>
+    [HttpGet("{id}/image")]
+    [Authorize(Policy = "PrivilegedPolicy")]
+    public async Task<IActionResult> GetQrCodeImage(int id)
+    {
+        logger.LogInformation("Retrieving QR code image for ID: {QrCodeId}", id);
+
+        var qrCode = await qrCodeService.GetQrCodeByIdAsync(id);
+
+        if (qrCode == null)
+        {
+            logger.LogWarning("QR code with ID {QrCodeId} not found", id);
+            return NotFound(new { message = $"QR code with ID {id} not found" });
+        }
+
+        // Regenerate QR image from hash (same logic as generate endpoint)
+        using var qrGenerator = new QRCodeGenerator();
+        using var qrCodeData = qrGenerator.CreateQrCode(qrCode.QrHash, QRCodeGenerator.ECCLevel.Q);
+        var qrCodeImage = new PngByteQRCode(qrCodeData);
+
+        // Get PNG as byte array
+        byte[] imageBytes = qrCodeImage.GetGraphic(20);
+
+        logger.LogInformation("Successfully generated image for QR code ID: {QrCodeId}", id);
+        return File(imageBytes, "image/png");
+    }
+
+    /// <summary>
     /// Gets a QR code by its hash.
     /// </summary>
     /// <param name="qrHash">The QR code hash.</param>
