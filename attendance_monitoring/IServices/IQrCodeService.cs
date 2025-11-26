@@ -41,6 +41,13 @@ public interface IQrCodeService
     Task<IEnumerable<QrCodeResponseDto>> GetQrCodesBySectionIdAsync(int sectionId);
 
     /// <summary>
+    /// Retrieves all QR codes for a specific session.
+    /// </summary>
+    /// <param name="sessionId">The session ID.</param>
+    /// <returns>A collection of QR code response DTOs for the specified session.</returns>
+    Task<IEnumerable<QrCodeResponseDto>> GetQrCodesBySessionIdAsync(int sessionId);
+
+    /// <summary>
     /// Retrieves all active QR codes that have not expired.
     /// </summary>
     /// <returns>A collection of active, non-expired QR code response DTOs.</returns>

@@ -161,6 +161,31 @@ public class QrCodeService : IQrCodeService
         }
     }
 
+    public async Task<IEnumerable<QrCodeResponseDto>> GetQrCodesBySessionIdAsync(int sessionId)
+    {
+        try
+        {
+            _logger.LogInformation("Retrieving QR codes for session ID: {SessionId}", sessionId);
+
+            var qrCodes = await _qrCodeRepository.GetQrCodesBySessionIdAsync(sessionId).ConfigureAwait(false);
+            var responseDtos = new List<QrCodeResponseDto>();
+
+            foreach (var qrCode in qrCodes)
+            {
+                var responseDto = MapToResponseDto(qrCode);
+                responseDtos.Add(responseDto);
+            }
+
+            _logger.LogInformation("Successfully retrieved {Count} QR codes for session ID: {SessionId}", responseDtos.Count, sessionId);
+            return responseDtos;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error occurred while retrieving QR codes for session ID: {SessionId}", sessionId);
+            throw new EntityServiceException("QrCode", $"GetQrCodesBySessionId: {sessionId}", "An error occurred while retrieving QR codes", ex);
+        }
+    }
+
     public async Task<IEnumerable<QrCodeResponseDto>> GetActiveQrCodesAsync()
     {
         try
