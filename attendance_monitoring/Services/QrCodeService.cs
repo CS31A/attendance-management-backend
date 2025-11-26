@@ -30,6 +30,7 @@ public class QrCodeService : IQrCodeService
     private readonly IAttendanceRepository _attendanceRepository;
     private readonly ApplicationDbContext _context;
     private readonly ILogger<QrCodeService> _logger;
+    private readonly INotificationService _notificationService;
 
     /// <summary>
     /// Initializes a new instance of the QrCodeService class.
@@ -46,7 +47,8 @@ public class QrCodeService : IQrCodeService
         IAttendanceService attendanceService,
         IAttendanceRepository attendanceRepository,
         ApplicationDbContext context,
-        ILogger<QrCodeService> logger)
+        ILogger<QrCodeService> logger,
+        INotificationService notificationService)
     {
         _qrCodeRepository = qrCodeRepository ?? throw new ArgumentNullException(nameof(qrCodeRepository));
         _scheduleRepository = scheduleRepository ?? throw new ArgumentNullException(nameof(scheduleRepository));
@@ -60,6 +62,7 @@ public class QrCodeService : IQrCodeService
         _attendanceRepository = attendanceRepository ?? throw new ArgumentNullException(nameof(attendanceRepository));
         _context = context ?? throw new ArgumentNullException(nameof(context));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _notificationService = notificationService ?? throw new ArgumentNullException(nameof(notificationService));
     }
 
     #region Read Operations
@@ -554,6 +557,9 @@ public class QrCodeService : IQrCodeService
                 await _qrCodeRepository.SaveChangesAsync().ConfigureAwait(false);
 
                 _logger.LogInformation("Successfully generated QR code with ID: {QrCodeId}", createdQrCode.Id);
+
+                // Send real-time notification to instructor
+                await _notificationService.NotifyQrCodeGeneratedAsync(createdQrCode.Id, userId).ConfigureAwait(false);
 
                 return new QrCodeGenerationResponseDto
                 {
@@ -1231,6 +1237,18 @@ public class QrCodeService : IQrCodeService
 
                 await _qrCodeRepository.SaveChangesAsync().ConfigureAwait(false);
                 await transaction.CommitAsync().ConfigureAwait(false);
+
+                // Send real-time notification to student and instructor (if opted-in)
+                var instructorUserId = qrCode.Session?.Schedule?.Instructor?.UserId ?? string.Empty;
+                if (!string.IsNullOrEmpty(instructorUserId))
+                {
+                    await _notificationService.NotifyStudentCheckedInAsync(
+                        student.UserId,
+                        instructorUserId,
+                        qrCode.SessionId,
+                        attendanceRecord.Status
+                    ).ConfigureAwait(false);
+                }
 
                 // Calculate remaining scans (usage count was incremented, so we use updated value)
                 var remainingScans = qrCode.MaxUsage.HasValue ?

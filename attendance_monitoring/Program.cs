@@ -1,3 +1,4 @@
+using attendance_monitoring.Extensions;
 using attendance_monitoring.Extensions.ServiceCollectionExtensions;
 using attendance_monitoring.Extensions.WebApplicationExtensions;
 
@@ -22,6 +23,9 @@ builder.Services.AddApiDocumentation();
 builder.Services.AddResponseHandling();
 builder.Services.AddCorsPolicy();
 
+// SignalR
+builder.Services.AddSignalRServices();
+
 // Dependency Injection
 builder.Services.AddRepositories();
 builder.Services.AddApplicationServices();
@@ -44,6 +48,9 @@ app.UsePerformanceMonitoring();
 
 // Development tools (Swagger, Scalar)
 app.UseDevelopmentTools();
+
+// Static files for test client
+app.UseStaticFiles();
 
 // Core pipeline (HTTPS, CORS, Auth)
 app.UseCorePipeline();

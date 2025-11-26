@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SignalR Notification Test Client</title>
+    <script src="https://cdn.jsdelivr.net/npm/@microsoft/signalr@latest/dist/browser/signalr.min.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background-color: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        h1 {
+            color: #333;
+            margin-top: 0;
+        }
+        h2 {
+            color: #555;
+            border-bottom: 2px solid #007bff;
+            padding-bottom: 10px;
+            margin-top: 30px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #555;
+        }
+        input, select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+            font-size: 14px;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            margin-right: 10px;
+            margin-top: 10px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        .disconnect {
+            background-color: #dc3545;
+        }
+        .disconnect:hover {
+            background-color: #c82333;
+        }
+        .status {
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+            font-weight: bold;
+        }
+        .status.connected {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .status.disconnected {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .notifications {
+            max-height: 500px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 15px;
+            background-color: #fafafa;
+        }
+        .notification {
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 4px;
+            border-left: 4px solid #007bff;
+            background-color: white;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .notification.Success {
+            border-left-color: #28a745;
+        }
+        .notification.Warning {
+            border-left-color: #ffc107;
+        }
+        .notification.Error {
+            border-left-color: #dc3545;
+        }
+        .notification .title {
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 5px;
+            font-size: 16px;
+        }
+        .notification .message {
+            color: #666;
+            margin-bottom: 5px;
+        }
+        .notification .meta {
+            font-size: 12px;
+            color: #999;
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+        .notification .type-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 3px;
+            font-size: 11px;
+            font-weight: bold;
+        }
+        .notification.Info .type-badge {
+            background-color: #cce5ff;
+            color: #004085;
+        }
+        .notification.Success .type-badge {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        .notification.Warning .type-badge {
+            background-color: #fff3cd;
+            color: #856404;
+        }
+        .notification.Error .type-badge {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        .clear-btn {
+            background-color: #6c757d;
+            margin-top: 10px;
+        }
+        .clear-btn:hover {
+            background-color: #5a6268;
+        }
+        .instructions {
+            background-color: #e7f3ff;
+            padding: 20px;
+            border-radius: 4px;
+            border-left: 4px solid #007bff;
+            margin-bottom: 20px;
+        }
+        .instructions h3 {
+            margin-top: 0;
+            color: #004085;
+        }
+        .instructions ol {
+            margin: 10px 0;
+            padding-left: 25px;
+        }
+        .instructions li {
+            margin-bottom: 8px;
+        }
+        .instructions code {
+            background-color: #f8f9fa;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            color: #d63384;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📡 SignalR Notification Test Client</h1>
+
+        <div class="instructions">
+            <h3>🎯 Instructions</h3>
+            <ol>
+                <li>Login to the API at <code>/api/account/login</code> to get a JWT token</li>
+                <li>Paste your JWT token below</li>
+                <li>Click "Connect to SignalR Hub"</li>
+                <li>Test notifications by:
+                    <ul>
+                        <li>Generating a QR code (Instructor role)</li>
+                        <li>Scanning a QR code (Student role)</li>
+                        <li>Starting/ending a session (Instructor role)</li>
+                    </ul>
+                </li>
+                <li>Watch notifications appear in real-time below!</li>
+            </ol>
+        </div>
+
+        <div id="connectionStatus" class="status disconnected">
+            Status: Disconnected
+        </div>
+
+        <h2>🔐 Connection Settings</h2>
+        <div class="form-group">
+            <label for="hubUrl">SignalR Hub URL:</label>
+            <input type="text" id="hubUrl" value="https://localhost:7244/notificationHub"
+                   placeholder="https://your-api-domain/notificationHub">
+        </div>
+
+        <div class="form-group">
+            <label for="token">JWT Token:</label>
+            <input type="text" id="token" placeholder="Paste your JWT token here">
+        </div>
+
+        <button onclick="connect()" id="connectBtn">Connect to SignalR Hub</button>
+        <button onclick="disconnect()" id="disconnectBtn" class="disconnect" disabled>Disconnect</button>
+
+        <h2>🔔 Received Notifications</h2>
+        <div id="notifications" class="notifications">
+            <p style="text-align: center; color: #999;">No notifications yet. Connect to the hub and trigger some events!</p>
+        </div>
+        <button onclick="clearNotifications()" class="clear-btn">Clear Notifications</button>
+    </div>
+
+    <script>
+        let connection = null;
+        let notificationCount = 0;
+
+        async function connect() {
+            const hubUrl = document.getElementById('hubUrl').value;
+            const token = document.getElementById('token').value;
+
+            if (!hubUrl || !token) {
+                alert('Please provide both Hub URL and JWT Token');
+                return;
+            }
+
+            // Build connection with query string token
+            connection = new signalR.HubConnectionBuilder()
+                .withUrl(hubUrl, {
+                    accessTokenFactory: () => token
+                })
+                .withAutomaticReconnect()
+                .configureLogging(signalR.LogLevel.Information)
+                .build();
+
+            // Handle incoming notifications
+            connection.on("ReceiveNotification", function (notification) {
+                displayNotification(notification);
+            });
+
+            // Handle reconnection
+            connection.onreconnecting(() => {
+                updateStatus('Reconnecting...', 'disconnected');
+            });
+
+            connection.onreconnected(() => {
+                updateStatus('Reconnected', 'connected');
+            });
+
+            connection.onclose(() => {
+                updateStatus('Disconnected', 'disconnected');
+                toggleButtons(false);
+            });
+
+            // Start connection
+            try {
+                await connection.start();
+                console.log("SignalR Connected");
+                updateStatus('Connected', 'connected');
+                toggleButtons(true);
+            } catch (err) {
+                console.error('Connection error:', err);
+                alert('Failed to connect: ' + err.message);
+                updateStatus('Connection Failed', 'disconnected');
+            }
+        }
+
+        async function disconnect() {
+            if (connection) {
+                try {
+                    await connection.stop();
+                    console.log("SignalR Disconnected");
+                } catch (err) {
+                    console.error('Disconnect error:', err);
+                }
+            }
+        }
+
+        function displayNotification(notification) {
+            notificationCount++;
+            const notificationsDiv = document.getElementById('notifications');
+
+            // Clear placeholder text on first notification
+            if (notificationCount === 1) {
+                notificationsDiv.innerHTML = '';
+            }
+
+            const notifDiv = document.createElement('div');
+            notifDiv.className = `notification ${notification.Type || 'Info'}`;
+
+            const timestamp = new Date(notification.Timestamp || new Date()).toLocaleString();
+
+            let metadataHtml = '';
+            if (notification.Metadata) {
+                const metaString = JSON.stringify(notification.Metadata, null, 2);
+                metadataHtml = `<pre style="margin-top: 10px; font-size: 11px; background: #f8f9fa; padding: 10px; border-radius: 3px; overflow-x: auto;">${metaString}</pre>`;
+            }
+
+            notifDiv.innerHTML = `
+                <div class="title">
+                    <span class="type-badge">${notification.Type || 'Info'}</span>
+                    ${notification.Title || 'Notification'}
+                </div>
+                <div class="message">${notification.Message || ''}</div>
+                <div class="meta">
+                    <span>📁 ${notification.Category || 'General'}</span>
+                    <span>🕐 ${timestamp}</span>
+                </div>
+                ${metadataHtml}
+            `;
+
+            notificationsDiv.insertBefore(notifDiv, notificationsDiv.firstChild);
+
+            // Auto-scroll to top to show latest notification
+            notificationsDiv.scrollTop = 0;
+        }
+
+        function updateStatus(message, statusClass) {
+            const statusDiv = document.getElementById('connectionStatus');
+            statusDiv.textContent = 'Status: ' + message;
+            statusDiv.className = `status ${statusClass}`;
+        }
+
+        function toggleButtons(connected) {
+            document.getElementById('connectBtn').disabled = connected;
+            document.getElementById('disconnectBtn').disabled = !connected;
+            document.getElementById('token').disabled = connected;
+            document.getElementById('hubUrl').disabled = connected;
+        }
+
+        function clearNotifications() {
+            document.getElementById('notifications').innerHTML =
+                '<p style="text-align: center; color: #999;">No notifications yet. Connect to the hub and trigger some events!</p>';
+            notificationCount = 0;
+        }
+
+        // Test with Enter key on token input
+        document.getElementById('token').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter' && !document.getElementById('connectBtn').disabled) {
+                connect();
+            }
+        });
+    </script>
+</body>
+</html>

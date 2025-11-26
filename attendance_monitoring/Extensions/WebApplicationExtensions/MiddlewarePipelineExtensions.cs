@@ -1,3 +1,4 @@
+using attendance_monitoring.Extensions;
 using Microsoft.AspNetCore.ResponseCompression;
 using Scalar.AspNetCore;
 using System.Diagnostics;
@@ -141,6 +142,9 @@ public static class MiddlewarePipelineExtensions
         app.UseAuthentication();
         app.UseAuthorization();
         app.MapControllers();
+
+        // Map SignalR hubs
+        app.MapSignalRHubs();
 
         return app;
     }

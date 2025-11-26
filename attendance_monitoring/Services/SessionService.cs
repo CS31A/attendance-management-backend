@@ -17,6 +17,8 @@ public class SessionService : ISessionService
     private readonly IScheduleRepository _scheduleRepository;
     private readonly IInstructorRepository _instructorRepository;
     private readonly IClassroomRepository _classroomRepository;
+    private readonly IStudentEnrollmentRepository _enrollmentRepository;
+    private readonly INotificationService _notificationService;
     private readonly UserContextService _userContextService;
     private readonly IHttpContextAccessor _httpContextAccessor;
     private readonly ILogger<SessionService> _logger;
@@ -29,6 +31,8 @@ public class SessionService : ISessionService
         IScheduleRepository scheduleRepository,
         IInstructorRepository instructorRepository,
         IClassroomRepository classroomRepository,
+        IStudentEnrollmentRepository enrollmentRepository,
+        INotificationService notificationService,
         UserContextService userContextService,
         IHttpContextAccessor httpContextAccessor,
         ILogger<SessionService> logger)
@@ -37,6 +41,8 @@ public class SessionService : ISessionService
         _scheduleRepository = scheduleRepository ?? throw new ArgumentNullException(nameof(scheduleRepository));
         _instructorRepository = instructorRepository ?? throw new ArgumentNullException(nameof(instructorRepository));
         _classroomRepository = classroomRepository ?? throw new ArgumentNullException(nameof(classroomRepository));
+        _enrollmentRepository = enrollmentRepository ?? throw new ArgumentNullException(nameof(enrollmentRepository));
+        _notificationService = notificationService ?? throw new ArgumentNullException(nameof(notificationService));
         _userContextService = userContextService ?? throw new ArgumentNullException(nameof(userContextService));
         _httpContextAccessor = httpContextAccessor ?? throw new ArgumentNullException(nameof(httpContextAccessor));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -434,6 +440,10 @@ public class SessionService : ISessionService
             _logger.LogInformation("Successfully started session ID: {SessionId} by instructor ID: {InstructorId}",
                 sessionId, instructor.Id);
 
+            // Send real-time notification to enrolled students
+            var enrolledStudentIds = await GetEnrolledStudentIdsAsync(sessionId).ConfigureAwait(false);
+            await _notificationService.NotifySessionStartedAsync(sessionId, enrolledStudentIds).ConfigureAwait(false);
+
             // Retrieve updated session with navigation properties
             var updatedSession = await _sessionRepository.GetSessionByIdAsync(sessionId).ConfigureAwait(false);
 
@@ -535,6 +545,10 @@ public class SessionService : ISessionService
 
             _logger.LogInformation("Successfully ended session ID: {SessionId} by instructor ID: {InstructorId}",
                 sessionId, instructor.Id);
+
+            // Send real-time notification to enrolled students
+            var enrolledStudentIds = await GetEnrolledStudentIdsAsync(sessionId).ConfigureAwait(false);
+            await _notificationService.NotifySessionEndedAsync(sessionId, enrolledStudentIds).ConfigureAwait(false);
 
             // Retrieve updated session with navigation properties
             var updatedSession = await _sessionRepository.GetSessionByIdAsync(sessionId).ConfigureAwait(false);
@@ -651,6 +665,40 @@ public class SessionService : ISessionService
     #endregion
 
     #region Helper Methods
+
+    /// <summary>
+    /// Retrieves the user IDs of all students enrolled in the session's section and subject.
+    /// </summary>
+    private async Task<IEnumerable<string>> GetEnrolledStudentIdsAsync(int sessionId)
+    {
+        try
+        {
+            var session = await _sessionRepository.GetSessionByIdAsync(sessionId).ConfigureAwait(false);
+            if (session?.Schedule == null)
+            {
+                _logger.LogWarning("Session {SessionId} or Schedule not found for enrollment lookup", sessionId);
+                return Enumerable.Empty<string>();
+            }
+
+            var sectionId = session.Schedule.SectionId;
+            var subjectId = session.Schedule.SubjectId;
+
+            // Get all active enrollments for the section
+            var enrollments = await _enrollmentRepository.GetActiveSectionEnrollmentsAsync(sectionId).ConfigureAwait(false);
+
+            // Filter for the specific subject and extract user IDs
+            return enrollments
+                .Where(e => e.SubjectId == subjectId && e.Student?.UserId != null)
+                .Select(e => e.Student.UserId!)
+                .Distinct()
+                .ToList();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving enrolled student IDs for session {SessionId}", sessionId);
+            return Enumerable.Empty<string>();
+        }
+    }
 
     /// <summary>
     /// Maps a Session entity to a SessionResponseDto.

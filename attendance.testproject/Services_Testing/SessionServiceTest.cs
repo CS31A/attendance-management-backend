@@ -24,6 +24,8 @@ public class SessionServiceTest
     private readonly Mock<IScheduleRepository> _mockScheduleRepository;
     private readonly Mock<IInstructorRepository> _mockInstructorRepository;
     private readonly Mock<IClassroomRepository> _mockClassroomRepository;
+    private readonly Mock<IStudentEnrollmentRepository> _mockEnrollmentRepository;
+    private readonly Mock<INotificationService> _mockNotificationService;
     private readonly Mock<IHttpContextAccessor> _mockHttpContextAccessor;
     private readonly Mock<ILogger<SessionService>> _mockLogger;
     private readonly Mock<UserManager<IdentityUser>> _mockUserManager;
@@ -38,6 +40,8 @@ public class SessionServiceTest
         _mockScheduleRepository = new Mock<IScheduleRepository>();
         _mockInstructorRepository = new Mock<IInstructorRepository>();
         _mockClassroomRepository = new Mock<IClassroomRepository>();
+        _mockEnrollmentRepository = new Mock<IStudentEnrollmentRepository>();
+        _mockNotificationService = new Mock<INotificationService>();
         _mockHttpContextAccessor = new Mock<IHttpContextAccessor>();
         _mockLogger = new Mock<ILogger<SessionService>>();
 
@@ -82,6 +86,8 @@ public class SessionServiceTest
             _mockScheduleRepository.Object,
             _mockInstructorRepository.Object,
             _mockClassroomRepository.Object,
+            _mockEnrollmentRepository.Object,
+            _mockNotificationService.Object,
             _userContextService,
             _mockHttpContextAccessor.Object,
             _mockLogger.Object
