@@ -7,6 +7,7 @@ using attendance_monitoring.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using QRCoder;
+using attendance_monitoring.Constants;
 
 namespace attendance_monitoring.Controllers;
 
@@ -246,7 +247,7 @@ public class QrCodeController(
             var userRole = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value ?? "Unknown";
 
             // Verify instructor has access to this session (unless Admin)
-            if (userRole == "Instructor")
+            if (userRole == RoleConstants.Instructor)
             {
                 var session = await sessionRepository.GetSessionByIdAsync(sessionId);
                 

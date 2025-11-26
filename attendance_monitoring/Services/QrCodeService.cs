@@ -9,6 +9,7 @@ using attendance_monitoring.IRepository;
 using attendance_monitoring.IServices;
 using attendance_monitoring.Models.DTO.Request;
 using attendance_monitoring.Models.DTO.Response;
+using attendance_monitoring.Constants;
 
 namespace attendance_monitoring.Services;
 
@@ -243,7 +244,7 @@ public class QrCodeService : IQrCodeService
             }
 
             // Authorization check - only instructors/admins for their own sections
-            if (userRole == "Instructor")
+            if (userRole == RoleConstants.Instructor)
             {
                 var authSession = await _context.Sessions
                     .Include(s => s.Schedule)
@@ -441,7 +442,7 @@ public class QrCodeService : IQrCodeService
                     return (null, "User ID not found in token");
                 }
 
-                var isAuthorized = await _userContextService.IsAuthorizedAsync(user, userId, "Admin", "Instructor").ConfigureAwait(false);
+                var isAuthorized = await _userContextService.IsAuthorizedAsync(user, userId, RoleConstants.Admin, RoleConstants.Instructor).ConfigureAwait(false);
                 if (!isAuthorized)
                 {
                     _logger.LogWarning("QR code creation failed: User not authorized");
@@ -522,7 +523,7 @@ public class QrCodeService : IQrCodeService
                     return new QrCodeGenerationResponseDto { Success = false, Message = "User ID not found in token" };
                 }
 
-                var isAuthorized = await _userContextService.IsAuthorizedAsync(user, userId, "Admin", "Instructor").ConfigureAwait(false);
+                var isAuthorized = await _userContextService.IsAuthorizedAsync(user, userId, RoleConstants.Admin, RoleConstants.Instructor).ConfigureAwait(false);
                 if (!isAuthorized)
                 {
                     _logger.LogWarning("QR code generation failed: User not authorized");
@@ -606,7 +607,7 @@ public class QrCodeService : IQrCodeService
                 return (null, "User ID not found in token");
             }
 
-            var isAuthorized = await _userContextService.IsAuthorizedAsync(user, userId, "Admin", "Instructor").ConfigureAwait(false);
+            var isAuthorized = await _userContextService.IsAuthorizedAsync(user, userId, RoleConstants.Admin, RoleConstants.Instructor).ConfigureAwait(false);
             if (!isAuthorized)
             {
                 _logger.LogWarning("QR code update failed: User not authorized");
@@ -666,7 +667,7 @@ public class QrCodeService : IQrCodeService
                 return "User ID not found in token";
             }
 
-            var isAuthorized = await _userContextService.IsAuthorizedAsync(user, userId, "Admin", "Instructor").ConfigureAwait(false);
+            var isAuthorized = await _userContextService.IsAuthorizedAsync(user, userId, RoleConstants.Admin, RoleConstants.Instructor).ConfigureAwait(false);
             if (!isAuthorized)
             {
                 _logger.LogWarning("QR code deactivation failed: User not authorized");
@@ -705,7 +706,7 @@ public class QrCodeService : IQrCodeService
                 return "User ID not found in token";
             }
 
-            var isAuthorized = await _userContextService.IsAuthorizedAsync(user, userId, "Admin", "Instructor").ConfigureAwait(false);
+            var isAuthorized = await _userContextService.IsAuthorizedAsync(user, userId, RoleConstants.Admin, RoleConstants.Instructor).ConfigureAwait(false);
             if (!isAuthorized)
             {
                 _logger.LogWarning("QR code revocation failed: User not authorized");
@@ -754,7 +755,7 @@ public class QrCodeService : IQrCodeService
                 return "User ID not found in token";
             }
 
-            var isAuthorized = await _userContextService.IsAuthorizedAsync(user, userId, "Admin", "Instructor").ConfigureAwait(false);
+            var isAuthorized = await _userContextService.IsAuthorizedAsync(user, userId, RoleConstants.Admin, RoleConstants.Instructor).ConfigureAwait(false);
             if (!isAuthorized)
             {
                 _logger.LogWarning("QR code deactivation failed: User not authorized");
@@ -793,7 +794,7 @@ public class QrCodeService : IQrCodeService
                 return "User ID not found in token";
             }
 
-            var isAuthorized = await _userContextService.IsAuthorizedAsync(user, userId, "Admin", "Instructor").ConfigureAwait(false);
+            var isAuthorized = await _userContextService.IsAuthorizedAsync(user, userId, RoleConstants.Admin, RoleConstants.Instructor).ConfigureAwait(false);
             if (!isAuthorized)
             {
                 _logger.LogWarning("QR code revocation failed: User not authorized");
@@ -842,7 +843,7 @@ public class QrCodeService : IQrCodeService
                 return "User ID not found in token";
             }
 
-            var isAuthorized = await _userContextService.IsAuthorizedAsync(user, userId, "Admin", "Instructor").ConfigureAwait(false);
+            var isAuthorized = await _userContextService.IsAuthorizedAsync(user, userId, RoleConstants.Admin, RoleConstants.Instructor).ConfigureAwait(false);
             if (!isAuthorized)
             {
                 _logger.LogWarning("QR code reactivation failed: User not authorized");
@@ -895,7 +896,7 @@ public class QrCodeService : IQrCodeService
                 return "User ID not found in token";
             }
 
-            var isAuthorized = await _userContextService.IsAuthorizedAsync(user, userId, "Admin", "Instructor").ConfigureAwait(false);
+            var isAuthorized = await _userContextService.IsAuthorizedAsync(user, userId, RoleConstants.Admin, RoleConstants.Instructor).ConfigureAwait(false);
             if (!isAuthorized)
             {
                 _logger.LogWarning("QR code reactivation failed: User not authorized");
@@ -948,7 +949,7 @@ public class QrCodeService : IQrCodeService
                 return "User ID not found in token";
             }
 
-            var isAuthorized = await _userContextService.IsAuthorizedAsync(user, userId, "Admin").ConfigureAwait(false);
+            var isAuthorized = await _userContextService.IsAuthorizedAsync(user, userId, RoleConstants.Admin).ConfigureAwait(false);
             if (!isAuthorized)
             {
                 _logger.LogWarning("QR code deletion failed: User not authorized");
@@ -1348,7 +1349,7 @@ public class QrCodeService : IQrCodeService
                 throw new EntityServiceException("QrCode", "CleanupExpiredQrCodes", "User ID not found in token");
             }
 
-            var isAuthorized = await _userContextService.IsAuthorizedAsync(user, userId, "Admin").ConfigureAwait(false);
+            var isAuthorized = await _userContextService.IsAuthorizedAsync(user, userId, RoleConstants.Admin).ConfigureAwait(false);
             if (!isAuthorized)
             {
                 _logger.LogWarning("QR code cleanup failed: User not authorized");
@@ -1408,7 +1409,7 @@ public class QrCodeService : IQrCodeService
                 return (null, "User ID not found in token");
             }
 
-            var isAuthorized = await _userContextService.IsAuthorizedAsync(user, userId, "Admin", "Instructor").ConfigureAwait(false);
+            var isAuthorized = await _userContextService.IsAuthorizedAsync(user, userId, RoleConstants.Admin, RoleConstants.Instructor).ConfigureAwait(false);
             if (!isAuthorized)
             {
                 _logger.LogWarning("QR code expiration extension failed: User not authorized");

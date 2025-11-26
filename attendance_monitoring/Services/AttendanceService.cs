@@ -5,6 +5,7 @@ using attendance_monitoring.IRepository;
 using attendance_monitoring.IServices;
 using attendance_monitoring.Models.DTO.Request;
 using attendance_monitoring.Models.DTO.Response;
+using attendance_monitoring.Constants;
 using Microsoft.EntityFrameworkCore;
 
 namespace attendance_monitoring.Services;
@@ -191,7 +192,7 @@ public class AttendanceService(
 
         // Apply role-based filtering
         var userRole = user.FindFirst(ClaimTypes.Role)?.Value;
-        if (userRole == "Student")
+        if (userRole == RoleConstants.Student)
         {
             // Students can only see their own attendance - fail-secure pattern
             var userId = await userContextService.GetUserIdAsync(user).ConfigureAwait(false);
@@ -241,7 +242,7 @@ public class AttendanceService(
 
         // Authorization check - fail-secure pattern
         var userRole = user.FindFirst(ClaimTypes.Role)?.Value;
-        if (userRole == "Student")
+        if (userRole == RoleConstants.Student)
         {
             var userId = await userContextService.GetUserIdAsync(user).ConfigureAwait(false);
             if (userId == null)
@@ -303,7 +304,7 @@ public class AttendanceService(
 
         // Authorization: Instructors can only view their own session attendance
         var userRole = user.FindFirst(ClaimTypes.Role)?.Value;
-        if (userRole == "Instructor")
+        if (userRole == RoleConstants.Instructor)
         {
             var userId = await userContextService.GetUserIdAsync(user).ConfigureAwait(false);
             if (userId == null)
@@ -384,7 +385,7 @@ public class AttendanceService(
 
         // Apply role-based filtering
         var userRole = user.FindFirst(ClaimTypes.Role)?.Value;
-        if (userRole == "Student")
+        if (userRole == RoleConstants.Student)
         {
             // Students can only see their own attendance - fail-secure pattern
             var userId = await userContextService.GetUserIdAsync(user).ConfigureAwait(false);
@@ -478,14 +479,14 @@ public class AttendanceService(
 
         // Authorization: Only instructors and admins can update attendance
         var userRole = user.FindFirst(ClaimTypes.Role)?.Value;
-        if (userRole != "Admin" && userRole != "Instructor")
+        if (userRole != RoleConstants.Admin && userRole != RoleConstants.Instructor)
         {
             logger.LogWarning("User not authorized to update attendance record {Id}", id);
             throw new UnauthorizedAccessException("Only instructors and administrators can update attendance records");
         }
 
         // For instructors, verify they own the session
-        if (userRole == "Instructor")
+        if (userRole == RoleConstants.Instructor)
         {
             var userId = await userContextService.GetUserIdAsync(user).ConfigureAwait(false);
             if (userId == null)
@@ -548,7 +549,7 @@ public class AttendanceService(
 
         // Authorization: Only admins can delete attendance records
         var userRole = user.FindFirst(ClaimTypes.Role)?.Value;
-        if (userRole != "Admin")
+        if (userRole != RoleConstants.Admin)
         {
             logger.LogWarning("User not authorized to delete attendance record {Id}", id);
             throw new UnauthorizedAccessException("Only administrators can delete attendance records");
@@ -631,13 +632,13 @@ public class AttendanceService(
         var userRole = user.FindFirst(ClaimTypes.Role)?.Value;
 
         // Admins can view all
-        if (userRole == "Admin")
+        if (userRole == RoleConstants.Admin)
         {
             return true;
         }
 
         // Instructors can view their session attendance
-        if (userRole == "Instructor")
+        if (userRole == RoleConstants.Instructor)
         {
             var userId = await userContextService.GetUserIdAsync(user).ConfigureAwait(false);
             if (userId == null)
@@ -655,7 +656,7 @@ public class AttendanceService(
         }
 
         // Students can view their own attendance - fail-secure pattern
-        if (userRole == "Student")
+        if (userRole == RoleConstants.Student)
         {
             var userId = await userContextService.GetUserIdAsync(user).ConfigureAwait(false);
             if (userId == null)

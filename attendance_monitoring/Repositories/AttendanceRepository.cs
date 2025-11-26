@@ -58,6 +58,7 @@ public class AttendanceRepository(ApplicationDbContext context) : IAttendanceRep
     /// <summary>
     /// Retrieves all attendance records for listing with pagination support using DTO projection.
     /// </summary>
+    [Obsolete("Use GetAllForListingOptimizedAsync() instead (80-90% faster)", false)]
     public async Task<List<AttendanceRecordResponseDto>> GetAllForListingAsync(int pageNumber = 1, int pageSize = 50)
     {
         // Validate pagination parameters
