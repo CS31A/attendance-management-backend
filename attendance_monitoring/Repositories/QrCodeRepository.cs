@@ -76,8 +76,10 @@ public class QrCodeRepository(ApplicationDbContext context, ILogger<QrCodeReposi
     {
         try
         {
+            // Use AsSplitQuery to avoid cartesian explosion with multiple ThenInclude chains
             return await context.QrCodes
                 .AsNoTracking()
+                .AsSplitQuery() // Executes separate queries for each Include to improve performance
                 .Include(q => q.Session)
                     .ThenInclude(s => s.Schedule)
                 .Include(q => q.Session)
@@ -99,8 +101,10 @@ public class QrCodeRepository(ApplicationDbContext context, ILogger<QrCodeReposi
     {
         try
         {
+            // Use AsSplitQuery to avoid cartesian explosion with multiple ThenInclude chains
             return await context.QrCodes
                 .AsNoTracking()
+                .AsSplitQuery() // Executes separate queries for each Include to improve performance
                 .Include(q => q.Session)
                     .ThenInclude(s => s.Schedule)
                         .ThenInclude(sch => sch.Section)
@@ -121,8 +125,10 @@ public class QrCodeRepository(ApplicationDbContext context, ILogger<QrCodeReposi
     {
         try
         {
+            // Use AsSplitQuery to avoid cartesian explosion with multiple ThenInclude chains
             return await context.QrCodes
                 .AsNoTracking()
+                .AsSplitQuery() // Executes separate queries for each Include to improve performance
                 .Include(q => q.Session)
                     .ThenInclude(s => s.Schedule)
                         .ThenInclude(sch => sch.Section)
@@ -150,8 +156,10 @@ public class QrCodeRepository(ApplicationDbContext context, ILogger<QrCodeReposi
         try
         {
             var currentTime = DateTime.UtcNow;
+            // Use AsSplitQuery to avoid cartesian explosion with multiple ThenInclude chains
             return await context.QrCodes
                 .AsNoTracking()
+                .AsSplitQuery() // Executes separate queries for each Include to improve performance
                 .Include(q => q.Session)
                     .ThenInclude(s => s.Schedule)
                 .Include(q => q.Session)
@@ -174,8 +182,10 @@ public class QrCodeRepository(ApplicationDbContext context, ILogger<QrCodeReposi
         try
         {
             var currentTime = DateTime.UtcNow;
+            // Use AsSplitQuery to avoid cartesian explosion with multiple ThenInclude chains
             return await context.QrCodes
                 .AsNoTracking()
+                .AsSplitQuery() // Executes separate queries for each Include to improve performance
                 .Include(q => q.Session)
                     .ThenInclude(s => s.Schedule)
                 .Include(q => q.Session)
@@ -220,8 +230,10 @@ public class QrCodeRepository(ApplicationDbContext context, ILogger<QrCodeReposi
             var currentTime = DateTime.UtcNow;
             var expirationThreshold = currentTime.Add(expiringWithin);
 
+            // Use AsSplitQuery to avoid cartesian explosion with multiple ThenInclude chains
             return await context.QrCodes
                 .AsNoTracking()
+                .AsSplitQuery() // Executes separate queries for each Include to improve performance
                 .Include(q => q.Session)
                     .ThenInclude(s => s.Schedule)
                 .Include(q => q.Session)

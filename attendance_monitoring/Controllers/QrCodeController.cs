@@ -1,4 +1,5 @@
 using System.Text.Json;
+using attendance_monitoring.IRepository;
 using attendance_monitoring.IServices;
 using attendance_monitoring.Models.DTO.Request;
 using attendance_monitoring.Exceptions;
@@ -13,6 +14,7 @@ namespace attendance_monitoring.Controllers;
 [Route("api/[controller]")]
 public class QrCodeController(
     IQrCodeService qrCodeService,
+    ISessionRepository sessionRepository,
     UserContextService userContextService,
     ILogger<QrCodeController> logger) : ControllerBase
 {
@@ -229,19 +231,59 @@ public class QrCodeController(
     {
         logger.LogInformation("Retrieving QR codes for session ID: {SessionId}", sessionId);
 
-        var qrCodes = await qrCodeService.GetQrCodesBySessionIdAsync(sessionId);
-
-        var qrCodesList = qrCodes.ToList();
-        if (!qrCodesList.Any())
+        try
         {
-            logger.LogWarning("No QR codes found for session ID {SessionId}", sessionId);
-            return NotFound(new { message = $"No QR codes found for session {sessionId}" });
-        }
+            // Get instructor ID for authorization check
+            var instructorId = await userContextService.GetInstructorIdAsync(User);
+            if (!instructorId.HasValue)
+            {
+                logger.LogWarning("Non-instructor user attempted to retrieve QR codes for session {SessionId}", sessionId);
+                return StatusCode(StatusCodes.Status403Forbidden,
+                    new { message = "User is not an instructor", errorCode = "NOT_INSTRUCTOR" });
+            }
 
-        logger.LogInformation("Successfully retrieved {Count} QR codes for session ID: {SessionId}", 
-            qrCodesList.Count, sessionId);
-        return Ok(qrCodesList);
-        // No try-catch - global handler will catch any unexpected errors
+            // Get user role for authorization
+            var userRole = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value ?? "Unknown";
+
+            // Verify instructor has access to this session (unless Admin)
+            if (userRole == "Instructor")
+            {
+                var session = await sessionRepository.GetSessionByIdAsync(sessionId);
+                
+                if (session == null)
+                {
+                    logger.LogWarning("Session {SessionId} not found", sessionId);
+                    return NotFound(new { message = $"Session {sessionId} not found", errorCode = "SESSION_NOT_FOUND" });
+                }
+
+                if (session.Schedule?.InstructorId != instructorId.Value)
+                {
+                    logger.LogWarning(
+                        "Instructor {InstructorId} attempted unauthorized access to QR codes for session {SessionId} owned by instructor {OwnerId}",
+                        instructorId.Value, sessionId, session.Schedule?.InstructorId);
+                    return StatusCode(StatusCodes.Status403Forbidden,
+                        new { message = "You do not have permission to view QR codes for this session", errorCode = "FORBIDDEN" });
+                }
+            }
+
+            var qrCodes = await qrCodeService.GetQrCodesBySessionIdAsync(sessionId);
+
+            var qrCodesList = qrCodes.ToList();
+            if (!qrCodesList.Any())
+            {
+                logger.LogWarning("No QR codes found for session ID {SessionId}", sessionId);
+                return NotFound(new { message = $"No QR codes found for session {sessionId}", errorCode = "NO_QRCODES_FOUND" });
+            }
+
+            logger.LogInformation("Successfully retrieved {Count} QR codes for session ID: {SessionId}", 
+                qrCodesList.Count, sessionId);
+            return Ok(qrCodesList);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error retrieving QR codes for session {SessionId}", sessionId);
+            return StatusCode(500, new { message = "An error occurred while retrieving QR codes", errorCode = "INTERNAL_ERROR" });
+        }
     }
 
     /// <summary>

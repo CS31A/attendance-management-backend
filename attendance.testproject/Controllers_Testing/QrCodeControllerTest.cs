@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using attendance_monitoring.Controllers;
 using attendance_monitoring.Data;
+using attendance_monitoring.IRepository;
 using attendance_monitoring.IServices;
 using attendance_monitoring.Models.DTO.Request;
 using attendance_monitoring.Services;
@@ -18,6 +19,7 @@ namespace attendance.testproject.Controllers_Testing;
 public class QrCodeControllerTest
 {
     private readonly Mock<IQrCodeService> _mockQrCodeService;
+    private readonly Mock<ISessionRepository> _mockSessionRepository;
     private readonly Mock<ILogger<QrCodeController>> _mockLogger;
     private readonly Mock<UserContextService> _mockUserContextService;
     private readonly QrCodeController _qrCodeController;
@@ -25,6 +27,7 @@ public class QrCodeControllerTest
     public QrCodeControllerTest()
     {
         _mockQrCodeService = new Mock<IQrCodeService>();
+        _mockSessionRepository = new Mock<ISessionRepository>();
         _mockLogger = new Mock<ILogger<QrCodeController>>();
         
         var mockUserStore = new Mock<IUserStore<IdentityUser>>();
@@ -45,7 +48,7 @@ public class QrCodeControllerTest
         var mockContext = new Mock<ApplicationDbContext>(options);
         
         _mockUserContextService = new Mock<UserContextService>(mockUserManager.Object, mockContext.Object);
-        _qrCodeController = new QrCodeController(_mockQrCodeService.Object, _mockUserContextService.Object, _mockLogger.Object);
+        _qrCodeController = new QrCodeController(_mockQrCodeService.Object, _mockSessionRepository.Object, _mockUserContextService.Object, _mockLogger.Object);
     }
 
     [Fact]
