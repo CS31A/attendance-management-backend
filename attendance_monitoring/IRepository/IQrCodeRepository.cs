@@ -36,6 +36,13 @@ public interface IQrCodeRepository : ISaveableRepository
     Task<IEnumerable<QrCode>> GetQrCodesBySectionIdAsync(int sectionId);
 
     /// <summary>
+    /// Retrieves all QR codes for a specific session.
+    /// </summary>
+    /// <param name="sessionId">The session ID.</param>
+    /// <returns>A collection of QR codes for the specified session.</returns>
+    Task<IEnumerable<QrCode>> GetQrCodesBySessionIdAsync(int sessionId);
+
+    /// <summary>
     /// Retrieves all active QR codes that have not expired.
     /// </summary>
     /// <returns>A collection of active, non-expired QR codes.</returns>

@@ -17,10 +17,10 @@ public class QrCodeController(
     ILogger<QrCodeController> logger) : ControllerBase
 {
     /// <summary>
-    /// Generates a new QR code, saves it to database, and returns the PNG image.
+    /// Generates a new QR code, saves it to database, and returns the QR code data with metadata.
     /// </summary>
     /// <param name="request">QR code generation parameters.</param>
-    /// <returns>PNG image of the QR code.</returns>
+    /// <returns>QR code metadata including database ID and base64-encoded PNG image.</returns>
     [HttpPost("generate")]
     [Authorize(Policy = "PrivilegedPolicy")]
     public async Task<ActionResult> GenerateQrCode([FromBody] QrCodeRequest request)
@@ -53,8 +53,19 @@ public class QrCodeController(
             logger.LogInformation("Successfully generated QR code with ID: {QrCodeId}, hash: {QrHash}",
                 result.QrCodeId, result.QrHash);
 
-            // Return image with proper content type
-            return File(qrCodeImage, "image/png");
+            // Return JSON response with image as base64 and all metadata
+            return Ok(new
+            {
+                success = result.Success,
+                message = result.Message,
+                qrCodeId = result.QrCodeId,
+                qrHash = result.QrHash,
+                qrCodeData = result.QrCodeData,
+                qrCodeImage = Convert.ToBase64String(qrCodeImage),
+                generatedAt = result.GeneratedAt,
+                expiresAt = result.ExpiresAt,
+                maxUsage = result.MaxUsage
+            });
         }
         catch (EntityNotFoundException<int> ex)
         {
@@ -204,6 +215,32 @@ public class QrCodeController(
 
         logger.LogInformation("Successfully retrieved QR code with hash: {QrHash}", qrHash);
         return Ok(qrCode);
+        // No try-catch - global handler will catch any unexpected errors
+    }
+
+    /// <summary>
+    /// Gets all QR codes for a specific session.
+    /// </summary>
+    /// <param name="sessionId">The session ID.</param>
+    /// <returns>List of QR codes for the session.</returns>
+    [HttpGet("session/{sessionId}")]
+    [Authorize(Policy = "PrivilegedPolicy")]
+    public async Task<ActionResult> GetQrCodesBySessionId(int sessionId)
+    {
+        logger.LogInformation("Retrieving QR codes for session ID: {SessionId}", sessionId);
+
+        var qrCodes = await qrCodeService.GetQrCodesBySessionIdAsync(sessionId);
+
+        var qrCodesList = qrCodes.ToList();
+        if (!qrCodesList.Any())
+        {
+            logger.LogWarning("No QR codes found for session ID {SessionId}", sessionId);
+            return NotFound(new { message = $"No QR codes found for session {sessionId}" });
+        }
+
+        logger.LogInformation("Successfully retrieved {Count} QR codes for session ID: {SessionId}", 
+            qrCodesList.Count, sessionId);
+        return Ok(qrCodesList);
         // No try-catch - global handler will catch any unexpected errors
     }
 
