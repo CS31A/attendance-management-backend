@@ -156,11 +156,31 @@ public class SessionRepository(ApplicationDbContext context) : ISessionRepositor
     /// <summary>
     /// Updates an existing session.
     /// </summary>
-    public Task<Session> UpdateSessionAsync(Session session)
+    public async Task<Session> UpdateSessionAsync(Session session)
     {
-        session.UpdatedAt = DateTime.UtcNow;
-        context.Sessions.Update(session);
-        return Task.FromResult(session);
+        // Load the session from database with tracking (without navigation properties)
+        // This avoids conflicts with already-tracked related entities
+        var trackedSession = await context.Sessions
+            .FirstOrDefaultAsync(s => s.Id == session.Id)
+            .ConfigureAwait(false);
+        
+        if (trackedSession == null)
+        {
+            throw new InvalidOperationException($"Session with ID {session.Id} not found.");
+        }
+        
+        // Update only the scalar properties
+        trackedSession.Status = session.Status;
+        trackedSession.ActualStartTime = session.ActualStartTime;
+        trackedSession.ActualEndTime = session.ActualEndTime;
+        trackedSession.AttendanceCutOff = session.AttendanceCutOff;
+        trackedSession.Description = session.Description;
+        trackedSession.ActualRoomId = session.ActualRoomId;
+        trackedSession.StartedBy = session.StartedBy;
+        trackedSession.EndedBy = session.EndedBy;
+        trackedSession.UpdatedAt = DateTime.UtcNow;
+        
+        return trackedSession;
     }
 
     #endregion

@@ -74,10 +74,35 @@ public class QrCodeControllerTest
         var result = await _qrCodeController.GenerateQrCode(request);
 
         // Assert
-        var fileResult = Assert.IsType<FileContentResult>(result);
-        Assert.Equal("image/png", fileResult.ContentType);
-        Assert.NotNull(fileResult.FileContents);
-        Assert.True(fileResult.FileContents.Length > 0);
+        var okResult = Assert.IsType<OkObjectResult>(result);
+        Assert.NotNull(okResult.Value);
+        
+        // Verify the response structure
+        var response = okResult.Value;
+        var responseType = response.GetType();
+        var qrCodeImageProp = responseType.GetProperty("qrCodeImage");
+        var qrCodeIdProp = responseType.GetProperty("qrCodeId");
+        var qrHashProp = responseType.GetProperty("qrHash");
+        var successProp = responseType.GetProperty("success");
+        
+        Assert.NotNull(qrCodeImageProp);
+        var qrCodeImageValue = qrCodeImageProp.GetValue(response) as string;
+        Assert.NotNull(qrCodeImageValue);
+        Assert.True(qrCodeImageValue.Length > 0);
+        
+        // Verify it's valid base64
+        var imageBytes = Convert.FromBase64String(qrCodeImageValue);
+        Assert.True(imageBytes.Length > 0);
+        
+        // Verify other properties
+        Assert.NotNull(qrCodeIdProp);
+        Assert.Equal(1, qrCodeIdProp.GetValue(response));
+        
+        Assert.NotNull(qrHashProp);
+        Assert.Equal("test-hash-123", qrHashProp.GetValue(response));
+        
+        Assert.NotNull(successProp);
+        Assert.True((bool?)successProp.GetValue(response) ?? false);
 
         // Verify logging
         _mockLogger.Verify(
@@ -177,10 +202,35 @@ public class QrCodeControllerTest
         var result = await _qrCodeController.GenerateQrCode(request);
 
         // Assert
-        var fileResult = Assert.IsType<FileContentResult>(result);
-        Assert.Equal("image/png", fileResult.ContentType);
-        Assert.NotNull(fileResult.FileContents);
-        Assert.True(fileResult.FileContents.Length > 0);
+        var okResult = Assert.IsType<OkObjectResult>(result);
+        Assert.NotNull(okResult.Value);
+        
+        // Verify the response structure
+        var response = okResult.Value;
+        var responseType = response.GetType();
+        var qrCodeImageProp = responseType.GetProperty("qrCodeImage");
+        var qrCodeIdProp = responseType.GetProperty("qrCodeId");
+        var qrHashProp = responseType.GetProperty("qrHash");
+        var successProp = responseType.GetProperty("success");
+        
+        Assert.NotNull(qrCodeImageProp);
+        var qrCodeImageValue = qrCodeImageProp.GetValue(response) as string;
+        Assert.NotNull(qrCodeImageValue);
+        Assert.True(qrCodeImageValue.Length > 0);
+        
+        // Verify it's valid base64
+        var imageBytes = Convert.FromBase64String(qrCodeImageValue);
+        Assert.True(imageBytes.Length > 0);
+        
+        // Verify other properties
+        Assert.NotNull(qrCodeIdProp);
+        Assert.Equal(4, qrCodeIdProp.GetValue(response));
+        
+        Assert.NotNull(qrHashProp);
+        Assert.Equal("minimal-hash", qrHashProp.GetValue(response));
+        
+        Assert.NotNull(successProp);
+        Assert.True((bool?)successProp.GetValue(response) ?? false);
     }
 
     [Fact]

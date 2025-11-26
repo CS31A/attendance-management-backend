@@ -116,6 +116,32 @@ public class QrCodeRepository(ApplicationDbContext context, ILogger<QrCodeReposi
             throw;
         }
     }
+
+    public async Task<IEnumerable<QrCode>> GetQrCodesBySessionIdAsync(int sessionId)
+    {
+        try
+        {
+            return await context.QrCodes
+                .AsNoTracking()
+                .Include(q => q.Session)
+                    .ThenInclude(s => s.Schedule)
+                        .ThenInclude(sch => sch.Section)
+                .Include(q => q.Session)
+                    .ThenInclude(s => s.Schedule)
+                        .ThenInclude(sch => sch.Subject)
+                .Include(q => q.Session)
+                    .ThenInclude(s => s.ActualRoom)
+                .Where(q => q.SessionId == sessionId)
+                .OrderByDescending(q => q.GeneratedAt)
+                .ToListAsync()
+                .ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "An error occurred while retrieving QR codes for session ID {SessionId} from database.", sessionId);
+            throw;
+        }
+    }
     #endregion
 
     #region GetActiveQrCodesAsync
