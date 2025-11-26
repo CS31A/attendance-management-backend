@@ -262,6 +262,41 @@ public class AccountControllerTest
         var badRequestResult = Assert.IsType<BadRequestObjectResult>(result.Result);
         Assert.NotNull(badRequestResult.Value);
     }
+
+    [Fact]
+    public async Task Register_Should_Normalize_Teacher_To_Instructor_Role()
+    {
+        // Arrange
+        var registerDto = new RegisterDto
+        {
+            Username = "teacheruser",
+            Email = "teacher@example.com",
+            Password = "Password123!",
+            RepeatedPassword = "Password123!",
+            Role = "Teacher" // Initial role is Teacher
+        };
+
+        var identityResult = IdentityResult.Success;
+        var response = new RegisterResponseDto { Success = true, Message = "User registered successfully" };
+
+        // Setup mock to expect the DTO with the role normalized to "Instructor"
+        _mockAccountService.Setup(s => s.RegisterAsync(It.Is<RegisterDto>(dto =>
+                dto.Username == registerDto.Username &&
+                dto.Role == "Instructor"))) // Check if role is normalized
+            .ReturnsAsync((identityResult, response))
+            .Verifiable();
+
+        // Act
+        var result = await _accountController.Register(registerDto);
+
+        // Assert
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        var responseDto = Assert.IsType<RegisterResponseDto>(okResult.Value);
+        Assert.True(responseDto.Success);
+
+        // Verify that the RegisterAsync method was called with the normalized role
+        _mockAccountService.Verify();
+    }
     #endregion
 
     #region Check Tests

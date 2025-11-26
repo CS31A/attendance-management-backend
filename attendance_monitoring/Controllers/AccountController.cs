@@ -31,16 +31,17 @@ namespace attendance_monitoring.Controllers
         {
             logger.LogInformation("Registration attempt for username: {Username}", registerDto.Username);
 
-            // Validate that SectionId is provided for student registrations
-            // Only check for students (default role is Student if not specified)
-            // Instructor is an alias for Teacher, so treat it as such
-            var roleToCheck = string.IsNullOrEmpty(registerDto.Role) ? "Student" : registerDto.Role;
-            if (roleToCheck.Equals("Instructor", StringComparison.OrdinalIgnoreCase))
+            // Normalize "Teacher" role to "Instructor" as "Instructor" is the role used in the system
+            if ("Teacher".Equals(registerDto.Role, StringComparison.OrdinalIgnoreCase))
             {
-                roleToCheck = "Teacher";
+                registerDto.Role = "Instructor";
             }
 
-            if (roleToCheck.Equals("Student", StringComparison.OrdinalIgnoreCase))
+            // Student role is the default, and requires a SectionId
+            var isStudentRole = string.IsNullOrEmpty(registerDto.Role) ||
+                                registerDto.Role.Equals("Student", StringComparison.OrdinalIgnoreCase);
+
+            if (isStudentRole)
             {
                 if (!registerDto.SectionId.HasValue || registerDto.SectionId <= 0)
                 {
