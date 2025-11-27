@@ -1,0 +1,54 @@
+name: Deploy to AWS Elastic Beanstalk
+
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch: 
+
+env:
+  PROJECT_PATH: "./attendance_monitoring/attendance_monitoring.csproj"
+  EB_APP_NAME: "attendance-monitoring"
+  EB_ENV_NAME: "attendance"
+  AWS_REGION: "ap-southeast-1"
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 9
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+
+      - name: Restore Dependencies
+        run: dotnet restore ${{ env.PROJECT_PATH }}
+
+      - name: Publish Self-Contained (Linux)
+        run: |
+          dotnet publish ${{ env.PROJECT_PATH }} \
+          --configuration Release \
+          --self-contained true \
+          --runtime linux-x64 \
+          --output ./publish_output
+
+      - name: Create Deployment Zip
+        run: |
+          cd publish_output
+          zip -r ../site.zip .
+          cd ..
+
+      - name: Deploy to Elastic Beanstalk
+        uses: einaregilsson/beanstalk-deploy@v22
+        with:
+          aws_access_key: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws_secret_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          application_name: ${{ env.EB_APP_NAME }}
+          environment_name: ${{ env.EB_ENV_NAME }}
+          version_label: "ver-${{ github.run_id }}"
+          region: ${{ env.AWS_REGION }}
+          deployment_package: site.zip
+          wait_for_deployment: true
