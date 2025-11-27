@@ -191,7 +191,7 @@ namespace attendance_monitoring.Services
             }
 
             var roles = await accountRepository.GetUserRolesAsync(user).ConfigureAwait(false);
-            var role = roles.FirstOrDefault();
+            var role = roles?.FirstOrDefault();
             if (string.IsNullOrEmpty(role))
             {
                 logger.LogWarning("Login failed: User {Username} (ID: {UserId}) has no assigned roles.", user.UserName, user.Id);
@@ -562,7 +562,7 @@ namespace attendance_monitoring.Services
 
             // Get user roles
             var roles = await accountRepository.GetUserRolesAsync(user).ConfigureAwait(false);
-            var role = roles.FirstOrDefault();
+            var role = roles?.FirstOrDefault();
             if (string.IsNullOrEmpty(role))
             {
                 logger.LogWarning("User {Username} (ID: {UserId}) has no assigned roles.", user.UserName, user.Id);
@@ -654,7 +654,7 @@ namespace attendance_monitoring.Services
 
             // Get user role
             var roles = await accountRepository.GetUserRolesAsync(user).ConfigureAwait(false);
-            var role = roles.FirstOrDefault();
+            var role = roles?.FirstOrDefault();
             if (string.IsNullOrEmpty(role))
             {
                 logger.LogWarning("User {Username} (ID: {UserId}) has no assigned roles during profile update.", user.UserName, user.Id);
@@ -847,7 +847,7 @@ namespace attendance_monitoring.Services
 
             // Get target user role
             var targetRoles = await accountRepository.GetUserRolesAsync(targetUser).ConfigureAwait(false);
-            var targetRole = targetRoles.FirstOrDefault();
+            var targetRole = targetRoles?.FirstOrDefault();
             if (string.IsNullOrEmpty(targetRole))
             {
                 logger.LogWarning("Target user (ID: {TargetUserId}) has no assigned roles during admin profile update.", targetUser.Id);

@@ -216,8 +216,9 @@ public class RefreshTokenService(
                 token.IsRevoked = true;
                 token.RevokedAt = DateTime.UtcNow;
                 await refreshTokenRepository.UpdateAsync(token).ConfigureAwait(false);
-                await refreshTokenRepository.SaveChangesAsync().ConfigureAwait(false);
             }
+
+            await refreshTokenRepository.SaveChangesAsync().ConfigureAwait(false);
         }
         catch (Exception ex)
         {

@@ -31,7 +31,6 @@ public class BlacklistedTokenCleanupService : BackgroundService
 
                 // Remove expired blacklisted tokens
                 var expiredTokens = await context.BlacklistedTokens
-                    .AsNoTracking()
                     .Where(bt => bt.ExpiresAt < DateTime.UtcNow)
                     .ToListAsync(stoppingToken).ConfigureAwait(false);
 
