@@ -21,6 +21,7 @@ namespace attendance_monitoring.Services
 
                 await SeedClassroomsAsync();
                 await SeedCoursesAndSectionsAsync();
+                await SeedInstructorsAsync();
                 await SeedStudentsAsync();
 
                 logger.LogInformation("Data seeding completed successfully.");
@@ -113,6 +114,70 @@ namespace attendance_monitoring.Services
             }
             await context.SaveChangesAsync();
             logger.LogInformation("Seeded sections.");
+        }
+
+        private async Task SeedInstructorsAsync()
+        {
+            // Define instructors data
+            var instructorsData = new[]
+            {
+                new { Lastname = "Comaingking", Firstname = "Jovelyn" },
+                new { Lastname = "Francisco", Firstname = "Donald" },
+                new { Lastname = "Paran", Firstname = "Jehn Lyn" },
+                new { Lastname = "Gelicame", Firstname = "Annalyn" },
+                new { Lastname = "Arguzon", Firstname = "Mark John Paul" },
+                new { Lastname = "Medio", Firstname = "Elvira" },
+                new { Lastname = "Balili", Firstname = "Gerard" }
+            };
+
+            // Pre-fetch existing instructors to avoid N+1 queries
+            var existingInstructors = await context.Instructors
+                .Select(i => new { i.Firstname, i.Lastname })
+                .ToListAsync();
+
+            foreach (var instructorData in instructorsData)
+            {
+                // Check if instructor already exists using the pre-fetched list
+                var instructorExists = existingInstructors.Any(i =>
+                    i.Firstname == instructorData.Firstname && i.Lastname == instructorData.Lastname);
+
+                if (instructorExists)
+                {
+                    continue;
+                }
+
+                // Create Identity User
+                var email = $"{instructorData.Firstname.Replace(" ", ".").ToLower()}.{instructorData.Lastname.ToLower()}@instructor.com";
+                var user = await userManager.FindByEmailAsync(email);
+                if (user == null)
+                {
+                    user = new IdentityUser { UserName = email, Email = email, EmailConfirmed = true };
+                    var result = await userManager.CreateAsync(user, "DefaultPassword123!");
+                    if (!result.Succeeded)
+                    {
+                        logger.LogError($"Failed to create user {email}: {string.Join(", ", result.Errors.Select(e => e.Description))}");
+                        continue;
+                    }
+                    await userManager.AddToRoleAsync(user, "Teacher");
+                }
+
+                // Create Instructor Entity
+                var instructor = new Instructor
+                {
+                    Firstname = instructorData.Firstname,
+                    Lastname = instructorData.Lastname,
+                    UserId = user.Id,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                };
+
+                context.Instructors.Add(instructor);
+                // Add to existing instructors list to prevent duplicates in this batch
+                existingInstructors.Add(new { Firstname = instructorData.Firstname, Lastname = instructorData.Lastname });
+            }
+
+            await context.SaveChangesAsync();
+            logger.LogInformation("Seeded instructors.");
         }
 
         private async Task SeedStudentsAsync()
