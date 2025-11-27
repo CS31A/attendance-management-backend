@@ -39,14 +39,7 @@ namespace attendance_monitoring.Controllers
                 registerDto.Role = "Teacher";
             }
 
-            if ((string.IsNullOrEmpty(registerDto.Role) || registerDto.Role.Equals("Student", StringComparison.OrdinalIgnoreCase)))
-            {
-                if (!registerDto.SectionId.HasValue || registerDto.SectionId <= 0)
-                {
-                    logger.LogWarning("Student registration failed for username: {Username}: Valid SectionId is required", registerDto.Username);
-                    return BadRequest(new RegisterResponseDto { Success = false, Message = "Valid SectionId is required for student registration" });
-                }
-            }
+
 
             if (!ModelState.IsValid)
             {

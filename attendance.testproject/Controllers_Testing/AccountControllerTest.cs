@@ -293,6 +293,39 @@ public class AccountControllerTest
         Assert.Equal("Teacher", capturedDto.Role);
         _mockAccountService.Verify(s => s.RegisterAsync(It.IsAny<RegisterDto>()), Times.Once);
     }
+    [Fact]
+    public async Task Register_ReturnsBadRequest_WhenTeacherRegistrationWithSectionId_RedundantCheck()
+    {
+        // Arrange
+        var registerDto = new RegisterDto
+        {
+            Username = "teacher_redundant",
+            Password = "Test@123",
+            Email = "teacher_redundant@test.com",
+            RepeatedPassword = "Test@123",
+            Role = "Teacher",
+            SectionId = 123 // Should be rejected by DTO validation
+        };
+
+        // Manually trigger validation context to simulate ModelState validation
+        var validationContext = new System.ComponentModel.DataAnnotations.ValidationContext(registerDto);
+        var validationResults = new List<System.ComponentModel.DataAnnotations.ValidationResult>();
+        System.ComponentModel.DataAnnotations.Validator.TryValidateObject(registerDto, validationContext, validationResults, true);
+
+        foreach (var validationResult in validationResults)
+        {
+            _accountController.ModelState.AddModelError(validationResult.MemberNames.First(), validationResult.ErrorMessage ?? "Validation error");
+        }
+
+        // Act
+        var result = await _accountController.Register(registerDto);
+
+        // Assert
+        var badRequestResult = Assert.IsType<BadRequestObjectResult>(result.Result);
+        var response = Assert.IsType<RegisterResponseDto>(badRequestResult.Value);
+        Assert.False(response.Success);
+        Assert.Equal("Invalid request data", response.Message);
+    }
     #endregion
 
     #region Check Tests
