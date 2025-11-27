@@ -6,6 +6,9 @@
         <ImplicitUsings>enable</ImplicitUsings>
         <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
+        <!-- Remove this or set to false -->
+<PublishAot>false</PublishAot>
+
         <NoWarn>$(NoWarn);1591</NoWarn>
     </PropertyGroup>
 

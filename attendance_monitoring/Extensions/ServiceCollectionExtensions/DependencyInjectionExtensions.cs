@@ -77,6 +77,7 @@ public static class DependencyInjectionExtensions
     public static IServiceCollection AddBackgroundServices(this IServiceCollection services)
     {
         services.AddHostedService<BlacklistedTokenCleanupService>();
+        services.AddHostedService<RoleInitializationBackgroundService>();
 
         return services;
     }

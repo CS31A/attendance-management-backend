@@ -3,6 +3,7 @@ using attendance_monitoring.Data;
 using attendance_monitoring.IServices;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 
 namespace attendance_monitoring.Services
 {
@@ -19,13 +20,24 @@ namespace attendance_monitoring.Services
                 logger.LogInformation("Starting data seeding...");
 
                 await SeedClassroomsAsync();
+                await SeedCoursesAndSectionsAsync();
                 await SeedStudentsAsync();
 
                 logger.LogInformation("Data seeding completed successfully.");
             }
+            catch (DbUpdateException ex)
+            {
+                logger.LogError(ex, "A database update error occurred during data seeding: {Message}", ex.Message);
+                throw;
+            }
+            catch (OperationCanceledException ex)
+            {
+                logger.LogError(ex, "Data seeding was cancelled: {Message}", ex.Message);
+                throw;
+            }
             catch (Exception ex)
             {
-                logger.LogError(ex, "An error occurred during data seeding.");
+                logger.LogError(ex, "An unexpected error occurred during data seeding: {Message}", ex.Message);
                 throw;
             }
         }
@@ -70,9 +82,41 @@ namespace attendance_monitoring.Services
             logger.LogInformation($"Seeded {classrooms.Count} classrooms.");
         }
 
+        private async Task SeedCoursesAndSectionsAsync()
+        {
+            // Seed Course
+            var courseName = "BSCS";
+            var course = await context.Courses.FirstOrDefaultAsync(c => c.Name == courseName);
+            if (course == null)
+            {
+                course = new Course { Name = courseName, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow };
+                context.Courses.Add(course);
+                await context.SaveChangesAsync();
+                logger.LogInformation($"Seeded course: {courseName}");
+            }
+
+            // Seed Sections
+            var sectionNames = new[] { "CS31A", "CS31B", "CS31C" };
+            foreach (var sectionName in sectionNames)
+            {
+                // Check by Name only as it has a unique index
+                var section = await context.Sections.FirstOrDefaultAsync(s => s.Name == sectionName);
+                if (section == null)
+                {
+                    section = new Section { Name = sectionName, CourseId = course.Id, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow };
+                    context.Sections.Add(section);
+                }
+                else if (section.CourseId != course.Id)
+                {
+                    logger.LogWarning($"Section {sectionName} exists but belongs to Course {section.CourseId} instead of {course.Id}");
+                }
+            }
+            await context.SaveChangesAsync();
+            logger.LogInformation("Seeded sections.");
+        }
+
         private async Task SeedStudentsAsync()
         {
-            // Define students data
             // Define students data
             var studentsData = new[]
             {
@@ -97,30 +141,39 @@ namespace attendance_monitoring.Services
                 new { Lastname = "Villa", Firstname = "Rajiemae", Section = "CS31B", Course = "BSCS" }
             };
 
+            // Get the BSCS course first
+            var bsCsCourse = await context.Courses.FirstOrDefaultAsync(c => c.Name == "BSCS");
+            if (bsCsCourse == null)
+            {
+                logger.LogWarning("BSCS course not found for student seeding.");
+                return; // Exit if course doesn't exist
+            }
+
+            // Pre-fetch all sections for BSCS course to avoid queries in loop
+            var sections = await context.Sections
+                .Where(s => s.CourseId == bsCsCourse.Id)
+                .ToDictionaryAsync(s => s.Name, s => s.Id);
+
+            // Pre-fetch existing students to avoid N+1 queries
+            var existingStudents = await context.Students
+                .Select(s => new { s.Firstname, s.Lastname })
+                .ToListAsync();
+
             foreach (var studentData in studentsData)
             {
-                // Check if student already exists (by name for simplicity in seeding)
-                if (await context.Students.AnyAsync(s => s.Firstname == studentData.Firstname && s.Lastname == studentData.Lastname))
+                // Check if student already exists using the pre-fetched list
+                var studentExists = existingStudents.Any(s =>
+                    s.Firstname == studentData.Firstname && s.Lastname == studentData.Lastname);
+
+                if (studentExists)
                 {
                     continue;
                 }
 
-                // Ensure Course exists
-                var course = await context.Courses.FirstOrDefaultAsync(c => c.Name == studentData.Course);
-                if (course == null)
+                if (!sections.TryGetValue(studentData.Section, out var sectionId))
                 {
-                    course = new Course { Name = studentData.Course, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow };
-                    context.Courses.Add(course);
-                    await context.SaveChangesAsync();
-                }
-
-                // Ensure Section exists
-                var section = await context.Sections.FirstOrDefaultAsync(s => s.Name == studentData.Section && s.CourseId == course.Id);
-                if (section == null)
-                {
-                    section = new Section { Name = studentData.Section, CourseId = course.Id, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow };
-                    context.Sections.Add(section);
-                    await context.SaveChangesAsync();
+                    logger.LogWarning($"Section {studentData.Section} not found for student {studentData.Firstname} {studentData.Lastname}. Skipping.");
+                    continue;
                 }
 
                 // Create Identity User
@@ -144,13 +197,15 @@ namespace attendance_monitoring.Services
                     Firstname = studentData.Firstname,
                     Lastname = studentData.Lastname,
                     UserId = user.Id,
-                    SectionId = section.Id,
+                    SectionId = sectionId,
                     IsRegular = true,
                     CreatedAt = DateTime.UtcNow,
                     UpdatedAt = DateTime.UtcNow
                 };
 
                 context.Students.Add(student);
+                // Add to existing students list to prevent duplicates in this batch
+                existingStudents.Add(new { Firstname = studentData.Firstname, Lastname = studentData.Lastname });
             }
 
             await context.SaveChangesAsync();

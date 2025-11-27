@@ -16,16 +16,23 @@ public static class StartupExtensions
     /// <returns>A task representing the asynchronous initialization operation.</returns>
     public static async Task InitializeApplicationAsync(this WebApplication app)
     {
-        // Initialize roles
+        var logger = app.Services.GetRequiredService<ILogger<WebApplication>>();
+
+        // Seed data with error handling
         using (var scope = app.Services.CreateScope())
         {
-            var roleInitializationService = scope.ServiceProvider
-                .GetRequiredService<IRoleInitializationService>();
-            await roleInitializationService.InitializeRolesAsync();
-
             var dataSeederService = scope.ServiceProvider
                 .GetRequiredService<IDataSeederService>();
-            await dataSeederService.SeedDataAsync();
+
+            try
+            {
+                await dataSeederService.SeedDataAsync();
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Data seeding failed. Application will continue without seed data.");
+                // Don't throw - allow application to start even if seeding fails
+            }
         }
     }
 }
