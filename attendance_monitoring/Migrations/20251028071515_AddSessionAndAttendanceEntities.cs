@@ -15,25 +15,32 @@ namespace attendance_monitoring.Migrations
             // QR codes are ephemeral and will be regenerated
             migrationBuilder.Sql("DELETE FROM [QrCodes]");
 
-            migrationBuilder.DropForeignKey(
-                name: "FK_QrCodes_Classrooms_ActualRoomId",
-                table: "QrCodes");
+            // Use SQL to conditionally drop foreign keys if they exist
+            migrationBuilder.Sql(@"
+                IF EXISTS (SELECT * FROM sys.foreign_keys WHERE object_id = OBJECT_ID(N'[dbo].[FK_QrCodes_Classrooms_ActualRoomId]') AND parent_object_id = OBJECT_ID(N'[dbo].[QrCodes]'))
+                ALTER TABLE [dbo].[QrCodes] DROP CONSTRAINT [FK_QrCodes_Classrooms_ActualRoomId]
+            ");
 
-            migrationBuilder.DropForeignKey(
-                name: "FK_QrCodes_Schedules_ScheduleId",
-                table: "QrCodes");
+            migrationBuilder.Sql(@"
+                IF EXISTS (SELECT * FROM sys.foreign_keys WHERE object_id = OBJECT_ID(N'[dbo].[FK_QrCodes_Schedules_ScheduleId]') AND parent_object_id = OBJECT_ID(N'[dbo].[QrCodes]'))
+                ALTER TABLE [dbo].[QrCodes] DROP CONSTRAINT [FK_QrCodes_Schedules_ScheduleId]
+            ");
 
-            migrationBuilder.DropForeignKey(
-                name: "FK_QrCodes_Sections_SectionId",
-                table: "QrCodes");
+            migrationBuilder.Sql(@"
+                IF EXISTS (SELECT * FROM sys.foreign_keys WHERE object_id = OBJECT_ID(N'[dbo].[FK_QrCodes_Sections_SectionId]') AND parent_object_id = OBJECT_ID(N'[dbo].[QrCodes]'))
+                ALTER TABLE [dbo].[QrCodes] DROP CONSTRAINT [FK_QrCodes_Sections_SectionId]
+            ");
 
-            migrationBuilder.DropIndex(
-                name: "IX_QrCodes_ActualRoomId",
-                table: "QrCodes");
+            // Use SQL to conditionally drop indexes if they exist
+            migrationBuilder.Sql(@"
+                IF EXISTS (SELECT * FROM sys.indexes WHERE name = N'IX_QrCodes_ActualRoomId' AND object_id = OBJECT_ID(N'[dbo].[QrCodes]'))
+                DROP INDEX [IX_QrCodes_ActualRoomId] ON [dbo].[QrCodes]
+            ");
 
-            migrationBuilder.DropIndex(
-                name: "IX_QrCodes_ScheduleId",
-                table: "QrCodes");
+            migrationBuilder.Sql(@"
+                IF EXISTS (SELECT * FROM sys.indexes WHERE name = N'IX_QrCodes_ScheduleId' AND object_id = OBJECT_ID(N'[dbo].[QrCodes]'))
+                DROP INDEX [IX_QrCodes_ScheduleId] ON [dbo].[QrCodes]
+            ");
 
             migrationBuilder.DropColumn(
                 name: "ActualRoomId",
@@ -48,10 +55,20 @@ namespace attendance_monitoring.Migrations
                 table: "QrCodes",
                 newName: "SessionId");
 
-            migrationBuilder.RenameIndex(
-                name: "IX_QrCodes_SectionId",
-                table: "QrCodes",
-                newName: "IX_QrCodes_SessionId");
+            // Conditional index rename/create
+            migrationBuilder.Sql(@"
+                IF EXISTS (SELECT * FROM sys.indexes WHERE name = N'IX_QrCodes_SectionId' AND object_id = OBJECT_ID(N'[dbo].[QrCodes]'))
+                BEGIN
+                    EXEC sp_rename N'[dbo].[QrCodes].[IX_QrCodes_SectionId]', N'IX_QrCodes_SessionId', N'INDEX';
+                END
+                ELSE
+                BEGIN
+                    IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = N'IX_QrCodes_SessionId' AND object_id = OBJECT_ID(N'[dbo].[QrCodes]'))
+                    BEGIN
+                        CREATE INDEX [IX_QrCodes_SessionId] ON [dbo].[QrCodes] ([SessionId]);
+                    END
+                END
+            ");
 
             migrationBuilder.CreateTable(
                 name: "Sessions",
@@ -236,15 +253,22 @@ namespace attendance_monitoring.Migrations
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropForeignKey(
-                name: "FK_QrCodes_Sessions_SessionId",
-                table: "QrCodes");
+            // Use conditional SQL to safely drop foreign key if it exists
+            migrationBuilder.Sql(@"
+                IF EXISTS (SELECT * FROM sys.foreign_keys WHERE object_id = OBJECT_ID(N'[dbo].[FK_QrCodes_Sessions_SessionId]') AND parent_object_id = OBJECT_ID(N'[dbo].[QrCodes]'))
+                ALTER TABLE [dbo].[QrCodes] DROP CONSTRAINT [FK_QrCodes_Sessions_SessionId]
+            ");
 
-            migrationBuilder.DropTable(
-                name: "AttendanceRecords");
+            // Conditionally drop tables if they exist
+            migrationBuilder.Sql(@"
+                IF OBJECT_ID(N'[dbo].[AttendanceRecords]', N'U') IS NOT NULL
+                DROP TABLE [dbo].[AttendanceRecords]
+            ");
 
-            migrationBuilder.DropTable(
-                name: "Sessions");
+            migrationBuilder.Sql(@"
+                IF OBJECT_ID(N'[dbo].[Sessions]', N'U') IS NOT NULL
+                DROP TABLE [dbo].[Sessions]
+            ");
 
             // Note: These indexes were not created by this migration, so we don't drop them
             // migrationBuilder.DropIndex(
@@ -264,10 +288,20 @@ namespace attendance_monitoring.Migrations
                 table: "QrCodes",
                 newName: "SectionId");
 
-            migrationBuilder.RenameIndex(
-                name: "IX_QrCodes_SessionId",
-                table: "QrCodes",
-                newName: "IX_QrCodes_SectionId");
+            // Conditional index rename/create for rollback
+            migrationBuilder.Sql(@"
+                IF EXISTS (SELECT * FROM sys.indexes WHERE name = N'IX_QrCodes_SessionId' AND object_id = OBJECT_ID(N'[dbo].[QrCodes]'))
+                BEGIN
+                    EXEC sp_rename N'[dbo].[QrCodes].[IX_QrCodes_SessionId]', N'IX_QrCodes_SectionId', N'INDEX';
+                END
+                ELSE
+                BEGIN
+                    IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = N'IX_QrCodes_SectionId' AND object_id = OBJECT_ID(N'[dbo].[QrCodes]'))
+                    BEGIN
+                        CREATE INDEX [IX_QrCodes_SectionId] ON [dbo].[QrCodes] ([SectionId]);
+                    END
+                END
+            ");
 
             migrationBuilder.AddColumn<int>(
                 name: "ActualRoomId",
@@ -283,39 +317,35 @@ namespace attendance_monitoring.Migrations
                 nullable: false,
                 defaultValue: 0);
 
-            migrationBuilder.CreateIndex(
-                name: "IX_QrCodes_ActualRoomId",
-                table: "QrCodes",
-                column: "ActualRoomId");
+            // Conditionally create indexes if they don't exist
+            migrationBuilder.Sql(@"
+                IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = N'IX_QrCodes_ActualRoomId' AND object_id = OBJECT_ID(N'[dbo].[QrCodes]'))
+                CREATE INDEX [IX_QrCodes_ActualRoomId] ON [dbo].[QrCodes] ([ActualRoomId])
+            ");
 
-            migrationBuilder.CreateIndex(
-                name: "IX_QrCodes_ScheduleId",
-                table: "QrCodes",
-                column: "ScheduleId");
+            migrationBuilder.Sql(@"
+                IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = N'IX_QrCodes_ScheduleId' AND object_id = OBJECT_ID(N'[dbo].[QrCodes]'))
+                CREATE INDEX [IX_QrCodes_ScheduleId] ON [dbo].[QrCodes] ([ScheduleId])
+            ");
 
-            migrationBuilder.AddForeignKey(
-                name: "FK_QrCodes_Classrooms_ActualRoomId",
-                table: "QrCodes",
-                column: "ActualRoomId",
-                principalTable: "Classrooms",
-                principalColumn: "Id",
-                onDelete: ReferentialAction.Cascade);
+            // Conditionally add foreign keys if they don't exist
+            migrationBuilder.Sql(@"
+                IF NOT EXISTS (SELECT * FROM sys.foreign_keys WHERE object_id = OBJECT_ID(N'[dbo].[FK_QrCodes_Classrooms_ActualRoomId]') AND parent_object_id = OBJECT_ID(N'[dbo].[QrCodes]'))
+                ALTER TABLE [dbo].[QrCodes] ADD CONSTRAINT [FK_QrCodes_Classrooms_ActualRoomId] 
+                FOREIGN KEY ([ActualRoomId]) REFERENCES [Classrooms] ([Id]) ON DELETE CASCADE
+            ");
 
-            migrationBuilder.AddForeignKey(
-                name: "FK_QrCodes_Schedules_ScheduleId",
-                table: "QrCodes",
-                column: "ScheduleId",
-                principalTable: "Schedules",
-                principalColumn: "Id",
-                onDelete: ReferentialAction.Cascade);
+            migrationBuilder.Sql(@"
+                IF NOT EXISTS (SELECT * FROM sys.foreign_keys WHERE object_id = OBJECT_ID(N'[dbo].[FK_QrCodes_Schedules_ScheduleId]') AND parent_object_id = OBJECT_ID(N'[dbo].[QrCodes]'))
+                ALTER TABLE [dbo].[QrCodes] ADD CONSTRAINT [FK_QrCodes_Schedules_ScheduleId] 
+                FOREIGN KEY ([ScheduleId]) REFERENCES [Schedules] ([Id]) ON DELETE CASCADE
+            ");
 
-            migrationBuilder.AddForeignKey(
-                name: "FK_QrCodes_Sections_SectionId",
-                table: "QrCodes",
-                column: "SectionId",
-                principalTable: "Sections",
-                principalColumn: "Id",
-                onDelete: ReferentialAction.Cascade);
+            migrationBuilder.Sql(@"
+                IF NOT EXISTS (SELECT * FROM sys.foreign_keys WHERE object_id = OBJECT_ID(N'[dbo].[FK_QrCodes_Sections_SectionId]') AND parent_object_id = OBJECT_ID(N'[dbo].[QrCodes]'))
+                ALTER TABLE [dbo].[QrCodes] ADD CONSTRAINT [FK_QrCodes_Sections_SectionId] 
+                FOREIGN KEY ([SectionId]) REFERENCES [Sections] ([Id]) ON DELETE CASCADE
+            ");
         }
     }
 }

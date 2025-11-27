@@ -10,6 +10,7 @@ namespace attendance_monitoring.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.Sql("DROP PROCEDURE IF EXISTS sp_GetAllUsers");
             var sp = @"CREATE PROCEDURE sp_GetAllUsers
                         AS
                         BEGIN
