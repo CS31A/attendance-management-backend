@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.ResponseCompression;
+using Microsoft.Extensions.Configuration;
 using System.IO.Compression;
 using System.Text.Json.Serialization;
 
@@ -45,24 +46,33 @@ public static class ResponseHandlingExtensions
 
     /// <summary>
     /// Adds CORS policy to allow frontend access.
+    /// Reads allowed origins from configuration (CorsSettings:AllowedOrigins).
     /// </summary>
     /// <param name="services">The service collection to add services to.</param>
+    /// <param name="configuration">The application configuration.</param>
     /// <param name="policyName">The name of the CORS policy (default: "AllowFrontend").</param>
-    /// <param name="frontendOrigin">The frontend origin URL (default: "http://localhost:5173").</param>
     /// <returns>The service collection for chaining.</returns>
     public static IServiceCollection AddCorsPolicy(
         this IServiceCollection services,
-        string policyName = "AllowFrontend",
-        string frontendOrigin = "http://localhost:5173")
+        IConfiguration configuration,
+        string policyName = "AllowFrontend")
     {
+        // Read allowed origins from configuration
+        var allowedOrigins = configuration.GetSection("CorsSettings:AllowedOrigins").Get<string>();
+        
+        // Parse origins (supports semicolon-separated list)
+        var origins = string.IsNullOrWhiteSpace(allowedOrigins)
+            ? new[] { "http://localhost:5173" } // Default fallback for development
+            : allowedOrigins.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
         services.AddCors(options =>
         {
             options.AddPolicy(policyName, policy =>
             {
-                policy.WithOrigins(frontendOrigin) // Frontend origin
+                policy.WithOrigins(origins) // Frontend origins from configuration
                       .AllowAnyHeader()
                       .AllowAnyMethod()
-                      .AllowCredentials(); // If you need to send cookies or authorization headers
+                      .AllowCredentials(); // Required for cookies and authorization headers
             });
         });
 

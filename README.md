@@ -67,6 +67,9 @@ AppSettings__Audience=AttendanceMonitoringUsers
 # Cookie Settings (Optional - uses defaults if not set)
 CookieSettings__AccessTokenExpirationMinutes=15
 CookieSettings__RefreshTokenExpirationDays=7
+
+# CORS Settings (Optional - defaults to http://localhost:5173)
+CorsSettings__AllowedOrigins=http://localhost:5173;http://localhost:3000
 ```
 
 ### 3. Database Setup
@@ -216,7 +219,14 @@ attendance-monitoring-system/
 
 ### CORS Configuration
 
-The application is configured to allow requests from `http://localhost:5173` (typical Vite/React dev server). Update the CORS policy in `Program.cs` if your frontend runs on a different port.
+The application's CORS policy is now configurable via environment variables. Add the following to your `.env` file:
+
+```env
+# CORS Settings - Separate multiple origins with semicolons (;)
+CorsSettings__AllowedOrigins=http://localhost:5173;http://localhost:3000
+```
+
+If not configured, the application defaults to `http://localhost:5173` (typical Vite/React dev server).
 
 ### JWT Configuration
 
@@ -239,7 +249,7 @@ The application uses structured logging with different levels:
 2. **Database**: Use a production SQL Server instance
 3. **HTTPS**: Ensure HTTPS is properly configured
 4. **Logging**: Configure appropriate logging providers
-5. **CORS**: Update CORS policy for production domains
+5. **CORS**: Update `CorsSettings__AllowedOrigins` environment variable for production domains
 
 ## 🤝 Contributing
 
@@ -276,7 +286,7 @@ Once the application is running, you can access:
    - Change ports in `appsettings.json` if needed
 
 4. **CORS Issues**
-   - Update CORS policy in `Program.cs` for your frontend URL
+   - Update `CorsSettings__AllowedOrigins` in your `.env` file for your frontend URL
    - Ensure credentials are included if using cookies
 
 ### Getting Help
