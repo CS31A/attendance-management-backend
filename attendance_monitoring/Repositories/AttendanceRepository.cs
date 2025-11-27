@@ -1,4 +1,5 @@
 using attendance_monitoring.Classes;
+using attendance_monitoring.Constants;
 using attendance_monitoring.Data;
 using attendance_monitoring.IRepository;
 using attendance_monitoring.Models.DTO.Response;
@@ -62,9 +63,9 @@ public class AttendanceRepository(ApplicationDbContext context) : IAttendanceRep
     public async Task<List<AttendanceRecordResponseDto>> GetAllForListingAsync(int pageNumber = 1, int pageSize = 50)
     {
         // Validate pagination parameters
-        if (pageNumber < 1) pageNumber = 1;
-        if (pageSize < 1) pageSize = 50;
-        if (pageSize > 1000) pageSize = 1000; // Prevent excessive data retrieval
+        if (pageNumber < PaginationConstants.MinPageNumber) pageNumber = PaginationConstants.DefaultPageNumber;
+        if (pageSize < PaginationConstants.MinPageSize) pageSize = PaginationConstants.DefaultPageSize;
+        if (pageSize > PaginationConstants.MaxPageSize) pageSize = PaginationConstants.MaxPageSize; // Prevent excessive data retrieval
 
         return await context.AttendanceRecords
             .AsNoTracking()
@@ -105,9 +106,9 @@ public class AttendanceRepository(ApplicationDbContext context) : IAttendanceRep
     public async Task<List<AttendanceListDto>> GetAllForListingOptimizedAsync(int pageNumber = 1, int pageSize = 50)
     {
         // Validate pagination parameters
-        if (pageNumber < 1) pageNumber = 1;
-        if (pageSize < 1) pageSize = 50;
-        if (pageSize > 1000) pageSize = 1000; // Prevent excessive data retrieval
+        if (pageNumber < PaginationConstants.MinPageNumber) pageNumber = PaginationConstants.DefaultPageNumber;
+        if (pageSize < PaginationConstants.MinPageSize) pageSize = PaginationConstants.DefaultPageSize;
+        if (pageSize > PaginationConstants.MaxPageSize) pageSize = PaginationConstants.MaxPageSize; // Prevent excessive data retrieval
 
         return await context.AttendanceRecords
             .AsNoTracking()
@@ -397,9 +398,9 @@ public class AttendanceRepository(ApplicationDbContext context) : IAttendanceRep
         int pageSize = 50)
     {
         // Validate pagination parameters
-        if (pageNumber < 1) pageNumber = 1;
-        if (pageSize < 1) pageSize = 50;
-        if (pageSize > 1000) pageSize = 1000;
+        if (pageNumber < PaginationConstants.MinPageNumber) pageNumber = PaginationConstants.DefaultPageNumber;
+        if (pageSize < PaginationConstants.MinPageSize) pageSize = PaginationConstants.DefaultPageSize;
+        if (pageSize > PaginationConstants.MaxPageSize) pageSize = PaginationConstants.MaxPageSize;
 
         // Start with base queryable (no execution yet)
         IQueryable<AttendanceRecord> query = context.AttendanceRecords.AsNoTracking();

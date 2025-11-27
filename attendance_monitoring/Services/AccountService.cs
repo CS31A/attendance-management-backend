@@ -324,13 +324,38 @@ namespace attendance_monitoring.Services
         public async Task<LogoutResponseDto> LogoutAsync(string userId, string? accessToken)
         {
             logger.LogInformation("Logout attempt for user {UserId}.", userId);
+            await RevokeAllTokensAsync(userId, accessToken, "logout");
+            logger.LogInformation("User logged out successfully: {UserId}", userId);
+            return new LogoutResponseDto { Success = true, Message = "Logged out successfully" };
+        }
+        #endregion
 
+        #region WebLogoutAsync
+        public async Task<LogoutResponseDto> WebLogoutAsync(string userId, string? accessToken)
+        {
+            logger.LogInformation("Web logout attempt for user {UserId}.", userId);
+            await RevokeAllTokensAsync(userId, accessToken, "web logout");
+            logger.LogInformation("User web logout completed successfully: {UserId}", userId);
+            return new LogoutResponseDto { Success = true, Message = "Logged out successfully" };
+        }
+        #endregion
+
+        #region RevokeAllTokensAsync
+        /// <summary>
+        /// Revokes all active tokens for a user during logout operations.
+        /// Blacklists the provided access token and revokes all active refresh tokens.
+        /// </summary>
+        /// <param name="userId">The user ID to revoke tokens for</param>
+        /// <param name="accessToken">The access token to blacklist (optional)</param>
+        /// <param name="operationType">Type of operation for logging purposes (e.g., "logout", "web logout")</param>
+        private async Task RevokeAllTokensAsync(string userId, string? accessToken, string operationType)
+        {
             try
             {
                 // Blacklist the access token if provided
                 if (!string.IsNullOrEmpty(accessToken))
                 {
-                    await ValidateAndBlacklistTokenAsync(accessToken, userId, "logout");
+                    await ValidateAndBlacklistTokenAsync(accessToken, userId, operationType);
                 }
 
                 // Revoke all active refresh tokens for the user
@@ -347,74 +372,22 @@ namespace attendance_monitoring.Services
                 if (activeRefreshTokens.Count > 0)
                 {
                     await accountRepository.SaveChangesAsync().ConfigureAwait(false);
-                    logger.LogInformation("Revoked {TokenCount} active refresh tokens during logout for user {UserId}.", activeRefreshTokens.Count, userId);
+                    logger.LogInformation("Revoked {TokenCount} active refresh tokens during {OperationType} for user {UserId}.", 
+                        activeRefreshTokens.Count, operationType, userId);
                 }
-
-                logger.LogInformation("User logged out successfully: {UserId}", userId);
             }
             catch (DbUpdateConcurrencyException ex)
             {
-                logger.LogWarning(ex, "Logout concurrency issue for user {UserId}", userId);
+                logger.LogWarning(ex, "{OperationType} concurrency issue for user {UserId}", operationType, userId);
             }
             catch (DbUpdateException ex)
             {
-                logger.LogError(ex, "Logout database update failed for user {UserId}", userId);
+                logger.LogError(ex, "{OperationType} database update failed for user {UserId}", operationType, userId);
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "Logout operation failed for user {UserId}", userId);
+                logger.LogError(ex, "{OperationType} operation failed for user {UserId}", operationType, userId);
             }
-
-            return new LogoutResponseDto { Success = true, Message = "Logged out successfully" };
-        }
-        #endregion
-
-        #region WebLogoutAsync
-        public async Task<LogoutResponseDto> WebLogoutAsync(string userId, string? accessToken)
-        {
-            logger.LogInformation("Web logout attempt for user {UserId}.", userId);
-
-            try
-            {
-                // Blacklist the access token if provided (same logic as regular logout)
-                if (!string.IsNullOrEmpty(accessToken))
-                {
-                    await ValidateAndBlacklistTokenAsync(accessToken, userId, "web logout");
-                }
-
-                // Revoke all active refresh tokens for the user (consistent with JWT logout)
-                var activeRefreshTokens = await context.RefreshTokens
-                    .Where(rt => rt.UserId == userId && !rt.IsRevoked && rt.ExpiresAt > DateTime.UtcNow)
-                    .ToListAsync().ConfigureAwait(false);
-
-                foreach (var token in activeRefreshTokens)
-                {
-                    token.IsRevoked = true;
-                    token.RevokedAt = DateTime.UtcNow;
-                }
-
-                if (activeRefreshTokens.Count > 0)
-                {
-                    await accountRepository.SaveChangesAsync().ConfigureAwait(false);
-                    logger.LogInformation("Revoked {TokenCount} active refresh tokens during web logout for user {UserId}.", activeRefreshTokens.Count, userId);
-                }
-
-                logger.LogInformation("User web logout completed successfully: {UserId}", userId);
-            }
-            catch (DbUpdateConcurrencyException ex)
-            {
-                logger.LogWarning(ex, "Web logout concurrency issue for user {UserId}", userId);
-            }
-            catch (DbUpdateException ex)
-            {
-                logger.LogError(ex, "Web logout database update failed for user {UserId}", userId);
-            }
-            catch (Exception ex)
-            {
-                logger.LogError(ex, "Web logout operation failed for user {UserId}", userId);
-            }
-
-            return new LogoutResponseDto { Success = true, Message = "Logged out successfully" };
         }
         #endregion
         #endregion
@@ -464,12 +437,41 @@ namespace attendance_monitoring.Services
                     logger.LogInformation("Access token blacklisted during {OperationType} for user {UserId}", operationType, userId);
                 }
                 else
-                    logger.LogWarning("Access token not blacklisted during {OperationType} - validation failed for user {UserId}", operationType, userId);
+                {
+                    logger.LogDebug("Access token not blacklisted during {OperationType} - validation checks failed for user {UserId}", operationType, userId);
+                }
+            }
+            catch (SecurityTokenExpiredException ex)
+            {
+                // Expected case: Token has already expired, no need to blacklist
+                logger.LogDebug("Token already expired during {OperationType} for user {UserId}: {Message}", 
+                    operationType, userId, ex.Message);
+            }
+            catch (SecurityTokenValidationException ex)
+            {
+                // Token itself is invalid - this is sometimes expected (e.g., malformed, wrong signature)
+                logger.LogInformation("Token validation failed during {OperationType} for user {UserId}: {Message}", 
+                    operationType, userId, ex.Message);
+            }
+            catch (DbUpdateConcurrencyException ex)
+            {
+                // Concurrency issue - token may already be blacklisted (catch before DbUpdateException)
+                logger.LogWarning(ex, "Concurrency issue during token blacklist for {OperationType}: {UserId}", 
+                    operationType, userId);
+            }
+            catch (DbUpdateException ex)
+            {
+                // Database error during blacklisting - this is critical
+                logger.LogError(ex, "CRITICAL: Failed to blacklist token during {OperationType} for user {UserId}. Token may remain active.", 
+                    operationType, userId);
+                // Consider: Implement alerting mechanism here for production
             }
             catch (Exception ex)
             {
-                logger.LogWarning("Failed to validate and blacklist access token during {OperationType} for user {UserId}: {Error}", operationType, userId, ex.Message);
-                // Continue with operation even if blacklisting fails
+                // Unexpected error - potential security issue
+                logger.LogError(ex, "Unexpected error during token blacklist for {OperationType}: {UserId}. Token may remain active.", 
+                    operationType, userId);
+                // Consider: Implement alerting mechanism here for production
             }
         }
         #endregion
