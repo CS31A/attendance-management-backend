@@ -103,7 +103,7 @@ public class AttendanceRepositoryTest : IDisposable
             Student = student1,
             SessionId = 1,
             Session = session,
-            CheckInTime = DateTime.Now.AddHours(-1),
+            CheckInTime = DateTime.UtcNow.AddHours(-1),
             Status = "Present"
         };
 
@@ -114,7 +114,7 @@ public class AttendanceRepositoryTest : IDisposable
             Student = student2,
             SessionId = 1,
             Session = session,
-            CheckInTime = DateTime.Now.AddHours(-2),
+            CheckInTime = DateTime.UtcNow.AddHours(-2),
             Status = "Late"
         };
 
@@ -125,7 +125,7 @@ public class AttendanceRepositoryTest : IDisposable
             Student = student3,
             SessionId = 1,
             Session = session,
-            CheckInTime = DateTime.Now.AddHours(-3),
+            CheckInTime = DateTime.UtcNow.AddHours(-3),
             Status = "Present"
         };
 

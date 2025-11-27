@@ -151,7 +151,7 @@ public class AttendanceConcurrencyTests
         _mockSessionRepository.Setup(r => r.GetSessionByIdAsync(sessionId))
             .ReturnsAsync(new Session { 
                 Id = sessionId, 
-                Schedule = new Schedules { TimeIn = TimeOnly.FromDateTime(DateTime.Now) } 
+                Schedule = new Schedules { TimeIn = TimeOnly.FromDateTime(DateTime.UtcNow) } 
             });
 
         // Simulate race condition: HasAttendanceRecordAsync returns false (check passed)

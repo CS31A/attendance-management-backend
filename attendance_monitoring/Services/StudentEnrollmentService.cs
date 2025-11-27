@@ -18,10 +18,10 @@ public class StudentEnrollmentService : IStudentEnrollmentService
         ISectionRepository sectionRepository,
         ISubjectRepository subjectRepository)
     {
-        _enrollmentRepository = enrollmentRepository;
-        _studentRepository = studentRepository;
-        _sectionRepository = sectionRepository;
-        _subjectRepository = subjectRepository;
+        _enrollmentRepository = enrollmentRepository ?? throw new ArgumentNullException(nameof(enrollmentRepository));
+        _studentRepository = studentRepository ?? throw new ArgumentNullException(nameof(studentRepository));
+        _sectionRepository = sectionRepository ?? throw new ArgumentNullException(nameof(sectionRepository));
+        _subjectRepository = subjectRepository ?? throw new ArgumentNullException(nameof(subjectRepository));
     }
 
     public async Task<StudentEnrollment> EnrollStudentAsync(int studentId, int sectionId, int subjectId, string enrollmentType = "Irregular", string? academicYear = null, string? semester = null)

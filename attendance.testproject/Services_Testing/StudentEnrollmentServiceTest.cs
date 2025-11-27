@@ -32,6 +32,16 @@ public class StudentEnrollmentServiceTest
         );
     }
 
+    [Fact]
+    public void Constructor_NullDependency_ThrowsArgumentNullException()
+    {
+        // Arrange & Act & Assert
+        Assert.Throws<ArgumentNullException>(() => new StudentEnrollmentService(null!, _mockStudentRepo.Object, _mockSectionRepo.Object, _mockSubjectRepo.Object));
+        Assert.Throws<ArgumentNullException>(() => new StudentEnrollmentService(_mockEnrollmentRepo.Object, null!, _mockSectionRepo.Object, _mockSubjectRepo.Object));
+        Assert.Throws<ArgumentNullException>(() => new StudentEnrollmentService(_mockEnrollmentRepo.Object, _mockStudentRepo.Object, null!, _mockSubjectRepo.Object));
+        Assert.Throws<ArgumentNullException>(() => new StudentEnrollmentService(_mockEnrollmentRepo.Object, _mockStudentRepo.Object, _mockSectionRepo.Object, null!));
+    }
+
     #region EnrollStudentAsync Tests
 
     [Fact]
