@@ -84,6 +84,21 @@ namespace attendance_monitoring.Services
                 createSchedule.TimeIn, createSchedule.TimeOut);
             try
             {
+                // Validate DayOfWeek
+                if (!Constants.ScheduleConstants.IsValidDayOfWeek(createSchedule.DayOfWeek))
+                {
+                    logger.LogWarning("Schedule creation failed: Invalid DayOfWeek '{DayOfWeek}'", createSchedule.DayOfWeek);
+                    return (null, $"Invalid DayOfWeek. Must be one of: {string.Join(", ", Constants.ScheduleConstants.ValidDaysOfWeek)}");
+                }
+
+                // Validate time range (TimeOut must be after TimeIn)
+                if (createSchedule.TimeOut <= createSchedule.TimeIn)
+                {
+                    logger.LogWarning("Schedule creation failed: TimeOut ({TimeOut}) must be after TimeIn ({TimeIn})", 
+                        createSchedule.TimeOut, createSchedule.TimeIn);
+                    return (null, "TimeOut must be after TimeIn");
+                }
+
                 // Validate relationships if needed
                 var subjectExists = await context.Subjects.AsNoTracking().AnyAsync(s => s.Id == createSchedule.SubjectId);
                 if (!subjectExists)
@@ -154,42 +169,87 @@ namespace attendance_monitoring.Services
                     return (null, "Schedule not found");
                 }
 
-                // Validate relationships if needed
-                var subjectExists = await context.Subjects.AsNoTracking().AnyAsync(s => s.Id == updateSchedule.SubjectId);
-                if (!subjectExists)
+                // Validate DayOfWeek if provided
+                if (!string.IsNullOrEmpty(updateSchedule.DayOfWeek) && 
+                    !Constants.ScheduleConstants.IsValidDayOfWeek(updateSchedule.DayOfWeek))
                 {
-                    logger.LogWarning("Schedule update failed: Subject with ID {SubjectId} not found", updateSchedule.SubjectId);
-                    return (null, "Subject not found");
+                    logger.LogWarning("Schedule update failed: Invalid DayOfWeek '{DayOfWeek}'", updateSchedule.DayOfWeek);
+                    return (null, $"Invalid DayOfWeek. Must be one of: {string.Join(", ", Constants.ScheduleConstants.ValidDaysOfWeek)}");
                 }
 
-                var classroomExists = await context.Classrooms.AsNoTracking().AnyAsync(c => c.Id == updateSchedule.ClassroomId);
-                if (!classroomExists)
+                // Determine effective TimeIn and TimeOut for validation
+                var effectiveTimeIn = updateSchedule.TimeIn ?? existingSchedule.TimeIn;
+                var effectiveTimeOut = updateSchedule.TimeOut ?? existingSchedule.TimeOut;
+
+                // Validate time range (TimeOut must be after TimeIn)
+                if (effectiveTimeOut <= effectiveTimeIn)
                 {
-                    logger.LogWarning("Schedule update failed: Classroom with ID {ClassroomId} not found", updateSchedule.ClassroomId);
-                    return (null, "Classroom not found");
+                    logger.LogWarning("Schedule update failed: TimeOut ({TimeOut}) must be after TimeIn ({TimeIn})", 
+                        effectiveTimeOut, effectiveTimeIn);
+                    return (null, "TimeOut must be after TimeIn");
                 }
 
-                var sectionExists = await context.Sections.AsNoTracking().AnyAsync(s => s.Id == updateSchedule.SectionId);
-                if (!sectionExists)
+                // Validate and update relationships only if provided
+                if (updateSchedule.SubjectId.HasValue)
                 {
-                    logger.LogWarning("Schedule update failed: Section with ID {SectionId} not found", updateSchedule.SectionId);
-                    return (null, "Section not found");
+                    var subjectExists = await context.Subjects.AsNoTracking().AnyAsync(s => s.Id == updateSchedule.SubjectId.Value);
+                    if (!subjectExists)
+                    {
+                        logger.LogWarning("Schedule update failed: Subject with ID {SubjectId} not found", updateSchedule.SubjectId.Value);
+                        return (null, "Subject not found");
+                    }
+                    existingSchedule.SubjectId = updateSchedule.SubjectId.Value;
                 }
 
-                var instructorExists = await context.Instructors.AsNoTracking().AnyAsync(i => i.Id == updateSchedule.InstructorId);
-                if (!instructorExists)
+                if (updateSchedule.ClassroomId.HasValue)
                 {
-                    logger.LogWarning("Schedule update failed: Instructor with ID {InstructorId} not found", updateSchedule.InstructorId);
-                    return (null, "Instructor not found");
+                    var classroomExists = await context.Classrooms.AsNoTracking().AnyAsync(c => c.Id == updateSchedule.ClassroomId.Value);
+                    if (!classroomExists)
+                    {
+                        logger.LogWarning("Schedule update failed: Classroom with ID {ClassroomId} not found", updateSchedule.ClassroomId.Value);
+                        return (null, "Classroom not found");
+                    }
+                    existingSchedule.ClassroomId = updateSchedule.ClassroomId.Value;
                 }
 
-                existingSchedule.TimeIn = updateSchedule.TimeIn;
-                existingSchedule.TimeOut = updateSchedule.TimeOut;
-                existingSchedule.DayOfWeek = updateSchedule.DayOfWeek;
-                existingSchedule.SubjectId = updateSchedule.SubjectId;
-                existingSchedule.ClassroomId = updateSchedule.ClassroomId;
-                existingSchedule.SectionId = updateSchedule.SectionId;
-                existingSchedule.InstructorId = updateSchedule.InstructorId;
+                if (updateSchedule.SectionId.HasValue)
+                {
+                    var sectionExists = await context.Sections.AsNoTracking().AnyAsync(s => s.Id == updateSchedule.SectionId.Value);
+                    if (!sectionExists)
+                    {
+                        logger.LogWarning("Schedule update failed: Section with ID {SectionId} not found", updateSchedule.SectionId.Value);
+                        return (null, "Section not found");
+                    }
+                    existingSchedule.SectionId = updateSchedule.SectionId.Value;
+                }
+
+                if (updateSchedule.InstructorId.HasValue)
+                {
+                    var instructorExists = await context.Instructors.AsNoTracking().AnyAsync(i => i.Id == updateSchedule.InstructorId.Value);
+                    if (!instructorExists)
+                    {
+                        logger.LogWarning("Schedule update failed: Instructor with ID {InstructorId} not found", updateSchedule.InstructorId.Value);
+                        return (null, "Instructor not found");
+                    }
+                    existingSchedule.InstructorId = updateSchedule.InstructorId.Value;
+                }
+
+                // Update simple fields only if provided
+                if (updateSchedule.TimeIn.HasValue)
+                {
+                    existingSchedule.TimeIn = updateSchedule.TimeIn.Value;
+                }
+
+                if (updateSchedule.TimeOut.HasValue)
+                {
+                    existingSchedule.TimeOut = updateSchedule.TimeOut.Value;
+                }
+
+                if (!string.IsNullOrEmpty(updateSchedule.DayOfWeek))
+                {
+                    existingSchedule.DayOfWeek = updateSchedule.DayOfWeek;
+                }
+
                 existingSchedule.UpdatedAt = DateTime.UtcNow;
 
                 var updatedSchedule = await scheduleRepository.UpdateScheduleAsync(existingSchedule);

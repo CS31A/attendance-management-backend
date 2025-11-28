@@ -237,9 +237,9 @@ public class ScheduleControllerTest
         var updatedSchedule = new Schedules
         {
             Id = scheduleId,
-            TimeIn = updateSchedule.TimeIn,
-            TimeOut = updateSchedule.TimeOut,
-            DayOfWeek = updateSchedule.DayOfWeek
+            TimeIn = updateSchedule.TimeIn!.Value,
+            TimeOut = updateSchedule.TimeOut!.Value,
+            DayOfWeek = updateSchedule.DayOfWeek!
         };
 
         _mockScheduleService
@@ -253,6 +253,40 @@ public class ScheduleControllerTest
         var okResult = Assert.IsType<OkObjectResult>(result.Result);
         var schedule = Assert.IsType<Schedules>(okResult.Value);
         Assert.Equal(scheduleId, schedule.Id);
+
+        _mockScheduleService.Verify(s => s.UpdateScheduleAsync(scheduleId, updateSchedule), Times.Once);
+    }
+
+    [Fact]
+    public async Task UpdateSchedule_ReturnsOkResult_WithPartialUpdate()
+    {
+        // Arrange - Test PATCH endpoint with only TimeIn field provided
+        int scheduleId = 1;
+        var updateSchedule = new UpdateSchedule
+        {
+            TimeIn = new TimeOnly(10, 0) // Only updating TimeIn
+        };
+
+        var updatedSchedule = new Schedules
+        {
+            Id = scheduleId,
+            TimeIn = updateSchedule.TimeIn!.Value,
+            TimeOut = new TimeOnly(11, 0), // Existing value kept
+            DayOfWeek = "Monday" // Existing value kept
+        };
+
+        _mockScheduleService
+            .Setup(s => s.UpdateScheduleAsync(scheduleId, updateSchedule))
+            .ReturnsAsync((updatedSchedule, (string?)null));
+
+        // Act
+        var result = await _scheduleController.UpdateSchedule(scheduleId, updateSchedule);
+
+        // Assert
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        var schedule = Assert.IsType<Schedules>(okResult.Value);
+        Assert.Equal(scheduleId, schedule.Id);
+        Assert.Equal(updateSchedule.TimeIn, schedule.TimeIn);
 
         _mockScheduleService.Verify(s => s.UpdateScheduleAsync(scheduleId, updateSchedule), Times.Once);
     }
@@ -339,6 +373,59 @@ public class ScheduleControllerTest
         // Act & Assert
         // The controller no longer catches generic exceptions - they propagate to the global handler
         await Assert.ThrowsAsync<Exception>(() => _scheduleController.UpdateSchedule(scheduleId, updateSchedule));
+    }
+
+    [Fact]
+    public async Task UpdateSchedule_ReturnsBadRequest_WhenTimeOutBeforeTimeIn()
+    {
+        // Arrange
+        int scheduleId = 1;
+        var updateSchedule = new UpdateSchedule
+        {
+            TimeIn = new TimeOnly(10, 0),  // 10:00 AM
+            TimeOut = new TimeOnly(9, 0)   // 9:00 AM - invalid, before TimeIn
+        };
+
+        _mockScheduleService
+            .Setup(s => s.UpdateScheduleAsync(scheduleId, updateSchedule))
+            .ReturnsAsync(((Schedules?)null, "TimeOut must be after TimeIn"));
+
+        // Act
+        var result = await _scheduleController.UpdateSchedule(scheduleId, updateSchedule);
+
+        // Assert
+        var badRequestResult = Assert.IsType<BadRequestObjectResult>(result.Result);
+        Assert.NotNull(badRequestResult.Value);
+        var messageProperty = badRequestResult.Value.GetType().GetProperty("message");
+        Assert.NotNull(messageProperty);
+        var message = messageProperty.GetValue(badRequestResult.Value) as string;
+        Assert.Equal("TimeOut must be after TimeIn", message);
+    }
+
+    [Fact]
+    public async Task UpdateSchedule_ReturnsBadRequest_WhenInvalidDayOfWeek()
+    {
+        // Arrange
+        int scheduleId = 1;
+        var updateSchedule = new UpdateSchedule
+        {
+            DayOfWeek = "InvalidDay"
+        };
+
+        _mockScheduleService
+            .Setup(s => s.UpdateScheduleAsync(scheduleId, updateSchedule))
+            .ReturnsAsync(((Schedules?)null, "Invalid DayOfWeek. Must be one of: Monday, Tuesday, Wednesday, Thursday, Friday, Saturday, Sunday"));
+
+        // Act
+        var result = await _scheduleController.UpdateSchedule(scheduleId, updateSchedule);
+
+        // Assert
+        var badRequestResult = Assert.IsType<BadRequestObjectResult>(result.Result);
+        Assert.NotNull(badRequestResult.Value);
+        var messageProperty = badRequestResult.Value.GetType().GetProperty("message");
+        Assert.NotNull(messageProperty);
+        var message = messageProperty.GetValue(badRequestResult.Value) as string;
+        Assert.Contains("Invalid DayOfWeek", message);
     }
 
     #endregion
