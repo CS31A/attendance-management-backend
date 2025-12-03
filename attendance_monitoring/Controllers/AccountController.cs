@@ -597,6 +597,7 @@ namespace attendance_monitoring.Controllers
         /// <response code="401">User not authenticated</response>
         /// <response code="403">User is not an admin</response>
         /// <response code="404">Target user not found</response>
+        [Obsolete("Use PATCH /api/users/{userId}/soft-delete instead. This endpoint will be deprecated after thorough testing.")]
         [Authorize(Roles = "Admin")]
         [HttpDelete("admin/users/{userId}")]
         [ProducesResponseType(typeof(DeleteUserResponseDto), StatusCodes.Status200OK)]

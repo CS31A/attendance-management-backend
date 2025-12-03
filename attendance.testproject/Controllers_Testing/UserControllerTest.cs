@@ -3,6 +3,8 @@ using Microsoft.Extensions.Logging;
 using attendance_monitoring.Controllers;
 using attendance_monitoring.IServices;
 using attendance_monitoring.Models.DTO.Response;
+using System.Security.Claims;
+using Microsoft.AspNetCore.Http;
 
 namespace attendance.testproject.Controllers_Testing;
 
@@ -191,6 +193,293 @@ public class UserControllerTest
 
         // Verify service was called once
         _mockAccountService.Verify(s => s.GetAllUsersAsync(), Times.Once);
+    }
+
+    #endregion
+
+    #region SoftDeleteUser Tests
+
+    [Fact]
+    public async Task SoftDeleteUser_Student_ReturnsOkResult_WithSuccessMessage()
+    {
+        // Arrange
+        var adminId = "admin-user-id";
+        var targetUserId = "student-user-id";
+        var expectedMessage = "Student profile deleted successfully";
+
+        SetupControllerWithUser(adminId);
+
+        _mockAccountService
+            .Setup(s => s.AdminDeleteUserAsync(adminId, targetUserId))
+            .ReturnsAsync((true, expectedMessage));
+
+        // Act
+        var result = await _userController.SoftDeleteUser(targetUserId);
+
+        // Assert
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        var response = Assert.IsType<DeleteUserResponseDto>(okResult.Value);
+        Assert.True(response.Success);
+        Assert.Equal(expectedMessage, response.Message);
+
+        // Verify service was called once with correct parameters
+        _mockAccountService.Verify(s => s.AdminDeleteUserAsync(adminId, targetUserId), Times.Once);
+    }
+
+    [Fact]
+    public async Task SoftDeleteUser_Instructor_ReturnsOkResult_WithSuccessMessage()
+    {
+        // Arrange
+        var adminId = "admin-user-id";
+        var targetUserId = "instructor-user-id";
+        var expectedMessage = "Instructor profile deleted successfully";
+
+        SetupControllerWithUser(adminId);
+
+        _mockAccountService
+            .Setup(s => s.AdminDeleteUserAsync(adminId, targetUserId))
+            .ReturnsAsync((true, expectedMessage));
+
+        // Act
+        var result = await _userController.SoftDeleteUser(targetUserId);
+
+        // Assert
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        var response = Assert.IsType<DeleteUserResponseDto>(okResult.Value);
+        Assert.True(response.Success);
+        Assert.Equal(expectedMessage, response.Message);
+
+        // Verify service was called once with correct parameters
+        _mockAccountService.Verify(s => s.AdminDeleteUserAsync(adminId, targetUserId), Times.Once);
+    }
+
+    [Fact]
+    public async Task SoftDeleteUser_Admin_ReturnsOkResult_WithSuccessMessage()
+    {
+        // Arrange
+        var adminId = "admin-user-id";
+        var targetUserId = "another-admin-user-id";
+        var expectedMessage = "Admin profile deleted successfully";
+
+        SetupControllerWithUser(adminId);
+
+        _mockAccountService
+            .Setup(s => s.AdminDeleteUserAsync(adminId, targetUserId))
+            .ReturnsAsync((true, expectedMessage));
+
+        // Act
+        var result = await _userController.SoftDeleteUser(targetUserId);
+
+        // Assert
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        var response = Assert.IsType<DeleteUserResponseDto>(okResult.Value);
+        Assert.True(response.Success);
+        Assert.Equal(expectedMessage, response.Message);
+
+        // Verify service was called once with correct parameters
+        _mockAccountService.Verify(s => s.AdminDeleteUserAsync(adminId, targetUserId), Times.Once);
+    }
+
+    [Fact]
+    public async Task SoftDeleteUser_UserNotFound_ReturnsNotFound()
+    {
+        // Arrange
+        var adminId = "admin-user-id";
+        var targetUserId = "non-existent-user-id";
+        var expectedMessage = "User not found";
+
+        SetupControllerWithUser(adminId);
+
+        _mockAccountService
+            .Setup(s => s.AdminDeleteUserAsync(adminId, targetUserId))
+            .ReturnsAsync((false, expectedMessage));
+
+        // Act
+        var result = await _userController.SoftDeleteUser(targetUserId);
+
+        // Assert
+        var notFoundResult = Assert.IsType<NotFoundObjectResult>(result.Result);
+        var response = Assert.IsType<DeleteUserResponseDto>(notFoundResult.Value);
+        Assert.False(response.Success);
+        Assert.Equal(expectedMessage, response.Message);
+
+        // Verify service was called once
+        _mockAccountService.Verify(s => s.AdminDeleteUserAsync(adminId, targetUserId), Times.Once);
+    }
+
+    [Fact]
+    public async Task SoftDeleteUser_SelfDeletion_ReturnsBadRequest()
+    {
+        // Arrange
+        var adminId = "admin-user-id";
+        var expectedMessage = "Cannot delete your own account";
+
+        SetupControllerWithUser(adminId);
+
+        _mockAccountService
+            .Setup(s => s.AdminDeleteUserAsync(adminId, adminId))
+            .ReturnsAsync((false, expectedMessage));
+
+        // Act
+        var result = await _userController.SoftDeleteUser(adminId);
+
+        // Assert
+        var badRequestResult = Assert.IsType<BadRequestObjectResult>(result.Result);
+        var response = Assert.IsType<DeleteUserResponseDto>(badRequestResult.Value);
+        Assert.False(response.Success);
+        Assert.Equal(expectedMessage, response.Message);
+
+        // Verify service was called once
+        _mockAccountService.Verify(s => s.AdminDeleteUserAsync(adminId, adminId), Times.Once);
+    }
+
+    [Fact]
+    public async Task SoftDeleteUser_Unauthorized_ReturnsUnauthorized()
+    {
+        // Arrange
+        var targetUserId = "user-id-to-delete";
+
+        // Setup controller without authenticated user
+        _userController.ControllerContext = new ControllerContext
+        {
+            HttpContext = new DefaultHttpContext
+            {
+                User = new ClaimsPrincipal() // No claims
+            }
+        };
+
+        // Act
+        var result = await _userController.SoftDeleteUser(targetUserId);
+
+        // Assert
+        var unauthorizedResult = Assert.IsType<UnauthorizedObjectResult>(result.Result);
+        var response = Assert.IsType<DeleteUserResponseDto>(unauthorizedResult.Value);
+        Assert.False(response.Success);
+        Assert.Equal("Admin not authenticated", response.Message);
+
+        // Verify service was not called
+        _mockAccountService.Verify(s => s.AdminDeleteUserAsync(It.IsAny<string>(), It.IsAny<string>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task SoftDeleteUser_NotAdmin_ReturnsForbidden()
+    {
+        // Arrange
+        var adminId = "admin-user-id";
+        var targetUserId = "user-id-to-delete";
+        var expectedMessage = "Admin role required to delete users";
+
+        SetupControllerWithUser(adminId);
+
+        _mockAccountService
+            .Setup(s => s.AdminDeleteUserAsync(adminId, targetUserId))
+            .ReturnsAsync((false, expectedMessage));
+
+        // Act
+        var result = await _userController.SoftDeleteUser(targetUserId);
+
+        // Assert
+        var forbiddenResult = Assert.IsType<ObjectResult>(result.Result);
+        Assert.Equal(StatusCodes.Status403Forbidden, forbiddenResult.StatusCode);
+        var response = Assert.IsType<DeleteUserResponseDto>(forbiddenResult.Value);
+        Assert.False(response.Success);
+        Assert.Equal(expectedMessage, response.Message);
+
+        // Verify service was called once
+        _mockAccountService.Verify(s => s.AdminDeleteUserAsync(adminId, targetUserId), Times.Once);
+    }
+
+    [Fact]
+    public async Task SoftDeleteUser_EmptyUserId_ReturnsBadRequest()
+    {
+        // Arrange
+        var adminId = "admin-user-id";
+
+        SetupControllerWithUser(adminId);
+
+        // Act
+        var result = await _userController.SoftDeleteUser("");
+
+        // Assert
+        var badRequestResult = Assert.IsType<BadRequestObjectResult>(result.Result);
+        var response = Assert.IsType<DeleteUserResponseDto>(badRequestResult.Value);
+        Assert.False(response.Success);
+        Assert.Equal("User ID is required", response.Message);
+
+        // Verify service was not called
+        _mockAccountService.Verify(s => s.AdminDeleteUserAsync(It.IsAny<string>(), It.IsAny<string>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task SoftDeleteUser_WhitespaceUserId_ReturnsBadRequest()
+    {
+        // Arrange
+        var adminId = "admin-user-id";
+
+        SetupControllerWithUser(adminId);
+
+        // Act
+        var result = await _userController.SoftDeleteUser("   ");
+
+        // Assert
+        var badRequestResult = Assert.IsType<BadRequestObjectResult>(result.Result);
+        var response = Assert.IsType<DeleteUserResponseDto>(badRequestResult.Value);
+        Assert.False(response.Success);
+        Assert.Equal("User ID is required", response.Message);
+
+        // Verify service was not called
+        _mockAccountService.Verify(s => s.AdminDeleteUserAsync(It.IsAny<string>(), It.IsAny<string>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task SoftDeleteUser_AlreadyDeleted_ReturnsNotFound()
+    {
+        // Arrange
+        var adminId = "admin-user-id";
+        var targetUserId = "already-deleted-user-id";
+        var expectedMessage = "Student profile not found or already deleted";
+
+        SetupControllerWithUser(adminId);
+
+        _mockAccountService
+            .Setup(s => s.AdminDeleteUserAsync(adminId, targetUserId))
+            .ReturnsAsync((false, expectedMessage));
+
+        // Act
+        var result = await _userController.SoftDeleteUser(targetUserId);
+
+        // Assert
+        var notFoundResult = Assert.IsType<NotFoundObjectResult>(result.Result);
+        var response = Assert.IsType<DeleteUserResponseDto>(notFoundResult.Value);
+        Assert.False(response.Success);
+        Assert.Equal(expectedMessage, response.Message);
+
+        // Verify service was called once
+        _mockAccountService.Verify(s => s.AdminDeleteUserAsync(adminId, targetUserId), Times.Once);
+    }
+
+    #endregion
+
+    #region Helper Methods
+
+    private void SetupControllerWithUser(string userId)
+    {
+        var claims = new List<Claim>
+        {
+            new Claim(ClaimTypes.NameIdentifier, userId),
+            new Claim(ClaimTypes.Role, "Admin")
+        };
+
+        var identity = new ClaimsIdentity(claims, "TestAuth");
+        var claimsPrincipal = new ClaimsPrincipal(identity);
+
+        _userController.ControllerContext = new ControllerContext
+        {
+            HttpContext = new DefaultHttpContext
+            {
+                User = claimsPrincipal
+            }
+        };
     }
 
     #endregion
