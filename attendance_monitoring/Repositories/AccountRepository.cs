@@ -106,6 +106,7 @@ namespace attendance_monitoring.Repositories
             })
             .Where(u =>
                 // Only include users that have a profile matching the status filter
+                // Users without profiles are orphaned records and should be excluded unless status is All
                 status == UserStatus.All || u.ProfileId != null)
             .ToListAsync()
             .ConfigureAwait(false);

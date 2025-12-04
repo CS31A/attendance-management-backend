@@ -17,7 +17,7 @@ This document lists all the API endpoints for the attendance monitoring system.
 - `POST /api/account/logout`: Logout user by blacklisting the access token and revoking all refresh tokens
 - `PATCH /api/Account/profile`: Update the current user's profile
 - `PATCH /api/Account/admin/users/{userId}`: Update any user's profile (admin only)
-- `DELETE /api/account/admin/users/{userId}`: Delete a user (soft delete) (admin only)
+- `DELETE /api/account/admin/users/{userId}`: Delete a user (soft delete) (admin only) [DEPRECATED - Use UserController endpoints instead]
 
 ## AttendanceController
 
@@ -142,4 +142,7 @@ This document lists all the API endpoints for the attendance monitoring system.
 ## UserController
 
 - `GET /api/users`: Get all users with their role and profile information (Admin only)
+- `DELETE /api/users/{userId}`: Hard delete a user (permanent deletion) (Admin only)
+- `PATCH /api/users/{userId}/soft-delete`: Soft delete a user (reversible deletion) (Admin only)
+- `PATCH /api/users/{userId}/restore`: Restore a soft-deleted user (Admin only)
 

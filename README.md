@@ -4,7 +4,7 @@ A comprehensive attendance tracking system built with ASP.NET Core 9.0, Entity F
 
 ## 🚀 Features
 
-- **User Management**: Student, Instructor, and Admin role-based authentication
+- **User Management**: Student, Instructor, and Admin role-based authentication with unified user lifecycle management
 - **Course Management**: Create and manage courses, sections, and subjects
 - **Schedule Management**: Assign classrooms and time slots to sections
 - **Session Management**: Create, start, end, and cancel class sessions
@@ -12,7 +12,8 @@ A comprehensive attendance tracking system built with ASP.NET Core 9.0, Entity F
 - **Attendance Recording**: Record and track student attendance for sessions
 - **Attendance Reports**: View attendance history, summaries, and statistics
 - **QR Code Integration**: Generate QR codes for attendance tracking
-- **Soft Delete**: Safe deletion and restoration of students and instructors
+- **Soft Delete**: Safe deletion and restoration of students, instructors, and admins
+- **User Lifecycle Management**: Complete user management with soft/hard delete and restore capabilities
 - **Token Security**: JWT authentication with refresh tokens and blacklist system
 - **Background Services**: Automatic cleanup of expired tokens
 - **API Documentation**: Interactive Swagger/Scalar documentation
@@ -258,6 +259,64 @@ The application uses structured logging with different levels:
 3. Commit your changes (`git commit -m 'Add some amazing feature'`)
 4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
+
+## 👥 User Management System
+
+The system provides comprehensive user management capabilities with unified endpoints for all user types (Student, Instructor, Admin).
+
+### User Management Endpoints
+
+#### User Listing
+```http
+GET /api/users?status=Active
+Authorization: Admin only (AdminPolicy)
+```
+- **Query Parameters**: `status` (optional) - Filter by `Active`, `Archived`, or `All` (default: `Active`)
+- **Response**: List of users with role information and profile details
+
+#### User Deletion Operations
+
+##### Soft Delete (Reversible)
+```http
+PATCH /api/users/{userId}/soft-delete
+Authorization: Admin only (AdminPolicy)
+```
+- Marks user as deleted but preserves data for potential restoration
+- Automatically revokes all active tokens
+- Sets `IsDeleted = true` and `DeletedAt` timestamp
+
+##### Hard Delete (Permanent)
+```http
+DELETE /api/users/{userId}
+Authorization: Admin only (AdminPolicy)
+```
+- Permanently removes user and all associated data
+- Cannot be undone
+- Includes cascade deletion of related records
+
+##### Restore Soft-Deleted User
+```http
+PATCH /api/users/{userId}/restore
+Authorization: Admin only (AdminPolicy)
+```
+- Restores a previously soft-deleted user
+- Resets `IsDeleted = false` and clears `DeletedAt`
+- User regains access to the system
+
+### Supported User Types
+- **Students**: Complete profile with enrollment information
+- **Instructors**: Teaching assignments and course management
+- **Admins**: Full system administration capabilities
+
+### Security Features
+- **Self-deletion prevention**: Users cannot delete themselves
+- **Role-based authorization**: Only admins can manage users
+- **Audit logging**: All operations are logged for compliance
+- **Token revocation**: Automatic token cleanup on deletion
+- **Data integrity**: Proper cascade handling of related data
+
+### Migration from Legacy Endpoints
+The old `DELETE /api/account/admin/users/{userId}` endpoint is deprecated but still functional. New implementations should use the unified UserController endpoints.
 
 ## 📝 API Documentation
 

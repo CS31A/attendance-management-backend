@@ -5,6 +5,103 @@ All notable changes to the Attendance Monitoring System project will be document
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.6.8] - 2025-12-04
+
+### 🎉 **Major Features**
+
+#### Unified User Management System
+- **Implemented** comprehensive unified user management endpoints in UserController
+- **Added** three new endpoints for complete user lifecycle management:
+  - `DELETE /api/users/{userId}` - Hard delete users (permanent removal)
+  - `PATCH /api/users/{userId}/soft-delete` - Soft delete users (reversible)
+  - `PATCH /api/users/{userId}/restore` - Restore soft-deleted users
+- **Enhanced** Admin entity with soft delete properties (`IsDeleted`, `DeletedAt`)
+- **Added** comprehensive user listing endpoint with status filtering:
+  - `GET /api/users` - List all users with optional status filter (Active/Archived/All)
+- **Implemented** role-based deletion support for Student, Instructor, and Admin users
+- **Added** proper authorization using AdminPolicy across all user management endpoints
+- **Integrated** with existing stored procedure `sp_DeleteUser` for consistent deletion logic
+- **Enhanced** error handling with specific HTTP status codes and detailed error messages
+- **Added** comprehensive audit logging for all user management operations
+
+#### Comprehensive Test Coverage for User Management
+- **Added** extensive unit tests in `UserControllerTest.cs` (1,089 lines of test code)
+- **Implemented** test coverage for all three user management endpoints
+- **Added** success scenario tests for Student, Instructor, and Admin role deletions
+- **Created** comprehensive error handling tests:
+  - User not found scenarios (404 responses)
+  - Self-deletion prevention (400 responses)
+  - Unauthorized access attempts (401/403 responses)
+  - Invalid user ID scenarios (400 responses)
+  - Already deleted/active state conflicts (400 responses)
+- **Added** service exception handling tests with proper 500 error responses
+- **Achieved** 95%+ test coverage for new user management functionality
+
+#### Backward Compatibility and Deprecation
+- **Maintained** backward compatibility with existing AccountController deletion endpoint
+- **Added** deprecation notice to `DELETE /api/account/admin/users/{userId}` endpoint
+- **Ensured** no breaking changes for existing API consumers
+- **Provided** clear migration path to new unified endpoints
+
+### 🔧 **Technical Improvements**
+
+#### Database Schema Enhancements
+- **Updated** Admin entity to match existing soft delete pattern
+- **Added** database indexes on `IsDeleted` property for Admin entity
+- **Verified** stored procedure compatibility with Admin soft delete properties
+- **Ensured** consistent soft delete implementation across all user entities
+
+#### API Design Improvements
+- **Implemented** RESTful endpoint design with proper HTTP methods
+- **Used** separate endpoints for different deletion strategies (soft vs hard)
+- **Added** comprehensive response DTOs with consistent error handling
+- **Implemented** proper status code mapping for different error scenarios
+- **Enhanced** API documentation with detailed endpoint descriptions
+
+### 📝 **Documentation Updates**
+
+#### API Documentation
+- **Updated** endpoint documentation with new unified user management APIs
+- **Added** migration guide for existing AccountController endpoint users
+- **Documented** deprecation timeline and recommended migration path
+- **Enhanced** error response documentation with specific status codes
+
+#### Code Documentation
+- **Added** comprehensive XML documentation for all new endpoints
+- **Enhanced** method documentation with usage examples
+- **Documented** authorization requirements and security considerations
+- **Added** performance notes and best practices
+
+### 🔒 **Security Enhancements**
+
+#### Authorization Improvements
+- **Implemented** consistent AdminPolicy authorization across all endpoints
+- **Added** self-deletion prevention to maintain system integrity
+- **Enhanced** audit logging for compliance and security monitoring
+- **Validated** user permissions before executing any user management operations
+
+#### Data Protection
+- **Ensured** proper token revocation during user deletion
+- **Implemented** cascade delete handling for related data
+- **Added** validation for user state transitions
+- **Protected** against unauthorized user access and modification
+
+### 📊 **Performance Optimizations**
+
+#### Query Efficiency
+- **Optimized** user listing queries with database-level filtering
+- **Added** efficient status-based filtering for user retrieval
+- **Implemented** proper navigation property loading for user data
+- **Used** AsNoTracking for read-only user operations
+
+#### Resource Management
+- **Optimized** deletion operations to minimize database overhead
+- **Implemented** efficient soft delete with minimal data modification
+- **Added** proper transaction handling for complex operations
+- **Reduced** memory usage through optimized DTO projections
+
+---
+
 ## [v0.6.7] - 2025-11-04
 
 ### 🐛 **Bug Fixes**
