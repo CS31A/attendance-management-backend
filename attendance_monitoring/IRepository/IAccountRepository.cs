@@ -1,4 +1,5 @@
 using attendance_monitoring.Classes;
+using attendance_monitoring.Models.DTO.Request;
 using attendance_monitoring.Models.DTO.Response;
 using Microsoft.AspNetCore.Identity;
 
@@ -13,14 +14,16 @@ namespace attendance_monitoring.IRepository
         /// <summary>
         /// Retrieves all users with role-specific information using projection.
         /// </summary>
+        /// <param name="status">Filter by user status (Active, Archived, All).</param>
         /// <returns>A collection of user DTOs with role and profile information.</returns>
-        Task<IEnumerable<GetAllUsersDto>> GetAllUsersAsync();
+        Task<IEnumerable<GetAllUsersDto>> GetAllUsersAsync(UserStatus status = UserStatus.Active);
 
         /// <summary>
         /// Retrieves all users with role-specific information using stored procedure.
         /// </summary>
+        /// <param name="status">Filter by user status (Active, Archived, All).</param>
         /// <returns>A collection of user DTOs with role and profile information.</returns>
-        Task<IEnumerable<GetAllUsersDto>> GetAllUsersAsyncSP();
+        Task<IEnumerable<GetAllUsersDto>> GetAllUsersAsyncSP(UserStatus status = UserStatus.Active);
 
         /// <summary>
         /// Finds a user by their ID.
@@ -184,6 +187,13 @@ namespace attendance_monitoring.IRepository
         /// <param name="userId">The user ID to permanently delete.</param>
         /// <returns>Tuple containing success flag and message.</returns>
         Task<(bool Success, string Message)> HardDeleteUserAsyncSP(string userId);
+
+        /// <summary>
+        /// Restores a soft-deleted user using stored procedure.
+        /// </summary>
+        /// <param name="userId">The user ID to restore.</param>
+        /// <returns>Tuple containing success flag and message.</returns>
+        Task<(bool Success, string Message)> RestoreUserAsyncSP(string userId);
 
         /// <summary>
         /// Updates user profile using stored procedure.

@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using attendance_monitoring.Controllers;
 using attendance_monitoring.IServices;
 using attendance_monitoring.Models.DTO.Response;
+using attendance_monitoring.Models.DTO.Request;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Http;
 
@@ -71,7 +72,7 @@ public class UserControllerTest
         };
 
         _mockAccountService
-            .Setup(s => s.GetAllUsersAsync())
+            .Setup(s => s.GetAllUsersAsync(It.IsAny<UserStatus>()))
             .ReturnsAsync(expectedUsers);
 
         // Act
@@ -81,7 +82,7 @@ public class UserControllerTest
         var okResult = Assert.IsType<OkObjectResult>(result.Result);
         var users = Assert.IsAssignableFrom<IList<GetAllUsersDto>>(okResult.Value);
         Assert.Equal(3, users.Count);
-        
+
         // Verify first user details
         var firstUser = users.First();
         Assert.Equal("user1", firstUser.UserId);
@@ -92,8 +93,8 @@ public class UserControllerTest
         Assert.Equal("John", firstUser.Firstname);
         Assert.Equal("Doe", firstUser.Lastname);
 
-        // Verify service was called once
-        _mockAccountService.Verify(s => s.GetAllUsersAsync(), Times.Once);
+        // Verify service was called once with default Active status
+        _mockAccountService.Verify(s => s.GetAllUsersAsync(UserStatus.Active), Times.Once);
     }
 
     [Fact]
@@ -102,7 +103,7 @@ public class UserControllerTest
         // Arrange
         var emptyUsersList = new List<GetAllUsersDto>();
         _mockAccountService
-            .Setup(s => s.GetAllUsersAsync())
+            .Setup(s => s.GetAllUsersAsync(It.IsAny<UserStatus>()))
             .ReturnsAsync(emptyUsersList);
 
         // Act
@@ -114,7 +115,7 @@ public class UserControllerTest
         Assert.Empty(users);
 
         // Verify service was called once
-        _mockAccountService.Verify(s => s.GetAllUsersAsync(), Times.Once);
+        _mockAccountService.Verify(s => s.GetAllUsersAsync(UserStatus.Active), Times.Once);
     }
 
     [Fact]
@@ -123,7 +124,7 @@ public class UserControllerTest
         // Arrange
         var exceptionMessage = "Database connection failed";
         _mockAccountService
-            .Setup(s => s.GetAllUsersAsync())
+            .Setup(s => s.GetAllUsersAsync(It.IsAny<UserStatus>()))
             .ThrowsAsync(new Exception(exceptionMessage));
 
         // Act
@@ -132,22 +133,144 @@ public class UserControllerTest
         // Assert
         var statusCodeResult = Assert.IsType<ObjectResult>(result.Result);
         Assert.Equal(500, statusCodeResult.StatusCode);
-        
+
         // Verify error response structure
         var errorResponse = statusCodeResult.Value;
         Assert.NotNull(errorResponse);
-        
+
         // Use reflection to check anonymous object properties
         var successProperty = errorResponse.GetType().GetProperty("Success");
         var messageProperty = errorResponse.GetType().GetProperty("Message");
-        
+
         Assert.NotNull(successProperty);
         Assert.NotNull(messageProperty);
         Assert.False((bool)successProperty.GetValue(errorResponse)!);
         Assert.Equal("An error occurred while retrieving users", messageProperty.GetValue(errorResponse));
 
         // Verify service was called once
-        _mockAccountService.Verify(s => s.GetAllUsersAsync(), Times.Once);
+        _mockAccountService.Verify(s => s.GetAllUsersAsync(It.IsAny<UserStatus>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task GetAllUsers_WithActiveStatus_ReturnsOnlyActiveUsers()
+    {
+        // Arrange
+        var activeUsers = new List<GetAllUsersDto>
+        {
+            new GetAllUsersDto
+            {
+                UserId = "user1",
+                Username = "john.doe",
+                Email = "john.doe@example.com",
+                Role = "Student",
+                ProfileId = 1,
+                Firstname = "John",
+                Lastname = "Doe",
+                CreatedAt = DateTime.UtcNow.AddDays(-30),
+                UpdatedAt = DateTime.UtcNow.AddDays(-1)
+            }
+        };
+
+        _mockAccountService
+            .Setup(s => s.GetAllUsersAsync(UserStatus.Active))
+            .ReturnsAsync(activeUsers);
+
+        // Act
+        var result = await _userController.GetAllUsers(UserStatus.Active);
+
+        // Assert
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        var users = Assert.IsAssignableFrom<IList<GetAllUsersDto>>(okResult.Value);
+        Assert.Single(users);
+        Assert.Equal("john.doe", users.First().Username);
+
+        // Verify service was called with Active status
+        _mockAccountService.Verify(s => s.GetAllUsersAsync(UserStatus.Active), Times.Once);
+    }
+
+    [Fact]
+    public async Task GetAllUsers_WithArchivedStatus_ReturnsOnlyArchivedUsers()
+    {
+        // Arrange
+        var archivedUsers = new List<GetAllUsersDto>
+        {
+            new GetAllUsersDto
+            {
+                UserId = "user2",
+                Username = "archived.user",
+                Email = "archived@example.com",
+                Role = "Student",
+                ProfileId = 2,
+                Firstname = "Archived",
+                Lastname = "User",
+                CreatedAt = DateTime.UtcNow.AddDays(-60),
+                UpdatedAt = DateTime.UtcNow.AddDays(-5)
+            }
+        };
+
+        _mockAccountService
+            .Setup(s => s.GetAllUsersAsync(UserStatus.Archived))
+            .ReturnsAsync(archivedUsers);
+
+        // Act
+        var result = await _userController.GetAllUsers(UserStatus.Archived);
+
+        // Assert
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        var users = Assert.IsAssignableFrom<IList<GetAllUsersDto>>(okResult.Value);
+        Assert.Single(users);
+        Assert.Equal("archived.user", users.First().Username);
+
+        // Verify service was called with Archived status
+        _mockAccountService.Verify(s => s.GetAllUsersAsync(UserStatus.Archived), Times.Once);
+    }
+
+    [Fact]
+    public async Task GetAllUsers_WithAllStatus_ReturnsAllUsers()
+    {
+        // Arrange
+        var allUsers = new List<GetAllUsersDto>
+        {
+            new GetAllUsersDto
+            {
+                UserId = "user1",
+                Username = "active.user",
+                Email = "active@example.com",
+                Role = "Student",
+                ProfileId = 1,
+                Firstname = "Active",
+                Lastname = "User",
+                CreatedAt = DateTime.UtcNow.AddDays(-30),
+                UpdatedAt = DateTime.UtcNow.AddDays(-1)
+            },
+            new GetAllUsersDto
+            {
+                UserId = "user2",
+                Username = "archived.user",
+                Email = "archived@example.com",
+                Role = "Instructor",
+                ProfileId = 2,
+                Firstname = "Archived",
+                Lastname = "User",
+                CreatedAt = DateTime.UtcNow.AddDays(-60),
+                UpdatedAt = DateTime.UtcNow.AddDays(-5)
+            }
+        };
+
+        _mockAccountService
+            .Setup(s => s.GetAllUsersAsync(UserStatus.All))
+            .ReturnsAsync(allUsers);
+
+        // Act
+        var result = await _userController.GetAllUsers(UserStatus.All);
+
+        // Assert
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        var users = Assert.IsAssignableFrom<IList<GetAllUsersDto>>(okResult.Value);
+        Assert.Equal(2, users.Count);
+
+        // Verify service was called with All status
+        _mockAccountService.Verify(s => s.GetAllUsersAsync(UserStatus.All), Times.Once);
     }
 
     [Fact]
@@ -171,7 +294,7 @@ public class UserControllerTest
         };
 
         _mockAccountService
-            .Setup(s => s.GetAllUsersAsync())
+            .Setup(s => s.GetAllUsersAsync(It.IsAny<UserStatus>()))
             .ReturnsAsync(usersWithNullFields);
 
         // Act
@@ -181,7 +304,7 @@ public class UserControllerTest
         var okResult = Assert.IsType<OkObjectResult>(result.Result);
         var users = Assert.IsAssignableFrom<IList<GetAllUsersDto>>(okResult.Value);
         Assert.Single(users);
-        
+
         var user = users.First();
         Assert.Equal("user1", user.UserId);
         Assert.Equal("incomplete.user", user.Username);
@@ -192,7 +315,7 @@ public class UserControllerTest
         Assert.Null(user.Lastname);
 
         // Verify service was called once
-        _mockAccountService.Verify(s => s.GetAllUsersAsync(), Times.Once);
+        _mockAccountService.Verify(s => s.GetAllUsersAsync(It.IsAny<UserStatus>()), Times.Once);
     }
 
     #endregion
@@ -671,6 +794,270 @@ public class UserControllerTest
 
         // Verify service was not called
         _mockAccountService.Verify(s => s.AdminHardDeleteUserAsync(It.IsAny<string>(), It.IsAny<string>()), Times.Never);
+    }
+
+    #endregion
+
+    #region RestoreUser Tests
+
+    [Fact]
+    public async Task RestoreUser_Student_ReturnsOkResult_WithSuccessMessage()
+    {
+        // Arrange
+        var adminId = "admin-user-id";
+        var targetUserId = "student-user-id";
+        var expectedMessage = "Student profile restored successfully";
+
+        SetupControllerWithUser(adminId);
+
+        _mockAccountService
+            .Setup(s => s.AdminRestoreUserAsync(adminId, targetUserId))
+            .ReturnsAsync((true, expectedMessage, "SUCCESS"));
+
+        // Act
+        var result = await _userController.RestoreUser(targetUserId);
+
+        // Assert
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        var response = Assert.IsType<DeleteUserResponseDto>(okResult.Value);
+        Assert.True(response.Success);
+        Assert.Equal(expectedMessage, response.Message);
+
+        // Verify service was called once with correct parameters
+        _mockAccountService.Verify(s => s.AdminRestoreUserAsync(adminId, targetUserId), Times.Once);
+    }
+
+    [Fact]
+    public async Task RestoreUser_Instructor_ReturnsOkResult_WithSuccessMessage()
+    {
+        // Arrange
+        var adminId = "admin-user-id";
+        var targetUserId = "instructor-user-id";
+        var expectedMessage = "Instructor profile restored successfully";
+
+        SetupControllerWithUser(adminId);
+
+        _mockAccountService
+            .Setup(s => s.AdminRestoreUserAsync(adminId, targetUserId))
+            .ReturnsAsync((true, expectedMessage, "SUCCESS"));
+
+        // Act
+        var result = await _userController.RestoreUser(targetUserId);
+
+        // Assert
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        var response = Assert.IsType<DeleteUserResponseDto>(okResult.Value);
+        Assert.True(response.Success);
+        Assert.Equal(expectedMessage, response.Message);
+
+        // Verify service was called once with correct parameters
+        _mockAccountService.Verify(s => s.AdminRestoreUserAsync(adminId, targetUserId), Times.Once);
+    }
+
+    [Fact]
+    public async Task RestoreUser_Admin_ReturnsOkResult_WithSuccessMessage()
+    {
+        // Arrange
+        var adminId = "admin-user-id";
+        var targetUserId = "another-admin-user-id";
+        var expectedMessage = "Admin profile restored successfully";
+
+        SetupControllerWithUser(adminId);
+
+        _mockAccountService
+            .Setup(s => s.AdminRestoreUserAsync(adminId, targetUserId))
+            .ReturnsAsync((true, expectedMessage, "SUCCESS"));
+
+        // Act
+        var result = await _userController.RestoreUser(targetUserId);
+
+        // Assert
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        var response = Assert.IsType<DeleteUserResponseDto>(okResult.Value);
+        Assert.True(response.Success);
+        Assert.Equal(expectedMessage, response.Message);
+
+        // Verify service was called once with correct parameters
+        _mockAccountService.Verify(s => s.AdminRestoreUserAsync(adminId, targetUserId), Times.Once);
+    }
+
+    [Fact]
+    public async Task RestoreUser_UserNotFound_ReturnsNotFound()
+    {
+        // Arrange
+        var adminId = "admin-user-id";
+        var targetUserId = "non-existent-user-id";
+        var expectedMessage = "User not found";
+
+        SetupControllerWithUser(adminId);
+
+        _mockAccountService
+            .Setup(s => s.AdminRestoreUserAsync(adminId, targetUserId))
+            .ReturnsAsync((false, expectedMessage, "USER_NOT_FOUND"));
+
+        // Act
+        var result = await _userController.RestoreUser(targetUserId);
+
+        // Assert
+        var notFoundResult = Assert.IsType<NotFoundObjectResult>(result.Result);
+        var response = Assert.IsType<DeleteUserResponseDto>(notFoundResult.Value);
+        Assert.False(response.Success);
+        Assert.Equal(expectedMessage, response.Message);
+
+        // Verify service was called once
+        _mockAccountService.Verify(s => s.AdminRestoreUserAsync(adminId, targetUserId), Times.Once);
+    }
+
+    [Fact]
+    public async Task RestoreUser_NotDeleted_ReturnsBadRequest()
+    {
+        // Arrange
+        var adminId = "admin-user-id";
+        var targetUserId = "active-user-id";
+        var expectedMessage = "Student profile not found or already active";
+
+        SetupControllerWithUser(adminId);
+
+        _mockAccountService
+            .Setup(s => s.AdminRestoreUserAsync(adminId, targetUserId))
+            .ReturnsAsync((false, expectedMessage, "NOT_DELETED"));
+
+        // Act
+        var result = await _userController.RestoreUser(targetUserId);
+
+        // Assert
+        var badRequestResult = Assert.IsType<BadRequestObjectResult>(result.Result);
+        var response = Assert.IsType<DeleteUserResponseDto>(badRequestResult.Value);
+        Assert.False(response.Success);
+        Assert.Equal(expectedMessage, response.Message);
+
+        // Verify service was called once
+        _mockAccountService.Verify(s => s.AdminRestoreUserAsync(adminId, targetUserId), Times.Once);
+    }
+
+    [Fact]
+    public async Task RestoreUser_Unauthorized_ReturnsUnauthorized()
+    {
+        // Arrange
+        var targetUserId = "user-id-to-restore";
+
+        // Setup controller without authenticated user
+        _userController.ControllerContext = new ControllerContext
+        {
+            HttpContext = new DefaultHttpContext
+            {
+                User = new ClaimsPrincipal() // No claims
+            }
+        };
+
+        // Act
+        var result = await _userController.RestoreUser(targetUserId);
+
+        // Assert
+        var unauthorizedResult = Assert.IsType<UnauthorizedObjectResult>(result.Result);
+        var response = Assert.IsType<DeleteUserResponseDto>(unauthorizedResult.Value);
+        Assert.False(response.Success);
+        Assert.Equal("Admin not authenticated", response.Message);
+
+        // Verify service was not called
+        _mockAccountService.Verify(s => s.AdminRestoreUserAsync(It.IsAny<string>(), It.IsAny<string>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task RestoreUser_NotAdmin_ReturnsForbidden()
+    {
+        // Arrange
+        var adminId = "admin-user-id";
+        var targetUserId = "user-id-to-restore";
+        var expectedMessage = "Unauthorized: Admin role required";
+
+        SetupControllerWithUser(adminId);
+
+        _mockAccountService
+            .Setup(s => s.AdminRestoreUserAsync(adminId, targetUserId))
+            .ReturnsAsync((false, expectedMessage, "UNAUTHORIZED"));
+
+        // Act
+        var result = await _userController.RestoreUser(targetUserId);
+
+        // Assert
+        var forbiddenResult = Assert.IsType<ObjectResult>(result.Result);
+        Assert.Equal(StatusCodes.Status403Forbidden, forbiddenResult.StatusCode);
+        var response = Assert.IsType<DeleteUserResponseDto>(forbiddenResult.Value);
+        Assert.False(response.Success);
+        Assert.Equal(expectedMessage, response.Message);
+
+        // Verify service was called once
+        _mockAccountService.Verify(s => s.AdminRestoreUserAsync(adminId, targetUserId), Times.Once);
+    }
+
+    [Fact]
+    public async Task RestoreUser_EmptyUserId_ReturnsBadRequest()
+    {
+        // Arrange
+        var adminId = "admin-user-id";
+
+        SetupControllerWithUser(adminId);
+
+        // Act
+        var result = await _userController.RestoreUser("");
+
+        // Assert
+        var badRequestResult = Assert.IsType<BadRequestObjectResult>(result.Result);
+        var response = Assert.IsType<DeleteUserResponseDto>(badRequestResult.Value);
+        Assert.False(response.Success);
+        Assert.Equal("User ID is required", response.Message);
+
+        // Verify service was not called
+        _mockAccountService.Verify(s => s.AdminRestoreUserAsync(It.IsAny<string>(), It.IsAny<string>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task RestoreUser_WhitespaceUserId_ReturnsBadRequest()
+    {
+        // Arrange
+        var adminId = "admin-user-id";
+
+        SetupControllerWithUser(adminId);
+
+        // Act
+        var result = await _userController.RestoreUser("   ");
+
+        // Assert
+        var badRequestResult = Assert.IsType<BadRequestObjectResult>(result.Result);
+        var response = Assert.IsType<DeleteUserResponseDto>(badRequestResult.Value);
+        Assert.False(response.Success);
+        Assert.Equal("User ID is required", response.Message);
+
+        // Verify service was not called
+        _mockAccountService.Verify(s => s.AdminRestoreUserAsync(It.IsAny<string>(), It.IsAny<string>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task RestoreUser_AlreadyActive_ReturnsBadRequest()
+    {
+        // Arrange
+        var adminId = "admin-user-id";
+        var targetUserId = "already-active-user-id";
+        var expectedMessage = "Instructor profile not found or already active";
+
+        SetupControllerWithUser(adminId);
+
+        _mockAccountService
+            .Setup(s => s.AdminRestoreUserAsync(adminId, targetUserId))
+            .ReturnsAsync((false, expectedMessage, "NOT_DELETED"));
+
+        // Act
+        var result = await _userController.RestoreUser(targetUserId);
+
+        // Assert
+        var badRequestResult = Assert.IsType<BadRequestObjectResult>(result.Result);
+        var response = Assert.IsType<DeleteUserResponseDto>(badRequestResult.Value);
+        Assert.False(response.Success);
+        Assert.Equal(expectedMessage, response.Message);
+
+        // Verify service was called once
+        _mockAccountService.Verify(s => s.AdminRestoreUserAsync(adminId, targetUserId), Times.Once);
     }
 
     #endregion

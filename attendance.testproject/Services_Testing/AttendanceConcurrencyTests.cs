@@ -84,27 +84,28 @@ public class AttendanceConcurrencyTests
         };
 
         var user = CreateInstructorUser("instructor-1");
-        
+
         // Setup mocks for validation
         _mockUserManager.Setup(um => um.FindByIdAsync("instructor-1"))
             .ReturnsAsync(new IdentityUser { Id = "instructor-1" });
-        
+
         _mockInstructorRepository.Setup(r => r.GetInstructorByUserIdAsync("instructor-1"))
             .ReturnsAsync(new Instructor { Id = 10 });
-            
+
         _mockSessionRepository.Setup(r => r.GetSessionByIdAsync(1))
-            .ReturnsAsync(new Session { 
-                Id = 1, 
-                Schedule = new Schedules { InstructorId = 10, SectionId = 100 } 
+            .ReturnsAsync(new Session
+            {
+                Id = 1,
+                Schedule = new Schedules { InstructorId = 10, SectionId = 100 }
             });
-            
+
         _mockStudentRepository.Setup(r => r.GetStudentByIdAsync(1))
             .ReturnsAsync(new Student { Id = 1, SectionId = 100 });
 
         _mockStudentEnrollmentRepository.Setup(r => r.GetStudentEnrollmentsAsync(1))
-            .ReturnsAsync(new List<StudentEnrollment> 
-            { 
-                new StudentEnrollment { StudentId = 1, SectionId = 100 } 
+            .ReturnsAsync(new List<StudentEnrollment>
+            {
+                new StudentEnrollment { StudentId = 1, SectionId = 100 }
             });
 
         // Simulate race condition: HasAttendanceRecordAsync returns false (check passed)
@@ -113,10 +114,10 @@ public class AttendanceConcurrencyTests
             .ReturnsAsync(false);
 
         var dbUpdateException = new DbUpdateException("Error", new Exception("UNIQUE constraint failed: IX_AttendanceRecords_StudentId_SessionId"));
-        
+
         _mockAttendanceRepository.Setup(r => r.CreateAsync(It.IsAny<AttendanceRecord>()))
             .ReturnsAsync(new AttendanceRecord { Id = 100 });
-            
+
         _mockAttendanceRepository.Setup(r => r.SaveChangesAsync())
             .ThrowsAsync(dbUpdateException);
 
@@ -126,15 +127,15 @@ public class AttendanceConcurrencyTests
         );
 
         Assert.Contains("Attendance record already exists", exception.Message);
-        
+
         // Verify warning log
         _mockLogger.Verify(
             x => x.Log(
                 LogLevel.Warning,
                 It.IsAny<EventId>(),
-                It.Is<It.IsAnyType>((v, t) => v.ToString().Contains("Duplicate attendance - race condition detected")),
-                It.IsAny<Exception>(),
-                It.IsAny<Func<It.IsAnyType, Exception, string>>()),
+                It.Is<It.IsAnyType>((v, t) => v != null && v.ToString()!.Contains("Duplicate attendance - race condition detected")),
+                It.IsAny<Exception?>(),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
             Times.Once);
     }
 
@@ -149,9 +150,10 @@ public class AttendanceConcurrencyTests
 
         // Setup mocks
         _mockSessionRepository.Setup(r => r.GetSessionByIdAsync(sessionId))
-            .ReturnsAsync(new Session { 
-                Id = sessionId, 
-                Schedule = new Schedules { TimeIn = TimeOnly.FromDateTime(DateTime.UtcNow) } 
+            .ReturnsAsync(new Session
+            {
+                Id = sessionId,
+                Schedule = new Schedules { TimeIn = TimeOnly.FromDateTime(DateTime.UtcNow) }
             });
 
         // Simulate race condition: HasAttendanceRecordAsync returns false (check passed)
@@ -160,10 +162,10 @@ public class AttendanceConcurrencyTests
             .ReturnsAsync(false);
 
         var dbUpdateException = new DbUpdateException("Error", new Exception("UNIQUE constraint failed: IX_AttendanceRecords_StudentId_SessionId"));
-        
+
         _mockAttendanceRepository.Setup(r => r.CreateAsync(It.IsAny<AttendanceRecord>()))
             .ReturnsAsync(new AttendanceRecord { Id = 100 });
-            
+
         _mockAttendanceRepository.Setup(r => r.SaveChangesAsync())
             .ThrowsAsync(dbUpdateException);
 
@@ -173,15 +175,15 @@ public class AttendanceConcurrencyTests
         );
 
         Assert.Contains("duplicate - Attendance record already exists", exception.Message);
-        
+
         // Verify warning log
         _mockLogger.Verify(
             x => x.Log(
                 LogLevel.Warning,
                 It.IsAny<EventId>(),
-                It.Is<It.IsAnyType>((v, t) => v.ToString().Contains("Duplicate QR scan - race condition detected")),
-                It.IsAny<Exception>(),
-                It.IsAny<Func<It.IsAnyType, Exception, string>>()),
+                It.Is<It.IsAnyType>((v, t) => v != null && v.ToString()!.Contains("Duplicate QR scan - race condition detected")),
+                It.IsAny<Exception?>(),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
             Times.Once);
     }
 

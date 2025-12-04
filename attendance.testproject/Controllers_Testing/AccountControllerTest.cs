@@ -276,7 +276,7 @@ public class AccountControllerTest
             Role = "Instructor"
         };
 
-        RegisterDto capturedDto = null;
+        RegisterDto? capturedDto = null;
         var identityResult = IdentityResult.Success;
         var response = new RegisterResponseDto { Success = true, Message = "User registered successfully" };
 

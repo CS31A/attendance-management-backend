@@ -46,7 +46,7 @@ namespace attendance_monitoring.Repositories
             return users;
         }
 
-        public async Task<IEnumerable<GetAllUsersDto>> GetAllUsersAsync()
+        public async Task<IEnumerable<GetAllUsersDto>> GetAllUsersAsync(Models.DTO.Request.UserStatus status = Models.DTO.Request.UserStatus.Active)
         {
             var users = await (
             from user in context.Users.AsNoTracking()
@@ -57,18 +57,27 @@ namespace attendance_monitoring.Repositories
             join role in context.Roles on userRole.RoleId equals role.Id into roles
             from role in roles.DefaultIfEmpty()
             
-            // Get student profile
-            join student in context.Students.Where(s => !s.IsDeleted) 
+            // Get student profile - filter based on status
+            join student in context.Students.Where(s => 
+                status == Models.DTO.Request.UserStatus.All || 
+                (status == Models.DTO.Request.UserStatus.Active && !s.IsDeleted) ||
+                (status == Models.DTO.Request.UserStatus.Archived && s.IsDeleted))
                 on user.Id equals student.UserId into students
             from student in students.DefaultIfEmpty()
             
-            // Get instructor profile
-            join instructor in context.Instructors.Where(i => !i.IsDeleted) 
+            // Get instructor profile - filter based on status
+            join instructor in context.Instructors.Where(i => 
+                status == Models.DTO.Request.UserStatus.All || 
+                (status == Models.DTO.Request.UserStatus.Active && !i.IsDeleted) ||
+                (status == Models.DTO.Request.UserStatus.Archived && i.IsDeleted))
                 on user.Id equals instructor.UserId into instructors
             from instructor in instructors.DefaultIfEmpty()
             
-            // Get admin profile
-            join admin in context.Admins 
+            // Get admin profile - filter based on status
+            join admin in context.Admins.Where(a => 
+                status == Models.DTO.Request.UserStatus.All || 
+                (status == Models.DTO.Request.UserStatus.Active && !a.IsDeleted) ||
+                (status == Models.DTO.Request.UserStatus.Archived && a.IsDeleted))
                 on user.Id equals admin.UserId into admins
             from admin in admins.DefaultIfEmpty()
             
@@ -94,6 +103,9 @@ namespace attendance_monitoring.Repositories
                             instructor != null ? instructor.UpdatedAt :
                             admin != null ? admin.UpdatedAt : DateTime.UtcNow
             })
+            .Where(u => 
+                // Only include users that have a profile matching the status filter
+                status == Models.DTO.Request.UserStatus.All || u.ProfileId != null)
             .ToListAsync()
             .ConfigureAwait(false);
 
@@ -101,15 +113,18 @@ namespace attendance_monitoring.Repositories
 
         }
 
-        public async Task<IEnumerable<GetAllUsersDto>> GetAllUsersAsyncSP()
+        public async Task<IEnumerable<GetAllUsersDto>> GetAllUsersAsyncSP(Models.DTO.Request.UserStatus status = Models.DTO.Request.UserStatus.Active)
         {
             var connection = context.Database.GetDbConnection();
 
             if (connection.State != ConnectionState.Open)
                 await connection.OpenAsync();
 
+            var parameters = new { Status = (int)status };
+
             var users = await connection.QueryAsync<GetAllUsersDto>(
                 "sp_GetAllUsers",
+                parameters,
                 commandType: CommandType.StoredProcedure
             );
             return users;
@@ -387,6 +402,40 @@ namespace attendance_monitoring.Repositories
                 string message = parameters.Get<string>("@Message") ?? "Unknown error";
 
                 return (success, message);
+            }
+            catch (Exception ex)
+            {
+                return (false, $"Database error: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Restores a soft-deleted user using stored procedure
+        /// </summary>
+        public async Task<(bool Success, string Message)> RestoreUserAsyncSP(string userId)
+        {
+            using var connection = context.Database.GetDbConnection();
+            if (connection.State != ConnectionState.Open)
+                await connection.OpenAsync().ConfigureAwait(false);
+
+            var parameters = new { UserId = userId };
+
+            try
+            {
+                var result = await connection.QueryFirstOrDefaultAsync<dynamic>(
+                    "sp_RestoreUser",
+                    parameters,
+                    commandType: CommandType.StoredProcedure
+                ).ConfigureAwait(false);
+
+                if (result != null)
+                {
+                    bool success = result.Success;
+                    string message = result.Message ?? "Unknown error";
+                    return (success, message);
+                }
+
+                return (false, "No response from stored procedure");
             }
             catch (Exception ex)
             {

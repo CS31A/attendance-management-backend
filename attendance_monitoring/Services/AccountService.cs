@@ -28,9 +28,9 @@ namespace attendance_monitoring.Services
         : IAccountService
     {
 
-        public async Task<IEnumerable<GetAllUsersDto>> GetAllUsersAsync()
+        public async Task<IEnumerable<GetAllUsersDto>> GetAllUsersAsync(Models.DTO.Request.UserStatus status = Models.DTO.Request.UserStatus.Active)
         {
-            return await accountRepository.GetAllUsersAsyncSP().ConfigureAwait(false);
+            return await accountRepository.GetAllUsersAsyncSP(status).ConfigureAwait(false);
         }
 
         #region Registration Methods
@@ -1117,6 +1117,52 @@ namespace attendance_monitoring.Services
             }
 
             logger.LogInformation("Admin {AdminId} successfully hard deleted user {TargetUserId}", adminId, targetUserId);
+            return (true, message, "SUCCESS");
+        }
+        #endregion
+
+        #region AdminRestoreUserAsync
+        public async Task<(bool Success, string Message, string ErrorCode)> AdminRestoreUserAsync(string adminId, string targetUserId)
+        {
+            logger.LogInformation("Admin restore user attempt by admin {AdminId} for user {TargetUserId}", adminId, targetUserId);
+
+            // Verify admin has Admin role
+            var admin = await accountRepository.FindUserByIdAsync(adminId).ConfigureAwait(false);
+            if (admin == null)
+            {
+                logger.LogWarning("Admin restore failed: Admin not found for ID {AdminId}", adminId);
+                return (false, "Admin user not found", "ADMIN_NOT_FOUND");
+            }
+
+            var adminRoles = await accountRepository.GetUserRolesAsync(admin).ConfigureAwait(false);
+            if (!adminRoles.Contains("Admin", StringComparer.OrdinalIgnoreCase))
+            {
+                logger.LogWarning("Admin restore failed: User {AdminId} is not an admin", adminId);
+                return (false, "Unauthorized: Admin role required", "UNAUTHORIZED");
+            }
+
+            // Validate target user exists
+            var targetUser = await accountRepository.FindUserByIdAsync(targetUserId).ConfigureAwait(false);
+            if (targetUser == null)
+            {
+                logger.LogWarning("Admin restore failed: Target user not found for ID {TargetUserId}", targetUserId);
+                return (false, "Target user not found", "USER_NOT_FOUND");
+            }
+
+            // Perform restore using stored procedure
+            var (success, message) = await accountRepository.RestoreUserAsyncSP(targetUserId).ConfigureAwait(false);
+
+            if (!success)
+            {
+                logger.LogWarning("Admin {AdminId} failed to restore user {TargetUserId}: {Message}", adminId, targetUserId, message);
+                // Determine error code from message
+                var errorCode = message.Contains("not found", StringComparison.OrdinalIgnoreCase) ? "USER_NOT_FOUND" :
+                                message.Contains("not deleted", StringComparison.OrdinalIgnoreCase) ||
+                                message.Contains("already active", StringComparison.OrdinalIgnoreCase) ? "NOT_DELETED" : "RESTORE_FAILED";
+                return (false, message, errorCode);
+            }
+
+            logger.LogInformation("Admin {AdminId} successfully restored user {TargetUserId}", adminId, targetUserId);
             return (true, message, "SUCCESS");
         }
         #endregion

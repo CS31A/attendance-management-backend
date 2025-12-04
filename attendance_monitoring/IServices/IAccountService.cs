@@ -9,7 +9,7 @@ namespace attendance_monitoring.IServices
 {
     public interface IAccountService
     {
-        Task<IEnumerable<GetAllUsersDto>> GetAllUsersAsync();
+        Task<IEnumerable<GetAllUsersDto>> GetAllUsersAsync(UserStatus status = UserStatus.Active);
         Task<(IdentityResult, RegisterResponseDto?)> RegisterAsync(RegisterDto registerDto);
         Task<(TokenResponseDto?, string?, string?, string?)> LoginAsync(LoginDto loginDto);
         Task<(TokenResponseDto?, string?)> RefreshAsync(RefreshTokenRequestDto refreshTokenRequest);
@@ -50,5 +50,13 @@ namespace attendance_monitoring.IServices
         /// <param name="targetUserId">The ID of the user to permanently delete</param>
         /// <returns>Tuple containing success status, message, and error code</returns>
         Task<(bool Success, string Message, string ErrorCode)> AdminHardDeleteUserAsync(string adminId, string targetUserId);
+
+        /// <summary>
+        /// Admin restores a soft-deleted user (reactivates archived user)
+        /// </summary>
+        /// <param name="adminId">The ID of the admin performing the restoration</param>
+        /// <param name="targetUserId">The ID of the user to restore</param>
+        /// <returns>Tuple containing success status, message, and error code</returns>
+        Task<(bool Success, string Message, string ErrorCode)> AdminRestoreUserAsync(string adminId, string targetUserId);
     }
 }
