@@ -66,29 +66,80 @@ public class UserController(IAccountService accountService, ILogger<UserControll
             return Unauthorized(new DeleteUserResponseDto { Success = false, Message = "Admin not authenticated" });
         }
 
-        var (success, message) = await accountService.AdminDeleteUserAsync(adminId, userId);
+        var (success, message, errorCode) = await accountService.AdminDeleteUserAsync(adminId, userId);
 
         if (!success)
         {
-            logger.LogWarning("User delete failed for user {TargetUserId}: {Message}", userId, message);
+            logger.LogWarning("User delete failed for user {TargetUserId}: {Message} (ErrorCode: {ErrorCode})", userId, message, errorCode);
 
-            // Return appropriate status code based on error message
-            if (message.Contains("not found", StringComparison.OrdinalIgnoreCase))
+            // Return appropriate status code based on error code
+            return errorCode switch
             {
-                return NotFound(new DeleteUserResponseDto { Success = false, Message = message });
-            }
-
-            if (message.Contains("Unauthorized", StringComparison.OrdinalIgnoreCase) ||
-                message.Contains("Admin role required", StringComparison.OrdinalIgnoreCase))
-            {
-                return StatusCode(StatusCodes.Status403Forbidden, new DeleteUserResponseDto { Success = false, Message = message });
-            }
-
-            // Generic bad request for other errors (e.g., cannot delete self, already deleted)
-            return BadRequest(new DeleteUserResponseDto { Success = false, Message = message });
+                "USER_NOT_FOUND" => NotFound(new DeleteUserResponseDto { Success = false, Message = message }),
+                "UNAUTHORIZED" => StatusCode(StatusCodes.Status403Forbidden, new DeleteUserResponseDto { Success = false, Message = message }),
+                "SELF_DELETE" => BadRequest(new DeleteUserResponseDto { Success = false, Message = message }),
+                _ => BadRequest(new DeleteUserResponseDto { Success = false, Message = message })
+            };
         }
 
         logger.LogInformation("Admin {AdminId} successfully deleted user {TargetUserId}.", adminId, userId);
+        return Ok(new DeleteUserResponseDto
+        {
+            Success = true,
+            Message = message
+        });
+    }
+
+    /// <summary>
+    /// Permanently delete a user and all associated data (hard delete - cannot be undone)
+    /// </summary>
+    /// <param name="userId">Target user ID to permanently delete</param>
+    /// <returns>Deletion status</returns>
+    /// <response code="200">User permanently deleted successfully</response>
+    /// <response code="400">Invalid request or cannot delete self</response>
+    /// <response code="401">User not authenticated</response>
+    /// <response code="403">User is not an admin</response>
+    /// <response code="404">Target user not found</response>
+    [HttpDelete("{userId}")]
+    [ProducesResponseType(typeof(DeleteUserResponseDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(DeleteUserResponseDto), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(DeleteUserResponseDto), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(DeleteUserResponseDto), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(DeleteUserResponseDto), StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<DeleteUserResponseDto>> HardDeleteUser(string userId)
+    {
+        logger.LogInformation("User hard delete request received for user {TargetUserId}.", userId);
+
+        if (string.IsNullOrWhiteSpace(userId))
+        {
+            logger.LogWarning("User hard delete failed: userId is empty");
+            return BadRequest(new DeleteUserResponseDto { Success = false, Message = "User ID is required" });
+        }
+
+        var adminId = GetUserId(User);
+        if (string.IsNullOrEmpty(adminId))
+        {
+            logger.LogWarning("User hard delete failed: Admin not found from claims.");
+            return Unauthorized(new DeleteUserResponseDto { Success = false, Message = "Admin not authenticated" });
+        }
+
+        var (success, message, errorCode) = await accountService.AdminHardDeleteUserAsync(adminId, userId);
+
+        if (!success)
+        {
+            logger.LogWarning("User hard delete failed for user {TargetUserId}: {Message} (ErrorCode: {ErrorCode})", userId, message, errorCode);
+
+            // Return appropriate status code based on error code
+            return errorCode switch
+            {
+                "USER_NOT_FOUND" => NotFound(new DeleteUserResponseDto { Success = false, Message = message }),
+                "UNAUTHORIZED" => StatusCode(StatusCodes.Status403Forbidden, new DeleteUserResponseDto { Success = false, Message = message }),
+                "SELF_DELETE" => BadRequest(new DeleteUserResponseDto { Success = false, Message = message }),
+                _ => BadRequest(new DeleteUserResponseDto { Success = false, Message = message })
+            };
+        }
+
+        logger.LogInformation("Admin {AdminId} successfully hard deleted user {TargetUserId}.", adminId, userId);
         return Ok(new DeleteUserResponseDto
         {
             Success = true,

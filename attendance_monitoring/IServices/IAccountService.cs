@@ -40,7 +40,15 @@ namespace attendance_monitoring.IServices
         /// </summary>
         /// <param name="adminId">The ID of the admin performing the deletion</param>
         /// <param name="targetUserId">The ID of the user to delete</param>
-        /// <returns>Tuple containing success status and message</returns>
-        Task<(bool Success, string Message)> AdminDeleteUserAsync(string adminId, string targetUserId);
+        /// <returns>Tuple containing success status, message, and error code</returns>
+        Task<(bool Success, string Message, string ErrorCode)> AdminDeleteUserAsync(string adminId, string targetUserId);
+
+        /// <summary>
+        /// Admin permanently deletes a user and all associated data (hard delete)
+        /// </summary>
+        /// <param name="adminId">The ID of the admin performing the deletion</param>
+        /// <param name="targetUserId">The ID of the user to permanently delete</param>
+        /// <returns>Tuple containing success status, message, and error code</returns>
+        Task<(bool Success, string Message, string ErrorCode)> AdminHardDeleteUserAsync(string adminId, string targetUserId);
     }
 }

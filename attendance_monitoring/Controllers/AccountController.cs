@@ -622,26 +622,20 @@ namespace attendance_monitoring.Controllers
                 return Unauthorized(new DeleteUserResponseDto { Success = false, Message = "Admin not authenticated" });
             }
 
-            var (success, message) = await accountService.AdminDeleteUserAsync(adminId, userId);
+            var (success, message, errorCode) = await accountService.AdminDeleteUserAsync(adminId, userId);
 
             if (!success)
             {
-                logger.LogWarning("Admin delete failed for user {TargetUserId}: {Message}", userId, message);
+                logger.LogWarning("Admin delete failed for user {TargetUserId}: {Message} (ErrorCode: {ErrorCode})", userId, message, errorCode);
 
-                // Return appropriate status code based on error message
-                if (message.Contains("not found", StringComparison.OrdinalIgnoreCase))
+                // Return appropriate status code based on error code
+                return errorCode switch
                 {
-                    return NotFound(new DeleteUserResponseDto { Success = false, Message = message });
-                }
-
-                if (message.Contains("Unauthorized", StringComparison.OrdinalIgnoreCase) || 
-                    message.Contains("Admin role required", StringComparison.OrdinalIgnoreCase))
-                {
-                    return StatusCode(StatusCodes.Status403Forbidden, new DeleteUserResponseDto { Success = false, Message = message });
-                }
-
-                // Generic bad request for other errors (e.g., cannot delete self, already deleted)
-                return BadRequest(new DeleteUserResponseDto { Success = false, Message = message });
+                    "USER_NOT_FOUND" => NotFound(new DeleteUserResponseDto { Success = false, Message = message }),
+                    "UNAUTHORIZED" => StatusCode(StatusCodes.Status403Forbidden, new DeleteUserResponseDto { Success = false, Message = message }),
+                    "SELF_DELETE" => BadRequest(new DeleteUserResponseDto { Success = false, Message = message }),
+                    _ => BadRequest(new DeleteUserResponseDto { Success = false, Message = message })
+                };
             }
 
             logger.LogInformation("Admin {AdminId} successfully deleted user {TargetUserId}.", adminId, userId);

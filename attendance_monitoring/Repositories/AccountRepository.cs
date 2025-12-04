@@ -361,6 +361,40 @@ namespace attendance_monitoring.Repositories
         }
 
         /// <summary>
+        /// Hard deletes a user and all associated data permanently using stored procedure
+        /// </summary>
+        public async Task<(bool Success, string Message)> HardDeleteUserAsyncSP(string userId)
+        {
+            using var connection = context.Database.GetDbConnection();
+            if (connection.State != ConnectionState.Open)
+                await connection.OpenAsync().ConfigureAwait(false);
+
+            var parameters = new DynamicParameters();
+            parameters.Add("@UserId", userId, DbType.String, ParameterDirection.Input);
+            parameters.Add("@ConfirmDeletion", true, DbType.Boolean, ParameterDirection.Input);
+            parameters.Add("@Success", dbType: DbType.Boolean, direction: ParameterDirection.Output);
+            parameters.Add("@Message", dbType: DbType.String, direction: ParameterDirection.Output, size: 500);
+
+            try
+            {
+                await connection.ExecuteAsync(
+                    "sp_HardDeleteUser",
+                    parameters,
+                    commandType: CommandType.StoredProcedure
+                ).ConfigureAwait(false);
+
+                bool success = parameters.Get<bool>("@Success");
+                string message = parameters.Get<string>("@Message") ?? "Unknown error";
+
+                return (success, message);
+            }
+            catch (Exception ex)
+            {
+                return (false, $"Database error: {ex.Message}");
+            }
+        }
+
+        /// <summary>
         /// Updates user profile using stored procedure
         /// </summary>
         public async Task<(bool Success, GetAllUsersDto? User, string Message)> UpdateUserAsyncSP(

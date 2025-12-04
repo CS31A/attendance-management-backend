@@ -179,6 +179,13 @@ namespace attendance_monitoring.IRepository
         Task<(bool Success, string Message)> DeleteUserAsyncSP(string userId);
 
         /// <summary>
+        /// Hard deletes a user and all associated data permanently using stored procedure.
+        /// </summary>
+        /// <param name="userId">The user ID to permanently delete.</param>
+        /// <returns>Tuple containing success flag and message.</returns>
+        Task<(bool Success, string Message)> HardDeleteUserAsyncSP(string userId);
+
+        /// <summary>
         /// Updates user profile using stored procedure.
         /// </summary>
         /// <param name="userId">The user ID to update.</param>

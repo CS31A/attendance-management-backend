@@ -995,7 +995,7 @@ namespace attendance_monitoring.Services
         #endregion
 
         #region AdminDeleteUserAsync
-        public async Task<(bool Success, string Message)> AdminDeleteUserAsync(string adminId, string targetUserId)
+        public async Task<(bool Success, string Message, string ErrorCode)> AdminDeleteUserAsync(string adminId, string targetUserId)
         {
             logger.LogInformation("Admin delete user attempt by admin {AdminId} for user {TargetUserId}", adminId, targetUserId);
 
@@ -1004,21 +1004,21 @@ namespace attendance_monitoring.Services
             if (admin == null)
             {
                 logger.LogWarning("Admin delete failed: Admin not found for ID {AdminId}", adminId);
-                return (false, "Admin user not found");
+                return (false, "Admin user not found", "ADMIN_NOT_FOUND");
             }
 
             var adminRoles = await accountRepository.GetUserRolesAsync(admin).ConfigureAwait(false);
             if (!adminRoles.Contains("Admin", StringComparer.OrdinalIgnoreCase))
             {
                 logger.LogWarning("Admin delete failed: User {AdminId} is not an admin", adminId);
-                return (false, "Unauthorized: Admin role required");
+                return (false, "Unauthorized: Admin role required", "UNAUTHORIZED");
             }
 
             // Prevent admin from deleting themselves
             if (adminId.Equals(targetUserId, StringComparison.OrdinalIgnoreCase))
             {
                 logger.LogWarning("Admin {AdminId} attempted to delete themselves", adminId);
-                return (false, "Cannot delete your own account");
+                return (false, "Cannot delete your own account", "SELF_DELETE");
             }
 
             // Validate target user exists
@@ -1026,7 +1026,7 @@ namespace attendance_monitoring.Services
             if (targetUser == null)
             {
                 logger.LogWarning("Admin delete failed: Target user not found for ID {TargetUserId}", targetUserId);
-                return (false, "Target user not found");
+                return (false, "Target user not found", "USER_NOT_FOUND");
             }
 
             // Perform soft delete using stored procedure
@@ -1035,7 +1035,9 @@ namespace attendance_monitoring.Services
             if (!success)
             {
                 logger.LogWarning("Admin {AdminId} failed to delete user {TargetUserId}: {Message}", adminId, targetUserId, message);
-                return (false, message);
+                // Determine error code from message
+                var errorCode = message.Contains("not found", StringComparison.OrdinalIgnoreCase) ? "USER_NOT_FOUND" : "DELETE_FAILED";
+                return (false, message, errorCode);
             }
 
             // Revoke all active refresh tokens for the deleted user
@@ -1064,7 +1066,58 @@ namespace attendance_monitoring.Services
             }
 
             logger.LogInformation("Admin {AdminId} successfully deleted user {TargetUserId}", adminId, targetUserId);
-            return (true, message);
+            return (true, message, "SUCCESS");
+        }
+        #endregion
+
+        #region AdminHardDeleteUserAsync
+        public async Task<(bool Success, string Message, string ErrorCode)> AdminHardDeleteUserAsync(string adminId, string targetUserId)
+        {
+            logger.LogInformation("Admin hard delete user attempt by admin {AdminId} for user {TargetUserId}", adminId, targetUserId);
+
+            // Verify admin has Admin role
+            var admin = await accountRepository.FindUserByIdAsync(adminId).ConfigureAwait(false);
+            if (admin == null)
+            {
+                logger.LogWarning("Admin hard delete failed: Admin not found for ID {AdminId}", adminId);
+                return (false, "Admin user not found", "ADMIN_NOT_FOUND");
+            }
+
+            var adminRoles = await accountRepository.GetUserRolesAsync(admin).ConfigureAwait(false);
+            if (!adminRoles.Contains("Admin", StringComparer.OrdinalIgnoreCase))
+            {
+                logger.LogWarning("Admin hard delete failed: User {AdminId} is not an admin", adminId);
+                return (false, "Unauthorized: Admin role required", "UNAUTHORIZED");
+            }
+
+            // Prevent admin from deleting themselves
+            if (adminId.Equals(targetUserId, StringComparison.OrdinalIgnoreCase))
+            {
+                logger.LogWarning("Admin {AdminId} attempted to hard delete themselves", adminId);
+                return (false, "Cannot delete your own account", "SELF_DELETE");
+            }
+
+            // Validate target user exists
+            var targetUser = await accountRepository.FindUserByIdAsync(targetUserId).ConfigureAwait(false);
+            if (targetUser == null)
+            {
+                logger.LogWarning("Admin hard delete failed: Target user not found for ID {TargetUserId}", targetUserId);
+                return (false, "Target user not found", "USER_NOT_FOUND");
+            }
+
+            // Perform hard delete using stored procedure
+            var (success, message) = await accountRepository.HardDeleteUserAsyncSP(targetUserId).ConfigureAwait(false);
+
+            if (!success)
+            {
+                logger.LogWarning("Admin {AdminId} failed to hard delete user {TargetUserId}: {Message}", adminId, targetUserId, message);
+                // Determine error code from message
+                var errorCode = message.Contains("not found", StringComparison.OrdinalIgnoreCase) ? "USER_NOT_FOUND" : "DELETE_FAILED";
+                return (false, message, errorCode);
+            }
+
+            logger.LogInformation("Admin {AdminId} successfully hard deleted user {TargetUserId}", adminId, targetUserId);
+            return (true, message, "SUCCESS");
         }
         #endregion
         #endregion

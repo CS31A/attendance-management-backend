@@ -72,7 +72,7 @@ namespace attendance_monitoring.Migrations
                 BEGIN
                     UPDATE Admins
                     SET IsDeleted = 1, DeletedAt = GETUTCDATE()
-                    WHERE UserId = @UserId;
+                    WHERE UserId = @UserId AND IsDeleted = 0;
                     
                     IF @@ROWCOUNT > 0
                     BEGIN
