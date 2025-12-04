@@ -63,14 +63,14 @@ namespace attendance_monitoring.Services
             {
                 var schedules = await scheduleRepository.GetSchedulesByInstructorIdAsync(instructorId);
                 var instructorSchedules = schedules.Select(MapToResponseDto).ToList();
-                logger.LogInformation("Successfully retrieved {Count} schedules for instructor ID: {InstructorId}", 
+                logger.LogInformation("Successfully retrieved {Count} schedules for instructor ID: {InstructorId}",
                     instructorSchedules.Count, instructorId);
                 return instructorSchedules;
             }
             catch (Exception ex)
             {
                 logger.LogError(ex, "Error occurred while retrieving schedules for instructor ID {InstructorId}", instructorId);
-                throw new EntityServiceException("Schedule", $"GetSchedulesByInstructorId: {instructorId}", 
+                throw new EntityServiceException("Schedule", $"GetSchedulesByInstructorId: {instructorId}",
                     "An error occurred while retrieving schedules for the instructor", ex);
             }
         }
@@ -80,7 +80,7 @@ namespace attendance_monitoring.Services
         #region Create Operations
         public async Task<(Schedules?, string?)> CreateScheduleAsync(CreateSchedule createSchedule)
         {
-            logger.LogInformation("Creating new schedule with TimeIn: {TimeIn} and TimeOut: {TimeOut}", 
+            logger.LogInformation("Creating new schedule with TimeIn: {TimeIn} and TimeOut: {TimeOut}",
                 createSchedule.TimeIn, createSchedule.TimeOut);
             try
             {
@@ -94,7 +94,7 @@ namespace attendance_monitoring.Services
                 // Validate time range (TimeOut must be after TimeIn)
                 if (createSchedule.TimeOut <= createSchedule.TimeIn)
                 {
-                    logger.LogWarning("Schedule creation failed: TimeOut ({TimeOut}) must be after TimeIn ({TimeIn})", 
+                    logger.LogWarning("Schedule creation failed: TimeOut ({TimeOut}) must be after TimeIn ({TimeIn})",
                         createSchedule.TimeOut, createSchedule.TimeIn);
                     return (null, "TimeOut must be after TimeIn");
                 }
@@ -159,7 +159,7 @@ namespace attendance_monitoring.Services
         public async Task<(Schedules?, string?)> UpdateScheduleAsync(int id, UpdateSchedule updateSchedule)
         {
             logger.LogInformation("Updating schedule with ID: {Id}", id);
-            
+
             try
             {
                 var existingSchedule = await scheduleRepository.GetScheduleByIdAsync(id);
@@ -170,7 +170,7 @@ namespace attendance_monitoring.Services
                 }
 
                 // Validate DayOfWeek if provided
-                if (!string.IsNullOrEmpty(updateSchedule.DayOfWeek) && 
+                if (!string.IsNullOrEmpty(updateSchedule.DayOfWeek) &&
                     !Constants.ScheduleConstants.IsValidDayOfWeek(updateSchedule.DayOfWeek))
                 {
                     logger.LogWarning("Schedule update failed: Invalid DayOfWeek '{DayOfWeek}'", updateSchedule.DayOfWeek);
@@ -184,7 +184,7 @@ namespace attendance_monitoring.Services
                 // Validate time range (TimeOut must be after TimeIn)
                 if (effectiveTimeOut <= effectiveTimeIn)
                 {
-                    logger.LogWarning("Schedule update failed: TimeOut ({TimeOut}) must be after TimeIn ({TimeIn})", 
+                    logger.LogWarning("Schedule update failed: TimeOut ({TimeOut}) must be after TimeIn ({TimeIn})",
                         effectiveTimeOut, effectiveTimeIn);
                     return (null, "TimeOut must be after TimeIn");
                 }
@@ -253,13 +253,13 @@ namespace attendance_monitoring.Services
                 existingSchedule.UpdatedAt = DateTime.UtcNow;
 
                 var updatedSchedule = await scheduleRepository.UpdateScheduleAsync(existingSchedule);
-                
+
                 if (updatedSchedule == null)
                 {
                     logger.LogWarning("Schedule update failed: Failed to update schedule with ID {Id}", id);
                     return (null, "Failed to update schedule");
                 }
-                
+
                 logger.LogInformation("Successfully updated schedule with ID: {Id}", updatedSchedule.Id);
                 return (updatedSchedule, null);
             }
@@ -277,7 +277,7 @@ namespace attendance_monitoring.Services
         public async Task<string?> DeleteScheduleAsync(int id, ClaimsPrincipal user)
         {
             logger.LogInformation("Deleting schedule with ID: {Id}", id);
-            
+
             try
             {
                 var existingSchedule = await scheduleRepository.GetScheduleByIdAsync(id).ConfigureAwait(false);
@@ -300,16 +300,16 @@ namespace attendance_monitoring.Services
                     logger.LogWarning("Schedule deletion failed: Schedule with ID {Id} may have been deleted by another process", id);
                     return "Schedule may have been deleted by another process.";
                 }
-                
+
                 logger.LogInformation("Successfully deleted schedule with ID: {Id}", id);
                 return null;
             }
-            catch (DbUpdateException ex) when (ex.InnerException?.Message.Contains("REFERENCE constraint") == true 
+            catch (DbUpdateException ex) when (ex.InnerException?.Message.Contains("REFERENCE constraint") == true
                                                || ex.InnerException?.Message.Contains("FK_") == true)
             {
                 // Handle foreign key constraint violations with user-friendly messages
                 var innerMessage = ex.InnerException?.Message ?? ex.Message;
-                
+
                 string userFriendlyMessage;
                 if (innerMessage.Contains("FK_QrCodes_Schedules") || innerMessage.Contains("QrCodes"))
                 {
@@ -323,7 +323,7 @@ namespace attendance_monitoring.Services
                 {
                     userFriendlyMessage = "Cannot delete schedule because it has associated records. Please remove all dependencies first.";
                 }
-                
+
                 logger.LogWarning(ex, "Schedule deletion failed due to foreign key constraint: {Message}", userFriendlyMessage);
                 throw new EntityServiceException("Schedule", $"DeleteSchedule: {id}", userFriendlyMessage, ex);
             }
@@ -333,11 +333,11 @@ namespace attendance_monitoring.Services
                 throw new EntityServiceException("Schedule", $"DeleteSchedule: {id}", "An error occurred while deleting the schedule", ex);
             }
         }
-        
+
         #endregion
-        
+
         #region Helper Methods
-        
+
         public static ScheduleResponseDto MapToResponseDto(Schedules schedule)
         {
             return new ScheduleResponseDto
@@ -380,7 +380,7 @@ namespace attendance_monitoring.Services
                 UpdatedAt = schedule.UpdatedAt
             };
         }
-        
+
         #endregion
     }
 }

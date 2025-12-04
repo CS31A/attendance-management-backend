@@ -111,7 +111,7 @@ namespace attendance_monitoring.Services
             try
             {
                 _logger.LogInformation("Retrieving subjects for instructor ID: {InstructorId}", instructorId);
-                
+
                 // Verify instructor exists
                 var instructor = await _instructorRepository.GetInstructorByIdAsync(instructorId).ConfigureAwait(false);
                 if (instructor == null)
@@ -131,7 +131,7 @@ namespace attendance_monitoring.Services
                     UpdatedAt = s.UpdatedAt
                 }).ToList();
 
-                _logger.LogInformation("Successfully retrieved {Count} subjects for instructor ID: {InstructorId}", 
+                _logger.LogInformation("Successfully retrieved {Count} subjects for instructor ID: {InstructorId}",
                     subjectDtos.Count, instructorId);
                 return subjectDtos;
             }
@@ -143,7 +143,7 @@ namespace attendance_monitoring.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error occurred while retrieving subjects for instructor ID: {InstructorId}", instructorId);
-                throw new EntityServiceException("Instructor", $"GetSubjectsByInstructorId: {instructorId}", 
+                throw new EntityServiceException("Instructor", $"GetSubjectsByInstructorId: {instructorId}",
                     "An error occurred while retrieving instructor subjects", ex);
             }
         }
@@ -162,7 +162,7 @@ namespace attendance_monitoring.Services
             try
             {
                 _logger.LogInformation("Retrieving schedules for authenticated instructor");
-                
+
                 // Extract user ID from JWT claims
                 var userId = await _userContextService.GetUserIdAsync(userPrincipal).ConfigureAwait(false);
                 if (string.IsNullOrEmpty(userId))
@@ -183,7 +183,7 @@ namespace attendance_monitoring.Services
                 var schedules = await _scheduleRepository.GetSchedulesByInstructorIdAsync(instructor.Id).ConfigureAwait(false);
                 var scheduleDtos = schedules.Select(ScheduleService.MapToResponseDto).ToList();
 
-                _logger.LogInformation("Successfully retrieved {Count} schedules for instructor ID: {InstructorId}", 
+                _logger.LogInformation("Successfully retrieved {Count} schedules for instructor ID: {InstructorId}",
                     scheduleDtos.Count, instructor.Id);
                 return scheduleDtos;
             }
@@ -195,7 +195,7 @@ namespace attendance_monitoring.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error occurred while retrieving schedules for authenticated instructor");
-                throw new EntityServiceException("Instructor", "GetSchedulesByInstructor", 
+                throw new EntityServiceException("Instructor", "GetSchedulesByInstructor",
                     "An error occurred while retrieving instructor schedules", ex);
             }
         }
@@ -213,7 +213,7 @@ namespace attendance_monitoring.Services
             try
             {
                 _logger.LogInformation("Retrieving instructor profile for authenticated user");
-                
+
                 // Extract user ID from JWT claims
                 var userId = await _userContextService.GetUserIdAsync(userPrincipal).ConfigureAwait(false);
                 if (string.IsNullOrEmpty(userId))
@@ -241,14 +241,14 @@ namespace attendance_monitoring.Services
                     UpdatedAt = instructor.UpdatedAt
                 };
 
-                _logger.LogInformation("Successfully retrieved instructor profile for user ID: {UserId}, instructor ID: {InstructorId}", 
+                _logger.LogInformation("Successfully retrieved instructor profile for user ID: {UserId}, instructor ID: {InstructorId}",
                     userId, instructor.Id);
                 return profileDto;
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error occurred while retrieving instructor profile");
-                throw new EntityServiceException("Instructor", "GetInstructorProfile", 
+                throw new EntityServiceException("Instructor", "GetInstructorProfile",
                     "An error occurred while retrieving the instructor profile", ex);
             }
         }
@@ -263,7 +263,7 @@ namespace attendance_monitoring.Services
         /// <returns>A tuple containing the created instructor (if successful) and an error message (if any)</returns>
         public async Task<(Instructor?, string?)> CreateInstructorAsync(CreateInstructor createInstructor, ClaimsPrincipal userPrincipal)
         {
-            _logger.LogInformation("Creating new instructor with name: {FirstName} {LastName}", 
+            _logger.LogInformation("Creating new instructor with name: {FirstName} {LastName}",
                 createInstructor.Firstname, createInstructor.Lastname);
 
             // Validate basic user information
@@ -280,7 +280,7 @@ namespace attendance_monitoring.Services
                 _logger.LogWarning("Instructor creation failed: User ID not found in token");
                 return (null, "User ID not found in token");
             }
-            
+
             // Check if instructor already exists for this user
             var existingInstructor = await _instructorRepository.GetInstructorByUserIdAsync(userId).ConfigureAwait(false);
             if (existingInstructor != null)
@@ -303,13 +303,13 @@ namespace attendance_monitoring.Services
                 var createdInstructor = await _instructorRepository.CreateInstructorAsync(instructor).ConfigureAwait(false);
                 await _instructorRepository.SaveChangesAsync().ConfigureAwait(false);
 
-                _logger.LogInformation("Successfully created instructor with ID: {Id} and name: {FirstName} {LastName}", 
+                _logger.LogInformation("Successfully created instructor with ID: {Id} and name: {FirstName} {LastName}",
                     createdInstructor.Id, createdInstructor.Firstname, createdInstructor.Lastname);
                 return (createdInstructor, null);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error occurred while creating instructor with name: {FirstName} {LastName}", 
+                _logger.LogError(ex, "Error occurred while creating instructor with name: {FirstName} {LastName}",
                     createInstructor.Firstname, createInstructor.Lastname);
                 return (null, "An error occurred while creating the instructor. Please try again later.");
             }
@@ -332,7 +332,7 @@ namespace attendance_monitoring.Services
             try
             {
                 _logger.LogInformation("Updating instructor with ID: {Id}", id);
-                
+
                 var userId = await _userContextService.GetUserIdAsync(userPrincipal).ConfigureAwait(false);
                 if (string.IsNullOrEmpty(userId))
                 {
@@ -409,7 +409,7 @@ namespace attendance_monitoring.Services
             try
             {
                 _logger.LogInformation("Soft deleting instructor with ID: {Id}", id);
-                
+
                 if (id <= 0)
                 {
                     _logger.LogWarning("Instructor soft delete failed: Invalid instructor ID {Id}", id);
@@ -443,7 +443,7 @@ namespace attendance_monitoring.Services
                     _logger.LogError("Instructor soft delete failed: Failed to soft delete instructor with ID {Id}", id);
                     throw new EntityServiceException("Instructor", $"SoftDeleteInstructor: {id}", "Failed to soft delete instructor");
                 }
-                
+
                 await _instructorRepository.SaveChangesAsync().ConfigureAwait(false);
                 _logger.LogInformation("Successfully soft deleted instructor with ID: {Id}", id);
             }
@@ -480,7 +480,7 @@ namespace attendance_monitoring.Services
         public async Task<string?> HardDeleteInstructorAsync(int id, ClaimsPrincipal userPrincipal)
         {
             _logger.LogInformation("Hard deleting instructor with ID: {Id}", id);
-            
+
             if (id <= 0)
             {
                 _logger.LogWarning("Instructor hard delete failed: Invalid instructor ID {Id}", id);
@@ -514,11 +514,11 @@ namespace attendance_monitoring.Services
                 _logger.LogError("Instructor hard delete failed: Failed to hard delete instructor with ID {Id}", id);
                 return "Failed to hard delete instructor";
             }
-            
+
             try
             {
                 await _instructorRepository.SaveChangesAsync().ConfigureAwait(false);
-                
+
                 _logger.LogInformation("Successfully hard deleted instructor with ID: {Id}", id);
                 return null;
             }
@@ -529,7 +529,7 @@ namespace attendance_monitoring.Services
             }
         }
         #endregion
-        
+
         #region RestoreInstructorAsync
         /// <summary>
         /// Restores a soft deleted instructor record
@@ -540,7 +540,7 @@ namespace attendance_monitoring.Services
         public async Task<string?> RestoreInstructorAsync(int id, ClaimsPrincipal userPrincipal)
         {
             _logger.LogInformation("Restoring instructor with ID: {Id}", id);
-            
+
             if (id <= 0)
             {
                 _logger.LogWarning("Instructor restore failed: Invalid instructor ID {Id}", id);
@@ -581,11 +581,11 @@ namespace attendance_monitoring.Services
                 _logger.LogError("Instructor restore failed: Failed to restore instructor with ID {Id}", id);
                 return "Failed to restore instructor";
             }
-            
+
             try
             {
                 await _instructorRepository.SaveChangesAsync().ConfigureAwait(false);
-                
+
                 _logger.LogInformation("Successfully restored instructor with ID: {Id}", id);
                 return null;
             }

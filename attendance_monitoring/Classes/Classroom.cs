@@ -14,7 +14,7 @@ public class Classroom
     [Required]
     [StringLength(100, MinimumLength = 2, ErrorMessage = "Room name must be greater than or equal to 2 characters")]
     public string Name { get; set; } = string.Empty;
-    
+
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
 }

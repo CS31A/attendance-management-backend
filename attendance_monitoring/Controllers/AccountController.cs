@@ -147,9 +147,9 @@ namespace attendance_monitoring.Controllers
             cookieOptionsService.SetTokenCookies(Response, tokenResponse.AccessToken, tokenResponse.RefreshToken);
 
             logger.LogInformation("User logged in successfully via web login");
-            return Ok(new WebLoginResponseDto 
-            { 
-                Success = true, 
+            return Ok(new WebLoginResponseDto
+            {
+                Success = true,
                 Message = "Login successful",
                 Username = username ?? string.Empty,
                 Role = role ?? string.Empty

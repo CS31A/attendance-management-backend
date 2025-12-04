@@ -362,7 +362,7 @@ public class AttendanceAuthorizationTests
         var attendanceId = 1;
         var studentUser = CreateStudentUserWithoutUserId();
         var attendanceRecord = CreateTestAttendanceRecord(attendanceId, 1, 1);
-        
+
         _mockAttendanceRepository
             .Setup(ar => ar.GetByIdAsync(attendanceId))
             .ReturnsAsync(attendanceRecord);
@@ -388,7 +388,7 @@ public class AttendanceAuthorizationTests
         var userId = "user-123";
         var studentUser = CreateStudentUser(userId);
         var attendanceRecord = CreateTestAttendanceRecord(attendanceId, 1, 1);
-        
+
         _mockAttendanceRepository
             .Setup(ar => ar.GetByIdAsync(attendanceId))
             .ReturnsAsync(attendanceRecord);

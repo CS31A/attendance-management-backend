@@ -121,7 +121,7 @@ namespace attendance_monitoring.Services
         {
             try
             {
-                _logger.LogInformation("Creating new student with name: {FirstName} {LastName}", 
+                _logger.LogInformation("Creating new student with name: {FirstName} {LastName}",
                     createStudent.Firstname, createStudent.Lastname);
 
                 // Validate section ID
@@ -167,7 +167,7 @@ namespace attendance_monitoring.Services
                 var createdStudent = await _studentRepository.CreateStudent(student).ConfigureAwait(false);
                 await _studentRepository.SaveChangesAsync().ConfigureAwait(false);
 
-                _logger.LogInformation("Successfully created student with ID: {Id} and name: {FirstName} {LastName}", 
+                _logger.LogInformation("Successfully created student with ID: {Id} and name: {FirstName} {LastName}",
                     createdStudent.Id, createdStudent.Firstname, createdStudent.Lastname);
                 return createdStudent;
             }
@@ -183,7 +183,7 @@ namespace attendance_monitoring.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error occurred while creating student with name: {FirstName} {LastName}", 
+                _logger.LogError(ex, "Error occurred while creating student with name: {FirstName} {LastName}",
                     createStudent.Firstname, createStudent.Lastname);
                 throw new EntityServiceException("Student", "CreateStudent", "An error occurred while creating the student", ex);
             }
@@ -207,7 +207,7 @@ namespace attendance_monitoring.Services
             try
             {
                 _logger.LogInformation("Updating student with ID: {Id}", id);
-                
+
                 var userId = await _userContextService.GetUserIdAsync(userPrincipal).ConfigureAwait(false);
                 if (string.IsNullOrEmpty(userId))
                 {
@@ -290,7 +290,7 @@ namespace attendance_monitoring.Services
             try
             {
                 _logger.LogInformation("Soft deleting student with ID: {Id}", id);
-                
+
                 if (id <= 0)
                 {
                     _logger.LogWarning("Student soft delete failed: Invalid student ID {Id}", id);
@@ -324,7 +324,7 @@ namespace attendance_monitoring.Services
                     _logger.LogError("Student soft delete failed: Failed to soft delete student with ID {Id}", id);
                     throw new EntityServiceException("Student", $"SoftDeleteStudent: {id}", "Failed to soft delete student");
                 }
-                
+
                 await _studentRepository.SaveChangesAsync().ConfigureAwait(false);
                 _logger.LogInformation("Successfully soft deleted student with ID: {Id}", id);
             }
@@ -359,7 +359,7 @@ namespace attendance_monitoring.Services
         public async Task<string?> HardDeleteStudentAsync(int id, ClaimsPrincipal userPrincipal)
         {
             _logger.LogInformation("Hard deleting student with ID: {Id}", id);
-            
+
             if (id <= 0)
             {
                 _logger.LogWarning("Student hard delete failed: Invalid student ID {Id}", id);
@@ -397,7 +397,7 @@ namespace attendance_monitoring.Services
             try
             {
                 await _studentRepository.SaveChangesAsync().ConfigureAwait(false);
-                
+
                 _logger.LogInformation("Successfully hard deleted student with ID: {Id}", id);
                 return null;
             }
@@ -407,7 +407,7 @@ namespace attendance_monitoring.Services
                 return "An error occurred while hard deleting the student. Please try again later.";
             }
         }
-        
+
         /// <summary>
         /// Restores a soft deleted student record
         /// </summary>
@@ -417,7 +417,7 @@ namespace attendance_monitoring.Services
         public async Task<string?> RestoreStudentAsync(int id, ClaimsPrincipal userPrincipal)
         {
             _logger.LogInformation("Restoring student with ID: {Id}", id);
-            
+
             if (id <= 0)
             {
                 _logger.LogWarning("Student restore failed: Invalid student ID {Id}", id);
@@ -458,11 +458,11 @@ namespace attendance_monitoring.Services
                 _logger.LogError("Student restore failed: Failed to restore student with ID {Id}", id);
                 return "Failed to restore student";
             }
-            
+
             try
             {
                 await _studentRepository.SaveChangesAsync().ConfigureAwait(false);
-                
+
                 _logger.LogInformation("Successfully restored student with ID: {Id}", id);
                 return null;
             }
@@ -488,7 +488,7 @@ namespace attendance_monitoring.Services
             try
             {
                 _logger.LogInformation("Retrieving subjects for authenticated student");
-                
+
                 var userId = await _userContextService.GetUserIdAsync(userPrincipal).ConfigureAwait(false);
                 if (string.IsNullOrEmpty(userId))
                 {
@@ -505,7 +505,7 @@ namespace attendance_monitoring.Services
                 }
 
                 var subjectData = await _studentRepository.GetStudentSubjectsAsync(userId).ConfigureAwait(false);
-                
+
                 var response = subjectData.Select(data => new StudentSubjectResponseDto
                 {
                     Subject = new SubjectResponseDto

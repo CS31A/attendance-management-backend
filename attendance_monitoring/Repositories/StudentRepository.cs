@@ -99,7 +99,7 @@ public class StudentRepository(ApplicationDbContext context) : IStudentRepositor
         student.IsDeleted = true;
         student.DeletedAt = DateTime.UtcNow;
         student.UpdatedAt = DateTime.UtcNow;
-        
+
         context.Students.Update(student);
         return true;
     }
@@ -127,7 +127,7 @@ public class StudentRepository(ApplicationDbContext context) : IStudentRepositor
         student.IsDeleted = false;
         student.DeletedAt = null;
         student.UpdatedAt = DateTime.UtcNow;
-        
+
         context.Students.Update(student);
         return true;
     }

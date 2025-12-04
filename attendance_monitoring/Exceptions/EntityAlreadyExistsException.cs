@@ -18,7 +18,7 @@ namespace attendance_monitoring.Exceptions
         /// <param name="entityName">The name of the entity type (e.g., "Subject", "User")</param>
         /// <param name="identifierPropertyName">The name of the property that caused the conflict (e.g., "Code", "Email")</param>
         /// <param name="entityIdentifier">The value that already exists</param>
-        public EntityAlreadyExistsException(string entityName, string identifierPropertyName, TKey entityIdentifier) 
+        public EntityAlreadyExistsException(string entityName, string identifierPropertyName, TKey entityIdentifier)
             : base($"{entityName} with {identifierPropertyName} '{entityIdentifier}' already exists.")
         {
             EntityName = entityName;
@@ -33,7 +33,7 @@ namespace attendance_monitoring.Exceptions
         /// <param name="identifierPropertyName">The name of the property that caused the conflict</param>
         /// <param name="entityIdentifier">The value that already exists</param>
         /// <param name="message">Custom error message</param>
-        public EntityAlreadyExistsException(string entityName, string identifierPropertyName, TKey entityIdentifier, string message) 
+        public EntityAlreadyExistsException(string entityName, string identifierPropertyName, TKey entityIdentifier, string message)
             : base(message)
         {
             EntityName = entityName;
@@ -49,7 +49,7 @@ namespace attendance_monitoring.Exceptions
         /// <param name="entityIdentifier">The value that already exists</param>
         /// <param name="message">Custom error message</param>
         /// <param name="innerException">The exception that caused this exception</param>
-        public EntityAlreadyExistsException(string entityName, string identifierPropertyName, TKey entityIdentifier, string message, Exception innerException) 
+        public EntityAlreadyExistsException(string entityName, string identifierPropertyName, TKey entityIdentifier, string message, Exception innerException)
             : base(message, innerException)
         {
             EntityName = entityName;

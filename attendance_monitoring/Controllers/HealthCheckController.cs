@@ -6,7 +6,7 @@ namespace attendance_monitoring.Controllers;
 [ApiController]
 [Route("api/health")]
 [Tags("Health")]
-public class HealthCheckController(ApplicationDbContext applicationDbContext, ILogger<HealthCheckController> logger): ControllerBase
+public class HealthCheckController(ApplicationDbContext applicationDbContext, ILogger<HealthCheckController> logger) : ControllerBase
 {
     [HttpGet]
     public async Task<IActionResult> HealthCheck()
@@ -15,7 +15,7 @@ public class HealthCheckController(ApplicationDbContext applicationDbContext, IL
         {
             // Check database connectivity
             var canConnect = await applicationDbContext.Database.CanConnectAsync();
-                
+
             if (!canConnect)
             {
                 return StatusCode(503, new

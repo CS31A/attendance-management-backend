@@ -48,7 +48,7 @@ public class CourseRepository(ApplicationDbContext context) : ICourseRepository
     {
         var course = await context.Courses.FindAsync(id).ConfigureAwait(false);
         if (course == null) return false;
-        
+
         context.Courses.Remove(course);
         return true;
     }

@@ -53,10 +53,10 @@ public class StudentEnrollmentService : IStudentEnrollmentService
         {
             if (existingEnrollment.IsActive)
                 throw new EntityAlreadyExistsException<string>("Enrollment", "Combination", "Student is already enrolled in this section-subject combination");
-            
+
             // Reactivate if exists but inactive
             await _enrollmentRepository.ReactivateEnrollmentAsync(existingEnrollment.Id);
-            
+
             // Reload the enrollment from database to get updated values (IsActive, UpdatedAt, etc.)
             var reactivatedEnrollment = await _enrollmentRepository.GetByIdAsync(existingEnrollment.Id);
             return reactivatedEnrollment ?? existingEnrollment; // Fallback to existing if reload fails

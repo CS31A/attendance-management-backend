@@ -490,28 +490,28 @@ public class AttendanceRepository(ApplicationDbContext context) : IAttendanceRep
         // Apply filters
         if (studentId.HasValue)
             query = query.Where(a => a.StudentId == studentId.Value);
-        
+
         if (sessionId.HasValue)
             query = query.Where(a => a.SessionId == sessionId.Value);
-        
+
         if (scheduleId.HasValue)
             query = query.Where(a => a.Session.ScheduleId == scheduleId.Value);
-        
+
         if (sectionId.HasValue)
             query = query.Where(a => a.Session.Schedule.SectionId == sectionId.Value);
-        
+
         if (subjectId.HasValue)
             query = query.Where(a => a.Session.Schedule.SubjectId == subjectId.Value);
-        
+
         if (!string.IsNullOrWhiteSpace(status))
             query = query.Where(a => a.Status == status);
-        
+
         if (startDate.HasValue)
             query = query.Where(a => a.CheckInTime >= startDate.Value);
-        
+
         if (endDate.HasValue)
             query = query.Where(a => a.CheckInTime <= endDate.Value);
-        
+
         if (isManualEntry.HasValue)
             query = query.Where(a => a.IsManualEntry == isManualEntry.Value);
 

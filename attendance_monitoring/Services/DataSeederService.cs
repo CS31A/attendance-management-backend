@@ -201,7 +201,7 @@ namespace attendance_monitoring.Services
                 new { Lastname = "Morales", Firstname = "Stanleigh Jeddro", Section = "CS31C", Course = "BSCS" },
                 new { Lastname = "Otadoy", Firstname = "Kent Jay", Section = "CS31A", Course = "BSCS" },
                 new { Lastname = "Rosalijos", Firstname = "Jan Nino", Section = "CS31B", Course = "BSCS" },
-                new { Lastname = "Sayson", Firstname = "Christian Dave", Section = "CS31B", Course = "BSCS" }, 
+                new { Lastname = "Sayson", Firstname = "Christian Dave", Section = "CS31B", Course = "BSCS" },
                 new { Lastname = "Vallecer", Firstname = "Neil Jhonreise", Section = "CS31C", Course = "BSCS" },
                 new { Lastname = "Villa", Firstname = "Rajiemae", Section = "CS31B", Course = "BSCS" }
             };

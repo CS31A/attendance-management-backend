@@ -105,7 +105,7 @@ public class InstructorRepository(ApplicationDbContext context) : IInstructorRep
         instructor.IsDeleted = true;
         instructor.DeletedAt = DateTime.UtcNow;
         instructor.UpdatedAt = DateTime.UtcNow;
-        
+
         context.Instructors.Update(instructor);
         return true;
     }
@@ -133,7 +133,7 @@ public class InstructorRepository(ApplicationDbContext context) : IInstructorRep
         instructor.IsDeleted = false;
         instructor.DeletedAt = null;
         instructor.UpdatedAt = DateTime.UtcNow;
-        
+
         context.Instructors.Update(instructor);
         return true;
     }

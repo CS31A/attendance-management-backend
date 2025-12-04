@@ -17,7 +17,7 @@ namespace attendance_monitoring.Exceptions
         /// </summary>
         /// <param name="entityName">The name of the entity type (e.g., "Classroom", "Subject")</param>
         /// <param name="entityId">The identifier of the entity that was not found</param>
-        public EntityNotFoundException(string entityName, TKey entityId) 
+        public EntityNotFoundException(string entityName, TKey entityId)
             : base($"{entityName} with ID {entityId} was not found.")
         {
             EntityName = entityName;
@@ -30,7 +30,7 @@ namespace attendance_monitoring.Exceptions
         /// <param name="entityName">The name of the entity type (e.g., "Classroom", "Subject")</param>
         /// <param name="entityId">The identifier of the entity that was not found</param>
         /// <param name="message">Custom error message</param>
-        public EntityNotFoundException(string entityName, TKey entityId, string message) 
+        public EntityNotFoundException(string entityName, TKey entityId, string message)
             : base(message)
         {
             EntityName = entityName;
@@ -44,7 +44,7 @@ namespace attendance_monitoring.Exceptions
         /// <param name="entityId">The identifier of the entity that was not found</param>
         /// <param name="message">Custom error message</param>
         /// <param name="innerException">The exception that caused this exception</param>
-        public EntityNotFoundException(string entityName, TKey entityId, string message, Exception innerException) 
+        public EntityNotFoundException(string entityName, TKey entityId, string message, Exception innerException)
             : base(message, innerException)
         {
             EntityName = entityName;
@@ -57,7 +57,7 @@ namespace attendance_monitoring.Exceptions
         /// <param name="info">Serialization info</param>
         /// <param name="context">Streaming context</param>
         [Obsolete("This API supports obsolete formatter-based serialization. It should not be called or extended by application code.")]
-        protected EntityNotFoundException(SerializationInfo info, StreamingContext context) 
+        protected EntityNotFoundException(SerializationInfo info, StreamingContext context)
             : base(info, context)
         {
             EntityName = info.GetString(nameof(EntityName))!;

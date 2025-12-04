@@ -9,6 +9,7 @@ using attendance_monitoring.IRepository;
 using attendance_monitoring.IServices;
 using attendance_monitoring.Models.DTO;
 using attendance_monitoring.Models.DTO.Response;
+using attendance_monitoring.Models.DTO.Request;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -28,7 +29,7 @@ namespace attendance_monitoring.Services
         : IAccountService
     {
 
-        public async Task<IEnumerable<GetAllUsersDto>> GetAllUsersAsync(Models.DTO.Request.UserStatus status = Models.DTO.Request.UserStatus.Active)
+        public async Task<IEnumerable<GetAllUsersDto>> GetAllUsersAsync(UserStatus status = UserStatus.Active)
         {
             return await accountRepository.GetAllUsersAsyncSP(status).ConfigureAwait(false);
         }
@@ -103,10 +104,10 @@ namespace attendance_monitoring.Services
                 if (string.IsNullOrWhiteSpace(registerDto.Firstname))
                 {
                     logger.LogWarning("Student registration failed for username {Username}: Firstname is required", registerDto.Username);
-                    var result = IdentityResult.Failed(new IdentityError 
-                    { 
-                        Code = "RequiredField", 
-                        Description = "Firstname is required for student registration" 
+                    var result = IdentityResult.Failed(new IdentityError
+                    {
+                        Code = "RequiredField",
+                        Description = "Firstname is required for student registration"
                     });
                     return (result, null);
                 }
@@ -115,10 +116,10 @@ namespace attendance_monitoring.Services
                 if (string.IsNullOrWhiteSpace(registerDto.Lastname))
                 {
                     logger.LogWarning("Student registration failed for username {Username}: Lastname is required", registerDto.Username);
-                    var result = IdentityResult.Failed(new IdentityError 
-                    { 
-                        Code = "RequiredField", 
-                        Description = "Lastname is required for student registration" 
+                    var result = IdentityResult.Failed(new IdentityError
+                    {
+                        Code = "RequiredField",
+                        Description = "Lastname is required for student registration"
                     });
                     return (result, null);
                 }
@@ -372,7 +373,7 @@ namespace attendance_monitoring.Services
                 if (activeRefreshTokens.Count > 0)
                 {
                     await accountRepository.SaveChangesAsync().ConfigureAwait(false);
-                    logger.LogInformation("Revoked {TokenCount} active refresh tokens during {OperationType} for user {UserId}.", 
+                    logger.LogInformation("Revoked {TokenCount} active refresh tokens during {OperationType} for user {UserId}.",
                         activeRefreshTokens.Count, operationType, userId);
                 }
             }
@@ -444,32 +445,32 @@ namespace attendance_monitoring.Services
             catch (SecurityTokenExpiredException ex)
             {
                 // Expected case: Token has already expired, no need to blacklist
-                logger.LogDebug("Token already expired during {OperationType} for user {UserId}: {Message}", 
+                logger.LogDebug("Token already expired during {OperationType} for user {UserId}: {Message}",
                     operationType, userId, ex.Message);
             }
             catch (SecurityTokenValidationException ex)
             {
                 // Token itself is invalid - this is sometimes expected (e.g., malformed, wrong signature)
-                logger.LogInformation("Token validation failed during {OperationType} for user {UserId}: {Message}", 
+                logger.LogInformation("Token validation failed during {OperationType} for user {UserId}: {Message}",
                     operationType, userId, ex.Message);
             }
             catch (DbUpdateConcurrencyException ex)
             {
                 // Concurrency issue - token may already be blacklisted (catch before DbUpdateException)
-                logger.LogWarning(ex, "Concurrency issue during token blacklist for {OperationType}: {UserId}", 
+                logger.LogWarning(ex, "Concurrency issue during token blacklist for {OperationType}: {UserId}",
                     operationType, userId);
             }
             catch (DbUpdateException ex)
             {
                 // Database error during blacklisting - this is critical
-                logger.LogError(ex, "CRITICAL: Failed to blacklist token during {OperationType} for user {UserId}. Token may remain active.", 
+                logger.LogError(ex, "CRITICAL: Failed to blacklist token during {OperationType} for user {UserId}. Token may remain active.",
                     operationType, userId);
                 // Consider: Implement alerting mechanism here for production
             }
             catch (Exception ex)
             {
                 // Unexpected error - potential security issue
-                logger.LogError(ex, "Unexpected error during token blacklist for {OperationType}: {UserId}. Token may remain active.", 
+                logger.LogError(ex, "Unexpected error during token blacklist for {OperationType}: {UserId}. Token may remain active.",
                     operationType, userId);
                 // Consider: Implement alerting mechanism here for production
             }
@@ -569,7 +570,7 @@ namespace attendance_monitoring.Services
             {
                 logger.LogWarning("User {Username} (ID: {UserId}) has no assigned roles.", user.UserName, user.Id);
                 role = "Unknown"; // Use "Unknown" since this could be a case where the user had roles when authenticated
-                           // but roles were removed later while tokens are still valid
+                                  // but roles were removed later while tokens are still valid
             }
 
             // Build base profile
@@ -661,7 +662,7 @@ namespace attendance_monitoring.Services
             {
                 logger.LogWarning("User {Username} (ID: {UserId}) has no assigned roles during profile update.", user.UserName, user.Id);
                 role = "Unknown"; // Use "Unknown" since this could be a case where the user had roles when authenticated
-                           // but roles were removed later while tokens are still valid
+                                  // but roles were removed later while tokens are still valid
             }
 
             // Validate email uniqueness if email is being changed
@@ -732,7 +733,7 @@ namespace attendance_monitoring.Services
                     return (false, null, $"Profile update failed: {errors}");
                 }
             }
-            catch (Microsoft.EntityFrameworkCore.DbUpdateException ex) when (ex.InnerException?.Message.Contains("duplicate") == true || 
+            catch (Microsoft.EntityFrameworkCore.DbUpdateException ex) when (ex.InnerException?.Message.Contains("duplicate") == true ||
                                                                            ex.InnerException?.Message.Contains("unique") == true ||
                                                                            ex.InnerException?.Message.Contains("IX_AspNetUsers_NormalizedEmail") == true)
             {
@@ -899,7 +900,7 @@ namespace attendance_monitoring.Services
                     return (false, null, $"Profile update failed: {errors}");
                 }
             }
-            catch (Microsoft.EntityFrameworkCore.DbUpdateException ex) when (ex.InnerException?.Message.Contains("duplicate") == true || 
+            catch (Microsoft.EntityFrameworkCore.DbUpdateException ex) when (ex.InnerException?.Message.Contains("duplicate") == true ||
                                                                            ex.InnerException?.Message.Contains("unique") == true ||
                                                                            ex.InnerException?.Message.Contains("IX_AspNetUsers_NormalizedEmail") == true)
             {

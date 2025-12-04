@@ -19,7 +19,7 @@ public interface IInstructorRepository : ISaveableRepository
     /// <param name="id">The instructor ID.</param>
     /// <returns>The instructor if found; otherwise, null.</returns>
     Task<Instructor?> GetInstructorByIdAsync(int id);
-    
+
     /// <summary>
     /// Retrieves an instructor by their ID with change tracking enabled for updates.
     /// </summary>

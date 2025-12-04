@@ -99,14 +99,14 @@ namespace attendance_monitoring.IRepository
         Task CreateInstructorProfileAsync(Instructor instructor);
 
         Task CreateAdminProfileAsync(Admin admin);
-        
+
         /// <summary>
         /// Deletes a user.
         /// </summary>
         /// <param name="user">The user to delete.</param>
         /// <returns>The result of the user deletion operation.</returns>
         Task<IdentityResult> DeleteUserAsync(IdentityUser user);
-        
+
         /// <summary>
         /// Finds a refresh token by its hash value.
         /// </summary>

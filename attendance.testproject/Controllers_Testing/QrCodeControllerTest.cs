@@ -29,7 +29,7 @@ public class QrCodeControllerTest
         _mockQrCodeService = new Mock<IQrCodeService>();
         _mockSessionRepository = new Mock<ISessionRepository>();
         _mockLogger = new Mock<ILogger<QrCodeController>>();
-        
+
         var mockUserStore = new Mock<IUserStore<IdentityUser>>();
         var mockUserManager = new Mock<UserManager<IdentityUser>>(
             mockUserStore.Object,
@@ -41,12 +41,12 @@ public class QrCodeControllerTest
             new Mock<IdentityErrorDescriber>().Object,
             new Mock<IServiceProvider>().Object,
             new Mock<ILogger<UserManager<IdentityUser>>>().Object);
-        
+
         var options = new DbContextOptionsBuilder<ApplicationDbContext>()
             .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
             .Options;
         var mockContext = new Mock<ApplicationDbContext>(options);
-        
+
         _mockUserContextService = new Mock<UserContextService>(mockUserManager.Object, mockContext.Object);
         _qrCodeController = new QrCodeController(_mockQrCodeService.Object, _mockSessionRepository.Object, _mockUserContextService.Object, _mockLogger.Object);
     }
@@ -79,7 +79,7 @@ public class QrCodeControllerTest
         // Assert
         var okResult = Assert.IsType<OkObjectResult>(result);
         Assert.NotNull(okResult.Value);
-        
+
         // Verify the response structure
         var response = okResult.Value;
         var responseType = response.GetType();
@@ -87,23 +87,23 @@ public class QrCodeControllerTest
         var qrCodeIdProp = responseType.GetProperty("qrCodeId");
         var qrHashProp = responseType.GetProperty("qrHash");
         var successProp = responseType.GetProperty("success");
-        
+
         Assert.NotNull(qrCodeImageProp);
         var qrCodeImageValue = qrCodeImageProp.GetValue(response) as string;
         Assert.NotNull(qrCodeImageValue);
         Assert.True(qrCodeImageValue.Length > 0);
-        
+
         // Verify it's valid base64
         var imageBytes = Convert.FromBase64String(qrCodeImageValue);
         Assert.True(imageBytes.Length > 0);
-        
+
         // Verify other properties
         Assert.NotNull(qrCodeIdProp);
         Assert.Equal(1, qrCodeIdProp.GetValue(response));
-        
+
         Assert.NotNull(qrHashProp);
         Assert.Equal("test-hash-123", qrHashProp.GetValue(response));
-        
+
         Assert.NotNull(successProp);
         Assert.True((bool?)successProp.GetValue(response) ?? false);
 
@@ -207,7 +207,7 @@ public class QrCodeControllerTest
         // Assert
         var okResult = Assert.IsType<OkObjectResult>(result);
         Assert.NotNull(okResult.Value);
-        
+
         // Verify the response structure
         var response = okResult.Value;
         var responseType = response.GetType();
@@ -215,23 +215,23 @@ public class QrCodeControllerTest
         var qrCodeIdProp = responseType.GetProperty("qrCodeId");
         var qrHashProp = responseType.GetProperty("qrHash");
         var successProp = responseType.GetProperty("success");
-        
+
         Assert.NotNull(qrCodeImageProp);
         var qrCodeImageValue = qrCodeImageProp.GetValue(response) as string;
         Assert.NotNull(qrCodeImageValue);
         Assert.True(qrCodeImageValue.Length > 0);
-        
+
         // Verify it's valid base64
         var imageBytes = Convert.FromBase64String(qrCodeImageValue);
         Assert.True(imageBytes.Length > 0);
-        
+
         // Verify other properties
         Assert.NotNull(qrCodeIdProp);
         Assert.Equal(4, qrCodeIdProp.GetValue(response));
-        
+
         Assert.NotNull(qrHashProp);
         Assert.Equal("minimal-hash", qrHashProp.GetValue(response));
-        
+
         Assert.NotNull(successProp);
         Assert.True((bool?)successProp.GetValue(response) ?? false);
     }
@@ -368,7 +368,7 @@ public class QrCodeControllerTest
 
         // Assert
         var fileResult = Assert.IsType<FileContentResult>(result);
-        
+
         // Verify PNG header (PNG files start with specific bytes: 89 50 4E 47)
         Assert.True(fileResult.FileContents.Length > 8, "Image should have at least 8 bytes");
         Assert.Equal(0x89, fileResult.FileContents[0]); // PNG signature byte 1

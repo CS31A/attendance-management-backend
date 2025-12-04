@@ -20,14 +20,14 @@ public static class MiddlewarePipelineExtensions
     {
         // Add SELECTIVE Response Compression - Only for specific GET endpoints
         app.UseWhen(
-            context => 
+            context =>
             {
                 var method = context.Request.Method;
                 var path = context.Request.Path.Value?.ToLowerInvariant() ?? "";
-                
+
                 // Only apply compression to GET requests
                 if (method != "GET") return false;
-                
+
                 // Check for specific endpoints that should be compressed
                 return path.StartsWith("/api/classrooms") ||
                        path.StartsWith("/api/course") ||
@@ -54,16 +54,16 @@ public static class MiddlewarePipelineExtensions
         app.Use(async (context, next) =>
         {
             var stopwatch = Stopwatch.StartNew();
-            
+
             // Set up response callback to capture timing after response is complete
             context.Response.OnStarting(() =>
             {
                 stopwatch.Stop();
                 var responseTime = stopwatch.ElapsedMilliseconds;
-                
+
                 // Add debug headers for client inspection (before response starts)
                 context.Response.Headers["X-Response-Time"] = $"{responseTime}ms";
-                
+
                 // Check compression headers (already applied by compression middleware)
                 var isCompressed = context.Response.Headers.ContainsKey("Content-Encoding");
                 if (isCompressed)
@@ -71,12 +71,12 @@ public static class MiddlewarePipelineExtensions
                     var compressionType = context.Response.Headers["Content-Encoding"].ToString();
                     context.Response.Headers["X-Compression"] = compressionType;
                 }
-                
+
                 return Task.CompletedTask;
             });
-            
+
             await next();
-            
+
             // Log performance metrics for API endpoints with successful responses
             if (context.Request.Path.StartsWithSegments("/api") && context.Response.StatusCode == 200)
             {
@@ -86,7 +86,7 @@ public static class MiddlewarePipelineExtensions
                 var logger = context.RequestServices.GetRequiredService<ILogger<Program>>();
                 var endpoint = $"{context.Request.Method} {context.Request.Path}";
                 var contentType = context.Response.ContentType ?? "";
-                
+
                 logger.LogInformation(
                     "PERF: {Endpoint} | {ResponseTime}ms | Compressed: {IsCompressed} ({CompressionType}) | Content-Type: {ContentType}",
                     endpoint, responseTime, isCompressed, compressionType, contentType
@@ -113,7 +113,7 @@ public static class MiddlewarePipelineExtensions
                 c.SwaggerEndpoint("/swagger/v1/swagger.json", "Attendance Monitoring API");
             });
             app.MapOpenApi();
-            
+
             // Configure Scalar to use the Swagger-generated OpenAPI document (includes MVC controller endpoints)
             app.MapScalarApiReference(options =>
             {
@@ -134,7 +134,7 @@ public static class MiddlewarePipelineExtensions
     /// <param name="corsPolicy">The CORS policy name to use (default: "AllowFrontend").</param>
     /// <returns>The web application for chaining.</returns>
     public static WebApplication UseCorePipeline(
-        this WebApplication app, 
+        this WebApplication app,
         string corsPolicy = "AllowFrontend")
     {
         // Only use HTTPS redirection in development
@@ -143,7 +143,7 @@ public static class MiddlewarePipelineExtensions
         {
             app.UseHttpsRedirection();
         }
-        
+
         app.UseCors(corsPolicy);
         app.UseAuthentication();
         app.UseAuthorization();

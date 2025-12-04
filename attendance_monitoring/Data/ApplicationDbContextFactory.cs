@@ -31,11 +31,11 @@ public class ApplicationDbContextFactory : IDesignTimeDbContextFactory<Applicati
         {
             if (File.Exists(path))
             {
-                try 
-                { 
-                    DotNetEnv.Env.Load(path); 
+                try
+                {
+                    DotNetEnv.Env.Load(path);
                     break;
-                } 
+                }
                 catch { /* Ignore load errors */ }
             }
         }
@@ -49,11 +49,11 @@ public class ApplicationDbContextFactory : IDesignTimeDbContextFactory<Applicati
             .AddEnvironmentVariables()
             .Build();
 
-        var connectionString = configuration.GetConnectionString("DefaultConnection") 
+        var connectionString = configuration.GetConnectionString("DefaultConnection")
             ?? Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection");
 
         var optionsBuilder = new DbContextOptionsBuilder<ApplicationDbContext>();
-        
+
         if (string.IsNullOrWhiteSpace(connectionString))
         {
             // Use in-memory database for design-time operations if no connection string is provided
@@ -62,7 +62,7 @@ public class ApplicationDbContextFactory : IDesignTimeDbContextFactory<Applicati
         }
         else
         {
-            optionsBuilder.UseSqlServer(connectionString, sqlOptions => 
+            optionsBuilder.UseSqlServer(connectionString, sqlOptions =>
                 sqlOptions.EnableRetryOnFailure(
                     maxRetryCount: 5,
                     maxRetryDelay: TimeSpan.FromSeconds(30),

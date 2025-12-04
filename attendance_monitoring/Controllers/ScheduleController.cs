@@ -98,7 +98,7 @@ namespace attendance_monitoring.Controllers
         [Authorize(Policy = "AdminPolicy")]
         public async Task<ActionResult<Schedules>> PostSchedule(CreateSchedule createSchedule)
         {
-            logger.LogInformation("Creating new schedule with TimeIn: {TimeIn}, TimeOut: {TimeOut}", 
+            logger.LogInformation("Creating new schedule with TimeIn: {TimeIn}, TimeOut: {TimeOut}",
                 createSchedule.TimeIn, createSchedule.TimeOut);
             if (!ModelState.IsValid)
             {

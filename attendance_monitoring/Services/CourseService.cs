@@ -164,7 +164,7 @@ public class CourseService : ICourseService
         try
         {
             _logger.LogInformation("Updating course with ID: {Id}", id);
-            
+
             // Additional validation for defense in depth
             if (updateCourse == null)
             {
@@ -233,7 +233,7 @@ public class CourseService : ICourseService
         try
         {
             _logger.LogInformation("Deleting course with ID: {Id}", id);
-            
+
             var userId = await _userContextService.GetUserIdAsync(user).ConfigureAwait(false);
             if (string.IsNullOrEmpty(userId))
             {

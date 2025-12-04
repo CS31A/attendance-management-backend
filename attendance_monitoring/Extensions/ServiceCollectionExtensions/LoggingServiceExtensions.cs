@@ -15,7 +15,7 @@ public static class LoggingServiceExtensions
     {
         // Clear default providers
         logging.ClearProviders();
-        
+
         // Add logging providers
         logging.AddConsole();
         logging.AddDebug();

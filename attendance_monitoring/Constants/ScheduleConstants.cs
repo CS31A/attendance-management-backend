@@ -28,7 +28,7 @@ public static class ScheduleConstants
     {
         if (string.IsNullOrEmpty(day))
             return false;
-            
+
         return ValidDaysOfWeek.Contains(day, StringComparer.OrdinalIgnoreCase);
     }
 }

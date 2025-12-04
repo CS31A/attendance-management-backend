@@ -305,7 +305,8 @@ public class SessionServiceTest
 
         _mockSessionRepository
             .Setup(r => r.CreateSessionAsync(It.IsAny<Session>()))
-            .Callback<Session>(s => {
+            .Callback<Session>(s =>
+            {
                 // Simulate database assigning an ID and setting timestamps
                 createdSession.Status = s.Status;
                 createdSession.ScheduleId = s.ScheduleId;
@@ -497,7 +498,8 @@ public class SessionServiceTest
 
         _mockSessionRepository
             .Setup(r => r.UpdateSessionAsync(It.IsAny<Session>()))
-            .Callback<Session>(s => {
+            .Callback<Session>(s =>
+            {
                 // Simulate the session being updated in the database
                 session.Status = s.Status;
                 session.ActualStartTime = s.ActualStartTime;
@@ -706,7 +708,8 @@ public class SessionServiceTest
 
         _mockSessionRepository
             .Setup(r => r.UpdateSessionAsync(It.IsAny<Session>()))
-            .Callback<Session>(s => {
+            .Callback<Session>(s =>
+            {
                 // Simulate the session being updated in the database
                 session.Status = s.Status;
                 session.ActualEndTime = s.ActualEndTime;
@@ -812,7 +815,8 @@ public class SessionServiceTest
 
         _mockSessionRepository
             .Setup(r => r.UpdateSessionAsync(It.IsAny<Session>()))
-            .Callback<Session>(s => {
+            .Callback<Session>(s =>
+            {
                 // Simulate the session being updated in the database
                 session.Status = s.Status;
                 session.Description = s.Description;
@@ -901,7 +905,8 @@ public class SessionServiceTest
 
         _mockSessionRepository
             .Setup(r => r.UpdateSessionAsync(It.IsAny<Session>()))
-            .Callback<Session>(s => {
+            .Callback<Session>(s =>
+            {
                 // Simulate the session being updated in the database
                 session.ActualRoomId = s.ActualRoomId;
             })
@@ -1066,7 +1071,8 @@ public class SessionServiceTest
 
         _mockSessionRepository
             .Setup(r => r.CreateSessionAsync(It.IsAny<Session>()))
-            .Callback<Session>(s => {
+            .Callback<Session>(s =>
+            {
                 // Simulate database assigning an ID and setting timestamps
                 createdSession.Status = s.Status;
                 createdSession.ScheduleId = s.ScheduleId;

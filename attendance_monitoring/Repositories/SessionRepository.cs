@@ -163,12 +163,12 @@ public class SessionRepository(ApplicationDbContext context) : ISessionRepositor
         var trackedSession = await context.Sessions
             .FirstOrDefaultAsync(s => s.Id == session.Id)
             .ConfigureAwait(false);
-        
+
         if (trackedSession == null)
         {
             throw new InvalidOperationException($"Session with ID {session.Id} not found.");
         }
-        
+
         // Update only the scalar properties
         trackedSession.Status = session.Status;
         trackedSession.ActualStartTime = session.ActualStartTime;
@@ -179,7 +179,7 @@ public class SessionRepository(ApplicationDbContext context) : ISessionRepositor
         trackedSession.StartedBy = session.StartedBy;
         trackedSession.EndedBy = session.EndedBy;
         trackedSession.UpdatedAt = DateTime.UtcNow;
-        
+
         return trackedSession;
     }
 
@@ -193,7 +193,7 @@ public class SessionRepository(ApplicationDbContext context) : ISessionRepositor
     public async Task<bool> SessionExistsForScheduleAndDateAsync(int scheduleId, DateTime sessionDate)
     {
         var dateOnly = sessionDate.Date;
-        
+
         return await context.Sessions
             .AsNoTracking()
             .AnyAsync(s => s.ScheduleId == scheduleId && s.SessionDate.Date == dateOnly)

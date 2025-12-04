@@ -43,13 +43,13 @@ public class StudentEnrollment
     // Academic year and semester for this enrollment
     [StringLength(10)]
     public string? AcademicYear { get; set; }
-    
+
     [StringLength(20)]
     public string? Semester { get; set; }
 
     // Enrollment date
     public DateTime EnrolledAt { get; set; }
-    
+
     // Drop date (if student drops the subject)
     public DateTime? DroppedAt { get; set; }
 

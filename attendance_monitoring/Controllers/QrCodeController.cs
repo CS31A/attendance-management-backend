@@ -282,7 +282,7 @@ public class QrCodeController(
             if (userRole == RoleConstants.Instructor)
             {
                 var session = await sessionRepository.GetSessionByIdAsync(sessionId);
-                
+
                 if (session == null)
                 {
                     logger.LogWarning("Session {SessionId} not found", sessionId);
@@ -308,7 +308,7 @@ public class QrCodeController(
                 return NotFound(new { message = $"No QR codes found for session {sessionId}", errorCode = "NO_QRCODES_FOUND" });
             }
 
-            logger.LogInformation("Successfully retrieved {Count} QR codes for session ID: {SessionId}", 
+            logger.LogInformation("Successfully retrieved {Count} QR codes for session ID: {SessionId}",
                 qrCodesList.Count, sessionId);
             return Ok(qrCodesList);
         }

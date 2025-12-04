@@ -25,7 +25,7 @@ public class ClassroomService : IClassroomService
         _classroomRepository = classroomRepository ?? throw new ArgumentNullException(nameof(classroomRepository));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
-    
+
     #region GetAllClassroomsAsync
     /// <summary>
     /// Retrieves all classrooms
@@ -148,7 +148,7 @@ public class ClassroomService : IClassroomService
     public async Task<(Classroom?, string?)> UpdateClassroomAsync(int id, UpdateClassroom updateClassroom)
     {
         _logger.LogInformation("Updating classroom with ID: {Id}", id);
-        
+
         try
         {
             var existingClassroom = await _classroomRepository.GetClassroomByIdAsync(id).ConfigureAwait(false);
@@ -180,7 +180,7 @@ public class ClassroomService : IClassroomService
             {
                 var updatedClassroom = await _classroomRepository.UpdateClassroomAsync(existingClassroom).ConfigureAwait(false);
                 var rowsAffected = await _classroomRepository.SaveChangesAsync().ConfigureAwait(false);
-                
+
                 if (rowsAffected == 0)
                 {
                     _logger.LogWarning("Classroom update failed: Classroom with ID {Id} may have been updated by another process", id);
@@ -218,7 +218,7 @@ public class ClassroomService : IClassroomService
     public async Task<string?> DeleteClassroomAsync(int id)
     {
         _logger.LogInformation("Deleting classroom with ID: {Id}", id);
-        
+
         try
         {
             var existingClassroom = await _classroomRepository.GetClassroomByIdAsync(id).ConfigureAwait(false);
@@ -249,12 +249,12 @@ public class ClassroomService : IClassroomService
             // Re-throw the specific exception for the controller to handle
             throw;
         }
-        catch (DbUpdateException ex) when (ex.InnerException?.Message.Contains("REFERENCE constraint") == true 
+        catch (DbUpdateException ex) when (ex.InnerException?.Message.Contains("REFERENCE constraint") == true
                                            || ex.InnerException?.Message.Contains("FK_") == true)
         {
             // Handle foreign key constraint violations with user-friendly messages
             var innerMessage = ex.InnerException?.Message ?? ex.Message;
-            
+
             string userFriendlyMessage;
             if (innerMessage.Contains("FK_Schedules_Classrooms") || innerMessage.Contains("Schedules"))
             {
@@ -264,7 +264,7 @@ public class ClassroomService : IClassroomService
             {
                 userFriendlyMessage = "Cannot delete classroom because it has associated records. Please remove all dependencies first.";
             }
-            
+
             _logger.LogWarning(ex, "Classroom deletion failed due to foreign key constraint: {Message}", userFriendlyMessage);
             throw new EntityServiceException("Classroom", $"DeleteClassroom: {id}", userFriendlyMessage, ex);
         }
@@ -289,8 +289,8 @@ public class ClassroomService : IClassroomService
         if (innerException?.Message != null)
         {
             var message = innerException.Message.ToLower();
-            return message.Contains("duplicate") || 
-                   message.Contains("unique constraint") || 
+            return message.Contains("duplicate") ||
+                   message.Contains("unique constraint") ||
                    message.Contains("constraint violation") ||
                    message.Contains("already exists");
         }

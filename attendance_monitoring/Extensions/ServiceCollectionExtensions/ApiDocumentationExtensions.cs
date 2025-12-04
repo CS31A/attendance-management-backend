@@ -20,12 +20,12 @@ public static class ApiDocumentationExtensions
         // Configure Swagger with JWT Bearer authentication
         services.AddSwaggerGen(c =>
         {
-            c.SwaggerDoc("v1", new OpenApiInfo 
-            { 
-                Title = "Attendance Monitoring API", 
-                Version = "v1" 
+            c.SwaggerDoc("v1", new OpenApiInfo
+            {
+                Title = "Attendance Monitoring API",
+                Version = "v1"
             });
-            
+
             var securityScheme = new OpenApiSecurityScheme
             {
                 Name = "Authorization",
@@ -34,13 +34,13 @@ public static class ApiDocumentationExtensions
                 Type = SecuritySchemeType.Http,
                 Scheme = "bearer",
                 BearerFormat = "JWT",
-                Reference = new OpenApiReference 
-                { 
-                    Type = ReferenceType.SecurityScheme, 
-                    Id = "Bearer" 
+                Reference = new OpenApiReference
+                {
+                    Type = ReferenceType.SecurityScheme,
+                    Id = "Bearer"
                 }
             };
-            
+
             c.AddSecurityDefinition("Bearer", securityScheme);
             c.AddSecurityRequirement(new OpenApiSecurityRequirement
             {
@@ -52,7 +52,7 @@ public static class ApiDocumentationExtensions
                             Type = ReferenceType.SecurityScheme,
                             Id = "Bearer"
                         }
-                    }, 
+                    },
                     new List<string>()
                 }
             });

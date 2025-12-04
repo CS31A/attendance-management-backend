@@ -312,13 +312,13 @@ public class AttendanceService(
                 logger.LogWarning("Unable to retrieve user ID for instructor");
                 throw new UnauthorizedAccessException("Unable to verify instructor identity");
             }
-            
+
             var instructor = await instructorRepository.GetInstructorByUserIdAsync(userId).ConfigureAwait(false);
             if (session.Schedule == null)
             {
                 throw new InvalidOperationException("Session schedule information is not available");
             }
-            
+
             if (instructor != null && session.Schedule.InstructorId != instructor.Id)
             {
                 logger.LogWarning("Instructor not authorized to view session {SessionId}", sessionId);
@@ -494,13 +494,13 @@ public class AttendanceService(
                 logger.LogWarning("Unable to retrieve user ID for instructor");
                 throw new UnauthorizedAccessException("Unable to verify instructor identity");
             }
-            
+
             var instructor = await instructorRepository.GetInstructorByUserIdAsync(userId).ConfigureAwait(false);
             if (record.Session?.Schedule == null)
             {
                 throw new InvalidOperationException("Session schedule information is not available");
             }
-            
+
             if (instructor == null || record.Session.Schedule.InstructorId != instructor.Id)
             {
                 logger.LogWarning("Instructor not authorized to update attendance record {Id}", id);
@@ -622,7 +622,7 @@ public class AttendanceService(
         {
             throw new InvalidOperationException("Session schedule information is not available");
         }
-        
+
         var enrollments = await studentEnrollmentRepository.GetStudentEnrollmentsAsync(studentId).ConfigureAwait(false);
         return enrollments.Any(e => e.SectionId == session.Schedule.SectionId);
     }
@@ -645,13 +645,13 @@ public class AttendanceService(
             {
                 return false;
             }
-            
+
             var instructor = await instructorRepository.GetInstructorByUserIdAsync(userId).ConfigureAwait(false);
             if (instructor == null || record.Session?.Schedule == null)
             {
                 return false;
             }
-            
+
             return record.Session.Schedule.InstructorId == instructor.Id;
         }
 
@@ -664,7 +664,7 @@ public class AttendanceService(
                 logger.LogWarning("Unable to retrieve user ID for student role in view authorization");
                 throw new UnauthorizedAccessException("Unable to verify user identity");
             }
-            
+
             var student = await studentRepository.GetStudentByUserIdAsync(userId).ConfigureAwait(false);
             if (student == null)
             {
@@ -707,37 +707,37 @@ public class AttendanceService(
         {
             throw new InvalidOperationException("Student navigation property is not loaded");
         }
-        
+
         if (record.Session == null)
         {
             throw new InvalidOperationException("Session navigation property is not loaded");
         }
-        
+
         if (record.Session.Schedule == null)
         {
             throw new InvalidOperationException("Session.Schedule navigation property is not loaded");
         }
-        
+
         if (record.Session.Schedule.Subject == null)
         {
             throw new InvalidOperationException("Session.Schedule.Subject navigation property is not loaded");
         }
-        
+
         if (record.Session.Schedule.Section == null)
         {
             throw new InvalidOperationException("Session.Schedule.Section navigation property is not loaded");
         }
-        
+
         if (record.Session.Schedule.Classroom == null)
         {
             throw new InvalidOperationException("Session.Schedule.Classroom navigation property is not loaded");
         }
-        
+
         if (record.Session.Schedule.Instructor == null)
         {
             throw new InvalidOperationException("Session.Schedule.Instructor navigation property is not loaded");
         }
-        
+
         return new AttendanceRecordResponseDto
         {
             Id = record.Id,

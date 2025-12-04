@@ -264,7 +264,7 @@ public class SessionService : ISessionService
     {
         // Use provided date or default to current date
         var effectiveSessionDate = request.SessionDate ?? DateTime.UtcNow.Date;
-        
+
         _logger.LogInformation("Creating session for schedule ID: {ScheduleId} on date: {SessionDate:yyyy-MM-dd}",
             request.ScheduleId, effectiveSessionDate);
 

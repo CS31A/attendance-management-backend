@@ -63,7 +63,7 @@ public class SubjectRepository(ApplicationDbContext context) : ISubjectRepositor
     {
         var subject = await context.Subjects.FindAsync(id).ConfigureAwait(false);
         if (subject == null) return false;
-        
+
         context.Subjects.Remove(subject);
         return true;
     }

@@ -147,12 +147,12 @@ public class StudentEnrollmentRepository : IStudentEnrollmentRepository
 
     public async Task<bool> IsStudentEnrolledAsync(int studentId, int sectionId, int subjectId)
     {
-    return await _context.StudentEnrollments
-    .AsNoTracking()
-    .AnyAsync(se => se.StudentId == studentId &&
-    se.SectionId == sectionId &&
-    se.SubjectId == subjectId &&
-                       se.IsActive);
+        return await _context.StudentEnrollments
+        .AsNoTracking()
+        .AnyAsync(se => se.StudentId == studentId &&
+        se.SectionId == sectionId &&
+        se.SubjectId == subjectId &&
+                           se.IsActive);
     }
 
     public async Task<IEnumerable<StudentEnrollment>> GetActiveEnrollmentsAsync(int studentId)

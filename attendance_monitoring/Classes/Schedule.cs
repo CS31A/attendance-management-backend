@@ -17,23 +17,23 @@ public class Schedules
 
     [Required]
     public TimeOnly TimeIn { get; set; }
-    
+
     [Required]
     public TimeOnly TimeOut { get; set; }
-    
+
     [Required]
     [StringLength(20)]
     public string DayOfWeek { get; set; } = string.Empty;
-    
+
     // foreign key to subject id
     [Required]
     public int SubjectId { get; set; }
-    
+
     // foreign key to classroom id
     [Required]
     public int ClassroomId { get; set; }
-    
-    [Required] 
+
+    [Required]
     public int SectionId { get; set; }
 
     // foreign key to instructor id

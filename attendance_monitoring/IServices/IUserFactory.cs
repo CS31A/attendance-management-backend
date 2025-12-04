@@ -11,18 +11,18 @@ namespace attendance_monitoring.IServices
         /// Gets or sets whether the user creation operation was successful.
         /// </summary>
         public bool Success { get; set; }
-        
+
         /// <summary>
         /// Gets or sets the ID of the created user if the operation was successful.
         /// </summary>
         public string? UserId { get; set; }
-        
+
         /// <summary>
         /// Gets or sets any error messages if the operation was unsuccessful.
         /// </summary>
         public string[] Errors { get; set; } = Array.Empty<string>();
     }
-    
+
     /// <summary>
     /// Factory for creating user instances with associated roles (Student, Instructor, Admin)
     /// in the attendance management system.

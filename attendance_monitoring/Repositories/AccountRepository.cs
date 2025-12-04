@@ -3,6 +3,7 @@ using Dapper;
 using attendance_monitoring.Data;
 using attendance_monitoring.IRepository;
 using attendance_monitoring.Models.DTO.Response;
+using attendance_monitoring.Models.DTO.Request;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using System.Data;
@@ -46,41 +47,41 @@ namespace attendance_monitoring.Repositories
             return users;
         }
 
-        public async Task<IEnumerable<GetAllUsersDto>> GetAllUsersAsync(Models.DTO.Request.UserStatus status = Models.DTO.Request.UserStatus.Active)
+        public async Task<IEnumerable<GetAllUsersDto>> GetAllUsersAsync(UserStatus status = UserStatus.Active)
         {
             var users = await (
             from user in context.Users.AsNoTracking()
-            
-            // Get role
+
+                // Get role
             join userRole in context.UserRoles on user.Id equals userRole.UserId into userRoles
             from userRole in userRoles.DefaultIfEmpty()
             join role in context.Roles on userRole.RoleId equals role.Id into roles
             from role in roles.DefaultIfEmpty()
-            
-            // Get student profile - filter based on status
-            join student in context.Students.Where(s => 
-                status == Models.DTO.Request.UserStatus.All || 
-                (status == Models.DTO.Request.UserStatus.Active && !s.IsDeleted) ||
-                (status == Models.DTO.Request.UserStatus.Archived && s.IsDeleted))
+
+                // Get student profile - filter based on status
+            join student in context.Students.Where(s =>
+                status == UserStatus.All ||
+                (status == UserStatus.Active && !s.IsDeleted) ||
+                (status == UserStatus.Archived && s.IsDeleted))
                 on user.Id equals student.UserId into students
             from student in students.DefaultIfEmpty()
-            
-            // Get instructor profile - filter based on status
-            join instructor in context.Instructors.Where(i => 
-                status == Models.DTO.Request.UserStatus.All || 
-                (status == Models.DTO.Request.UserStatus.Active && !i.IsDeleted) ||
-                (status == Models.DTO.Request.UserStatus.Archived && i.IsDeleted))
+
+                // Get instructor profile - filter based on status
+            join instructor in context.Instructors.Where(i =>
+                status == UserStatus.All ||
+                (status == UserStatus.Active && !i.IsDeleted) ||
+                (status == UserStatus.Archived && i.IsDeleted))
                 on user.Id equals instructor.UserId into instructors
             from instructor in instructors.DefaultIfEmpty()
-            
-            // Get admin profile - filter based on status
-            join admin in context.Admins.Where(a => 
-                status == Models.DTO.Request.UserStatus.All || 
-                (status == Models.DTO.Request.UserStatus.Active && !a.IsDeleted) ||
-                (status == Models.DTO.Request.UserStatus.Archived && a.IsDeleted))
+
+                // Get admin profile - filter based on status
+            join admin in context.Admins.Where(a =>
+                status == UserStatus.All ||
+                (status == UserStatus.Active && !a.IsDeleted) ||
+                (status == UserStatus.Archived && a.IsDeleted))
                 on user.Id equals admin.UserId into admins
             from admin in admins.DefaultIfEmpty()
-            
+
             select new GetAllUsersDto
             {
                 UserId = user.Id,
@@ -103,17 +104,17 @@ namespace attendance_monitoring.Repositories
                             instructor != null ? instructor.UpdatedAt :
                             admin != null ? admin.UpdatedAt : DateTime.UtcNow
             })
-            .Where(u => 
+            .Where(u =>
                 // Only include users that have a profile matching the status filter
-                status == Models.DTO.Request.UserStatus.All || u.ProfileId != null)
+                status == UserStatus.All || u.ProfileId != null)
             .ToListAsync()
             .ConfigureAwait(false);
 
-        return users;
+            return users;
 
         }
 
-        public async Task<IEnumerable<GetAllUsersDto>> GetAllUsersAsyncSP(Models.DTO.Request.UserStatus status = Models.DTO.Request.UserStatus.Active)
+        public async Task<IEnumerable<GetAllUsersDto>> GetAllUsersAsyncSP(UserStatus status = UserStatus.Active)
         {
             var connection = context.Database.GetDbConnection();
 
@@ -197,7 +198,7 @@ namespace attendance_monitoring.Repositories
             return await userManager.GetRolesAsync(user).ConfigureAwait(false);
         }
         #endregion
-        
+
         #region DeleteUserAsync
         public async Task<IdentityResult> DeleteUserAsync(IdentityUser user)
         {
@@ -369,9 +370,10 @@ namespace attendance_monitoring.Repositories
 
                 return (false, "No response from stored procedure");
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                return (false, $"Database error: {ex.Message}");
+                // Exception details are not exposed to prevent information leakage
+                return (false, "Failed to delete user due to a database error");
             }
         }
 
@@ -403,15 +405,18 @@ namespace attendance_monitoring.Repositories
 
                 return (success, message);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                return (false, $"Database error: {ex.Message}");
+                // Exception details are not exposed to prevent information leakage
+                return (false, "Failed to permanently delete user due to a database error");
             }
         }
 
         /// <summary>
         /// Restores a soft-deleted user using stored procedure
         /// </summary>
+        /// <param name="userId">The user ID to restore.</param>
+        /// <returns>Tuple containing success flag and message.</returns>
         public async Task<(bool Success, string Message)> RestoreUserAsyncSP(string userId)
         {
             using var connection = context.Database.GetDbConnection();
@@ -437,9 +442,10 @@ namespace attendance_monitoring.Repositories
 
                 return (false, "No response from stored procedure");
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                return (false, $"Database error: {ex.Message}");
+                // Exception details are not exposed to prevent information leakage
+                return (false, "Failed to restore user due to a database error");
             }
         }
 

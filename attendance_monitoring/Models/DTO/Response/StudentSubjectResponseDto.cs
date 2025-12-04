@@ -9,17 +9,17 @@ public class StudentSubjectResponseDto
     /// Subject information
     /// </summary>
     public SubjectResponseDto Subject { get; set; } = null!;
-    
+
     /// <summary>
     /// Schedule information for this subject
     /// </summary>
     public StudentSubjectScheduleDto Schedule { get; set; } = null!;
-    
+
     /// <summary>
     /// Instructor information for this subject
     /// </summary>
     public InstructorResponseDto Instructor { get; set; } = null!;
-    
+
     /// <summary>
     /// Classroom information for this subject
     /// </summary>

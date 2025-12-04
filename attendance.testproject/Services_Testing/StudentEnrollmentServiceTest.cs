@@ -23,7 +23,7 @@ public class StudentEnrollmentServiceTest
         _mockStudentRepo = new Mock<IStudentRepository>();
         _mockSectionRepo = new Mock<ISectionRepository>();
         _mockSubjectRepo = new Mock<ISubjectRepository>();
-        
+
         _service = new StudentEnrollmentService(
             _mockEnrollmentRepo.Object,
             _mockStudentRepo.Object,
@@ -107,7 +107,7 @@ public class StudentEnrollmentServiceTest
             .ReturnsAsync((StudentEnrollment e) => e);
 
         // Act
-        var result = await _service.EnrollStudentAsync(studentId, sectionId, subjectId, 
+        var result = await _service.EnrollStudentAsync(studentId, sectionId, subjectId,
             enrollmentType, academicYear, semester);
 
         // Assert
@@ -197,7 +197,7 @@ public class StudentEnrollmentServiceTest
         var studentId = 1;
         var sectionId = 999;
         var student = new Student { Id = studentId, SectionId = 5, IsDeleted = false };
-        
+
         _mockStudentRepo.Setup(r => r.GetStudentByIdAsync(studentId)).ReturnsAsync(student);
         _mockSectionRepo.Setup(r => r.GetSectionByIdAsync(sectionId))
             .ReturnsAsync((Section?)null);
@@ -216,7 +216,7 @@ public class StudentEnrollmentServiceTest
         var subjectId = 999;
         var student = new Student { Id = studentId, SectionId = 5, IsDeleted = false };
         var section = new Section { Id = sectionId };
-        
+
         _mockStudentRepo.Setup(r => r.GetStudentByIdAsync(studentId)).ReturnsAsync(student);
         _mockSectionRepo.Setup(r => r.GetSectionByIdAsync(sectionId)).ReturnsAsync(section);
         _mockSubjectRepo.Setup(r => r.GetSubjectByIdAsync(subjectId))
@@ -237,7 +237,7 @@ public class StudentEnrollmentServiceTest
         var student = new Student { Id = studentId, SectionId = sectionId, IsDeleted = false };
         var section = new Section { Id = sectionId };
         var subject = new Subject { Id = subjectId };
-        
+
         _mockStudentRepo.Setup(r => r.GetStudentByIdAsync(studentId)).ReturnsAsync(student);
         _mockSectionRepo.Setup(r => r.GetSectionByIdAsync(sectionId)).ReturnsAsync(section);
         _mockSubjectRepo.Setup(r => r.GetSubjectByIdAsync(subjectId)).ReturnsAsync(subject);
@@ -265,7 +265,7 @@ public class StudentEnrollmentServiceTest
             SubjectId = subjectId,
             IsActive = true
         };
-        
+
         _mockStudentRepo.Setup(r => r.GetStudentByIdAsync(studentId)).ReturnsAsync(student);
         _mockSectionRepo.Setup(r => r.GetSectionByIdAsync(sectionId)).ReturnsAsync(section);
         _mockSubjectRepo.Setup(r => r.GetSubjectByIdAsync(subjectId)).ReturnsAsync(subject);

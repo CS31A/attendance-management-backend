@@ -149,7 +149,9 @@ public class AttendanceRepositoryTest : IDisposable
 
         // Act & Assert - Both methods should return data, but optimized should be more efficient
         var optimizedResult = await _repository.GetAllForListingOptimizedAsync(1, 10);
+        #pragma warning disable CS0618 // Intentionally testing deprecated method for comparison
         var fullResult = await _repository.GetAllForListingAsync(1, 10);
+        #pragma warning restore CS0618
 
         // Verify both return data
         Assert.NotEmpty(optimizedResult);

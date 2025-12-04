@@ -18,7 +18,7 @@ namespace DatabaseInvestigation
             }
 
             var connectionString = Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection");
-            
+
             if (string.IsNullOrEmpty(connectionString))
             {
                 Console.WriteLine("ERROR: Connection string not found");

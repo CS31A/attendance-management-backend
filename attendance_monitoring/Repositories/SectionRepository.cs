@@ -88,9 +88,9 @@ namespace attendance_monitoring.Repositories
             {
                 section.CreatedAt = DateTime.UtcNow;
                 section.UpdatedAt = DateTime.UtcNow;
-                
+
                 context.Sections.Add(section);
-                
+
                 return Task.FromResult(section);
             }
             catch (Exception ex)

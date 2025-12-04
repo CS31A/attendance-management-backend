@@ -16,7 +16,7 @@ namespace attendance_monitoring.Exceptions
         /// <param name="entityName">The name of the entity type (e.g., "Classroom", "Subject")</param>
         /// <param name="operation">The operation that failed (e.g., "CreateClassroom", "UpdateSubject")</param>
         /// <param name="message">Error message describing the failure</param>
-        public EntityServiceException(string entityName, string operation, string message) 
+        public EntityServiceException(string entityName, string operation, string message)
             : base(message)
         {
             EntityName = entityName;
@@ -30,7 +30,7 @@ namespace attendance_monitoring.Exceptions
         /// <param name="operation">The operation that failed (e.g., "CreateClassroom", "UpdateSubject")</param>
         /// <param name="message">Error message describing the failure</param>
         /// <param name="innerException">The exception that caused this service exception</param>
-        public EntityServiceException(string entityName, string operation, string message, Exception innerException) 
+        public EntityServiceException(string entityName, string operation, string message, Exception innerException)
             : base(message, innerException)
         {
             EntityName = entityName;

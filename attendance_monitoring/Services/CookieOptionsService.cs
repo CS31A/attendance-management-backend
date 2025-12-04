@@ -17,7 +17,7 @@ public class CookieOptionsService(IConfiguration configuration) : ICookieOptions
     public CookieOptions CreateAccessTokenCookieOptions()
     {
         var accessTokenExpirationMinutes = _configuration.GetValue("CookieSettings:AccessTokenExpirationMinutes", 15);
-        
+
         return new CookieOptions
         {
             HttpOnly = true,
@@ -34,7 +34,7 @@ public class CookieOptionsService(IConfiguration configuration) : ICookieOptions
     public CookieOptions CreateRefreshTokenCookieOptions()
     {
         var refreshTokenExpirationDays = _configuration.GetValue("CookieSettings:RefreshTokenExpirationDays", 7);
-        
+
         return new CookieOptions
         {
             HttpOnly = true,

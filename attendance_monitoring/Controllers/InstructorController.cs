@@ -124,7 +124,7 @@ public class InstructorController(IInstructorService instructorService, ILogger<
         {
             logger.LogInformation("Getting instructor profile for authenticated user");
             var profile = await instructorService.GetInstructorProfileAsync(User);
-            
+
             if (profile == null)
             {
                 logger.LogWarning("No instructor profile found for authenticated user");
@@ -168,7 +168,7 @@ public class InstructorController(IInstructorService instructorService, ILogger<
     #endregion
 
     #region Update Operations
-    
+
     // POST: api/Instructor/
     // [HttpPost("")]
     // public async Task<ActionResult<Instructor>> CreateInstructor(CreateInstructor createInstructor)
@@ -187,14 +187,14 @@ public class InstructorController(IInstructorService instructorService, ILogger<
 
     //     return CreatedAtAction(nameof(GetInstructor), new { id = instructor.Id }, instructor);
     // }
-    
+
     // REDUNDANT ENDPOINT: This endpoint is redundant because instructor records are automatically 
     // created during user registration when a user registers with the "Teacher" role. Additionally, 
     // this endpoint had a security issue as it allowed any authenticated user to create instructor 
     // records. Do not remove this code block entirely as it might be needed for future 
     // administrative purposes, but it's currently commented out to prevent confusion and 
     // potential security vulnerabilities.
-    
+
     // PATCH: api/Instructor/{id}
     [HttpPatch("{id:int}")]
     [Authorize(Policy = "PrivilegedPolicy")]
@@ -289,7 +289,7 @@ public class InstructorController(IInstructorService instructorService, ILogger<
         logger.LogInformation("Hard delete operation completed for instructor with ID: {Id}", id);
         return CreateResponse(error ?? string.Empty, "Instructor permanently deleted successfully");
     }
-    
+
     // PATCH: api/Instructor/{id}/restore
     [HttpPatch("{id:int}/restore")]
     [Authorize(Policy = "AdminPolicy")]

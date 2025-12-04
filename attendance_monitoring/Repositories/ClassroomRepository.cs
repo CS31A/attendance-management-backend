@@ -56,7 +56,7 @@ public class ClassroomRepository(ApplicationDbContext context) : IClassroomRepos
     {
         var classroom = await context.Classrooms.FindAsync(id).ConfigureAwait(false);
         if (classroom == null) return false;
-        
+
         context.Classrooms.Remove(classroom);
         return true;
     }

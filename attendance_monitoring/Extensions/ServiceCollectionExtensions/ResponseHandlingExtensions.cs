@@ -37,7 +37,7 @@ public static class ResponseHandlingExtensions
             .AddJsonOptions(options =>
             {
                 // Ignore null values in JSON responses for cleaner output
-                options.JsonSerializerOptions.DefaultIgnoreCondition = 
+                options.JsonSerializerOptions.DefaultIgnoreCondition =
                     JsonIgnoreCondition.WhenWritingNull;
             });
 
@@ -59,7 +59,7 @@ public static class ResponseHandlingExtensions
     {
         // Read allowed origins from configuration
         var allowedOrigins = configuration.GetSection("CorsSettings:AllowedOrigins").Get<string>();
-        
+
         // Parse origins (supports semicolon-separated list)
         var origins = string.IsNullOrWhiteSpace(allowedOrigins)
             ? new[] { "http://localhost:5173" } // Default fallback for development

@@ -158,7 +158,7 @@ public class SubjectService : ISubjectService
     public async Task<(Subject?, string?)> UpdateSubjectAsync(int id, UpdateSubject updateSubject)
     {
         _logger.LogInformation("Updating subject with ID: {Id}", id);
-        
+
         try
         {
 
@@ -196,7 +196,7 @@ public class SubjectService : ISubjectService
             {
                 var updatedSubject = await _subjectRepository.UpdateSubjectAsync(existingSubject).ConfigureAwait(false);
                 var rowsAffected = await _subjectRepository.SaveChangesAsync().ConfigureAwait(false);
-                
+
                 if (rowsAffected == 0)
                 {
                     _logger.LogWarning("Subject update failed: Subject with ID {Id} may have been updated by another process", id);
@@ -236,7 +236,7 @@ public class SubjectService : ISubjectService
     public async Task<string?> DeleteSubjectAsync(int id)
     {
         _logger.LogInformation("Deleting subject with ID: {Id}", id);
-        
+
         try
         {
             var existingSubject = await _subjectRepository.GetSubjectByIdAsync(id).ConfigureAwait(false);
@@ -267,12 +267,12 @@ public class SubjectService : ISubjectService
             // Re-throw the specific exception for the controller to handle
             throw;
         }
-        catch (DbUpdateException ex) when (ex.InnerException?.Message.Contains("REFERENCE constraint") == true 
+        catch (DbUpdateException ex) when (ex.InnerException?.Message.Contains("REFERENCE constraint") == true
                                            || ex.InnerException?.Message.Contains("FK_") == true)
         {
             // Handle foreign key constraint violations with user-friendly messages
             var innerMessage = ex.InnerException?.Message ?? ex.Message;
-            
+
             string userFriendlyMessage;
             if (innerMessage.Contains("FK_Schedules_Subjects") || innerMessage.Contains("Schedules"))
             {
@@ -286,7 +286,7 @@ public class SubjectService : ISubjectService
             {
                 userFriendlyMessage = "Cannot delete subject because it has associated records. Please remove all dependencies first.";
             }
-            
+
             _logger.LogWarning(ex, "Subject deletion failed due to foreign key constraint: {Message}", userFriendlyMessage);
             throw new EntityServiceException("Subject", $"DeleteSubject: {id}", userFriendlyMessage, ex);
         }
@@ -312,7 +312,7 @@ public class SubjectService : ISubjectService
         var innerException = ex.InnerException;
         if (innerException == null) return false;
         var message = innerException.Message.ToLowerInvariant();
-        
+
         return message.Contains("unique constraint") ||
                message.Contains("duplicate key") ||
                message.Contains("cannot insert duplicate key") ||

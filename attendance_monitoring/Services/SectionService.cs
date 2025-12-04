@@ -28,7 +28,7 @@ namespace attendance_monitoring.Services
                     logger.LogWarning("Section with ID {SectionId} not found", sectionId);
                     throw new EntityNotFoundException<int>("Section", sectionId);
                 }
-                
+
                 logger.LogInformation("Successfully retrieved section with ID: {SectionId}", sectionId);
                 return section;
             }
@@ -63,7 +63,7 @@ namespace attendance_monitoring.Services
                     CreatedAt = s.CreatedAt,
                     UpdatedAt = s.UpdatedAt
                 }).ToList();
-                
+
                 logger.LogInformation("Successfully retrieved {Count} sections", sectionDtos.Count);
                 return sectionDtos;
             }
@@ -90,7 +90,7 @@ namespace attendance_monitoring.Services
                 logger.LogInformation("Creating new section with name: {SectionName}", section.Name);
                 var createdSection = await sectionRepository.CreateSectionAsync(section).ConfigureAwait(false);
                 await sectionRepository.SaveChangesAsync().ConfigureAwait(false);
-                
+
                 var sectionDto = new SectionResponseDto
                 {
                     Id = createdSection.Id,
@@ -99,7 +99,7 @@ namespace attendance_monitoring.Services
                     CreatedAt = createdSection.CreatedAt,
                     UpdatedAt = createdSection.UpdatedAt
                 };
-                
+
                 logger.LogInformation("Successfully created section with ID: {SectionId}", createdSection.Id);
                 return sectionDto;
             }
@@ -143,7 +143,7 @@ namespace attendance_monitoring.Services
                     CreatedAt = updatedSection.CreatedAt,
                     UpdatedAt = updatedSection.UpdatedAt
                 };
-                
+
                 logger.LogInformation("Successfully updated section with ID: {SectionId}", id);
                 return sectionDto;
             }
@@ -179,7 +179,7 @@ namespace attendance_monitoring.Services
                     logger.LogWarning("Section with ID {SectionId} not found for deletion", id);
                     throw new EntityNotFoundException<int>("Section", id);
                 }
-                
+
                 await sectionRepository.SaveChangesAsync().ConfigureAwait(false);
                 logger.LogInformation("Successfully deleted section with ID: {SectionId}", id);
             }

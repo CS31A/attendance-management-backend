@@ -47,7 +47,7 @@ public static class AuthenticationServiceExtensions
                 IssuerSigningKey = new SymmetricSecurityKey(
                     System.Text.Encoding.UTF8.GetBytes(token))
             };
-            
+
             // Add cookie authentication for web login
             options.Events = new JwtBearerEvents
             {
@@ -67,14 +67,14 @@ public static class AuthenticationServiceExtensions
                         .GetRequiredService<ITokenValidationService>();
                     var jti = context.Principal?.Claims
                         .FirstOrDefault(c => c.Type == "jti")?.Value;
-                    
-                    if (!string.IsNullOrEmpty(jti) && 
+
+                    if (!string.IsNullOrEmpty(jti) &&
                         await tokenValidationService.IsTokenBlacklistedAsync(jti))
                     {
                         // Token has been blacklisted
                         context.Fail("Token has been revoked");
                     }
-                    
+
                     await Task.CompletedTask;
                 }
             };

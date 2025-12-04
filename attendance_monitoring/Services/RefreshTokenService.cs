@@ -16,7 +16,7 @@ public class RefreshTokenService(
     ILogger<RefreshTokenService> logger)
     : IRefreshTokenService
 {
-    
+
     private readonly UserManager<IdentityUser> _userManager = userManager;
 
     #region Token Generation Methods
@@ -112,7 +112,7 @@ public class RefreshTokenService(
         var storedToken = await refreshTokenRepository.GetByTokenHashAsync(tokenHash).ConfigureAwait(false);
 
         if (storedToken == null || storedToken.UserId != userId) return false;
-        
+
         try
         {
             storedToken.IsRevoked = true;
