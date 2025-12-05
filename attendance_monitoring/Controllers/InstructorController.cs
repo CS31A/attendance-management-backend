@@ -54,13 +54,13 @@ public class InstructorController(IInstructorService instructorService, ILogger<
 
     // GET: api/Instructor
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<Instructor>>> GetInstructors()
+    public async Task<ActionResult<IList<Instructor>>> GetInstructors()
     {
         try
         {
             logger.LogInformation("Getting all instructors");
             var instructors = await instructorService.GetAllInstructorsAsync();
-            logger.LogInformation("Successfully retrieved {Count} instructors", instructors.ToList().Count);
+            logger.LogInformation("Successfully retrieved {Count} instructors", instructors.Count);
             return Ok(instructors);
         }
         catch (EntityServiceException ex)

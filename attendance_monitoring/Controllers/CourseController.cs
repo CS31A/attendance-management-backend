@@ -23,13 +23,13 @@ public class CourseController(ICourseService courseService, ILogger<CourseContro
     /// <response code="500">Internal server error</response>
     // GET: api/Course
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<Course>>> GetCourses()
+    public async Task<ActionResult<IList<Course>>> GetCourses()
     {
         try
         {
             logger.LogInformation("Getting all courses");
             var courses = await courseService.GetAllCoursesAsync();
-            logger.LogInformation("Successfully retrieved {Count} courses", courses.ToList().Count);
+            logger.LogInformation("Successfully retrieved {Count} courses", courses.Count);
             return Ok(courses);
         }
         catch (EntityServiceException ex)

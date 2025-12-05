@@ -36,14 +36,14 @@ public class CourseService : ICourseService
     /// Retrieves all courses
     /// </summary>
     /// <returns>A collection of courses</returns>
-    public async Task<IEnumerable<Course>> GetAllCoursesAsync()
+    public async Task<IList<Course>> GetAllCoursesAsync()
     {
         try
         {
             _logger.LogInformation("Retrieving all courses");
             var courses = await _courseRepository.GetAllCoursesAsync().ConfigureAwait(false);
             var allCoursesAsync = courses.ToList();
-            _logger.LogInformation("Successfully retrieved {Count} courses", allCoursesAsync.ToList().Count);
+            _logger.LogInformation("Successfully retrieved {Count} courses", allCoursesAsync.Count);
             return allCoursesAsync;
         }
         catch (Exception ex)

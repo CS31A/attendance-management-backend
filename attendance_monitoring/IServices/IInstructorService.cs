@@ -7,7 +7,7 @@ namespace attendance_monitoring.IServices;
 
 public interface IInstructorService
 {
-    Task<IEnumerable<Instructor>> GetAllInstructorsAsync();
+    Task<IList<Instructor>> GetAllInstructorsAsync();
     Task<Instructor> GetInstructorByIdAsync(int id);
     Task<IEnumerable<SubjectResponseDto>> GetSubjectsByInstructorIdAsync(int instructorId);
     Task<IEnumerable<ScheduleResponseDto>> GetSchedulesByInstructorAsync(ClaimsPrincipal user);

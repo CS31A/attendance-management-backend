@@ -44,14 +44,14 @@ namespace attendance_monitoring.Services
         /// </summary>
         /// <returns>A collection of instructors</returns>
         /// <exception cref="EntityServiceException">Thrown when an error occurs during retrieval</exception>
-        public async Task<IEnumerable<Instructor>> GetAllInstructorsAsync()
+        public async Task<IList<Instructor>> GetAllInstructorsAsync()
         {
             try
             {
                 _logger.LogInformation("Retrieving all instructors");
                 var instructors = await _instructorRepository.GetAllInstructorsAsync().ConfigureAwait(false);
                 var allInstructorsAsync = instructors.ToList();
-                _logger.LogInformation("Successfully retrieved {Count} instructors", allInstructorsAsync.ToList().Count);
+                _logger.LogInformation("Successfully retrieved {Count} instructors", allInstructorsAsync.Count);
                 return allInstructorsAsync;
             }
             catch (Exception ex)
