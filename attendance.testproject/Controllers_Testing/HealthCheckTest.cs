@@ -1,5 +1,7 @@
 ﻿using attendance_monitoring.Controllers;
 using attendance_monitoring.Data;
+using attendance_monitoring.IServices;
+using attendance_monitoring.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
@@ -12,6 +14,7 @@ public class HealthCheckControllerTest
 {
     private readonly Mock<ApplicationDbContext> _mockDbContext;
     private readonly Mock<DbFacade> _mockDbFacade;
+    private readonly Mock<IOrphanedUserCleanupService> _mockOrphanedUserCleanupService;
     private readonly Mock<ILogger<HealthCheckController>> _mockLogger;
     private readonly HealthCheckController _controller;
 
@@ -25,6 +28,7 @@ public class HealthCheckControllerTest
     public HealthCheckControllerTest()
     {
         _mockLogger = new Mock<ILogger<HealthCheckController>>();
+        _mockOrphanedUserCleanupService = new Mock<IOrphanedUserCleanupService>();
 
         var options = new DbContextOptionsBuilder<ApplicationDbContext>()
             .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
@@ -36,7 +40,10 @@ public class HealthCheckControllerTest
 
         _mockDbContext.Setup(c => c.Database).Returns(_mockDbFacade.Object);
 
-        _controller = new HealthCheckController(_mockDbContext.Object, _mockLogger.Object);
+        _controller = new HealthCheckController(
+            _mockDbContext.Object,
+            _mockOrphanedUserCleanupService.Object,
+            _mockLogger.Object);
     }
 
     [Fact]

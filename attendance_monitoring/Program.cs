@@ -31,6 +31,9 @@ builder.Services.AddRepositories();
 builder.Services.AddApplicationServices();
 builder.Services.AddBackgroundServices();
 
+// Health Checks
+builder.Services.AddHealthCheckServices();
+
 // Logging
 builder.Logging.AddApplicationLogging();
 

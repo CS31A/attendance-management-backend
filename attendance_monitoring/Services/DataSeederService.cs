@@ -4,9 +4,14 @@ using attendance_monitoring.IServices;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Storage;
 
 namespace attendance_monitoring.Services
 {
+    /// <summary>
+    /// Service for seeding initial data into the database.
+    /// Uses proper transaction handling to prevent orphaned users.
+    /// </summary>
     public class DataSeederService(
         ApplicationDbContext context,
         UserManager<IdentityUser> userManager,
@@ -146,37 +151,89 @@ namespace attendance_monitoring.Services
                     continue;
                 }
 
-                // Create Identity User
                 var email = $"{instructorData.Firstname.Replace(" ", ".").ToLower()}.{instructorData.Lastname.ToLower()}@instructor.com";
-                var user = await userManager.FindByEmailAsync(email);
-                if (user == null)
+                
+                // Check if user already exists
+                var existingUser = await userManager.FindByEmailAsync(email);
+                if (existingUser != null)
                 {
-                    user = new IdentityUser { UserName = email, Email = email, EmailConfirmed = true };
+                    // User exists, check if they have an instructor profile
+                    var hasProfile = await context.Instructors.AnyAsync(i => i.UserId == existingUser.Id);
+                    if (!hasProfile)
+                    {
+                        logger.LogWarning("User {Email} exists but has no instructor profile. Creating profile.", email);
+                        var instructorForExisting = new Instructor
+                        {
+                            Firstname = instructorData.Firstname,
+                            Lastname = instructorData.Lastname,
+                            UserId = existingUser.Id,
+                            CreatedAt = DateTime.UtcNow,
+                            UpdatedAt = DateTime.UtcNow
+                        };
+                        context.Instructors.Add(instructorForExisting);
+                        await context.SaveChangesAsync();
+                    }
+                    existingInstructors.Add(new { Firstname = instructorData.Firstname, Lastname = instructorData.Lastname });
+                    continue;
+                }
+
+                // Use transaction to ensure atomicity of user + role + profile creation
+                await using var transaction = await context.Database.BeginTransactionAsync();
+                try
+                {
+                    // Create Identity User
+                    var user = new IdentityUser { UserName = email, Email = email, EmailConfirmed = true };
                     var result = await userManager.CreateAsync(user, "DefaultPassword123!");
                     if (!result.Succeeded)
                     {
-                        logger.LogError($"Failed to create user {email}: {string.Join(", ", result.Errors.Select(e => e.Description))}");
+                        logger.LogError("Failed to create user {Email}: {Errors}", email, string.Join(", ", result.Errors.Select(e => e.Description)));
+                        await transaction.RollbackAsync();
                         continue;
                     }
-                    await userManager.AddToRoleAsync(user, "Teacher");
+
+                    // Add role
+                    var roleResult = await userManager.AddToRoleAsync(user, "Teacher");
+                    if (!roleResult.Succeeded)
+                    {
+                        logger.LogError("Failed to assign Teacher role to user {Email}: {Errors}", email, string.Join(", ", roleResult.Errors.Select(e => e.Description)));
+                        await transaction.RollbackAsync();
+                        continue;
+                    }
+
+                    // Create Instructor Entity
+                    var instructor = new Instructor
+                    {
+                        Firstname = instructorData.Firstname,
+                        Lastname = instructorData.Lastname,
+                        UserId = user.Id,
+                        CreatedAt = DateTime.UtcNow,
+                        UpdatedAt = DateTime.UtcNow
+                    };
+
+                    context.Instructors.Add(instructor);
+                    await context.SaveChangesAsync();
+
+                    // Commit the transaction only after all operations succeed
+                    await transaction.CommitAsync();
+                    
+                    // Add to existing instructors list to prevent duplicates in this batch
+                    existingInstructors.Add(new { Firstname = instructorData.Firstname, Lastname = instructorData.Lastname });
+                    
+                    logger.LogInformation("Successfully created instructor {Firstname} {Lastname} with user {Email}", 
+                        instructorData.Firstname, instructorData.Lastname, email);
                 }
-
-                // Create Instructor Entity
-                var instructor = new Instructor
+                catch (Exception ex) when (ex.Message.Contains("CK_") || ex.Message.Contains("constraint"))
                 {
-                    Firstname = instructorData.Firstname,
-                    Lastname = instructorData.Lastname,
-                    UserId = user.Id,
-                    CreatedAt = DateTime.UtcNow,
-                    UpdatedAt = DateTime.UtcNow
-                };
-
-                context.Instructors.Add(instructor);
-                // Add to existing instructors list to prevent duplicates in this batch
-                existingInstructors.Add(new { Firstname = instructorData.Firstname, Lastname = instructorData.Lastname });
+                    logger.LogError(ex, "Database constraint violation while creating instructor {Email}. Rolling back.", email);
+                    await transaction.RollbackAsync();
+                }
+                catch (Exception ex)
+                {
+                    logger.LogError(ex, "Failed to create instructor {Email}. Rolling back transaction.", email);
+                    await transaction.RollbackAsync();
+                }
             }
 
-            await context.SaveChangesAsync();
             logger.LogInformation("Seeded instructors.");
         }
 
@@ -237,43 +294,98 @@ namespace attendance_monitoring.Services
 
                 if (!sections.TryGetValue(studentData.Section, out var sectionId))
                 {
-                    logger.LogWarning($"Section {studentData.Section} not found for student {studentData.Firstname} {studentData.Lastname}. Skipping.");
+                    logger.LogWarning("Section {Section} not found for student {Firstname} {Lastname}. Skipping.", 
+                        studentData.Section, studentData.Firstname, studentData.Lastname);
                     continue;
                 }
 
-                // Create Identity User
                 var email = $"{studentData.Firstname.Replace(" ", ".").ToLower()}.{studentData.Lastname.ToLower()}@student.com";
-                var user = await userManager.FindByEmailAsync(email);
-                if (user == null)
+                
+                // Check if user already exists
+                var existingUser = await userManager.FindByEmailAsync(email);
+                if (existingUser != null)
                 {
-                    user = new IdentityUser { UserName = email, Email = email, EmailConfirmed = true };
+                    // User exists, check if they have a student profile
+                    var hasProfile = await context.Students.AnyAsync(s => s.UserId == existingUser.Id);
+                    if (!hasProfile)
+                    {
+                        logger.LogWarning("User {Email} exists but has no student profile. Creating profile.", email);
+                        var studentForExisting = new Student
+                        {
+                            Firstname = studentData.Firstname,
+                            Lastname = studentData.Lastname,
+                            UserId = existingUser.Id,
+                            SectionId = sectionId,
+                            IsRegular = true,
+                            CreatedAt = DateTime.UtcNow,
+                            UpdatedAt = DateTime.UtcNow
+                        };
+                        context.Students.Add(studentForExisting);
+                        await context.SaveChangesAsync();
+                    }
+                    existingStudents.Add(new { Firstname = studentData.Firstname, Lastname = studentData.Lastname });
+                    continue;
+                }
+
+                // Use transaction to ensure atomicity of user + role + profile creation
+                await using var transaction = await context.Database.BeginTransactionAsync();
+                try
+                {
+                    // Create Identity User
+                    var user = new IdentityUser { UserName = email, Email = email, EmailConfirmed = true };
                     var result = await userManager.CreateAsync(user, "DefaultPassword123!");
                     if (!result.Succeeded)
                     {
-                        logger.LogError($"Failed to create user {email}: {string.Join(", ", result.Errors.Select(e => e.Description))}");
+                        logger.LogError("Failed to create user {Email}: {Errors}", email, string.Join(", ", result.Errors.Select(e => e.Description)));
+                        await transaction.RollbackAsync();
                         continue;
                     }
-                    await userManager.AddToRoleAsync(user, "Student");
+
+                    // Add role
+                    var roleResult = await userManager.AddToRoleAsync(user, "Student");
+                    if (!roleResult.Succeeded)
+                    {
+                        logger.LogError("Failed to assign Student role to user {Email}: {Errors}", email, string.Join(", ", roleResult.Errors.Select(e => e.Description)));
+                        await transaction.RollbackAsync();
+                        continue;
+                    }
+
+                    // Create Student Entity
+                    var student = new Student
+                    {
+                        Firstname = studentData.Firstname,
+                        Lastname = studentData.Lastname,
+                        UserId = user.Id,
+                        SectionId = sectionId,
+                        IsRegular = true,
+                        CreatedAt = DateTime.UtcNow,
+                        UpdatedAt = DateTime.UtcNow
+                    };
+
+                    context.Students.Add(student);
+                    await context.SaveChangesAsync();
+
+                    // Commit the transaction only after all operations succeed
+                    await transaction.CommitAsync();
+                    
+                    // Add to existing students list to prevent duplicates in this batch
+                    existingStudents.Add(new { Firstname = studentData.Firstname, Lastname = studentData.Lastname });
+                    
+                    logger.LogInformation("Successfully created student {Firstname} {Lastname} with user {Email}", 
+                        studentData.Firstname, studentData.Lastname, email);
                 }
-
-                // Create Student Entity
-                var student = new Student
+                catch (Exception ex) when (ex.Message.Contains("CK_") || ex.Message.Contains("constraint"))
                 {
-                    Firstname = studentData.Firstname,
-                    Lastname = studentData.Lastname,
-                    UserId = user.Id,
-                    SectionId = sectionId,
-                    IsRegular = true,
-                    CreatedAt = DateTime.UtcNow,
-                    UpdatedAt = DateTime.UtcNow
-                };
-
-                context.Students.Add(student);
-                // Add to existing students list to prevent duplicates in this batch
-                existingStudents.Add(new { Firstname = studentData.Firstname, Lastname = studentData.Lastname });
+                    logger.LogError(ex, "Database constraint violation while creating student {Email}. Rolling back.", email);
+                    await transaction.RollbackAsync();
+                }
+                catch (Exception ex)
+                {
+                    logger.LogError(ex, "Failed to create student {Email}. Rolling back transaction.", email);
+                    await transaction.RollbackAsync();
+                }
             }
 
-            await context.SaveChangesAsync();
             logger.LogInformation("Seeded students.");
         }
     }

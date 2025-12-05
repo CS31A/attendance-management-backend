@@ -78,6 +78,26 @@ public static class DependencyInjectionExtensions
     {
         services.AddHostedService<BlacklistedTokenCleanupService>();
         services.AddHostedService<RoleInitializationBackgroundService>();
+        
+        // Orphaned user cleanup and monitoring service
+        services.AddSingleton<OrphanedUserCleanupService>();
+        services.AddHostedService(provider => provider.GetRequiredService<OrphanedUserCleanupService>());
+        services.AddSingleton<IOrphanedUserCleanupService>(provider => provider.GetRequiredService<OrphanedUserCleanupService>());
+
+        return services;
+    }
+
+    /// <summary>
+    /// Registers health checks for monitoring application status.
+    /// </summary>
+    /// <param name="services">The service collection to add services to.</param>
+    /// <returns>The service collection for chaining.</returns>
+    public static IServiceCollection AddHealthCheckServices(this IServiceCollection services)
+    {
+        services.AddHealthChecks()
+            .AddCheck<DataIntegrityHealthCheck>(
+                "data_integrity",
+                tags: ["database", "data-integrity"]);
 
         return services;
     }

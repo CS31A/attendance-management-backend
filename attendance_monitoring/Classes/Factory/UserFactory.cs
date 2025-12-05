@@ -5,8 +5,16 @@ using Microsoft.EntityFrameworkCore;
 
 namespace attendance_monitoring.Classes.Factory;
 
-public class UserFactory(IAccountRepository accountRepository) : IUserFactory
+/// <summary>
+/// Factory for creating users with their associated profiles.
+/// Implements compensating transactions to prevent orphaned users.
+/// </summary>
+public class UserFactory(IAccountRepository accountRepository, ILogger<UserFactory> logger) : IUserFactory
 {
+    /// <summary>
+    /// Creates a new user with the specified role and profile.
+    /// Uses compensating transactions to rollback user creation if profile creation fails.
+    /// </summary>
     public async Task<UserCreationResult> CreateUserAsync(
         string username,
         string email,
@@ -59,19 +67,22 @@ public class UserFactory(IAccountRepository accountRepository) : IUserFactory
         catch (DbUpdateConcurrencyException ex)
         {
             // If role assignment fails due to concurrency issues, delete the user to avoid orphaned accounts
-            await accountRepository.DeleteUserAsync(identityUser).ConfigureAwait(false);
+            logger.LogError(ex, "Role assignment failed for user {Email} due to concurrency issue. Cleaning up user.", email);
+            await CleanupUserSafelyAsync(identityUser, email);
             return new UserCreationResult { Success = false, Errors = [$"Role assignment failed due to a concurrency issue: {ex.Message}"] };
         }
         catch (DbUpdateException ex)
         {
             // If role assignment fails due to database issues, delete the user to avoid orphaned accounts
-            await accountRepository.DeleteUserAsync(identityUser).ConfigureAwait(false);
+            logger.LogError(ex, "Role assignment failed for user {Email} due to database error. Cleaning up user.", email);
+            await CleanupUserSafelyAsync(identityUser, email);
             return new UserCreationResult { Success = false, Errors = [$"Role assignment failed due to a database error: {ex.Message}"] };
         }
         catch (Exception ex)
         {
             // If role assignment fails due to any other reason, delete the user to avoid orphaned accounts
-            await accountRepository.DeleteUserAsync(identityUser).ConfigureAwait(false);
+            logger.LogError(ex, "Role assignment failed for user {Email}. Cleaning up user.", email);
+            await CleanupUserSafelyAsync(identityUser, email);
             return new UserCreationResult { Success = false, Errors = [$"Role assignment failed: {ex.Message}"] };
         }
 
@@ -89,6 +100,9 @@ public class UserFactory(IAccountRepository accountRepository) : IUserFactory
                 return await CreateAdminProfileAsync(identityUser, firstName, lastName, email);
 
             default:
+                // Invalid role - cleanup the user
+                logger.LogWarning("Invalid role '{Role}' specified for user {Email}. Cleaning up user.", role, email);
+                await CleanupUserSafelyAsync(identityUser, email);
                 return new UserCreationResult
                 {
                     Success = false,
@@ -98,11 +112,64 @@ public class UserFactory(IAccountRepository accountRepository) : IUserFactory
         }
     }
 
+    /// <summary>
+    /// Safely cleanup a user, logging any errors but not throwing.
+    /// </summary>
+    private async Task CleanupUserSafelyAsync(IdentityUser user, string email)
+    {
+        try
+        {
+            await accountRepository.DeleteUserAsync(user).ConfigureAwait(false);
+            logger.LogInformation("Successfully cleaned up orphaned user {Email}", email);
+        }
+        catch (Exception cleanupEx)
+        {
+            logger.LogError(cleanupEx, "Failed to cleanup orphaned user {Email}. Manual cleanup may be required.", email);
+        }
+    }
+
+    /// <summary>
+    /// Handles database constraint violations with specific error messages.
+    /// </summary>
+    private static UserCreationResult HandleConstraintViolation(Exception ex, string profileType)
+    {
+        var errorMessage = ex.Message;
+        
+        // Check for soft delete consistency constraint
+        if (errorMessage.Contains("CK_") && errorMessage.Contains("SoftDeleteConsistency"))
+        {
+            return new UserCreationResult
+            {
+                Success = false,
+                Errors = [$"{profileType} profile creation failed: Soft delete state is inconsistent. Please contact support."]
+            };
+        }
+        
+        // Check for other constraint violations
+        if (errorMessage.Contains("CK_") || errorMessage.Contains("constraint"))
+        {
+            return new UserCreationResult
+            {
+                Success = false,
+                Errors = [$"{profileType} profile creation failed: Database constraint violation. Please ensure all required information is provided correctly."]
+            };
+        }
+        
+        // Generic database error
+        return new UserCreationResult
+        {
+            Success = false,
+            Errors = [$"{profileType} profile creation failed: {ex.Message}"]
+        };
+    }
+
     private async Task<UserCreationResult> CreateStudentProfileAsync(IdentityUser identityUser, string? firstName, string? lastName, string email, int? sectionId)
     {
         if (sectionId is null or <= 0)
         {
             // If sectionId is not provided for student, return an error
+            logger.LogWarning("SectionId is required for student registration. Cleaning up user {Email}.", email);
+            await CleanupUserSafelyAsync(identityUser, email);
             return new UserCreationResult
             {
                 Success = false,
@@ -114,7 +181,8 @@ public class UserFactory(IAccountRepository accountRepository) : IUserFactory
         // Validate that Firstname is provided for students
         if (string.IsNullOrWhiteSpace(firstName))
         {
-            await accountRepository.DeleteUserAsync(identityUser).ConfigureAwait(false);
+            logger.LogWarning("Firstname is required for student registration. Cleaning up user {Email}.", email);
+            await CleanupUserSafelyAsync(identityUser, email);
             return new UserCreationResult
             {
                 Success = false,
@@ -125,7 +193,8 @@ public class UserFactory(IAccountRepository accountRepository) : IUserFactory
         // Validate that Lastname is provided for students
         if (string.IsNullOrWhiteSpace(lastName))
         {
-            await accountRepository.DeleteUserAsync(identityUser).ConfigureAwait(false);
+            logger.LogWarning("Lastname is required for student registration. Cleaning up user {Email}.", email);
+            await CleanupUserSafelyAsync(identityUser, email);
             return new UserCreationResult
             {
                 Success = false,
@@ -148,23 +217,34 @@ public class UserFactory(IAccountRepository accountRepository) : IUserFactory
         {
             await accountRepository.CreateStudentProfileAsync(student).ConfigureAwait(false);
             await accountRepository.SaveChangesAsync().ConfigureAwait(false);
+            logger.LogInformation("Successfully created student profile for user {Email}", email);
         }
         catch (DbUpdateConcurrencyException ex)
         {
             // If student profile creation fails due to concurrency issues, delete the user to maintain consistency
-            await accountRepository.DeleteUserAsync(identityUser).ConfigureAwait(false);
+            logger.LogError(ex, "Student profile creation failed for user {Email} due to concurrency issue. Cleaning up user.", email);
+            await CleanupUserSafelyAsync(identityUser, email);
             return new UserCreationResult { Success = false, Errors = [$"Student profile creation failed due to a concurrency issue: {ex.Message}"] };
+        }
+        catch (DbUpdateException ex) when (ex.InnerException?.Message.Contains("CK_") == true || ex.Message.Contains("CK_"))
+        {
+            // Handle constraint violations specifically
+            logger.LogError(ex, "Student profile creation failed for user {Email} due to constraint violation. Cleaning up user.", email);
+            await CleanupUserSafelyAsync(identityUser, email);
+            return HandleConstraintViolation(ex.InnerException ?? ex, "Student");
         }
         catch (DbUpdateException ex)
         {
             // If student profile creation fails due to database issues, delete the user to maintain consistency
-            await accountRepository.DeleteUserAsync(identityUser).ConfigureAwait(false);
+            logger.LogError(ex, "Student profile creation failed for user {Email} due to database error. Cleaning up user.", email);
+            await CleanupUserSafelyAsync(identityUser, email);
             return new UserCreationResult { Success = false, Errors = [$"Student profile creation failed due to a database error: {ex.Message}"] };
         }
         catch (Exception ex)
         {
             // If student profile creation fails due to any other reason, delete the user to maintain consistency
-            await accountRepository.DeleteUserAsync(identityUser).ConfigureAwait(false);
+            logger.LogError(ex, "Student profile creation failed for user {Email}. Cleaning up user.", email);
+            await CleanupUserSafelyAsync(identityUser, email);
             return new UserCreationResult { Success = false, Errors = [$"Student profile creation failed: {ex.Message}"] };
         }
 
@@ -186,23 +266,34 @@ public class UserFactory(IAccountRepository accountRepository) : IUserFactory
         {
             await accountRepository.CreateInstructorProfileAsync(instructor).ConfigureAwait(false);
             await accountRepository.SaveChangesAsync().ConfigureAwait(false);
+            logger.LogInformation("Successfully created instructor profile for user {Email}", email);
         }
         catch (DbUpdateConcurrencyException ex)
         {
             // If instructor profile creation fails due to concurrency issues, delete the user to maintain consistency
-            await accountRepository.DeleteUserAsync(identityUser).ConfigureAwait(false);
+            logger.LogError(ex, "Instructor profile creation failed for user {Email} due to concurrency issue. Cleaning up user.", email);
+            await CleanupUserSafelyAsync(identityUser, email);
             return new UserCreationResult { Success = false, Errors = [$"Instructor profile creation failed due to a concurrency issue: {ex.Message}"] };
+        }
+        catch (DbUpdateException ex) when (ex.InnerException?.Message.Contains("CK_") == true || ex.Message.Contains("CK_"))
+        {
+            // Handle constraint violations specifically
+            logger.LogError(ex, "Instructor profile creation failed for user {Email} due to constraint violation. Cleaning up user.", email);
+            await CleanupUserSafelyAsync(identityUser, email);
+            return HandleConstraintViolation(ex.InnerException ?? ex, "Instructor");
         }
         catch (DbUpdateException ex)
         {
             // If instructor profile creation fails due to database issues, delete the user to maintain consistency
-            await accountRepository.DeleteUserAsync(identityUser).ConfigureAwait(false);
+            logger.LogError(ex, "Instructor profile creation failed for user {Email} due to database error. Cleaning up user.", email);
+            await CleanupUserSafelyAsync(identityUser, email);
             return new UserCreationResult { Success = false, Errors = [$"Instructor profile creation failed due to a database error: {ex.Message}"] };
         }
         catch (Exception ex)
         {
             // If instructor profile creation fails due to any other reason, delete the user to maintain consistency
-            await accountRepository.DeleteUserAsync(identityUser).ConfigureAwait(false);
+            logger.LogError(ex, "Instructor profile creation failed for user {Email}. Cleaning up user.", email);
+            await CleanupUserSafelyAsync(identityUser, email);
             return new UserCreationResult { Success = false, Errors = [$"Instructor profile creation failed: {ex.Message}"] };
         }
 
@@ -224,23 +315,34 @@ public class UserFactory(IAccountRepository accountRepository) : IUserFactory
         {
             await accountRepository.CreateAdminProfileAsync(admin).ConfigureAwait(false);
             await accountRepository.SaveChangesAsync().ConfigureAwait(false);
+            logger.LogInformation("Successfully created admin profile for user {Email}", email);
         }
         catch (DbUpdateConcurrencyException ex)
         {
             // If admin profile creation fails due to concurrency issues, delete the user to maintain consistency
-            await accountRepository.DeleteUserAsync(identityUser).ConfigureAwait(false);
+            logger.LogError(ex, "Admin profile creation failed for user {Email} due to concurrency issue. Cleaning up user.", email);
+            await CleanupUserSafelyAsync(identityUser, email);
             return new UserCreationResult { Success = false, Errors = [$"Admin profile creation failed due to a concurrency issue: {ex.Message}"] };
+        }
+        catch (DbUpdateException ex) when (ex.InnerException?.Message.Contains("CK_") == true || ex.Message.Contains("CK_"))
+        {
+            // Handle constraint violations specifically
+            logger.LogError(ex, "Admin profile creation failed for user {Email} due to constraint violation. Cleaning up user.", email);
+            await CleanupUserSafelyAsync(identityUser, email);
+            return HandleConstraintViolation(ex.InnerException ?? ex, "Admin");
         }
         catch (DbUpdateException ex)
         {
             // If admin profile creation fails due to database issues, delete the user to maintain consistency
-            await accountRepository.DeleteUserAsync(identityUser).ConfigureAwait(false);
+            logger.LogError(ex, "Admin profile creation failed for user {Email} due to database error. Cleaning up user.", email);
+            await CleanupUserSafelyAsync(identityUser, email);
             return new UserCreationResult { Success = false, Errors = [$"Admin profile creation failed due to a database error: {ex.Message}"] };
         }
         catch (Exception ex)
         {
             // If admin profile creation fails due to any other reason, delete the user to maintain consistency
-            await accountRepository.DeleteUserAsync(identityUser).ConfigureAwait(false);
+            logger.LogError(ex, "Admin profile creation failed for user {Email}. Cleaning up user.", email);
+            await CleanupUserSafelyAsync(identityUser, email);
             return new UserCreationResult { Success = false, Errors = [$"Admin profile creation failed: {ex.Message}"] };
         }
 
