@@ -27,6 +27,29 @@ A comprehensive attendance tracking system built with ASP.NET Core 9.0, Entity F
 - **Documentation**: Swagger/OpenAPI with Scalar UI
 - **Additional**: QRCoder, DotNetEnv
 
+## 📚 Documentation Hub
+
+For more detailed documentation, see the `/docs` folder:
+
+### Core Documentation
+- **[Project Overview](./docs/project-overview.md)** - System architecture, features, and technology stack
+- **[API Reference](./docs/api-reference.md)** - Complete API endpoints documentation
+- **[Database Schema](./docs/database-schema.md)** - Entity relationships and data model
+- **[Architecture Guide](./docs/architecture-guide.md)** - System design patterns and layers
+
+### Setup & Configuration
+- **[Installation Guide](./docs/installation-guide.md)** - Step-by-step setup instructions
+- **[Configuration Reference](./docs/configuration-reference.md)** - Environment variables and settings
+- **[Deployment Guide](./docs/deployment-guide.md)** - Production deployment strategies
+
+### Development
+- **[Development Guide](./docs/development-guide.md)** - Development workflow and best practices
+- **[Testing Guide](./docs/testing-guide.md)** - Unit testing and integration testing
+
+### Advanced Topics
+- **[Authentication & Authorization](./docs/auth-guide.md)** - JWT, cookies, and role-based access
+- **[QR Code System](./docs/qr-code-guide.md)** - QR code generation and attendance tracking
+
 ## 📋 Prerequisites
 
 Before setting up the project, ensure you have the following installed:
@@ -36,99 +59,34 @@ Before setting up the project, ensure you have the following installed:
 - [Visual Studio 2022](https://visualstudio.microsoft.com/) or [Visual Studio Code](https://code.visualstudio.com/)
 - [Git](https://git-scm.com/)
 
-## 🛠️ Backend Setup for Development
+## 🚀 Quick Start
 
-### 1. Clone the Repository
+For detailed installation instructions, see the **[Installation Guide](./docs/installation-guide.md)**.
+
+### Quick Setup Overview
 
 ```bash
+# 1. Clone and setup
 git clone <repository-url>
-cd attendance-monitoring-system
-```
-
-### 2. Environment Configuration
-
-Create a `.env` file in the `attendance_monitoring` directory:
-
-```bash
+cd attendance-management-backend
 cd attendance_monitoring
 cp .env.example .env
-```
 
-Edit the `.env` file with your configuration:
+# 2. Configure your .env file (see Installation Guide for details)
 
-```env
-# Database Configuration
-ConnectionStrings__DefaultConnection=Server=localhost;Database=AttendanceDB;Trusted_Connection=true;TrustServerCertificate=true;
-
-# JWT Configuration
-AppSettings__Token=your-super-secret-jwt-key-here-make-it-at-least-32-characters-long
-AppSettings__Issuer=AttendanceMonitoringAPI
-AppSettings__Audience=AttendanceMonitoringUsers
-
-# Cookie Settings (Optional - uses defaults if not set)
-CookieSettings__AccessTokenExpirationMinutes=15
-CookieSettings__RefreshTokenExpirationDays=7
-
-# CORS Settings (Optional - defaults to http://localhost:5173)
-CorsSettings__AllowedOrigins=http://localhost:5173;http://localhost:3000
-```
-
-### 3. Database Setup
-
-Navigate to the main project directory:
-
-```bash
-cd attendance_monitoring
-```
-
-#### Option A: Using Entity Framework Migrations (Recommended)
-
-```bash
-# Install EF Core tools (if not already installed)
+# 3. Install tools and setup database
 dotnet tool install --global dotnet-ef
-
-# Update database with existing migrations
+dotnet restore
 dotnet ef database update
 
-# Verify the database was created
-dotnet ef database list
-```
-
-### 4. Install Dependencies
-
-```bash
-# Restore NuGet packages
-dotnet restore
-```
-
-### 5. Build the Application
-
-```bash
-# Build the project to check for errors and if it compiles successfully
-dotnet build
-```
-
-### 6. Run the Application
-
-```bash
-# Run in development mode
+# 4. Run the application
 dotnet run
-
-# Or run with watch mode (auto-reload on changes)
-dotnet watch run
 ```
 
-The application will start and be available at:
-- HTTP: `http://localhost:8080`
-- HTTPS: `https://localhost:8081`
-- Swagger UI: `http://localhost:8080/swagger`
-- Scalar API Docs: `http://localhost:8080/scalar/v1`
-
-### 8. Verify Installation
-
-1. Open your browser and navigate to `https://localhost:8081/scalar`
-2. You should see the Scalar API documentation
-3. Test the health check endpoint: `GET /api/HealthCheck`
+**Application URLs:**
+- API: `https://localhost:8081`
+- Swagger UI: `https://localhost:8081/swagger`
+- Scalar Docs: `https://localhost:8081/scalar/v1`
 
 ## 🧪 Running Tests
 
@@ -213,7 +171,21 @@ attendance-monitoring-system/
 │   └── IServices/, IRepository/    # Interfaces
 ├── attendance.testproject/         # Unit tests
 ├── attendance_monitoring.tests/    # Additional tests
+├── docs/                           # Detailed documentation
 └── README.md                       # This file
+```
+
+## 📊 Entity Relationships
+
+```
+IdentityUser (1) ←→ (1) Student/Instructor/Admin
+Course (1) ←→ (M) Section
+Section (1) ←→ (M) Student (primary enrollment)
+Student (M) ←→ (M) Subject (via StudentEnrollment for irregular students)
+Instructor (1) ←→ (M) Schedule
+Schedule (M) ←→ (1) Subject, Section, Classroom
+Session (M) ←→ (1) Schedule
+AttendanceRecord (M) ←→ (1) Session, Student
 ```
 
 ## 🔧 Configuration Options
