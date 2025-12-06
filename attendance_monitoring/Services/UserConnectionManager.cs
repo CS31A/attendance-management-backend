@@ -10,10 +10,11 @@ public interface IUserConnectionManager
     Task<bool> IsOnlineAsync(string userId);
 }
 
-public class UserConnectionManager : IUserConnectionManager
+public class UserConnectionManager : IUserConnectionManager, IDisposable
 {
     private readonly ConcurrentDictionary<string, HashSet<string>> _connections = new();
     private readonly SemaphoreSlim _semaphore = new(1, 1);
+    private bool _disposed;
 
     public async Task AddConnectionAsync(string userId, string connectionId)
     {
@@ -64,5 +65,23 @@ public class UserConnectionManager : IUserConnectionManager
     public Task<bool> IsOnlineAsync(string userId)
     {
         return Task.FromResult(_connections.ContainsKey(userId) && _connections[userId].Count > 0);
+    }
+
+    public void Dispose()
+    {
+        Dispose(true);
+        GC.SuppressFinalize(this);
+    }
+
+    protected virtual void Dispose(bool disposing)
+    {
+        if (!_disposed)
+        {
+            if (disposing)
+            {
+                _semaphore?.Dispose();
+            }
+            _disposed = true;
+        }
     }
 }
