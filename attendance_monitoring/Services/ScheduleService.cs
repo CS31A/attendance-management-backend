@@ -1,6 +1,7 @@
 using attendance_monitoring.Classes;
 using attendance_monitoring.Data;
 using attendance_monitoring.Exceptions;
+using attendance_monitoring.Helpers;
 using attendance_monitoring.IRepository;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
@@ -34,7 +35,7 @@ namespace attendance_monitoring.Services
             }
         }
 
-        public async Task<ScheduleResponseDto?> GetScheduleByIdAsync(int id)
+        public async Task<ScheduleResponseDto> GetScheduleByIdAsync(int id)
         {
             logger.LogInformation("Retrieving schedule by ID: {Id}", id);
             try
@@ -43,11 +44,15 @@ namespace attendance_monitoring.Services
                 if (schedule == null)
                 {
                     logger.LogWarning("Schedule with ID {Id} not found", id);
-                    return null;
+                    throw new EntityNotFoundException<int>("Schedule", id);
                 }
 
                 logger.LogInformation("Successfully retrieved schedule with ID: {Id}", id);
                 return MapToResponseDto(schedule);
+            }
+            catch (EntityNotFoundException<int>)
+            {
+                throw;
             }
             catch (Exception ex)
             {
@@ -78,7 +83,7 @@ namespace attendance_monitoring.Services
         #endregion
 
         #region Create Operations
-        public async Task<(Schedules?, string?)> CreateScheduleAsync(CreateSchedule createSchedule)
+        public async Task<Schedules> CreateScheduleAsync(CreateSchedule createSchedule)
         {
             logger.LogInformation("Creating new schedule with TimeIn: {TimeIn} and TimeOut: {TimeOut}",
                 createSchedule.TimeIn, createSchedule.TimeOut);
@@ -88,7 +93,7 @@ namespace attendance_monitoring.Services
                 if (!Constants.ScheduleConstants.IsValidDayOfWeek(createSchedule.DayOfWeek))
                 {
                     logger.LogWarning("Schedule creation failed: Invalid DayOfWeek '{DayOfWeek}'", createSchedule.DayOfWeek);
-                    return (null, $"Invalid DayOfWeek. Must be one of: {string.Join(", ", Constants.ScheduleConstants.ValidDaysOfWeek)}");
+                    throw new ValidationException($"Invalid DayOfWeek. Must be one of: {string.Join(", ", Constants.ScheduleConstants.ValidDaysOfWeek)}");
                 }
 
                 // Validate time range (TimeOut must be after TimeIn)
@@ -96,7 +101,7 @@ namespace attendance_monitoring.Services
                 {
                     logger.LogWarning("Schedule creation failed: TimeOut ({TimeOut}) must be after TimeIn ({TimeIn})",
                         createSchedule.TimeOut, createSchedule.TimeIn);
-                    return (null, "TimeOut must be after TimeIn");
+                    throw new ValidationException("TimeOut must be after TimeIn");
                 }
 
                 // Validate relationships if needed
@@ -104,28 +109,28 @@ namespace attendance_monitoring.Services
                 if (!subjectExists)
                 {
                     logger.LogWarning("Schedule creation failed: Subject with ID {SubjectId} not found", createSchedule.SubjectId);
-                    return (null, "Subject not found");
+                    throw new EntityNotFoundException<int>("Subject", createSchedule.SubjectId);
                 }
 
                 var classroomExists = await context.Classrooms.AsNoTracking().AnyAsync(c => c.Id == createSchedule.ClassroomId);
                 if (!classroomExists)
                 {
                     logger.LogWarning("Schedule creation failed: Classroom with ID {ClassroomId} not found", createSchedule.ClassroomId);
-                    return (null, "Classroom not found");
+                    throw new EntityNotFoundException<int>("Classroom", createSchedule.ClassroomId);
                 }
 
                 var sectionExists = await context.Sections.AsNoTracking().AnyAsync(s => s.Id == createSchedule.SectionId);
                 if (!sectionExists)
                 {
                     logger.LogWarning("Schedule creation failed: Section with ID {SectionId} not found", createSchedule.SectionId);
-                    return (null, "Section not found");
+                    throw new EntityNotFoundException<int>("Section", createSchedule.SectionId);
                 }
 
                 var instructorExists = await context.Instructors.AsNoTracking().AnyAsync(i => i.Id == createSchedule.InstructorId);
                 if (!instructorExists)
                 {
                     logger.LogWarning("Schedule creation failed: Instructor with ID {InstructorId} not found", createSchedule.InstructorId);
-                    return (null, "Instructor not found");
+                    throw new EntityNotFoundException<int>("Instructor", createSchedule.InstructorId);
                 }
 
                 var schedule = new Schedules
@@ -144,19 +149,27 @@ namespace attendance_monitoring.Services
                 var createdSchedule = await scheduleRepository.AddScheduleAsync(schedule);
 
                 logger.LogInformation("Successfully created schedule with ID: {Id}", createdSchedule.Id);
-                return (createdSchedule, null);
+                return createdSchedule;
+            }
+            catch (ValidationException)
+            {
+                throw;
+            }
+            catch (EntityNotFoundException<int>)
+            {
+                throw;
             }
             catch (Exception ex)
             {
                 logger.LogError(ex, "Error occurred while creating schedule");
-                throw new EntityServiceException("Schedule", "CreateSchedule", "An error occurred while creating the schedule", ex);
+                throw ExceptionHandlingHelper.CreateServiceException("Schedule", "CreateSchedule", ex);
             }
         }
 
         #endregion
 
         #region Update Operations
-        public async Task<(Schedules?, string?)> UpdateScheduleAsync(int id, UpdateSchedule updateSchedule)
+        public async Task<Schedules> UpdateScheduleAsync(int id, UpdateSchedule updateSchedule)
         {
             logger.LogInformation("Updating schedule with ID: {Id}", id);
 
@@ -166,7 +179,7 @@ namespace attendance_monitoring.Services
                 if (existingSchedule == null)
                 {
                     logger.LogWarning("Schedule update failed: Schedule with ID {Id} not found", id);
-                    return (null, "Schedule not found");
+                    throw new EntityNotFoundException<int>("Schedule", id);
                 }
 
                 // Validate DayOfWeek if provided
@@ -174,7 +187,7 @@ namespace attendance_monitoring.Services
                     !Constants.ScheduleConstants.IsValidDayOfWeek(updateSchedule.DayOfWeek))
                 {
                     logger.LogWarning("Schedule update failed: Invalid DayOfWeek '{DayOfWeek}'", updateSchedule.DayOfWeek);
-                    return (null, $"Invalid DayOfWeek. Must be one of: {string.Join(", ", Constants.ScheduleConstants.ValidDaysOfWeek)}");
+                    throw new ValidationException($"Invalid DayOfWeek. Must be one of: {string.Join(", ", Constants.ScheduleConstants.ValidDaysOfWeek)}");
                 }
 
                 // Determine effective TimeIn and TimeOut for validation
@@ -186,7 +199,7 @@ namespace attendance_monitoring.Services
                 {
                     logger.LogWarning("Schedule update failed: TimeOut ({TimeOut}) must be after TimeIn ({TimeIn})",
                         effectiveTimeOut, effectiveTimeIn);
-                    return (null, "TimeOut must be after TimeIn");
+                    throw new ValidationException("TimeOut must be after TimeIn");
                 }
 
                 // Validate and update relationships only if provided
@@ -196,7 +209,7 @@ namespace attendance_monitoring.Services
                     if (!subjectExists)
                     {
                         logger.LogWarning("Schedule update failed: Subject with ID {SubjectId} not found", updateSchedule.SubjectId.Value);
-                        return (null, "Subject not found");
+                        throw new EntityNotFoundException<int>("Subject", updateSchedule.SubjectId.Value);
                     }
                     existingSchedule.SubjectId = updateSchedule.SubjectId.Value;
                 }
@@ -207,7 +220,7 @@ namespace attendance_monitoring.Services
                     if (!classroomExists)
                     {
                         logger.LogWarning("Schedule update failed: Classroom with ID {ClassroomId} not found", updateSchedule.ClassroomId.Value);
-                        return (null, "Classroom not found");
+                        throw new EntityNotFoundException<int>("Classroom", updateSchedule.ClassroomId.Value);
                     }
                     existingSchedule.ClassroomId = updateSchedule.ClassroomId.Value;
                 }
@@ -218,7 +231,7 @@ namespace attendance_monitoring.Services
                     if (!sectionExists)
                     {
                         logger.LogWarning("Schedule update failed: Section with ID {SectionId} not found", updateSchedule.SectionId.Value);
-                        return (null, "Section not found");
+                        throw new EntityNotFoundException<int>("Section", updateSchedule.SectionId.Value);
                     }
                     existingSchedule.SectionId = updateSchedule.SectionId.Value;
                 }
@@ -229,7 +242,7 @@ namespace attendance_monitoring.Services
                     if (!instructorExists)
                     {
                         logger.LogWarning("Schedule update failed: Instructor with ID {InstructorId} not found", updateSchedule.InstructorId.Value);
-                        return (null, "Instructor not found");
+                        throw new EntityNotFoundException<int>("Instructor", updateSchedule.InstructorId.Value);
                     }
                     existingSchedule.InstructorId = updateSchedule.InstructorId.Value;
                 }
@@ -257,16 +270,28 @@ namespace attendance_monitoring.Services
                 if (updatedSchedule == null)
                 {
                     logger.LogWarning("Schedule update failed: Failed to update schedule with ID {Id}", id);
-                    return (null, "Failed to update schedule");
+                    throw new EntityServiceException("Schedule", $"UpdateSchedule: {id}", "Failed to update schedule");
                 }
 
                 logger.LogInformation("Successfully updated schedule with ID: {Id}", updatedSchedule.Id);
-                return (updatedSchedule, null);
+                return updatedSchedule;
+            }
+            catch (ValidationException)
+            {
+                throw;
+            }
+            catch (EntityNotFoundException<int>)
+            {
+                throw;
+            }
+            catch (EntityServiceException)
+            {
+                throw;
             }
             catch (Exception ex)
             {
                 logger.LogError(ex, "Error occurred while updating schedule with ID: {Id}", id);
-                throw new EntityServiceException("Schedule", $"UpdateSchedule: {id}", "An error occurred while updating the schedule", ex);
+                throw ExceptionHandlingHelper.CreateServiceException("Schedule", $"UpdateSchedule: {id}", ex);
             }
         }
 
@@ -274,7 +299,7 @@ namespace attendance_monitoring.Services
 
         #region Delete Operations
 
-        public async Task<string?> DeleteScheduleAsync(int id, ClaimsPrincipal user)
+        public async Task DeleteScheduleAsync(int id, ClaimsPrincipal user)
         {
             logger.LogInformation("Deleting schedule with ID: {Id}", id);
 
@@ -284,25 +309,32 @@ namespace attendance_monitoring.Services
                 if (existingSchedule == null)
                 {
                     logger.LogWarning("Schedule deletion failed: Schedule with ID {Id} not found", id);
-                    return "Schedule not found";
+                    throw new EntityNotFoundException<int>("Schedule", id);
                 }
 
                 var result = await scheduleRepository.DeleteScheduleAsync(id).ConfigureAwait(false);
                 if (!result)
                 {
                     logger.LogWarning("Schedule deletion failed: Schedule with ID {Id} not found", id);
-                    return "Schedule not found";
+                    throw new EntityNotFoundException<int>("Schedule", id);
                 }
 
                 var rowsAffected = await scheduleRepository.SaveChangesAsync().ConfigureAwait(false);
                 if (rowsAffected == 0)
                 {
                     logger.LogWarning("Schedule deletion failed: Schedule with ID {Id} may have been deleted by another process", id);
-                    return "Schedule may have been deleted by another process.";
+                    throw new EntityServiceException("Schedule", $"DeleteSchedule: {id}", "Schedule may have been deleted by another process.");
                 }
 
                 logger.LogInformation("Successfully deleted schedule with ID: {Id}", id);
-                return null;
+            }
+            catch (EntityNotFoundException<int>)
+            {
+                throw;
+            }
+            catch (EntityServiceException)
+            {
+                throw;
             }
             catch (DbUpdateException ex) when (ex.InnerException?.Message.Contains("REFERENCE constraint") == true
                                                || ex.InnerException?.Message.Contains("FK_") == true)
@@ -330,7 +362,7 @@ namespace attendance_monitoring.Services
             catch (Exception ex)
             {
                 logger.LogError(ex, "Error occurred while deleting schedule with ID: {Id}", id);
-                throw new EntityServiceException("Schedule", $"DeleteSchedule: {id}", "An error occurred while deleting the schedule", ex);
+                throw ExceptionHandlingHelper.CreateServiceException("Schedule", $"DeleteSchedule: {id}", ex);
             }
         }
 

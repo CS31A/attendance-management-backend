@@ -1,5 +1,6 @@
 using attendance_monitoring.Classes;
 using attendance_monitoring.Exceptions;
+using attendance_monitoring.Helpers;
 using attendance_monitoring.IRepository;
 using attendance_monitoring.IServices;
 using attendance_monitoring.Models.DTO.Request;
@@ -88,8 +89,11 @@ public class ClassroomService : IClassroomService
     /// Creates a new classroom record
     /// </summary>
     /// <param name="createClassroom">The classroom data to create</param>
-    /// <returns>A tuple containing the created classroom (if successful) and an error message (if any)</returns>
-    public async Task<(Classroom?, string?)> CreateClassroomAsync(CreateClassroom createClassroom)
+    /// <returns>The created classroom</returns>
+    /// <exception cref="ValidationException">Thrown when validation fails</exception>
+    /// <exception cref="EntityAlreadyExistsException{TKey}">Thrown when classroom with name already exists</exception>
+    /// <exception cref="EntityServiceException">Thrown when an error occurs during creation</exception>
+    public async Task<Classroom> CreateClassroomAsync(CreateClassroom createClassroom)
     {
         _logger.LogInformation("Creating new classroom with name: {ClassroomName}", createClassroom.Name);
 
@@ -98,7 +102,7 @@ public class ClassroomService : IClassroomService
             if (string.IsNullOrWhiteSpace(createClassroom.Name))
             {
                 _logger.LogWarning("Classroom creation failed: Classroom name is required");
-                return (null, "Classroom name is required");
+                throw new ValidationException("Classroom name is required");
             }
 
             // Check if a classroom with the same name already exists (first check)
@@ -106,7 +110,7 @@ public class ClassroomService : IClassroomService
             if (existingClassroom != null)
             {
                 _logger.LogWarning("Classroom creation failed: Classroom with name {Name} already exists", createClassroom.Name);
-                return (null, $"A classroom with name {createClassroom.Name} already exists");
+                throw new EntityAlreadyExistsException<string>("Classroom", "Name", createClassroom.Name);
             }
 
             var classroom = new Classroom
@@ -122,18 +126,26 @@ public class ClassroomService : IClassroomService
                 await _classroomRepository.SaveChangesAsync().ConfigureAwait(false);
 
                 _logger.LogInformation("Successfully created classroom with ID: {Id} and name: {ClassroomName}", createdClassroom.Id, createdClassroom.Name);
-                return (createdClassroom, null);
+                return createdClassroom;
             }
-            catch (DbUpdateException ex) when (IsUniqueConstraintViolation(ex))
+            catch (DbUpdateException ex) when (ExceptionHandlingHelper.IsUniqueConstraintViolation(ex))
             {
                 _logger.LogWarning("Classroom creation failed due to unique constraint violation: Classroom with name {Name} already exists", createClassroom.Name);
-                return (null, $"A classroom with name {createClassroom.Name} already exists");
+                throw new EntityAlreadyExistsException<string>("Classroom", "Name", createClassroom.Name);
             }
+        }
+        catch (ValidationException)
+        {
+            throw;
+        }
+        catch (EntityAlreadyExistsException<string>)
+        {
+            throw;
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error occurred while creating classroom with name: {ClassroomName}", createClassroom.Name);
-            throw new EntityServiceException("Classroom", "CreateClassroom", "An error occurred while creating the classroom", ex);
+            throw ExceptionHandlingHelper.CreateServiceException("Classroom", "CreateClassroom", ex);
         }
     }
     #endregion
@@ -144,8 +156,11 @@ public class ClassroomService : IClassroomService
     /// </summary>
     /// <param name="id">The ID of the classroom to update</param>
     /// <param name="updateClassroom">The updated classroom data</param>
-    /// <returns>A tuple containing the updated classroom (if successful) and an error message (if any)</returns>
-    public async Task<(Classroom?, string?)> UpdateClassroomAsync(int id, UpdateClassroom updateClassroom)
+    /// <returns>The updated classroom</returns>
+    /// <exception cref="EntityNotFoundException{TKey}">Thrown when classroom not found</exception>
+    /// <exception cref="EntityAlreadyExistsException{TKey}">Thrown when classroom with name already exists</exception>
+    /// <exception cref="EntityServiceException">Thrown when an error occurs during update</exception>
+    public async Task<Classroom> UpdateClassroomAsync(int id, UpdateClassroom updateClassroom)
     {
         _logger.LogInformation("Updating classroom with ID: {Id}", id);
 
@@ -165,7 +180,7 @@ public class ClassroomService : IClassroomService
                 if (duplicateClassroom != null && duplicateClassroom.Id != id)
                 {
                     _logger.LogWarning("Classroom update failed: Classroom with name {Name} already exists", updateClassroom.Name);
-                    return (null, $"A classroom with name {updateClassroom.Name} already exists");
+                    throw new EntityAlreadyExistsException<string>("Classroom", "Name", updateClassroom.Name);
                 }
             }
 
@@ -184,16 +199,16 @@ public class ClassroomService : IClassroomService
                 if (rowsAffected == 0)
                 {
                     _logger.LogWarning("Classroom update failed: Classroom with ID {Id} may have been updated by another process", id);
-                    return (null, "Classroom may have been updated by another process. Please try again.");
+                    throw new EntityServiceException("Classroom", $"UpdateClassroom: {id}", "Classroom may have been updated by another process. Please try again.");
                 }
 
                 _logger.LogInformation("Successfully updated classroom with ID: {Id}", id);
-                return (updatedClassroom, null);
+                return updatedClassroom;
             }
-            catch (DbUpdateException ex) when (IsUniqueConstraintViolation(ex))
+            catch (DbUpdateException ex) when (ExceptionHandlingHelper.IsUniqueConstraintViolation(ex))
             {
                 _logger.LogWarning("Classroom update failed due to unique constraint violation: Classroom with name {Name} already exists", updateClassroom.Name);
-                return (null, $"A classroom with name {updateClassroom.Name} already exists");
+                throw new EntityAlreadyExistsException<string>("Classroom", "Name", updateClassroom.Name ?? "");
             }
         }
         catch (EntityNotFoundException<int>)
@@ -201,10 +216,18 @@ public class ClassroomService : IClassroomService
             // Re-throw the specific exception for the controller to handle
             throw;
         }
+        catch (EntityAlreadyExistsException<string>)
+        {
+            throw;
+        }
+        catch (EntityServiceException)
+        {
+            throw;
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error occurred while updating classroom with ID {Id}", id);
-            throw new EntityServiceException("Classroom", $"UpdateClassroom: {id}", "An error occurred while updating the classroom", ex);
+            throw ExceptionHandlingHelper.CreateServiceException("Classroom", $"UpdateClassroom: {id}", ex);
         }
     }
     #endregion
@@ -214,8 +237,9 @@ public class ClassroomService : IClassroomService
     /// Deletes a classroom by ID
     /// </summary>
     /// <param name="id">The ID of the classroom to delete</param>
-    /// <returns>An error message if deletion fails, null otherwise</returns>
-    public async Task<string?> DeleteClassroomAsync(int id)
+    /// <exception cref="EntityNotFoundException{TKey}">Thrown when classroom not found</exception>
+    /// <exception cref="EntityServiceException">Thrown when an error occurs during deletion</exception>
+    public async Task DeleteClassroomAsync(int id)
     {
         _logger.LogInformation("Deleting classroom with ID: {Id}", id);
 
@@ -232,21 +256,24 @@ public class ClassroomService : IClassroomService
             if (!result)
             {
                 _logger.LogError("Classroom deletion failed: Failed to delete classroom with ID {Id}", id);
-                return "Failed to delete classroom";
+                throw new EntityServiceException("Classroom", $"DeleteClassroom: {id}", "Failed to delete classroom");
             }
 
             var rowsAffected = await _classroomRepository.SaveChangesAsync().ConfigureAwait(false);
             if (rowsAffected == 0)
             {
                 _logger.LogWarning("Classroom deletion failed: Classroom with ID {Id} may have been deleted by another process", id);
-                return "Classroom may have been deleted by another process.";
+                throw new EntityServiceException("Classroom", $"DeleteClassroom: {id}", "Classroom may have been deleted by another process.");
             }
             _logger.LogInformation("Successfully deleted classroom with ID: {Id}", id);
-            return null;
         }
         catch (EntityNotFoundException<int>)
         {
             // Re-throw the specific exception for the controller to handle
+            throw;
+        }
+        catch (EntityServiceException)
+        {
             throw;
         }
         catch (DbUpdateException ex) when (ex.InnerException?.Message.Contains("REFERENCE constraint") == true
@@ -271,30 +298,8 @@ public class ClassroomService : IClassroomService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error occurred while deleting classroom with ID {Id}", id);
-            throw new EntityServiceException("Classroom", $"DeleteClassroom: {id}", "An error occurred while deleting the classroom", ex);
+            throw ExceptionHandlingHelper.CreateServiceException("Classroom", $"DeleteClassroom: {id}", ex);
         }
-    }
-    #endregion
-
-    #region IsUniqueConstraintViolation
-    /// <summary>
-    /// Determines if a DbUpdateException is caused by a unique constraint violation
-    /// </summary>
-    /// <param name="ex">The DbUpdateException to check</param>
-    /// <returns>True if the exception is caused by a unique constraint violation</returns>
-    private static bool IsUniqueConstraintViolation(DbUpdateException ex)
-    {
-        // Check if the inner exception message contains unique constraint violation indicators
-        var innerException = ex.InnerException;
-        if (innerException?.Message != null)
-        {
-            var message = innerException.Message.ToLower();
-            return message.Contains("duplicate") ||
-                   message.Contains("unique constraint") ||
-                   message.Contains("constraint violation") ||
-                   message.Contains("already exists");
-        }
-        return false;
     }
     #endregion
 }

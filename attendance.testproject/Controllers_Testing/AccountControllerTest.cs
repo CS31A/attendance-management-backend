@@ -1,12 +1,12 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using attendance_monitoring.Controllers;
 using attendance_monitoring.IServices;
 using attendance_monitoring.Models.DTO;
 using attendance_monitoring.Models.DTO.Response;
+using attendance_monitoring.Exceptions;
 using System.Security.Claims;
 
 
@@ -37,9 +37,8 @@ public class AccountControllerTest
     {
         // Arrange
         var registerDto = new RegisterDto { Username = "testuser", Password = "Test@123", Email = "test@test.com", RepeatedPassword = "Test@123", Role = "Student", SectionId = 1 };
-        var identityResult = IdentityResult.Success;
         var response = new RegisterResponseDto { Success = true, Message = "User registered successfully" };
-        _mockAccountService.Setup(s => s.RegisterAsync(registerDto)).ReturnsAsync((identityResult, response));
+        _mockAccountService.Setup(s => s.RegisterAsync(registerDto)).ReturnsAsync(response);
 
         // Act
         var result = await _accountController.Register(registerDto);
@@ -128,9 +127,8 @@ public class AccountControllerTest
             Role = "Teacher"
             // No SectionId - this is valid for teachers
         };
-        var identityResult = IdentityResult.Success;
         var response = new RegisterResponseDto { Success = true, Message = "User registered successfully" };
-        _mockAccountService.Setup(s => s.RegisterAsync(registerDto)).ReturnsAsync((identityResult, response));
+        _mockAccountService.Setup(s => s.RegisterAsync(registerDto)).ReturnsAsync(response);
 
         // Act
         var result = await _accountController.Register(registerDto);
@@ -186,9 +184,8 @@ public class AccountControllerTest
             Role = "Admin"
             // No SectionId - this is valid for admins
         };
-        var identityResult = IdentityResult.Success;
         var response = new RegisterResponseDto { Success = true, Message = "User registered successfully" };
-        _mockAccountService.Setup(s => s.RegisterAsync(registerDto)).ReturnsAsync((identityResult, response));
+        _mockAccountService.Setup(s => s.RegisterAsync(registerDto)).ReturnsAsync(response);
 
         // Act
         var result = await _accountController.Register(registerDto);
@@ -277,13 +274,12 @@ public class AccountControllerTest
         };
 
         RegisterDto? capturedDto = null;
-        var identityResult = IdentityResult.Success;
         var response = new RegisterResponseDto { Success = true, Message = "User registered successfully" };
 
         _mockAccountService
             .Setup(s => s.RegisterAsync(It.IsAny<RegisterDto>()))
             .Callback<RegisterDto>(dto => capturedDto = dto) // Capture the DTO
-            .ReturnsAsync((identityResult, response));
+            .ReturnsAsync(response);
 
         // Act
         await _accountController.Register(registerDto);
@@ -358,7 +354,8 @@ public class AccountControllerTest
         // Arrange
         var loginDto = new LoginDto { Username = "test@test.com", Password = "Test@123" };
         var tokenResponseDto = new TokenResponseDto { AccessToken = "access_token", RefreshToken = "refresh_token" };
-        _mockAccountService.Setup(s => s.LoginAsync(loginDto)).ReturnsAsync((tokenResponseDto, "testuser", "Student", null));
+        var loginResult = new LoginResult { TokenResponse = tokenResponseDto, Username = "testuser", Role = "Student" };
+        _mockAccountService.Setup(s => s.LoginAsync(loginDto)).ReturnsAsync(loginResult);
 
         // Act
         var result = await _accountController.Login(loginDto);

@@ -1,4 +1,5 @@
 using attendance_monitoring.Classes;
+using attendance_monitoring.Exceptions;
 using attendance_monitoring.Models.DTO.Request;
 using attendance_monitoring.Models.DTO.Response;
 
@@ -49,37 +50,52 @@ public interface ISessionService
     /// </summary>
     /// <param name="sessionId">The session ID</param>
     /// <param name="updateRequest">The room update request</param>
-    /// <returns>Tuple of updated session DTO and error message (if any)</returns>
-    Task<(SessionResponseDto?, string?)> UpdateSessionRoomAsync(int sessionId, UpdateSessionRoom updateRequest);
+    /// <returns>Updated session response DTO</returns>
+    /// <exception cref="EntityNotFoundException{TKey}">Thrown when session is not found</exception>
+    /// <exception cref="ValidationException">Thrown when session is not active</exception>
+    /// <exception cref="EntityServiceException">Thrown when an unexpected error occurs</exception>
+    Task<SessionResponseDto> UpdateSessionRoomAsync(int sessionId, UpdateSessionRoom updateRequest);
 
     /// <summary>
     /// Creates a new session for a schedule.
     /// </summary>
     /// <param name="request">The create session request</param>
-    /// <returns>Tuple of created session DTO and error message (if any)</returns>
-    Task<(SessionResponseDto?, string?)> CreateSessionAsync(CreateSession request);
+    /// <returns>Created session response DTO</returns>
+    /// <exception cref="EntityNotFoundException{TKey}">Thrown when schedule or classroom is not found</exception>
+    /// <exception cref="ValidationException">Thrown when validation fails</exception>
+    /// <exception cref="EntityServiceException">Thrown when an unexpected error occurs</exception>
+    Task<SessionResponseDto> CreateSessionAsync(CreateSession request);
 
     /// <summary>
     /// Starts a session, marking it as active.
     /// </summary>
     /// <param name="sessionId">The session ID</param>
     /// <param name="request">The start session request</param>
-    /// <returns>Tuple of updated session DTO and error message (if any)</returns>
-    Task<(SessionResponseDto?, string?)> StartSessionAsync(int sessionId, StartSession request);
+    /// <returns>Updated session response DTO</returns>
+    /// <exception cref="EntityNotFoundException{TKey}">Thrown when session is not found</exception>
+    /// <exception cref="ValidationException">Thrown when session cannot be started</exception>
+    /// <exception cref="EntityServiceException">Thrown when an unexpected error occurs</exception>
+    Task<SessionResponseDto> StartSessionAsync(int sessionId, StartSession request);
 
     /// <summary>
     /// Ends an active session.
     /// </summary>
     /// <param name="sessionId">The session ID</param>
     /// <param name="request">The end session request</param>
-    /// <returns>Tuple of updated session DTO and error message (if any)</returns>
-    Task<(SessionResponseDto?, string?)> EndSessionAsync(int sessionId, EndSession request);
+    /// <returns>Updated session response DTO</returns>
+    /// <exception cref="EntityNotFoundException{TKey}">Thrown when session is not found</exception>
+    /// <exception cref="ValidationException">Thrown when session cannot be ended</exception>
+    /// <exception cref="EntityServiceException">Thrown when an unexpected error occurs</exception>
+    Task<SessionResponseDto> EndSessionAsync(int sessionId, EndSession request);
 
     /// <summary>
     /// Cancels a session that has not started yet.
     /// </summary>
     /// <param name="sessionId">The session ID</param>
     /// <param name="request">The cancel session request</param>
-    /// <returns>Tuple of updated session DTO and error message (if any)</returns>
-    Task<(SessionResponseDto?, string?)> CancelSessionAsync(int sessionId, CancelSession request);
+    /// <returns>Updated session response DTO</returns>
+    /// <exception cref="EntityNotFoundException{TKey}">Thrown when session is not found</exception>
+    /// <exception cref="ValidationException">Thrown when session cannot be cancelled</exception>
+    /// <exception cref="EntityServiceException">Thrown when an unexpected error occurs</exception>
+    Task<SessionResponseDto> CancelSessionAsync(int sessionId, CancelSession request);
 }

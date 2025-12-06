@@ -250,7 +250,7 @@ public class SessionControllerTest
 
         _mockSessionService
             .Setup(s => s.CreateSessionAsync(request))
-            .ReturnsAsync((createdSession, null));
+            .ReturnsAsync(createdSession);
 
         // Act
         var result = await _sessionController.CreateSession(request);
@@ -280,7 +280,7 @@ public class SessionControllerTest
     }
 
     [Fact]
-    public async Task CreateSession_ReturnsBadRequest_WhenServiceReturnsError()
+    public async Task CreateSession_ThrowsValidationException_WhenServiceThrowsValidationException()
     {
         // Arrange
         var request = new CreateSession
@@ -291,22 +291,16 @@ public class SessionControllerTest
 
         _mockSessionService
             .Setup(s => s.CreateSessionAsync(request))
-            .ReturnsAsync((null, "Schedule not found"));
+            .ThrowsAsync(new ValidationException("Schedule not found"));
 
-        // Act
-        var result = await _sessionController.CreateSession(request);
-
-        // Assert
-        var badRequestResult = Assert.IsType<BadRequestObjectResult>(result.Result);
-        Assert.NotNull(badRequestResult.Value);
-        var messageProperty = badRequestResult.Value.GetType().GetProperty("message");
-        Assert.NotNull(messageProperty);
-        var message = messageProperty.GetValue(badRequestResult.Value) as string;
-        Assert.Equal("Schedule not found", message);
+        // Act & Assert - Exception propagates to global handler
+        var exception = await Assert.ThrowsAsync<ValidationException>(
+            () => _sessionController.CreateSession(request));
+        Assert.Equal("Schedule not found", exception.Message);
     }
 
     [Fact]
-    public async Task CreateSession_ReturnsInternalServerError_WhenExceptionThrown()
+    public async Task CreateSession_ThrowsException_WhenServiceThrowsException()
     {
         // Arrange
         var request = new CreateSession
@@ -319,12 +313,10 @@ public class SessionControllerTest
             .Setup(s => s.CreateSessionAsync(request))
             .ThrowsAsync(new Exception("Database error"));
 
-        // Act
-        var result = await _sessionController.CreateSession(request);
-
-        // Assert
-        var statusCodeResult = Assert.IsType<ObjectResult>(result.Result);
-        Assert.Equal(500, statusCodeResult.StatusCode);
+        // Act & Assert - Exception propagates to global handler
+        var exception = await Assert.ThrowsAsync<Exception>(
+            () => _sessionController.CreateSession(request));
+        Assert.Equal("Database error", exception.Message);
     }
 
     #endregion
@@ -346,7 +338,7 @@ public class SessionControllerTest
 
         _mockSessionService
             .Setup(s => s.StartSessionAsync(sessionId, request))
-            .ReturnsAsync((startedSession, null));
+            .ReturnsAsync(startedSession);
 
         // Act
         var result = await _sessionController.StartSession(sessionId, request);
@@ -376,7 +368,7 @@ public class SessionControllerTest
     }
 
     [Fact]
-    public async Task StartSession_ReturnsBadRequest_WhenServiceReturnsError()
+    public async Task StartSession_ThrowsValidationException_WhenServiceThrowsValidationException()
     {
         // Arrange
         int sessionId = 1;
@@ -384,18 +376,16 @@ public class SessionControllerTest
 
         _mockSessionService
             .Setup(s => s.StartSessionAsync(sessionId, request))
-            .ReturnsAsync((null, "Session already started"));
+            .ThrowsAsync(new ValidationException("Session already started"));
 
-        // Act
-        var result = await _sessionController.StartSession(sessionId, request);
-
-        // Assert
-        var badRequestResult = Assert.IsType<BadRequestObjectResult>(result.Result);
-        Assert.NotNull(badRequestResult.Value);
+        // Act & Assert - Exception propagates to global handler
+        var exception = await Assert.ThrowsAsync<ValidationException>(
+            () => _sessionController.StartSession(sessionId, request));
+        Assert.Equal("Session already started", exception.Message);
     }
 
     [Fact]
-    public async Task StartSession_ReturnsNotFound_WhenSessionDoesNotExist()
+    public async Task StartSession_ThrowsEntityNotFoundException_WhenSessionDoesNotExist()
     {
         // Arrange
         int sessionId = 999;
@@ -405,16 +395,13 @@ public class SessionControllerTest
             .Setup(s => s.StartSessionAsync(sessionId, request))
             .ThrowsAsync(new EntityNotFoundException<int>("Session", sessionId));
 
-        // Act
-        var result = await _sessionController.StartSession(sessionId, request);
-
-        // Assert
-        var notFoundResult = Assert.IsType<NotFoundObjectResult>(result.Result);
-        Assert.NotNull(notFoundResult.Value);
+        // Act & Assert - Exception propagates to global handler
+        await Assert.ThrowsAsync<EntityNotFoundException<int>>(
+            () => _sessionController.StartSession(sessionId, request));
     }
 
     [Fact]
-    public async Task StartSession_ReturnsInternalServerError_WhenExceptionThrown()
+    public async Task StartSession_ThrowsException_WhenServiceThrowsException()
     {
         // Arrange
         int sessionId = 1;
@@ -424,12 +411,10 @@ public class SessionControllerTest
             .Setup(s => s.StartSessionAsync(sessionId, request))
             .ThrowsAsync(new Exception("Database error"));
 
-        // Act
-        var result = await _sessionController.StartSession(sessionId, request);
-
-        // Assert
-        var statusCodeResult = Assert.IsType<ObjectResult>(result.Result);
-        Assert.Equal(500, statusCodeResult.StatusCode);
+        // Act & Assert - Exception propagates to global handler
+        var exception = await Assert.ThrowsAsync<Exception>(
+            () => _sessionController.StartSession(sessionId, request));
+        Assert.Equal("Database error", exception.Message);
     }
 
     #endregion
@@ -450,7 +435,7 @@ public class SessionControllerTest
 
         _mockSessionService
             .Setup(s => s.EndSessionAsync(sessionId, request))
-            .ReturnsAsync((endedSession, null));
+            .ReturnsAsync(endedSession);
 
         // Act
         var result = await _sessionController.EndSession(sessionId, request);
@@ -480,7 +465,7 @@ public class SessionControllerTest
     }
 
     [Fact]
-    public async Task EndSession_ReturnsBadRequest_WhenServiceReturnsError()
+    public async Task EndSession_ThrowsValidationException_WhenServiceThrowsValidationException()
     {
         // Arrange
         int sessionId = 1;
@@ -488,18 +473,16 @@ public class SessionControllerTest
 
         _mockSessionService
             .Setup(s => s.EndSessionAsync(sessionId, request))
-            .ReturnsAsync((null, "Session not active"));
+            .ThrowsAsync(new ValidationException("Session not active"));
 
-        // Act
-        var result = await _sessionController.EndSession(sessionId, request);
-
-        // Assert
-        var badRequestResult = Assert.IsType<BadRequestObjectResult>(result.Result);
-        Assert.NotNull(badRequestResult.Value);
+        // Act & Assert - Exception propagates to global handler
+        var exception = await Assert.ThrowsAsync<ValidationException>(
+            () => _sessionController.EndSession(sessionId, request));
+        Assert.Equal("Session not active", exception.Message);
     }
 
     [Fact]
-    public async Task EndSession_ReturnsNotFound_WhenSessionDoesNotExist()
+    public async Task EndSession_ThrowsEntityNotFoundException_WhenSessionDoesNotExist()
     {
         // Arrange
         int sessionId = 999;
@@ -509,16 +492,13 @@ public class SessionControllerTest
             .Setup(s => s.EndSessionAsync(sessionId, request))
             .ThrowsAsync(new EntityNotFoundException<int>("Session", sessionId));
 
-        // Act
-        var result = await _sessionController.EndSession(sessionId, request);
-
-        // Assert
-        var notFoundResult = Assert.IsType<NotFoundObjectResult>(result.Result);
-        Assert.NotNull(notFoundResult.Value);
+        // Act & Assert - Exception propagates to global handler
+        await Assert.ThrowsAsync<EntityNotFoundException<int>>(
+            () => _sessionController.EndSession(sessionId, request));
     }
 
     [Fact]
-    public async Task EndSession_ReturnsInternalServerError_WhenExceptionThrown()
+    public async Task EndSession_ThrowsException_WhenServiceThrowsException()
     {
         // Arrange
         int sessionId = 1;
@@ -528,12 +508,10 @@ public class SessionControllerTest
             .Setup(s => s.EndSessionAsync(sessionId, request))
             .ThrowsAsync(new Exception("Database error"));
 
-        // Act
-        var result = await _sessionController.EndSession(sessionId, request);
-
-        // Assert
-        var statusCodeResult = Assert.IsType<ObjectResult>(result.Result);
-        Assert.Equal(500, statusCodeResult.StatusCode);
+        // Act & Assert - Exception propagates to global handler
+        var exception = await Assert.ThrowsAsync<Exception>(
+            () => _sessionController.EndSession(sessionId, request));
+        Assert.Equal("Database error", exception.Message);
     }
 
     #endregion
@@ -554,7 +532,7 @@ public class SessionControllerTest
 
         _mockSessionService
             .Setup(s => s.CancelSessionAsync(sessionId, request))
-            .ReturnsAsync((cancelledSession, null));
+            .ReturnsAsync(cancelledSession);
 
         // Act
         var result = await _sessionController.CancelSession(sessionId, request);
@@ -584,7 +562,7 @@ public class SessionControllerTest
     }
 
     [Fact]
-    public async Task CancelSession_ReturnsBadRequest_WhenServiceReturnsError()
+    public async Task CancelSession_ThrowsValidationException_WhenServiceThrowsValidationException()
     {
         // Arrange
         int sessionId = 1;
@@ -592,18 +570,16 @@ public class SessionControllerTest
 
         _mockSessionService
             .Setup(s => s.CancelSessionAsync(sessionId, request))
-            .ReturnsAsync((null, "Cannot cancel active session"));
+            .ThrowsAsync(new ValidationException("Cannot cancel active session"));
 
-        // Act
-        var result = await _sessionController.CancelSession(sessionId, request);
-
-        // Assert
-        var badRequestResult = Assert.IsType<BadRequestObjectResult>(result.Result);
-        Assert.NotNull(badRequestResult.Value);
+        // Act & Assert - Exception propagates to global handler
+        var exception = await Assert.ThrowsAsync<ValidationException>(
+            () => _sessionController.CancelSession(sessionId, request));
+        Assert.Equal("Cannot cancel active session", exception.Message);
     }
 
     [Fact]
-    public async Task CancelSession_ReturnsNotFound_WhenSessionDoesNotExist()
+    public async Task CancelSession_ThrowsEntityNotFoundException_WhenSessionDoesNotExist()
     {
         // Arrange
         int sessionId = 999;
@@ -613,16 +589,13 @@ public class SessionControllerTest
             .Setup(s => s.CancelSessionAsync(sessionId, request))
             .ThrowsAsync(new EntityNotFoundException<int>("Session", sessionId));
 
-        // Act
-        var result = await _sessionController.CancelSession(sessionId, request);
-
-        // Assert
-        var notFoundResult = Assert.IsType<NotFoundObjectResult>(result.Result);
-        Assert.NotNull(notFoundResult.Value);
+        // Act & Assert - Exception propagates to global handler
+        await Assert.ThrowsAsync<EntityNotFoundException<int>>(
+            () => _sessionController.CancelSession(sessionId, request));
     }
 
     [Fact]
-    public async Task CancelSession_ReturnsInternalServerError_WhenExceptionThrown()
+    public async Task CancelSession_ThrowsException_WhenServiceThrowsException()
     {
         // Arrange
         int sessionId = 1;
@@ -632,12 +605,10 @@ public class SessionControllerTest
             .Setup(s => s.CancelSessionAsync(sessionId, request))
             .ThrowsAsync(new Exception("Database error"));
 
-        // Act
-        var result = await _sessionController.CancelSession(sessionId, request);
-
-        // Assert
-        var statusCodeResult = Assert.IsType<ObjectResult>(result.Result);
-        Assert.Equal(500, statusCodeResult.StatusCode);
+        // Act & Assert - Exception propagates to global handler
+        var exception = await Assert.ThrowsAsync<Exception>(
+            () => _sessionController.CancelSession(sessionId, request));
+        Assert.Equal("Database error", exception.Message);
     }
 
     #endregion
@@ -655,7 +626,7 @@ public class SessionControllerTest
 
         _mockSessionService
             .Setup(s => s.UpdateSessionRoomAsync(sessionId, request))
-            .ReturnsAsync((updatedSession, null));
+            .ReturnsAsync(updatedSession);
 
         // Act
         var result = await _sessionController.UpdateSessionRoom(sessionId, request);
@@ -685,7 +656,7 @@ public class SessionControllerTest
     }
 
     [Fact]
-    public async Task UpdateSessionRoom_ReturnsBadRequest_WhenServiceReturnsError()
+    public async Task UpdateSessionRoom_ThrowsValidationException_WhenServiceThrowsValidationException()
     {
         // Arrange
         int sessionId = 1;
@@ -693,18 +664,16 @@ public class SessionControllerTest
 
         _mockSessionService
             .Setup(s => s.UpdateSessionRoomAsync(sessionId, request))
-            .ReturnsAsync((null, "Session not active"));
+            .ThrowsAsync(new ValidationException("Session not active"));
 
-        // Act
-        var result = await _sessionController.UpdateSessionRoom(sessionId, request);
-
-        // Assert
-        var badRequestResult = Assert.IsType<BadRequestObjectResult>(result.Result);
-        Assert.NotNull(badRequestResult.Value);
+        // Act & Assert - Exception propagates to global handler
+        var exception = await Assert.ThrowsAsync<ValidationException>(
+            () => _sessionController.UpdateSessionRoom(sessionId, request));
+        Assert.Equal("Session not active", exception.Message);
     }
 
     [Fact]
-    public async Task UpdateSessionRoom_ReturnsNotFound_WhenSessionDoesNotExist()
+    public async Task UpdateSessionRoom_ThrowsEntityNotFoundException_WhenSessionDoesNotExist()
     {
         // Arrange
         int sessionId = 999;
@@ -714,12 +683,9 @@ public class SessionControllerTest
             .Setup(s => s.UpdateSessionRoomAsync(sessionId, request))
             .ThrowsAsync(new EntityNotFoundException<int>("Session", sessionId));
 
-        // Act
-        var result = await _sessionController.UpdateSessionRoom(sessionId, request);
-
-        // Assert
-        var notFoundResult = Assert.IsType<NotFoundObjectResult>(result.Result);
-        Assert.NotNull(notFoundResult.Value);
+        // Act & Assert - Exception propagates to global handler
+        await Assert.ThrowsAsync<EntityNotFoundException<int>>(
+            () => _sessionController.UpdateSessionRoom(sessionId, request));
     }
 
     #endregion

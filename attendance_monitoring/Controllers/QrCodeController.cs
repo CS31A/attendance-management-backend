@@ -95,12 +95,7 @@ public class QrCodeController(
     {
         logger.LogInformation("Revoking QR code with ID: {QrCodeId}", id);
 
-        var error = await qrCodeService.RevokeQrCodeAsync(id, request?.Reason, User);
-        if (error != null)
-        {
-            logger.LogWarning("Failed to revoke QR code with ID {QrCodeId}: {Error}", id, error);
-            return BadRequest(new { message = error });
-        }
+        await qrCodeService.RevokeQrCodeAsync(id, request?.Reason, User);
 
         logger.LogInformation("Successfully revoked QR code with ID: {QrCodeId}", id);
         return NoContent();
@@ -118,12 +113,7 @@ public class QrCodeController(
     {
         logger.LogInformation("Revoking QR code with hash: {QrHash}", qrHash);
 
-        var error = await qrCodeService.RevokeQrCodeByHashAsync(qrHash, request?.Reason, User);
-        if (error != null)
-        {
-            logger.LogWarning("Failed to revoke QR code with hash {QrHash}: {Error}", qrHash, error);
-            return BadRequest(new { message = error });
-        }
+        await qrCodeService.RevokeQrCodeByHashAsync(qrHash, request?.Reason, User);
 
         logger.LogInformation("Successfully revoked QR code with hash: {QrHash}", qrHash);
         return NoContent();
@@ -140,12 +130,7 @@ public class QrCodeController(
     {
         logger.LogInformation("Reactivating QR code with ID: {QrCodeId}", id);
 
-        var error = await qrCodeService.ReactivateQrCodeAsync(id, User);
-        if (error != null)
-        {
-            logger.LogWarning("Failed to reactivate QR code with ID {QrCodeId}: {Error}", id, error);
-            return BadRequest(new { message = error });
-        }
+        await qrCodeService.ReactivateQrCodeAsync(id, User);
 
         logger.LogInformation("Successfully reactivated QR code with ID: {QrCodeId}", id);
         return NoContent();
@@ -162,12 +147,7 @@ public class QrCodeController(
     {
         logger.LogInformation("Reactivating QR code with hash: {QrHash}", qrHash);
 
-        var error = await qrCodeService.ReactivateQrCodeByHashAsync(qrHash, User);
-        if (error != null)
-        {
-            logger.LogWarning("Failed to reactivate QR code with hash {QrHash}: {Error}", qrHash, error);
-            return BadRequest(new { message = error });
-        }
+        await qrCodeService.ReactivateQrCodeByHashAsync(qrHash, User);
 
         logger.LogInformation("Successfully reactivated QR code with hash: {QrHash}", qrHash);
         return NoContent();

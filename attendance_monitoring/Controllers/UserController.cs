@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using attendance_monitoring.IServices;
 using attendance_monitoring.Models.DTO.Response;
 using attendance_monitoring.Models.DTO.Request;
+using attendance_monitoring.Exceptions;
 using System.Security.Claims;
 
 namespace attendance_monitoring.Controllers;
@@ -68,28 +69,37 @@ public class UserController(IAccountService accountService, ILogger<UserControll
             return Unauthorized(new DeleteUserResponseDto { Success = false, Message = "Admin not authenticated" });
         }
 
-        var (success, message, errorCode) = await accountService.AdminDeleteUserAsync(adminId, userId);
-
-        if (!success)
+        try
         {
-            logger.LogWarning("User delete failed for user {TargetUserId}: {Message} (ErrorCode: {ErrorCode})", userId, message, errorCode);
-
-            // Return appropriate status code based on error code
-            return errorCode switch
+            await accountService.AdminDeleteUserAsync(adminId, userId);
+            logger.LogInformation("Admin {AdminId} successfully deleted user {TargetUserId}.", adminId, userId);
+            return Ok(new DeleteUserResponseDto
             {
-                "USER_NOT_FOUND" => NotFound(new DeleteUserResponseDto { Success = false, Message = message }),
-                "UNAUTHORIZED" => StatusCode(StatusCodes.Status403Forbidden, new DeleteUserResponseDto { Success = false, Message = message }),
-                "SELF_DELETE" => BadRequest(new DeleteUserResponseDto { Success = false, Message = message }),
-                _ => BadRequest(new DeleteUserResponseDto { Success = false, Message = message })
-            };
+                Success = true,
+                Message = "User deleted successfully"
+            });
         }
-
-        logger.LogInformation("Admin {AdminId} successfully deleted user {TargetUserId}.", adminId, userId);
-        return Ok(new DeleteUserResponseDto
+        catch (EntityNotFoundException<string> ex)
         {
-            Success = true,
-            Message = message
-        });
+            logger.LogWarning("User delete failed for user {TargetUserId}: {Error}", userId, ex.Message);
+            return NotFound(new DeleteUserResponseDto { Success = false, Message = ex.Message });
+        }
+        catch (EntityUnauthorizedException ex)
+        {
+            logger.LogWarning("User delete failed for user {TargetUserId}: {Error}", userId, ex.Message);
+            return StatusCode(StatusCodes.Status403Forbidden, new DeleteUserResponseDto { Success = false, Message = ex.Message });
+        }
+        catch (ValidationException ex)
+        {
+            logger.LogWarning("User delete failed for user {TargetUserId}: {Error}", userId, ex.Message);
+            return BadRequest(new DeleteUserResponseDto { Success = false, Message = ex.Message });
+        }
+        catch (EntityServiceException ex)
+        {
+            logger.LogWarning("User delete failed for user {TargetUserId}: {Error}", userId, ex.Message);
+            return BadRequest(new DeleteUserResponseDto { Success = false, Message = ex.Message });
+        }
+        // Other exceptions handled by global middleware
     }
 
     /// <summary>
@@ -125,28 +135,37 @@ public class UserController(IAccountService accountService, ILogger<UserControll
             return Unauthorized(new DeleteUserResponseDto { Success = false, Message = "Admin not authenticated" });
         }
 
-        var (success, message, errorCode) = await accountService.AdminHardDeleteUserAsync(adminId, userId);
-
-        if (!success)
+        try
         {
-            logger.LogWarning("User hard delete failed for user {TargetUserId}: {Message} (ErrorCode: {ErrorCode})", userId, message, errorCode);
-
-            // Return appropriate status code based on error code
-            return errorCode switch
+            await accountService.AdminHardDeleteUserAsync(adminId, userId);
+            logger.LogInformation("Admin {AdminId} successfully hard deleted user {TargetUserId}.", adminId, userId);
+            return Ok(new DeleteUserResponseDto
             {
-                "USER_NOT_FOUND" => NotFound(new DeleteUserResponseDto { Success = false, Message = message }),
-                "UNAUTHORIZED" => StatusCode(StatusCodes.Status403Forbidden, new DeleteUserResponseDto { Success = false, Message = message }),
-                "SELF_DELETE" => BadRequest(new DeleteUserResponseDto { Success = false, Message = message }),
-                _ => BadRequest(new DeleteUserResponseDto { Success = false, Message = message })
-            };
+                Success = true,
+                Message = "User permanently deleted successfully"
+            });
         }
-
-        logger.LogInformation("Admin {AdminId} successfully hard deleted user {TargetUserId}.", adminId, userId);
-        return Ok(new DeleteUserResponseDto
+        catch (EntityNotFoundException<string> ex)
         {
-            Success = true,
-            Message = message
-        });
+            logger.LogWarning("User hard delete failed for user {TargetUserId}: {Error}", userId, ex.Message);
+            return NotFound(new DeleteUserResponseDto { Success = false, Message = ex.Message });
+        }
+        catch (EntityUnauthorizedException ex)
+        {
+            logger.LogWarning("User hard delete failed for user {TargetUserId}: {Error}", userId, ex.Message);
+            return StatusCode(StatusCodes.Status403Forbidden, new DeleteUserResponseDto { Success = false, Message = ex.Message });
+        }
+        catch (ValidationException ex)
+        {
+            logger.LogWarning("User hard delete failed for user {TargetUserId}: {Error}", userId, ex.Message);
+            return BadRequest(new DeleteUserResponseDto { Success = false, Message = ex.Message });
+        }
+        catch (EntityServiceException ex)
+        {
+            logger.LogWarning("User hard delete failed for user {TargetUserId}: {Error}", userId, ex.Message);
+            return BadRequest(new DeleteUserResponseDto { Success = false, Message = ex.Message });
+        }
+        // Other exceptions handled by global middleware
     }
 
     /// <summary>
@@ -182,28 +201,37 @@ public class UserController(IAccountService accountService, ILogger<UserControll
             return Unauthorized(new DeleteUserResponseDto { Success = false, Message = "Admin not authenticated" });
         }
 
-        var (success, message, errorCode) = await accountService.AdminRestoreUserAsync(adminId, userId);
-
-        if (!success)
+        try
         {
-            logger.LogWarning("User restore failed for user {TargetUserId}: {Message} (ErrorCode: {ErrorCode})", userId, message, errorCode);
-
-            // Return appropriate status code based on error code
-            return errorCode switch
+            await accountService.AdminRestoreUserAsync(adminId, userId);
+            logger.LogInformation("Admin {AdminId} successfully restored user {TargetUserId}.", adminId, userId);
+            return Ok(new DeleteUserResponseDto
             {
-                "USER_NOT_FOUND" => NotFound(new DeleteUserResponseDto { Success = false, Message = message }),
-                "UNAUTHORIZED" => StatusCode(StatusCodes.Status403Forbidden, new DeleteUserResponseDto { Success = false, Message = message }),
-                "NOT_DELETED" => BadRequest(new DeleteUserResponseDto { Success = false, Message = message }),
-                _ => BadRequest(new DeleteUserResponseDto { Success = false, Message = message })
-            };
+                Success = true,
+                Message = "User restored successfully"
+            });
         }
-
-        logger.LogInformation("Admin {AdminId} successfully restored user {TargetUserId}.", adminId, userId);
-        return Ok(new DeleteUserResponseDto
+        catch (EntityNotFoundException<string> ex)
         {
-            Success = true,
-            Message = message
-        });
+            logger.LogWarning("User restore failed for user {TargetUserId}: {Error}", userId, ex.Message);
+            return NotFound(new DeleteUserResponseDto { Success = false, Message = ex.Message });
+        }
+        catch (EntityUnauthorizedException ex)
+        {
+            logger.LogWarning("User restore failed for user {TargetUserId}: {Error}", userId, ex.Message);
+            return StatusCode(StatusCodes.Status403Forbidden, new DeleteUserResponseDto { Success = false, Message = ex.Message });
+        }
+        catch (ValidationException ex)
+        {
+            logger.LogWarning("User restore failed for user {TargetUserId}: {Error}", userId, ex.Message);
+            return BadRequest(new DeleteUserResponseDto { Success = false, Message = ex.Message });
+        }
+        catch (EntityServiceException ex)
+        {
+            logger.LogWarning("User restore failed for user {TargetUserId}: {Error}", userId, ex.Message);
+            return BadRequest(new DeleteUserResponseDto { Success = false, Message = ex.Message });
+        }
+        // Other exceptions handled by global middleware
     }
 
     private string? GetUserId(ClaimsPrincipal userPrincipal)

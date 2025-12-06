@@ -12,9 +12,9 @@ public interface IInstructorService
     Task<IEnumerable<SubjectResponseDto>> GetSubjectsByInstructorIdAsync(int instructorId);
     Task<IEnumerable<ScheduleResponseDto>> GetSchedulesByInstructorAsync(ClaimsPrincipal user);
     Task<InstructorProfileResponseDto?> GetInstructorProfileAsync(ClaimsPrincipal user);
-    Task<(Instructor?, string?)> CreateInstructorAsync(CreateInstructor createInstructor, ClaimsPrincipal user);
+    Task<Instructor> CreateInstructorAsync(CreateInstructor createInstructor, ClaimsPrincipal user);
     Task<Instructor> UpdateInstructorAsync(int id, UpdateInstructor updateInstructor, ClaimsPrincipal user);
     Task SoftDeleteInstructorAsync(int id, ClaimsPrincipal user);
-    Task<string?> HardDeleteInstructorAsync(int id, ClaimsPrincipal user);
-    Task<string?> RestoreInstructorAsync(int id, ClaimsPrincipal user);
+    Task HardDeleteInstructorAsync(int id, ClaimsPrincipal user);
+    Task RestoreInstructorAsync(int id, ClaimsPrincipal user);
 }

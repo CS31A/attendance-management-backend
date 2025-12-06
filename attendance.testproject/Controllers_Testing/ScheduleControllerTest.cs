@@ -4,6 +4,7 @@ using attendance_monitoring.IServices;
 using attendance_monitoring.Classes;
 using attendance_monitoring.Models.DTO.Request;
 using attendance_monitoring.Models.DTO.Response;
+using attendance_monitoring.Exceptions;
 using Microsoft.Extensions.Logging;
 using System.Security.Claims;
 
@@ -92,7 +93,7 @@ public class ScheduleControllerTest
 
         _mockScheduleService
             .Setup(s => s.CreateScheduleAsync(createSchedule))
-            .ReturnsAsync((createdSchedule, (string?)null));
+            .ReturnsAsync(createdSchedule);
 
         // Act
         var result = await _scheduleController.PostSchedule(createSchedule);
@@ -132,7 +133,7 @@ public class ScheduleControllerTest
     }
 
     [Fact]
-    public async Task PostSchedule_ReturnsBadRequest_WhenServiceReturnsError()
+    public async Task PostSchedule_ThrowsValidationException_WhenServiceThrowsError()
     {
         // Arrange
         var createSchedule = new CreateSchedule
@@ -148,23 +149,16 @@ public class ScheduleControllerTest
 
         _mockScheduleService
             .Setup(s => s.CreateScheduleAsync(createSchedule))
-            .ReturnsAsync(((Schedules?)null, "Schedule conflict detected"));
+            .ThrowsAsync(new ValidationException("Schedule conflict detected"));
 
-        // Act
-        var result = await _scheduleController.PostSchedule(createSchedule);
-
-        // Assert
-        var badRequestResult = Assert.IsType<BadRequestObjectResult>(result.Result);
-        // Controller now returns structured JSON: { message = "..." }
-        Assert.NotNull(badRequestResult.Value);
-        var messageProperty = badRequestResult.Value.GetType().GetProperty("message");
-        Assert.NotNull(messageProperty);
-        var message = messageProperty.GetValue(badRequestResult.Value) as string;
-        Assert.Equal("Schedule conflict detected", message);
+        // Act & Assert
+        // The controller lets exceptions propagate to the global handler
+        var exception = await Assert.ThrowsAsync<ValidationException>(() => _scheduleController.PostSchedule(createSchedule));
+        Assert.Equal("Schedule conflict detected", exception.Message);
     }
 
     [Fact]
-    public async Task PostSchedule_ReturnsBadRequest_WhenScheduleIsNull()
+    public async Task PostSchedule_ThrowsEntityServiceException_WhenUnexpectedErrorOccurs()
     {
         // Arrange
         var createSchedule = new CreateSchedule
@@ -180,14 +174,12 @@ public class ScheduleControllerTest
 
         _mockScheduleService
             .Setup(s => s.CreateScheduleAsync(createSchedule))
-            .ReturnsAsync(((Schedules?)null, (string?)null));
+            .ThrowsAsync(new EntityServiceException("Schedule", "create", "An unexpected error occurred"));
 
-        // Act
-        var result = await _scheduleController.PostSchedule(createSchedule);
-
-        // Assert
-        var badRequestResult = Assert.IsType<BadRequestObjectResult>(result.Result);
-        Assert.Contains("unexpected error", badRequestResult.Value?.ToString(), StringComparison.OrdinalIgnoreCase);
+        // Act & Assert
+        // The controller lets exceptions propagate to the global handler
+        var exception = await Assert.ThrowsAsync<EntityServiceException>(() => _scheduleController.PostSchedule(createSchedule));
+        Assert.Contains("unexpected error", exception.Message, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
@@ -244,7 +236,7 @@ public class ScheduleControllerTest
 
         _mockScheduleService
             .Setup(s => s.UpdateScheduleAsync(scheduleId, updateSchedule))
-            .ReturnsAsync((updatedSchedule, (string?)null));
+            .ReturnsAsync(updatedSchedule);
 
         // Act
         var result = await _scheduleController.UpdateSchedule(scheduleId, updateSchedule);
@@ -277,7 +269,7 @@ public class ScheduleControllerTest
 
         _mockScheduleService
             .Setup(s => s.UpdateScheduleAsync(scheduleId, updateSchedule))
-            .ReturnsAsync((updatedSchedule, (string?)null));
+            .ReturnsAsync(updatedSchedule);
 
         // Act
         var result = await _scheduleController.UpdateSchedule(scheduleId, updateSchedule);
@@ -318,7 +310,7 @@ public class ScheduleControllerTest
     }
 
     [Fact]
-    public async Task UpdateSchedule_ReturnsBadRequest_WhenServiceReturnsError()
+    public async Task UpdateSchedule_ThrowsValidationException_WhenServiceThrowsError()
     {
         // Arrange
         int scheduleId = 1;
@@ -335,19 +327,12 @@ public class ScheduleControllerTest
 
         _mockScheduleService
             .Setup(s => s.UpdateScheduleAsync(scheduleId, updateSchedule))
-            .ReturnsAsync(((Schedules?)null, "Schedule conflict detected"));
+            .ThrowsAsync(new ValidationException("Schedule conflict detected"));
 
-        // Act
-        var result = await _scheduleController.UpdateSchedule(scheduleId, updateSchedule);
-
-        // Assert
-        var badRequestResult = Assert.IsType<BadRequestObjectResult>(result.Result);
-        // Controller now returns structured JSON: { message = "..." }
-        Assert.NotNull(badRequestResult.Value);
-        var messageProperty = badRequestResult.Value.GetType().GetProperty("message");
-        Assert.NotNull(messageProperty);
-        var message = messageProperty.GetValue(badRequestResult.Value) as string;
-        Assert.Equal("Schedule conflict detected", message);
+        // Act & Assert
+        // The controller lets exceptions propagate to the global handler
+        var exception = await Assert.ThrowsAsync<ValidationException>(() => _scheduleController.UpdateSchedule(scheduleId, updateSchedule));
+        Assert.Equal("Schedule conflict detected", exception.Message);
     }
 
     [Fact]
@@ -376,7 +361,7 @@ public class ScheduleControllerTest
     }
 
     [Fact]
-    public async Task UpdateSchedule_ReturnsBadRequest_WhenTimeOutBeforeTimeIn()
+    public async Task UpdateSchedule_ThrowsValidationException_WhenTimeOutBeforeTimeIn()
     {
         // Arrange
         int scheduleId = 1;
@@ -388,22 +373,16 @@ public class ScheduleControllerTest
 
         _mockScheduleService
             .Setup(s => s.UpdateScheduleAsync(scheduleId, updateSchedule))
-            .ReturnsAsync(((Schedules?)null, "TimeOut must be after TimeIn"));
+            .ThrowsAsync(new ValidationException("TimeOut must be after TimeIn"));
 
-        // Act
-        var result = await _scheduleController.UpdateSchedule(scheduleId, updateSchedule);
-
-        // Assert
-        var badRequestResult = Assert.IsType<BadRequestObjectResult>(result.Result);
-        Assert.NotNull(badRequestResult.Value);
-        var messageProperty = badRequestResult.Value.GetType().GetProperty("message");
-        Assert.NotNull(messageProperty);
-        var message = messageProperty.GetValue(badRequestResult.Value) as string;
-        Assert.Equal("TimeOut must be after TimeIn", message);
+        // Act & Assert
+        // The controller lets exceptions propagate to the global handler
+        var exception = await Assert.ThrowsAsync<ValidationException>(() => _scheduleController.UpdateSchedule(scheduleId, updateSchedule));
+        Assert.Equal("TimeOut must be after TimeIn", exception.Message);
     }
 
     [Fact]
-    public async Task UpdateSchedule_ReturnsBadRequest_WhenInvalidDayOfWeek()
+    public async Task UpdateSchedule_ThrowsValidationException_WhenInvalidDayOfWeek()
     {
         // Arrange
         int scheduleId = 1;
@@ -414,18 +393,12 @@ public class ScheduleControllerTest
 
         _mockScheduleService
             .Setup(s => s.UpdateScheduleAsync(scheduleId, updateSchedule))
-            .ReturnsAsync(((Schedules?)null, "Invalid DayOfWeek. Must be one of: Monday, Tuesday, Wednesday, Thursday, Friday, Saturday, Sunday"));
+            .ThrowsAsync(new ValidationException("Invalid DayOfWeek. Must be one of: Monday, Tuesday, Wednesday, Thursday, Friday, Saturday, Sunday"));
 
-        // Act
-        var result = await _scheduleController.UpdateSchedule(scheduleId, updateSchedule);
-
-        // Assert
-        var badRequestResult = Assert.IsType<BadRequestObjectResult>(result.Result);
-        Assert.NotNull(badRequestResult.Value);
-        var messageProperty = badRequestResult.Value.GetType().GetProperty("message");
-        Assert.NotNull(messageProperty);
-        var message = messageProperty.GetValue(badRequestResult.Value) as string;
-        Assert.Contains("Invalid DayOfWeek", message);
+        // Act & Assert
+        // The controller lets exceptions propagate to the global handler
+        var exception = await Assert.ThrowsAsync<ValidationException>(() => _scheduleController.UpdateSchedule(scheduleId, updateSchedule));
+        Assert.Contains("Invalid DayOfWeek", exception.Message);
     }
 
     #endregion
@@ -440,7 +413,7 @@ public class ScheduleControllerTest
 
         _mockScheduleService
             .Setup(s => s.DeleteScheduleAsync(scheduleId, It.IsAny<ClaimsPrincipal>()))
-            .ReturnsAsync((string?)null);
+            .Returns(Task.CompletedTask);
 
         // Act
         var result = await _scheduleController.DeleteSchedule(scheduleId);
@@ -452,7 +425,7 @@ public class ScheduleControllerTest
     }
 
     [Fact]
-    public async Task DeleteSchedule_ReturnsBadRequest_WhenServiceReturnsError()
+    public async Task DeleteSchedule_ThrowsValidationException_WhenServiceThrowsError()
     {
         // Arrange
         int scheduleId = 1;
@@ -460,19 +433,12 @@ public class ScheduleControllerTest
 
         _mockScheduleService
             .Setup(s => s.DeleteScheduleAsync(scheduleId, It.IsAny<ClaimsPrincipal>()))
-            .ReturnsAsync(errorMessage);
+            .ThrowsAsync(new ValidationException(errorMessage));
 
-        // Act
-        var result = await _scheduleController.DeleteSchedule(scheduleId);
-
-        // Assert
-        var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
-        // Controller now returns structured JSON: { message = "..." }
-        Assert.NotNull(badRequestResult.Value);
-        var messageProperty = badRequestResult.Value.GetType().GetProperty("message");
-        Assert.NotNull(messageProperty);
-        var message = messageProperty.GetValue(badRequestResult.Value) as string;
-        Assert.Equal(errorMessage, message);
+        // Act & Assert
+        // The controller lets exceptions propagate to the global handler
+        var exception = await Assert.ThrowsAsync<ValidationException>(() => _scheduleController.DeleteSchedule(scheduleId));
+        Assert.Equal(errorMessage, exception.Message);
     }
 
     [Fact]

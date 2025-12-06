@@ -7,7 +7,7 @@ public interface ISubjectService
 {
     Task<IEnumerable<Subject>> GetAllSubjectsAsync();
     Task<Subject?> GetSubjectByIdAsync(int id);
-    Task<(Subject?, string?)> CreateSubjectAsync(CreateSubject createSubject);
-    Task<(Subject?, string?)> UpdateSubjectAsync(int id, UpdateSubject updateSubject);
-    Task<string?> DeleteSubjectAsync(int id);
+    Task<Subject> CreateSubjectAsync(CreateSubject createSubject);
+    Task<Subject> UpdateSubjectAsync(int id, UpdateSubject updateSubject);
+    Task DeleteSubjectAsync(int id);
 }

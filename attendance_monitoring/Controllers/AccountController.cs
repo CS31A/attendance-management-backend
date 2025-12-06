@@ -23,10 +23,14 @@ namespace attendance_monitoring.Controllers
         /// <param name="registerDto">User registration data</param>
         /// <returns>Registration result</returns>
         /// <response code="200">User registered successfully</response>
-        /// <response code="400">Invalid input data</response>
+        /// <response code="400">Invalid input data or validation error</response>
+        /// <response code="404">Section not found</response>
+        /// <response code="409">Username or email already exists</response>
         [HttpPost("register")]
         [ProducesResponseType(typeof(RegisterResponseDto), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(RegisterResponseDto), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(RegisterResponseDto), StatusCodes.Status404NotFound)]
+        [ProducesResponseType(typeof(RegisterResponseDto), StatusCodes.Status409Conflict)]
         public async Task<ActionResult<RegisterResponseDto>> Register(RegisterDto registerDto)
         {
             logger.LogInformation("Registration attempt for username: {Username}", registerDto.Username);
@@ -39,27 +43,39 @@ namespace attendance_monitoring.Controllers
                 registerDto.Role = "Teacher";
             }
 
-
-
             if (!ModelState.IsValid)
             {
                 logger.LogWarning("Registration failed due to invalid model state for username: {Username}", registerDto.Username);
                 return BadRequest(new RegisterResponseDto { Success = false, Message = "Invalid request data" });
             }
 
-            var (result, response) = await accountService.RegisterAsync(registerDto);
-
-            if (!result.Succeeded)
+            try
             {
-                foreach (var error in result.Errors)
-                {
-                    logger.LogError("Error during user registration for {Username}: {ErrorDescription}", registerDto.Username, error.Description);
-                }
-                return BadRequest(new RegisterResponseDto { Success = false, Message = string.Join("; ", result.Errors.Select(e => e.Description)) });
+                var response = await accountService.RegisterAsync(registerDto);
+                logger.LogInformation("User registered successfully: {Username}", registerDto.Username);
+                return Ok(response);
             }
-
-            logger.LogInformation("User registered successfully: {Username}", registerDto.Username);
-            return Ok(new RegisterResponseDto { Success = true, Message = response?.Message ?? "User registered successfully" });
+            catch (EntityAlreadyExistsException<string> ex)
+            {
+                logger.LogWarning("Registration failed for {Username}: {Error}", registerDto.Username, ex.Message);
+                return Conflict(new RegisterResponseDto { Success = false, Message = ex.Message });
+            }
+            catch (EntityNotFoundException<int> ex)
+            {
+                logger.LogWarning("Registration failed for {Username}: {Error}", registerDto.Username, ex.Message);
+                return NotFound(new RegisterResponseDto { Success = false, Message = ex.Message });
+            }
+            catch (ValidationException ex)
+            {
+                logger.LogWarning("Registration failed for {Username}: {Error}", registerDto.Username, ex.Message);
+                return BadRequest(new RegisterResponseDto { Success = false, Message = ex.Message });
+            }
+            catch (EntityServiceException ex)
+            {
+                logger.LogWarning("Registration failed for {Username}: {Error}", registerDto.Username, ex.Message);
+                return BadRequest(new RegisterResponseDto { Success = false, Message = ex.Message });
+            }
+            // Other exceptions handled by global middleware
         }
         #endregion
 
@@ -85,24 +101,27 @@ namespace attendance_monitoring.Controllers
                 return BadRequest(new LoginResponseDto { Success = false, Message = "Invalid request data" });
             }
 
-            var (tokenResponse, username, role, error) = await accountService.LoginAsync(loginDto);
-
-            if (tokenResponse == null)
+            try
             {
-                logger.LogWarning("Login failed for identifier {Identifier}: {Error}", loginDto.Username, error);
-                return Unauthorized(new LoginResponseDto { Success = false, Message = error ?? "Login failed" });
+                var loginResult = await accountService.LoginAsync(loginDto);
+
+                logger.LogInformation("User logged in successfully");
+                return Ok(new LoginResponseDto
+                {
+                    Success = true,
+                    Message = "Login successful",
+                    AccessToken = loginResult.TokenResponse.AccessToken,
+                    RefreshToken = loginResult.TokenResponse.RefreshToken,
+                    User = loginResult.Username,
+                    Role = loginResult.Role
+                });
             }
-
-            logger.LogInformation("User logged in successfully");
-            return Ok(new LoginResponseDto
+            catch (ValidationException ex)
             {
-                Success = true,
-                Message = "Login successful",
-                AccessToken = tokenResponse.AccessToken,
-                RefreshToken = tokenResponse.RefreshToken,
-                User = username ?? string.Empty,
-                Role = role ?? string.Empty
-            });
+                logger.LogWarning("Login failed for identifier {Identifier}: {Error}", loginDto.Username, ex.Message);
+                return Unauthorized(new LoginResponseDto { Success = false, Message = ex.Message });
+            }
+            // Other exceptions handled by global middleware
         }
         #endregion
 
@@ -128,32 +147,35 @@ namespace attendance_monitoring.Controllers
                 return BadRequest(new WebLoginResponseDto { Success = false, Message = "Invalid request data" });
             }
 
-            // Map WebLoginDto to LoginDto for compatibility with existing LoginAsync method
-            var loginDto = new LoginDto
+            try
             {
-                Username = webLoginDto.Identifier,
-                Password = webLoginDto.Password
-            };
+                // Map WebLoginDto to LoginDto for compatibility with existing LoginAsync method
+                var loginDto = new LoginDto
+                {
+                    Username = webLoginDto.Identifier,
+                    Password = webLoginDto.Password
+                };
 
-            var (tokenResponse, username, role, error) = await accountService.LoginAsync(loginDto);
+                var loginResult = await accountService.LoginAsync(loginDto);
 
-            if (tokenResponse == null)
-            {
-                logger.LogWarning("Web login failed for identifier {Identifier}: {Error}", webLoginDto.Identifier, error);
-                return Unauthorized(new WebLoginResponseDto { Success = false, Message = error ?? "An unexpected error occurred." });
+                // Set HTTP-only cookies for access and refresh tokens
+                cookieOptionsService.SetTokenCookies(Response, loginResult.TokenResponse.AccessToken, loginResult.TokenResponse.RefreshToken);
+
+                logger.LogInformation("User logged in successfully via web login");
+                return Ok(new WebLoginResponseDto
+                {
+                    Success = true,
+                    Message = "Login successful",
+                    Username = loginResult.Username,
+                    Role = loginResult.Role
+                });
             }
-
-            // Set HTTP-only cookies for access and refresh tokens
-            cookieOptionsService.SetTokenCookies(Response, tokenResponse.AccessToken, tokenResponse.RefreshToken);
-
-            logger.LogInformation("User logged in successfully via web login");
-            return Ok(new WebLoginResponseDto
+            catch (ValidationException ex)
             {
-                Success = true,
-                Message = "Login successful",
-                Username = username ?? string.Empty,
-                Role = role ?? string.Empty
-            });
+                logger.LogWarning("Web login failed for identifier {Identifier}: {Error}", webLoginDto.Identifier, ex.Message);
+                return Unauthorized(new WebLoginResponseDto { Success = false, Message = ex.Message });
+            }
+            // Other exceptions handled by global middleware
         }
         #endregion
 
@@ -179,22 +201,30 @@ namespace attendance_monitoring.Controllers
                 return BadRequest(new RefreshResponseDto { Success = false, Message = "Invalid request data" });
             }
 
-            var (tokenResponse, error) = await accountService.RefreshAsync(refreshTokenRequest);
-
-            if (tokenResponse == null)
+            try
             {
-                logger.LogWarning("Token refresh failed: {Error}", error);
-                return Unauthorized(new RefreshResponseDto { Success = false, Message = error ?? "Token refresh failed" });
+                var tokenResponse = await accountService.RefreshAsync(refreshTokenRequest);
+
+                logger.LogInformation("Token refreshed successfully.");
+                return Ok(new RefreshResponseDto
+                {
+                    Success = true,
+                    Message = "Token refreshed successfully",
+                    AccessToken = tokenResponse.AccessToken,
+                    RefreshToken = tokenResponse.RefreshToken
+                });
             }
-
-            logger.LogInformation("Token refreshed successfully.");
-            return Ok(new RefreshResponseDto
+            catch (ValidationException ex)
             {
-                Success = true,
-                Message = "Token refreshed successfully",
-                AccessToken = tokenResponse.AccessToken,
-                RefreshToken = tokenResponse.RefreshToken
-            });
+                logger.LogWarning("Token refresh failed: {Error}", ex.Message);
+                return Unauthorized(new RefreshResponseDto { Success = false, Message = ex.Message });
+            }
+            catch (EntityNotFoundException<string> ex)
+            {
+                logger.LogWarning("Token refresh failed: {Error}", ex.Message);
+                return Unauthorized(new RefreshResponseDto { Success = false, Message = ex.Message });
+            }
+            // Other exceptions handled by global middleware
         }
         #endregion
 
@@ -222,24 +252,32 @@ namespace attendance_monitoring.Controllers
             // Get old access token from cookie
             var oldAccessToken = Request.Cookies.TryGetValue("accessToken", out var accessToken) ? accessToken : null;
 
-            var refreshTokenRequest = new RefreshTokenRequestDto
+            try
             {
-                RefreshToken = refreshToken,
-                OldAccessToken = oldAccessToken
-            };
-            var (tokenResponse, error) = await accountService.RefreshAsync(refreshTokenRequest);
+                var refreshTokenRequest = new RefreshTokenRequestDto
+                {
+                    RefreshToken = refreshToken,
+                    OldAccessToken = oldAccessToken
+                };
+                var tokenResponse = await accountService.RefreshAsync(refreshTokenRequest);
 
-            if (tokenResponse == null)
-            {
-                logger.LogWarning("Token refresh failed: {Error}", error);
-                return Unauthorized(new WebRefreshResponseDto { Success = false, Message = error ?? "Token refresh failed" });
+                // Update HTTP-only cookies with new tokens
+                cookieOptionsService.SetTokenCookies(Response, tokenResponse.AccessToken, tokenResponse.RefreshToken);
+
+                logger.LogInformation("Web tokens refreshed successfully.");
+                return Ok(new WebRefreshResponseDto { Success = true, Message = "Tokens refreshed successfully" });
             }
-
-            // Update HTTP-only cookies with new tokens
-            cookieOptionsService.SetTokenCookies(Response, tokenResponse.AccessToken, tokenResponse.RefreshToken);
-
-            logger.LogInformation("Web tokens refreshed successfully.");
-            return Ok(new WebRefreshResponseDto { Success = true, Message = "Tokens refreshed successfully" });
+            catch (ValidationException ex)
+            {
+                logger.LogWarning("Token refresh failed: {Error}", ex.Message);
+                return Unauthorized(new WebRefreshResponseDto { Success = false, Message = ex.Message });
+            }
+            catch (EntityNotFoundException<string> ex)
+            {
+                logger.LogWarning("Token refresh failed: {Error}", ex.Message);
+                return Unauthorized(new WebRefreshResponseDto { Success = false, Message = ex.Message });
+            }
+            // Other exceptions handled by global middleware
         }
         #endregion
 
@@ -273,16 +311,24 @@ namespace attendance_monitoring.Controllers
                 return Unauthorized(new RevokeResponseDto { Success = false, Message = "User not found" });
             }
 
-            var (response, error) = await accountService.RevokeAsync(revokeTokenRequest, userId);
-
-            if (response == null)
+            try
             {
-                logger.LogWarning("Token revocation failed: {Error}", error);
-                return Unauthorized(new RevokeResponseDto { Success = false, Message = error ?? "Token revocation failed" });
-            }
+                var response = await accountService.RevokeAsync(revokeTokenRequest, userId);
 
-            logger.LogInformation("Refresh token revoked successfully for user {UserId}.", userId);
-            return Ok(new RevokeResponseDto { Success = true, Message = response.Message });
+                logger.LogInformation("Refresh token revoked successfully for user {UserId}.", userId);
+                return Ok(new RevokeResponseDto { Success = true, Message = response.Message });
+            }
+            catch (ValidationException ex)
+            {
+                logger.LogWarning("Token revocation failed: {Error}", ex.Message);
+                return Unauthorized(new RevokeResponseDto { Success = false, Message = ex.Message });
+            }
+            catch (EntityUnauthorizedException ex)
+            {
+                logger.LogWarning("Token revocation failed: {Error}", ex.Message);
+                return Unauthorized(new RevokeResponseDto { Success = false, Message = ex.Message });
+            }
+            // Other exceptions handled by global middleware
         }
         #endregion
 
@@ -315,20 +361,28 @@ namespace attendance_monitoring.Controllers
                 return Unauthorized(new WebRevokeResponseDto { Success = false, Message = "User not found" });
             }
 
-            var revokeTokenRequest = new RevokeTokenRequestDto { RefreshToken = refreshToken };
-            var (response, error) = await accountService.RevokeAsync(revokeTokenRequest, userId);
-
-            if (response == null)
+            try
             {
-                logger.LogWarning("Token revocation failed: {Error}", error);
-                return Unauthorized(new WebRevokeResponseDto { Success = false, Message = error ?? "Token revocation failed" });
+                var revokeTokenRequest = new RevokeTokenRequestDto { RefreshToken = refreshToken };
+                var response = await accountService.RevokeAsync(revokeTokenRequest, userId);
+
+                // Clear cookies after revocation
+                cookieOptionsService.ClearTokenCookies(Response);
+
+                logger.LogInformation("Refresh token revoked successfully for user {UserId}.", userId);
+                return Ok(new WebRevokeResponseDto { Success = true, Message = "Token revoked successfully" });
             }
-
-            // Clear cookies after revocation
-            cookieOptionsService.ClearTokenCookies(Response);
-
-            logger.LogInformation("Refresh token revoked successfully for user {UserId}.", userId);
-            return Ok(new WebRevokeResponseDto { Success = true, Message = "Token revoked successfully" });
+            catch (ValidationException ex)
+            {
+                logger.LogWarning("Token revocation failed: {Error}", ex.Message);
+                return Unauthorized(new WebRevokeResponseDto { Success = false, Message = ex.Message });
+            }
+            catch (EntityUnauthorizedException ex)
+            {
+                logger.LogWarning("Token revocation failed: {Error}", ex.Message);
+                return Unauthorized(new WebRevokeResponseDto { Success = false, Message = ex.Message });
+            }
+            // Other exceptions handled by global middleware
         }
         #endregion
 
@@ -372,16 +426,19 @@ namespace attendance_monitoring.Controllers
             }
 
             logger.LogInformation("Fetching profile for user: {UserId}", userId);
-            var (profile, error) = await accountService.GetUserProfileAsync(userId);
 
-            if (profile == null)
+            try
             {
-                logger.LogWarning("Profile fetch failed for user {UserId}: {Error}", userId, error);
-                return Unauthorized(new { Success = false, Message = error ?? "Failed to fetch profile" });
-            }
+                var profile = await accountService.GetUserProfileAsync(userId);
 
-            logger.LogInformation("Profile fetched successfully for user: {UserId}", userId);
-            return Ok(profile);
+                logger.LogInformation("Profile fetched successfully for user: {UserId}", userId);
+                return Ok(profile);
+            }
+            catch (EntityNotFoundException<string> ex)
+            {
+                logger.LogWarning("Profile fetch failed for user {UserId}: {Error}", userId, ex.Message);
+                return Unauthorized(new { Success = false, Message = ex.Message });
+            }
         }
         #endregion
 
@@ -469,12 +526,14 @@ namespace attendance_monitoring.Controllers
         /// <response code="400">Invalid input data or validation error</response>
         /// <response code="401">User not authenticated</response>
         /// <response code="404">User not found</response>
+        /// <response code="409">Email already in use</response>
         [Authorize]
         [HttpPatch("profile")]
         [ProducesResponseType(typeof(UpdateProfileResponse), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(UpdateProfileResponse), StatusCodes.Status400BadRequest)]
         [ProducesResponseType(typeof(UpdateProfileResponse), StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(typeof(UpdateProfileResponse), StatusCodes.Status404NotFound)]
+        [ProducesResponseType(typeof(UpdateProfileResponse), StatusCodes.Status409Conflict)]
         public async Task<ActionResult<UpdateProfileResponse>> UpdateProfile(Models.DTO.Request.UpdateProfile updateProfileDto)
         {
             logger.LogInformation("Profile update request received.");
@@ -492,28 +551,38 @@ namespace attendance_monitoring.Controllers
                 return Unauthorized(new UpdateProfileResponse { Success = false, Message = "User not authenticated" });
             }
 
-            var (success, profile, errorMessage) = await accountService.UpdateUserProfileAsync(userId, updateProfileDto);
-
-            if (!success)
+            try
             {
-                logger.LogWarning("Profile update failed for user {UserId}: {Error}", userId, errorMessage);
-
-                // Return 404 if user not found, 400 for validation errors
-                if (errorMessage?.Contains("not found", StringComparison.OrdinalIgnoreCase) == true)
+                var profile = await accountService.UpdateUserProfileAsync(userId, updateProfileDto);
+                logger.LogInformation("Profile updated successfully for user {UserId}.", userId);
+                return Ok(new UpdateProfileResponse
                 {
-                    return NotFound(new UpdateProfileResponse { Success = false, Message = errorMessage });
-                }
-
-                return BadRequest(new UpdateProfileResponse { Success = false, Message = errorMessage ?? "Profile update failed" });
+                    Success = true,
+                    Message = "Profile updated successfully",
+                    UpdatedProfile = profile
+                });
             }
-
-            logger.LogInformation("Profile updated successfully for user {UserId}.", userId);
-            return Ok(new UpdateProfileResponse
+            catch (EntityNotFoundException<string> ex)
             {
-                Success = true,
-                Message = "Profile updated successfully",
-                UpdatedProfile = profile
-            });
+                logger.LogWarning("Profile update failed for user {UserId}: {Error}", userId, ex.Message);
+                return NotFound(new UpdateProfileResponse { Success = false, Message = ex.Message });
+            }
+            catch (EntityNotFoundException<int> ex)
+            {
+                logger.LogWarning("Profile update failed for user {UserId}: {Error}", userId, ex.Message);
+                return NotFound(new UpdateProfileResponse { Success = false, Message = ex.Message });
+            }
+            catch (EntityAlreadyExistsException<string> ex)
+            {
+                logger.LogWarning("Profile update failed for user {UserId}: {Error}", userId, ex.Message);
+                return Conflict(new UpdateProfileResponse { Success = false, Message = ex.Message });
+            }
+            catch (ValidationException ex)
+            {
+                logger.LogWarning("Profile update failed for user {UserId}: {Error}", userId, ex.Message);
+                return BadRequest(new UpdateProfileResponse { Success = false, Message = ex.Message });
+            }
+            // Other exceptions handled by global middleware
         }
         #endregion
 
@@ -529,6 +598,7 @@ namespace attendance_monitoring.Controllers
         /// <response code="401">User not authenticated</response>
         /// <response code="403">User is not an admin</response>
         /// <response code="404">Target user not found</response>
+        /// <response code="409">Email already in use</response>
         [Authorize(Roles = "Admin")]
         [HttpPatch("admin/users/{userId}")]
         [ProducesResponseType(typeof(UpdateProfileResponse), StatusCodes.Status200OK)]
@@ -536,6 +606,7 @@ namespace attendance_monitoring.Controllers
         [ProducesResponseType(typeof(UpdateProfileResponse), StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(typeof(UpdateProfileResponse), StatusCodes.Status403Forbidden)]
         [ProducesResponseType(typeof(UpdateProfileResponse), StatusCodes.Status404NotFound)]
+        [ProducesResponseType(typeof(UpdateProfileResponse), StatusCodes.Status409Conflict)]
         public async Task<ActionResult<UpdateProfileResponse>> AdminUpdateUser(string userId, Models.DTO.Request.AdminUpdateUser adminUpdateDto)
         {
             logger.LogInformation("Admin profile update request received for user {TargetUserId}.", userId);
@@ -556,33 +627,43 @@ namespace attendance_monitoring.Controllers
             // Override DTO userId with route parameter to prevent mismatch
             adminUpdateDto.UserId = userId;
 
-            var (success, profile, errorMessage) = await accountService.AdminUpdateUserProfileAsync(adminId, adminUpdateDto);
-
-            if (!success)
+            try
             {
-                logger.LogWarning("Admin profile update failed for user {TargetUserId}: {Error}", userId, errorMessage);
-
-                // Return appropriate status code based on error
-                if (errorMessage?.Contains("not found", StringComparison.OrdinalIgnoreCase) == true)
+                var profile = await accountService.AdminUpdateUserProfileAsync(adminId, adminUpdateDto);
+                logger.LogInformation("Admin {AdminId} successfully updated profile for user {TargetUserId}.", adminId, userId);
+                return Ok(new UpdateProfileResponse
                 {
-                    return NotFound(new UpdateProfileResponse { Success = false, Message = errorMessage });
-                }
-
-                if (errorMessage?.Contains("Unauthorized", StringComparison.OrdinalIgnoreCase) == true)
-                {
-                    return StatusCode(StatusCodes.Status403Forbidden, new UpdateProfileResponse { Success = false, Message = errorMessage });
-                }
-
-                return BadRequest(new UpdateProfileResponse { Success = false, Message = errorMessage ?? "Profile update failed" });
+                    Success = true,
+                    Message = "Profile updated successfully by admin",
+                    UpdatedProfile = profile
+                });
             }
-
-            logger.LogInformation("Admin {AdminId} successfully updated profile for user {TargetUserId}.", adminId, userId);
-            return Ok(new UpdateProfileResponse
+            catch (EntityNotFoundException<string> ex)
             {
-                Success = true,
-                Message = "Profile updated successfully by admin",
-                UpdatedProfile = profile
-            });
+                logger.LogWarning("Admin profile update failed for user {TargetUserId}: {Error}", userId, ex.Message);
+                return NotFound(new UpdateProfileResponse { Success = false, Message = ex.Message });
+            }
+            catch (EntityNotFoundException<int> ex)
+            {
+                logger.LogWarning("Admin profile update failed for user {TargetUserId}: {Error}", userId, ex.Message);
+                return NotFound(new UpdateProfileResponse { Success = false, Message = ex.Message });
+            }
+            catch (EntityUnauthorizedException ex)
+            {
+                logger.LogWarning("Admin profile update failed for user {TargetUserId}: {Error}", userId, ex.Message);
+                return StatusCode(StatusCodes.Status403Forbidden, new UpdateProfileResponse { Success = false, Message = ex.Message });
+            }
+            catch (EntityAlreadyExistsException<string> ex)
+            {
+                logger.LogWarning("Admin profile update failed for user {TargetUserId}: {Error}", userId, ex.Message);
+                return Conflict(new UpdateProfileResponse { Success = false, Message = ex.Message });
+            }
+            catch (ValidationException ex)
+            {
+                logger.LogWarning("Admin profile update failed for user {TargetUserId}: {Error}", userId, ex.Message);
+                return BadRequest(new UpdateProfileResponse { Success = false, Message = ex.Message });
+            }
+            // Other exceptions handled by global middleware
         }
         #endregion
 
@@ -622,28 +703,37 @@ namespace attendance_monitoring.Controllers
                 return Unauthorized(new DeleteUserResponseDto { Success = false, Message = "Admin not authenticated" });
             }
 
-            var (success, message, errorCode) = await accountService.AdminDeleteUserAsync(adminId, userId);
-
-            if (!success)
+            try
             {
-                logger.LogWarning("Admin delete failed for user {TargetUserId}: {Message} (ErrorCode: {ErrorCode})", userId, message, errorCode);
-
-                // Return appropriate status code based on error code
-                return errorCode switch
+                await accountService.AdminDeleteUserAsync(adminId, userId);
+                logger.LogInformation("Admin {AdminId} successfully deleted user {TargetUserId}.", adminId, userId);
+                return Ok(new DeleteUserResponseDto
                 {
-                    "USER_NOT_FOUND" => NotFound(new DeleteUserResponseDto { Success = false, Message = message }),
-                    "UNAUTHORIZED" => StatusCode(StatusCodes.Status403Forbidden, new DeleteUserResponseDto { Success = false, Message = message }),
-                    "SELF_DELETE" => BadRequest(new DeleteUserResponseDto { Success = false, Message = message }),
-                    _ => BadRequest(new DeleteUserResponseDto { Success = false, Message = message })
-                };
+                    Success = true,
+                    Message = "User deleted successfully"
+                });
             }
-
-            logger.LogInformation("Admin {AdminId} successfully deleted user {TargetUserId}.", adminId, userId);
-            return Ok(new DeleteUserResponseDto
+            catch (EntityNotFoundException<string> ex)
             {
-                Success = true,
-                Message = message
-            });
+                logger.LogWarning("Admin delete failed for user {TargetUserId}: {Error}", userId, ex.Message);
+                return NotFound(new DeleteUserResponseDto { Success = false, Message = ex.Message });
+            }
+            catch (EntityUnauthorizedException ex)
+            {
+                logger.LogWarning("Admin delete failed for user {TargetUserId}: {Error}", userId, ex.Message);
+                return StatusCode(StatusCodes.Status403Forbidden, new DeleteUserResponseDto { Success = false, Message = ex.Message });
+            }
+            catch (ValidationException ex)
+            {
+                logger.LogWarning("Admin delete failed for user {TargetUserId}: {Error}", userId, ex.Message);
+                return BadRequest(new DeleteUserResponseDto { Success = false, Message = ex.Message });
+            }
+            catch (EntityServiceException ex)
+            {
+                logger.LogWarning("Admin delete failed for user {TargetUserId}: {Error}", userId, ex.Message);
+                return BadRequest(new DeleteUserResponseDto { Success = false, Message = ex.Message });
+            }
+            // Other exceptions handled by global middleware
         }
         #endregion
 

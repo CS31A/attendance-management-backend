@@ -629,7 +629,7 @@ namespace attendance_monitoring.Services
                         context.Students.Add(studentForExisting);
                         await context.SaveChangesAsync();
                     }
-                    existingStudents.Add(new { Firstname = (string?)studentData.Firstname, Lastname = (string?)studentData.Lastname });
+                    existingStudents.Add(new { Firstname = studentData.Firstname, Lastname = studentData.Lastname });
                     continue;
                 }
 
@@ -692,7 +692,7 @@ namespace attendance_monitoring.Services
                 });
                 
                 // Add to existing students list to prevent duplicates in this batch
-                existingStudents.Add(new { Firstname = (string?)studentFirstname, Lastname = (string?)studentLastname });
+                existingStudents.Add(new { Firstname = studentFirstname, Lastname = studentLastname });
             }
 
             logger.LogInformation("Seeded students.");

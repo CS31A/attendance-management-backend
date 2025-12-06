@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using attendance_monitoring.Classes;
+using attendance_monitoring.Exceptions;
 using attendance_monitoring.Models.DTO.Request;
 using attendance_monitoring.Models.DTO.Response;
 
@@ -16,7 +17,8 @@ public interface IQrCodeService
     /// Retrieves a QR code by its ID.
     /// </summary>
     /// <param name="id">The QR code ID.</param>
-    /// <returns>The QR code response DTO if found; otherwise, null.</returns>
+    /// <returns>The QR code response DTO if found.</returns>
+    /// <exception cref="EntityNotFoundException{Int32}">Thrown when QR code is not found.</exception>
     Task<QrCodeResponseDto?> GetQrCodeByIdAsync(int id);
 
     /// <summary>
@@ -94,8 +96,12 @@ public interface IQrCodeService
     /// </summary>
     /// <param name="createQrCode">The QR code creation data.</param>
     /// <param name="user">The authenticated user making the request.</param>
-    /// <returns>A tuple containing the created QR code response DTO and an optional error message.</returns>
-    Task<(QrCodeResponseDto?, string?)> CreateQrCodeAsync(CreateQrCode createQrCode, ClaimsPrincipal user);
+    /// <returns>The created QR code response DTO.</returns>
+    /// <exception cref="ValidationException">Thrown when validation fails.</exception>
+    /// <exception cref="EntityNotFoundException{Int32}">Thrown when referenced entity is not found.</exception>
+    /// <exception cref="EntityUnauthorizedException">Thrown when user is not authorized.</exception>
+    /// <exception cref="EntityServiceException">Thrown when a service error occurs.</exception>
+    Task<QrCodeResponseDto> CreateQrCodeAsync(CreateQrCode createQrCode, ClaimsPrincipal user);
 
     /// <summary>
     /// Generates a new QR code with automatic hash generation and validation.
@@ -111,24 +117,29 @@ public interface IQrCodeService
     /// <param name="id">The QR code ID to update.</param>
     /// <param name="updateQrCode">The update data.</param>
     /// <param name="user">The authenticated user making the request.</param>
-    /// <returns>A tuple containing the updated QR code response DTO and an optional error message.</returns>
-    Task<(QrCodeResponseDto?, string?)> UpdateQrCodeAsync(int id, UpdateQrCode updateQrCode, ClaimsPrincipal user);
+    /// <returns>The updated QR code response DTO.</returns>
+    /// <exception cref="ValidationException">Thrown when validation fails.</exception>
+    /// <exception cref="EntityNotFoundException{Int32}">Thrown when QR code is not found.</exception>
+    /// <exception cref="EntityUnauthorizedException">Thrown when user is not authorized.</exception>
+    Task<QrCodeResponseDto> UpdateQrCodeAsync(int id, UpdateQrCode updateQrCode, ClaimsPrincipal user);
 
     /// <summary>
     /// Deactivates a QR code by setting its IsActive status to false.
     /// </summary>
     /// <param name="id">The QR code ID to deactivate.</param>
     /// <param name="user">The authenticated user making the request.</param>
-    /// <returns>An error message if the operation failed; otherwise, null for success.</returns>
-    Task<string?> DeactivateQrCodeAsync(int id, ClaimsPrincipal user);
+    /// <exception cref="EntityNotFoundException{Int32}">Thrown when QR code is not found.</exception>
+    /// <exception cref="EntityUnauthorizedException">Thrown when user is not authorized.</exception>
+    Task DeactivateQrCodeAsync(int id, ClaimsPrincipal user);
 
     /// <summary>
     /// Deactivates a QR code by its hash value.
     /// </summary>
     /// <param name="qrHash">The QR code hash to deactivate.</param>
     /// <param name="user">The authenticated user making the request.</param>
-    /// <returns>An error message if the operation failed; otherwise, null for success.</returns>
-    Task<string?> DeactivateQrCodeByHashAsync(string qrHash, ClaimsPrincipal user);
+    /// <exception cref="EntityNotFoundException{String}">Thrown when QR code is not found.</exception>
+    /// <exception cref="EntityUnauthorizedException">Thrown when user is not authorized.</exception>
+    Task DeactivateQrCodeByHashAsync(string qrHash, ClaimsPrincipal user);
 
     /// <summary>
     /// Revokes a QR code with audit trail (deactivates with reason and user info).
@@ -136,8 +147,9 @@ public interface IQrCodeService
     /// <param name="id">The QR code ID to revoke.</param>
     /// <param name="reason">The reason for revocation.</param>
     /// <param name="user">The authenticated user making the request.</param>
-    /// <returns>An error message if the operation failed; otherwise, null for success.</returns>
-    Task<string?> RevokeQrCodeAsync(int id, string? reason, ClaimsPrincipal user);
+    /// <exception cref="EntityNotFoundException{Int32}">Thrown when QR code is not found.</exception>
+    /// <exception cref="EntityUnauthorizedException">Thrown when user is not authorized.</exception>
+    Task RevokeQrCodeAsync(int id, string? reason, ClaimsPrincipal user);
 
     /// <summary>
     /// Revokes a QR code by its hash value with audit trail.
@@ -145,32 +157,38 @@ public interface IQrCodeService
     /// <param name="qrHash">The QR code hash to revoke.</param>
     /// <param name="reason">The reason for revocation.</param>
     /// <param name="user">The authenticated user making the request.</param>
-    /// <returns>An error message if the operation failed; otherwise, null for success.</returns>
-    Task<string?> RevokeQrCodeByHashAsync(string qrHash, string? reason, ClaimsPrincipal user);
+    /// <exception cref="EntityNotFoundException{String}">Thrown when QR code is not found.</exception>
+    /// <exception cref="EntityUnauthorizedException">Thrown when user is not authorized.</exception>
+    Task RevokeQrCodeByHashAsync(string qrHash, string? reason, ClaimsPrincipal user);
 
     /// <summary>
     /// Reactivates a previously revoked QR code.
     /// </summary>
     /// <param name="id">The QR code ID to reactivate.</param>
     /// <param name="user">The authenticated user making the request.</param>
-    /// <returns>An error message if the operation failed; otherwise, null for success.</returns>
-    Task<string?> ReactivateQrCodeAsync(int id, ClaimsPrincipal user);
+    /// <exception cref="EntityNotFoundException{Int32}">Thrown when QR code is not found.</exception>
+    /// <exception cref="EntityUnauthorizedException">Thrown when user is not authorized.</exception>
+    /// <exception cref="ValidationException">Thrown when QR code is already active.</exception>
+    Task ReactivateQrCodeAsync(int id, ClaimsPrincipal user);
 
     /// <summary>
     /// Reactivates a previously revoked QR code by its hash value.
     /// </summary>
     /// <param name="qrHash">The QR code hash to reactivate.</param>
     /// <param name="user">The authenticated user making the request.</param>
-    /// <returns>An error message if the operation failed; otherwise, null for success.</returns>
-    Task<string?> ReactivateQrCodeByHashAsync(string qrHash, ClaimsPrincipal user);
+    /// <exception cref="EntityNotFoundException{String}">Thrown when QR code is not found.</exception>
+    /// <exception cref="EntityUnauthorizedException">Thrown when user is not authorized.</exception>
+    /// <exception cref="ValidationException">Thrown when QR code is already active.</exception>
+    Task ReactivateQrCodeByHashAsync(string qrHash, ClaimsPrincipal user);
 
     /// <summary>
     /// Hard deletes a QR code from the database.
     /// </summary>
     /// <param name="id">The QR code ID to delete.</param>
     /// <param name="user">The authenticated user making the request.</param>
-    /// <returns>An error message if the operation failed; otherwise, null for success.</returns>
-    Task<string?> DeleteQrCodeAsync(int id, ClaimsPrincipal user);
+    /// <exception cref="EntityNotFoundException{Int32}">Thrown when QR code is not found.</exception>
+    /// <exception cref="EntityUnauthorizedException">Thrown when user is not authorized.</exception>
+    Task DeleteQrCodeAsync(int id, ClaimsPrincipal user);
 
     #endregion
 
@@ -229,8 +247,11 @@ public interface IQrCodeService
     /// <param name="id">The QR code ID.</param>
     /// <param name="additionalMinutes">The number of minutes to add to the current expiration time.</param>
     /// <param name="user">The authenticated user making the request.</param>
-    /// <returns>A tuple containing the updated QR code response DTO and an optional error message.</returns>
-    Task<(QrCodeResponseDto?, string?)> ExtendQrCodeExpirationAsync(int id, int additionalMinutes, ClaimsPrincipal user);
+    /// <returns>The updated QR code response DTO.</returns>
+    /// <exception cref="ValidationException">Thrown when validation fails.</exception>
+    /// <exception cref="EntityNotFoundException{Int32}">Thrown when QR code is not found.</exception>
+    /// <exception cref="EntityUnauthorizedException">Thrown when user is not authorized.</exception>
+    Task<QrCodeResponseDto> ExtendQrCodeExpirationAsync(int id, int additionalMinutes, ClaimsPrincipal user);
 
     #endregion
 }

@@ -1,5 +1,6 @@
 using attendance_monitoring.Classes;
 using attendance_monitoring.Exceptions;
+using attendance_monitoring.Helpers;
 using attendance_monitoring.IRepository;
 using attendance_monitoring.IServices;
 using attendance_monitoring.Models.DTO.Request;
@@ -185,7 +186,7 @@ public class SessionService : ISessionService
     /// Updates the actual room for a session.
     /// Only active sessions can have their room updated.
     /// </summary>
-    public async Task<(SessionResponseDto?, string?)> UpdateSessionRoomAsync(int sessionId, UpdateSessionRoom updateRequest)
+    public async Task<SessionResponseDto> UpdateSessionRoomAsync(int sessionId, UpdateSessionRoom updateRequest)
     {
         _logger.LogInformation("Updating room for session ID: {SessionId} to classroom ID: {ClassroomId}",
             sessionId, updateRequest.ActualRoomId);
@@ -213,7 +214,7 @@ public class SessionService : ISessionService
                 };
 
                 _logger.LogWarning("Session room update failed: {ErrorMessage}", errorMessage);
-                return (null, errorMessage);
+                throw new ValidationException(errorMessage);
             }
 
             // Validate that the new classroom exists
@@ -224,7 +225,7 @@ public class SessionService : ISessionService
             {
                 var errorMessage = $"Classroom with ID {updateRequest.ActualRoomId} not found.";
                 _logger.LogWarning("Session room update failed: {ErrorMessage}", errorMessage);
-                return (null, errorMessage);
+                throw new EntityNotFoundException<int>("Classroom", updateRequest.ActualRoomId);
             }
 
             // Update the session's actual room
@@ -239,17 +240,22 @@ public class SessionService : ISessionService
             // Retrieve updated session with navigation properties
             var updatedSession = await _sessionRepository.GetSessionByIdAsync(sessionId).ConfigureAwait(false);
 
-            return (updatedSession != null ? MapToResponseDto(updatedSession) : null, null);
+            return updatedSession != null ? MapToResponseDto(updatedSession)
+                : throw new EntityServiceException("Session", $"UpdateSessionRoom: {sessionId}",
+                    "Failed to retrieve updated session");
         }
         catch (EntityNotFoundException<int>)
+        {
+            throw;
+        }
+        catch (ValidationException)
         {
             throw;
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error occurred while updating room for session ID {SessionId}", sessionId);
-            throw new EntityServiceException("Session", $"UpdateSessionRoom: {sessionId}",
-                "An error occurred while updating the session room", ex);
+            throw ExceptionHandlingHelper.CreateServiceException("Session", "UpdateSessionRoom", ex);
         }
     }
 
@@ -260,7 +266,7 @@ public class SessionService : ISessionService
     /// <summary>
     /// Creates a new session for a schedule.
     /// </summary>
-    public async Task<(SessionResponseDto?, string?)> CreateSessionAsync(CreateSession request)
+    public async Task<SessionResponseDto> CreateSessionAsync(CreateSession request)
     {
         // Use provided date or default to current date
         var effectiveSessionDate = request.SessionDate ?? DateTime.UtcNow.Date;
@@ -276,7 +282,7 @@ public class SessionService : ISessionService
             {
                 var errorMessage = $"Schedule with ID {request.ScheduleId} not found.";
                 _logger.LogWarning("Session creation failed: {ErrorMessage}", errorMessage);
-                return (null, errorMessage);
+                throw new EntityNotFoundException<int>("Schedule", request.ScheduleId);
             }
 
             // Check if a session already exists for this schedule on this date
@@ -287,7 +293,7 @@ public class SessionService : ISessionService
             {
                 var errorMessage = $"A session already exists for schedule ID {request.ScheduleId} on {effectiveSessionDate:yyyy-MM-dd}.";
                 _logger.LogWarning("Session creation failed: {ErrorMessage}", errorMessage);
-                return (null, errorMessage);
+                throw new EntityAlreadyExistsException<int>("Session", "ScheduleId", request.ScheduleId, errorMessage);
             }
 
             // Validate that the session date matches the schedule's day of week
@@ -296,7 +302,7 @@ public class SessionService : ISessionService
             {
                 var errorMessage = $"Session date {effectiveSessionDate:yyyy-MM-dd} ({sessionDayOfWeek}) does not match the schedule's day of week ({schedule.DayOfWeek}).";
                 _logger.LogWarning("Session creation failed: {ErrorMessage}", errorMessage);
-                return (null, errorMessage);
+                throw new ValidationException(errorMessage);
             }
 
             // Validate that the session date is not in the past
@@ -304,7 +310,7 @@ public class SessionService : ISessionService
             {
                 var errorMessage = "Cannot create a session for a past date.";
                 _logger.LogWarning("Session creation failed: {ErrorMessage}", errorMessage);
-                return (null, errorMessage);
+                throw new ValidationException(errorMessage);
             }
 
             // Create the session entity
@@ -325,20 +331,33 @@ public class SessionService : ISessionService
             // Retrieve created session with navigation properties
             var createdSession = await _sessionRepository.GetSessionByIdAsync(session.Id).ConfigureAwait(false);
 
-            return (createdSession != null ? MapToResponseDto(createdSession) : null, null);
+            return createdSession != null ? MapToResponseDto(createdSession)
+                : throw new EntityServiceException("Session", $"CreateSession: ScheduleId {request.ScheduleId}",
+                    "Failed to retrieve created session");
+        }
+        catch (EntityNotFoundException<int>)
+        {
+            throw;
+        }
+        catch (EntityAlreadyExistsException<int>)
+        {
+            throw;
+        }
+        catch (ValidationException)
+        {
+            throw;
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error occurred while creating session for schedule ID {ScheduleId}", request.ScheduleId);
-            throw new EntityServiceException("Session", $"CreateSession: ScheduleId {request.ScheduleId}",
-                "An error occurred while creating the session", ex);
+            throw ExceptionHandlingHelper.CreateServiceException("Session", "CreateSession", ex);
         }
     }
 
     /// <summary>
     /// Starts a session, marking it as active.
     /// </summary>
-    public async Task<(SessionResponseDto?, string?)> StartSessionAsync(int sessionId, StartSession request)
+    public async Task<SessionResponseDto> StartSessionAsync(int sessionId, StartSession request)
     {
         _logger.LogInformation("Starting session ID: {SessionId}", sessionId);
 
@@ -350,7 +369,7 @@ public class SessionService : ISessionService
             {
                 var errorMessage = "User context not found.";
                 _logger.LogWarning("Session start failed: {ErrorMessage}", errorMessage);
-                return (null, errorMessage);
+                throw new EntityUnauthorizedException("Session", "Start", "unknown", errorMessage);
             }
 
             var userId = await _userContextService.GetUserIdAsync(httpContext.User).ConfigureAwait(false);
@@ -358,7 +377,7 @@ public class SessionService : ISessionService
             {
                 var errorMessage = "User ID not found in context.";
                 _logger.LogWarning("Session start failed: {ErrorMessage}", errorMessage);
-                return (null, errorMessage);
+                throw new EntityUnauthorizedException("Session", "Start", "unknown", errorMessage);
             }
 
             // Get instructor by user ID
@@ -367,7 +386,7 @@ public class SessionService : ISessionService
             {
                 var errorMessage = "Instructor profile not found for the current user.";
                 _logger.LogWarning("Session start failed: {ErrorMessage}", errorMessage);
-                return (null, errorMessage);
+                throw new EntityUnauthorizedException("Session", "Start", userId, errorMessage);
             }
 
             // Retrieve the session
@@ -384,7 +403,7 @@ public class SessionService : ISessionService
                 var errorMessage = "You are not authorized to start this session. Only the assigned instructor can start it.";
                 _logger.LogWarning("Session start failed: {ErrorMessage} - Instructor ID: {InstructorId}, Schedule Instructor ID: {ScheduleInstructorId}",
                     errorMessage, instructor.Id, session.Schedule?.InstructorId);
-                return (null, errorMessage);
+                throw new EntityUnauthorizedException("Session", "Start", userId, errorMessage);
             }
 
             // Validate session status - only not_started sessions can be started
@@ -398,7 +417,7 @@ public class SessionService : ISessionService
                     _ => $"Cannot start a session with status: {session.Status}."
                 };
                 _logger.LogWarning("Session start failed: {ErrorMessage}", errorMessage);
-                return (null, errorMessage);
+                throw new ValidationException(errorMessage);
             }
 
             // Validate that the session date is today
@@ -406,7 +425,7 @@ public class SessionService : ISessionService
             {
                 var errorMessage = $"Cannot start session. The session is scheduled for {session.SessionDate:yyyy-MM-dd}, but today is {DateTime.UtcNow:yyyy-MM-dd}.";
                 _logger.LogWarning("Session start failed: {ErrorMessage}", errorMessage);
-                return (null, errorMessage);
+                throw new ValidationException(errorMessage);
             }
 
             // If actualRoomId is provided, validate that the classroom exists
@@ -418,7 +437,7 @@ public class SessionService : ISessionService
                 {
                     var errorMessage = $"Classroom with ID {actualRoomId.Value} not found.";
                     _logger.LogWarning("Session start failed: {ErrorMessage}", errorMessage);
-                    return (null, errorMessage);
+                    throw new EntityNotFoundException<int>("Classroom", actualRoomId.Value);
                 }
             }
 
@@ -447,24 +466,33 @@ public class SessionService : ISessionService
             // Retrieve updated session with navigation properties
             var updatedSession = await _sessionRepository.GetSessionByIdAsync(sessionId).ConfigureAwait(false);
 
-            return (updatedSession != null ? MapToResponseDto(updatedSession) : null, null);
+            return updatedSession != null ? MapToResponseDto(updatedSession)
+                : throw new EntityServiceException("Session", $"StartSession: {sessionId}",
+                    "Failed to retrieve updated session");
         }
         catch (EntityNotFoundException<int>)
+        {
+            throw;
+        }
+        catch (EntityUnauthorizedException)
+        {
+            throw;
+        }
+        catch (ValidationException)
         {
             throw;
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error occurred while starting session ID {SessionId}", sessionId);
-            throw new EntityServiceException("Session", $"StartSession: {sessionId}",
-                "An error occurred while starting the session", ex);
+            throw ExceptionHandlingHelper.CreateServiceException("Session", "StartSession", ex);
         }
     }
 
     /// <summary>
     /// Ends an active session.
     /// </summary>
-    public async Task<(SessionResponseDto?, string?)> EndSessionAsync(int sessionId, EndSession request)
+    public async Task<SessionResponseDto> EndSessionAsync(int sessionId, EndSession request)
     {
         _logger.LogInformation("Ending session ID: {SessionId}", sessionId);
 
@@ -476,7 +504,7 @@ public class SessionService : ISessionService
             {
                 var errorMessage = "User context not found.";
                 _logger.LogWarning("Session end failed: {ErrorMessage}", errorMessage);
-                return (null, errorMessage);
+                throw new EntityUnauthorizedException("Session", "End", "unknown", errorMessage);
             }
 
             var userId = await _userContextService.GetUserIdAsync(httpContext.User).ConfigureAwait(false);
@@ -484,7 +512,7 @@ public class SessionService : ISessionService
             {
                 var errorMessage = "User ID not found in context.";
                 _logger.LogWarning("Session end failed: {ErrorMessage}", errorMessage);
-                return (null, errorMessage);
+                throw new EntityUnauthorizedException("Session", "End", "unknown", errorMessage);
             }
 
             // Get instructor by user ID
@@ -493,7 +521,7 @@ public class SessionService : ISessionService
             {
                 var errorMessage = "Instructor profile not found for the current user.";
                 _logger.LogWarning("Session end failed: {ErrorMessage}", errorMessage);
-                return (null, errorMessage);
+                throw new EntityUnauthorizedException("Session", "End", userId, errorMessage);
             }
 
             // Retrieve the session
@@ -510,7 +538,7 @@ public class SessionService : ISessionService
                 var errorMessage = "You are not authorized to end this session. Only the assigned instructor can end it.";
                 _logger.LogWarning("Session end failed: {ErrorMessage} - Instructor ID: {InstructorId}, Schedule Instructor ID: {ScheduleInstructorId}",
                     errorMessage, instructor.Id, session.Schedule?.InstructorId);
-                return (null, errorMessage);
+                throw new EntityUnauthorizedException("Session", "End", userId, errorMessage);
             }
 
             // Validate session status - only active sessions can be ended
@@ -524,7 +552,7 @@ public class SessionService : ISessionService
                     _ => $"Cannot end a session with status: {session.Status}."
                 };
                 _logger.LogWarning("Session end failed: {ErrorMessage}", errorMessage);
-                return (null, errorMessage);
+                throw new ValidationException(errorMessage);
             }
 
             // Update the session
@@ -553,24 +581,33 @@ public class SessionService : ISessionService
             // Retrieve updated session with navigation properties
             var updatedSession = await _sessionRepository.GetSessionByIdAsync(sessionId).ConfigureAwait(false);
 
-            return (updatedSession != null ? MapToResponseDto(updatedSession) : null, null);
+            return updatedSession != null ? MapToResponseDto(updatedSession)
+                : throw new EntityServiceException("Session", $"EndSession: {sessionId}",
+                    "Failed to retrieve updated session");
         }
         catch (EntityNotFoundException<int>)
+        {
+            throw;
+        }
+        catch (EntityUnauthorizedException)
+        {
+            throw;
+        }
+        catch (ValidationException)
         {
             throw;
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error occurred while ending session ID {SessionId}", sessionId);
-            throw new EntityServiceException("Session", $"EndSession: {sessionId}",
-                "An error occurred while ending the session", ex);
+            throw ExceptionHandlingHelper.CreateServiceException("Session", "EndSession", ex);
         }
     }
 
     /// <summary>
     /// Cancels a session that has not started yet.
     /// </summary>
-    public async Task<(SessionResponseDto?, string?)> CancelSessionAsync(int sessionId, CancelSession request)
+    public async Task<SessionResponseDto> CancelSessionAsync(int sessionId, CancelSession request)
     {
         _logger.LogInformation("Cancelling session ID: {SessionId}", sessionId);
 
@@ -582,7 +619,7 @@ public class SessionService : ISessionService
             {
                 var errorMessage = "User context not found.";
                 _logger.LogWarning("Session cancellation failed: {ErrorMessage}", errorMessage);
-                return (null, errorMessage);
+                throw new EntityUnauthorizedException("Session", "Cancel", "unknown", errorMessage);
             }
 
             var userId = await _userContextService.GetUserIdAsync(httpContext.User).ConfigureAwait(false);
@@ -590,7 +627,7 @@ public class SessionService : ISessionService
             {
                 var errorMessage = "User ID not found in context.";
                 _logger.LogWarning("Session cancellation failed: {ErrorMessage}", errorMessage);
-                return (null, errorMessage);
+                throw new EntityUnauthorizedException("Session", "Cancel", "unknown", errorMessage);
             }
 
             // Get instructor by user ID
@@ -599,7 +636,7 @@ public class SessionService : ISessionService
             {
                 var errorMessage = "Instructor profile not found for the current user.";
                 _logger.LogWarning("Session cancellation failed: {ErrorMessage}", errorMessage);
-                return (null, errorMessage);
+                throw new EntityUnauthorizedException("Session", "Cancel", userId, errorMessage);
             }
 
             // Retrieve the session
@@ -616,7 +653,7 @@ public class SessionService : ISessionService
                 var errorMessage = "You are not authorized to cancel this session. Only the assigned instructor can cancel it.";
                 _logger.LogWarning("Session cancellation failed: {ErrorMessage} - Instructor ID: {InstructorId}, Schedule Instructor ID: {ScheduleInstructorId}",
                     errorMessage, instructor.Id, session.Schedule?.InstructorId);
-                return (null, errorMessage);
+                throw new EntityUnauthorizedException("Session", "Cancel", userId, errorMessage);
             }
 
             // Validate session status - only not_started sessions can be cancelled
@@ -630,7 +667,7 @@ public class SessionService : ISessionService
                     _ => $"Cannot cancel a session with status: {session.Status}."
                 };
                 _logger.LogWarning("Session cancellation failed: {ErrorMessage}", errorMessage);
-                return (null, errorMessage);
+                throw new ValidationException(errorMessage);
             }
 
             // Update the session
@@ -648,17 +685,26 @@ public class SessionService : ISessionService
             // Retrieve updated session with navigation properties
             var updatedSession = await _sessionRepository.GetSessionByIdAsync(sessionId).ConfigureAwait(false);
 
-            return (updatedSession != null ? MapToResponseDto(updatedSession) : null, null);
+            return updatedSession != null ? MapToResponseDto(updatedSession)
+                : throw new EntityServiceException("Session", $"CancelSession: {sessionId}",
+                    "Failed to retrieve updated session");
         }
         catch (EntityNotFoundException<int>)
+        {
+            throw;
+        }
+        catch (EntityUnauthorizedException)
+        {
+            throw;
+        }
+        catch (ValidationException)
         {
             throw;
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error occurred while cancelling session ID {SessionId}", sessionId);
-            throw new EntityServiceException("Session", $"CancelSession: {sessionId}",
-                "An error occurred while cancelling the session", ex);
+            throw ExceptionHandlingHelper.CreateServiceException("Session", "CancelSession", ex);
         }
     }
 

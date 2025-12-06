@@ -5,6 +5,7 @@ using attendance_monitoring.Classes;
 using attendance_monitoring.Constants;
 using attendance_monitoring.Data;
 using attendance_monitoring.Exceptions;
+using attendance_monitoring.Helpers;
 using attendance_monitoring.IRepository;
 using attendance_monitoring.IServices;
 using attendance_monitoring.Models.DTO;
@@ -36,28 +37,37 @@ namespace attendance_monitoring.Services
 
         #region Registration Methods
         #region RegisterAsync
-        public async Task<(IdentityResult, RegisterResponseDto?)> RegisterAsync(RegisterDto registerDto)
+        /// <summary>
+        /// Registers a new user account.
+        /// </summary>
+        /// <param name="registerDto">The registration data.</param>
+        /// <returns>The registration response.</returns>
+        /// <exception cref="ValidationException">Thrown when validation fails.</exception>
+        /// <exception cref="EntityAlreadyExistsException{String}">Thrown when username or email already exists.</exception>
+        /// <exception cref="EntityNotFoundException{Int32}">Thrown when the specified section does not exist.</exception>
+        /// <exception cref="EntityServiceException">Thrown when user creation fails.</exception>
+        public async Task<RegisterResponseDto> RegisterAsync(RegisterDto registerDto)
         {
             logger.LogInformation("Registration attempt for username: {Username}", registerDto.Username);
 
             if (registerDto.Password != registerDto.RepeatedPassword)
             {
-                var result = IdentityResult.Failed(new IdentityError { Code = "PasswordMismatch", Description = "Passwords do not match" });
-                return (result, null);
+                logger.LogWarning("Registration failed for username {Username}: Passwords do not match", registerDto.Username);
+                throw new ValidationException("Passwords do not match");
             }
 
             var existingUser = await accountRepository.FindUserByUsernameAsync(registerDto.Username).ConfigureAwait(false);
             if (existingUser != null)
             {
-                var result = IdentityResult.Failed(new IdentityError { Code = "UsernameExists", Description = "Username already exists" });
-                return (result, null);
+                logger.LogWarning("Registration failed for username {Username}: Username already exists", registerDto.Username);
+                throw new EntityAlreadyExistsException<string>("User", registerDto.Username, "Username already exists");
             }
 
             existingUser = await accountRepository.FindUserByEmailAsync(registerDto.Email).ConfigureAwait(false);
             if (existingUser != null)
             {
-                var result = IdentityResult.Failed(new IdentityError { Code = "EmailExists", Description = "Email already exists" });
-                return (result, null);
+                logger.LogWarning("Registration failed for username {Username}: Email already exists", registerDto.Username);
+                throw new EntityAlreadyExistsException<string>("User", registerDto.Email, "Email already exists");
             }
 
             var validRoles = new[] { "Admin", "Teacher", "Student" };
@@ -73,12 +83,7 @@ namespace attendance_monitoring.Services
             {
                 logger.LogWarning("Registration blocked for username {Username}: SectionId provided for non-student role {Role}",
                     registerDto.Username, roleToAssign);
-                var result = IdentityResult.Failed(new IdentityError
-                {
-                    Code = "InvalidSectionForRole",
-                    Description = $"SectionId should not be provided for {roleToAssign} role"
-                });
-                return (result, null);
+                throw new ValidationException($"SectionId should not be provided for {roleToAssign} role");
             }
 
             // For students, validate that the SectionId exists before attempting user creation
@@ -88,40 +93,28 @@ namespace attendance_monitoring.Services
                 if (!registerDto.SectionId.HasValue)
                 {
                     logger.LogWarning("Student registration failed for username {Username}: SectionId is required for students", registerDto.Username);
-                    var result = IdentityResult.Failed(new IdentityError { Code = "InvalidSection", Description = "SectionId is required for student registration" });
-                    return (result, null);
+                    throw new ValidationException("SectionId is required for student registration");
                 }
 
                 var section = await sectionRepository.GetSectionByIdAsync(registerDto.SectionId.Value).ConfigureAwait(false);
                 if (section == null)
                 {
                     logger.LogWarning("Student registration failed for username {Username}: SectionId {SectionId} does not exist", registerDto.Username, registerDto.SectionId);
-                    var result = IdentityResult.Failed(new IdentityError { Code = "InvalidSection", Description = "The specified section does not exist" });
-                    return (result, null);
+                    throw new EntityNotFoundException<int>("Section", registerDto.SectionId.Value, "The specified section does not exist");
                 }
 
                 // Validate that Firstname is provided for students
                 if (string.IsNullOrWhiteSpace(registerDto.Firstname))
                 {
                     logger.LogWarning("Student registration failed for username {Username}: Firstname is required", registerDto.Username);
-                    var result = IdentityResult.Failed(new IdentityError
-                    {
-                        Code = "RequiredField",
-                        Description = "Firstname is required for student registration"
-                    });
-                    return (result, null);
+                    throw new ValidationException("Firstname is required for student registration");
                 }
 
                 // Validate that Lastname is provided for students
                 if (string.IsNullOrWhiteSpace(registerDto.Lastname))
                 {
                     logger.LogWarning("Student registration failed for username {Username}: Lastname is required", registerDto.Username);
-                    var result = IdentityResult.Failed(new IdentityError
-                    {
-                        Code = "RequiredField",
-                        Description = "Lastname is required for student registration"
-                    });
-                    return (result, null);
+                    throw new ValidationException("Lastname is required for student registration");
                 }
             }
 
@@ -138,22 +131,26 @@ namespace attendance_monitoring.Services
 
             if (!userCreationResult.Success)
             {
-                var errors = userCreationResult.Errors.Select(error => new IdentityError { Description = error }).ToArray();
-                var result = IdentityResult.Failed(errors);
-                logger.LogWarning("User registration failed for username {Username}: {Errors}", registerDto.Username, string.Join(", ", userCreationResult.Errors));
-                return (result, null);
+                var errors = string.Join("; ", userCreationResult.Errors);
+                logger.LogWarning("User registration failed for username {Username}: {Errors}", registerDto.Username, errors);
+                throw new EntityServiceException("User", "registration", errors);
             }
 
             logger.LogInformation("User registered successfully: {Username} with role {Role}", registerDto.Username, roleToAssign);
-            var response = new RegisterResponseDto { Message = $"User registered successfully with {roleToAssign} role" };
-            return (IdentityResult.Success, response);
+            return new RegisterResponseDto { Success = true, Message = $"User registered successfully with {roleToAssign} role" };
         }
         #endregion
         #endregion
 
         #region Login Methods
         #region LoginAsync
-        public async Task<(TokenResponseDto?, string?, string?, string?)> LoginAsync(LoginDto loginDto)
+        /// <summary>
+        /// Authenticates a user and returns access tokens.
+        /// </summary>
+        /// <param name="loginDto">The login credentials.</param>
+        /// <returns>The login result containing tokens and user info.</returns>
+        /// <exception cref="ValidationException">Thrown when credentials are invalid.</exception>
+        public async Task<LoginResult> LoginAsync(LoginDto loginDto)
         {
             logger.LogInformation("Login attempt for identifier: {Identifier}", loginDto.Username);
 
@@ -181,14 +178,14 @@ namespace attendance_monitoring.Services
             if (user == null)
             {
                 logger.LogWarning("Login failed for identifier {Identifier}: Invalid email or username or password", loginDto.Username);
-                return (null, null, null, "Invalid email or username or password");
+                throw new ValidationException("Invalid email or username or password");
             }
 
             var result = await accountRepository.CheckPasswordAsync(user, loginDto.Password).ConfigureAwait(false);
             if (!result.Succeeded)
             {
                 logger.LogWarning("Login failed for user {Username}: Invalid password", user.UserName);
-                return (null, null, null, "Invalid email or username or password");
+                throw new ValidationException("Invalid email or username or password");
             }
 
             var roles = await accountRepository.GetUserRolesAsync(user).ConfigureAwait(false);
@@ -196,41 +193,49 @@ namespace attendance_monitoring.Services
             if (string.IsNullOrEmpty(role))
             {
                 logger.LogWarning("Login failed: User {Username} (ID: {UserId}) has no assigned roles.", user.UserName, user.Id);
-                return (null, null, null, "User has no assigned roles and cannot be authenticated.");
+                throw new ValidationException("User has no assigned roles and cannot be authenticated.");
             }
 
             var accessToken = await GenerateJwtToken(user).ConfigureAwait(false);
             var (_, refreshToken) = await refreshTokenService.CreateRefreshTokenAsync(user.Id).ConfigureAwait(false);
 
             logger.LogInformation("User {Username} logged in successfully", user.UserName);
-            var tokenResponse = new TokenResponseDto
+            return new LoginResult
             {
-                AccessToken = accessToken,
-                RefreshToken = refreshToken
+                TokenResponse = new TokenResponseDto
+                {
+                    AccessToken = accessToken,
+                    RefreshToken = refreshToken
+                },
+                Username = user.UserName ?? string.Empty,
+                Role = role
             };
-            return (tokenResponse, user.UserName, role, null);
         }
         #endregion
         #endregion
 
         #region Token Management Methods
         #region RefreshAsync
-        public async Task<(TokenResponseDto?, string?)> RefreshAsync(RefreshTokenRequestDto refreshTokenRequest)
+        /// <summary>
+        /// Refreshes access tokens using a refresh token.
+        /// </summary>
+        /// <param name="refreshTokenRequest">The refresh token request.</param>
+        /// <returns>The new token response.</returns>
+        /// <exception cref="ValidationException">Thrown when the refresh token is invalid.</exception>
+        /// <exception cref="EntityNotFoundException{String}">Thrown when the user is not found.</exception>
+        /// <exception cref="EntityServiceException">Thrown when token rotation fails.</exception>
+        public async Task<TokenResponseDto> RefreshAsync(RefreshTokenRequestDto refreshTokenRequest)
         {
             logger.LogInformation("Token refresh attempt.");
 
-            var (refreshTokenEntity, validationError) = await refreshTokenService.ValidateRefreshTokenAsync(refreshTokenRequest.RefreshToken).ConfigureAwait(false);
-            if (refreshTokenEntity == null)
-            {
-                logger.LogWarning("Token refresh failed: {ValidationError}", validationError);
-                return (null, validationError);
-            }
+            // ValidateRefreshTokenAsync now throws ValidationException if invalid
+            var refreshTokenEntity = await refreshTokenService.ValidateRefreshTokenAsync(refreshTokenRequest.RefreshToken).ConfigureAwait(false);
 
             var user = await accountRepository.FindUserByIdAsync(refreshTokenEntity.UserId).ConfigureAwait(false);
             if (user == null)
             {
                 logger.LogWarning("Token refresh failed: User not found for token.");
-                return (null, "User not found");
+                throw new EntityNotFoundException<string>("User", refreshTokenEntity.UserId, "User not found");
             }
 
             // Blacklist the old access token if provided
@@ -239,30 +244,33 @@ namespace attendance_monitoring.Services
                 await ValidateAndBlacklistTokenAsync(refreshTokenRequest.OldAccessToken, user.Id, "token refresh");
             }
 
+            // RotateRefreshTokenAsync now throws exceptions on failure
             var (_, newRefreshToken) = await refreshTokenService.RotateRefreshTokenAsync(
                 refreshTokenRequest.RefreshToken,
                 user.Id).ConfigureAwait(false);
 
-            if (string.IsNullOrEmpty(newRefreshToken))
-            {
-                logger.LogError("Token refresh failed for user {UserId}: Failed to rotate refresh token.", user.Id);
-                return (null, "Failed to rotate refresh token");
-            }
-
             var newAccessToken = await GenerateJwtToken(user).ConfigureAwait(false);
 
             logger.LogInformation("Token refreshed successfully for user {UserId}.", user.Id);
-            var tokenResponse = new TokenResponseDto
+            return new TokenResponseDto
             {
                 AccessToken = newAccessToken,
                 RefreshToken = newRefreshToken
             };
-            return (tokenResponse, null);
         }
         #endregion
 
         #region RevokeAsync
-        public async Task<(RevokeResponseDto?, string?)> RevokeAsync(RevokeTokenRequestDto revokeTokenRequest, string userId)
+        /// <summary>
+        /// Revokes a refresh token.
+        /// </summary>
+        /// <param name="revokeTokenRequest">The revoke token request.</param>
+        /// <param name="userId">The user ID performing the revocation.</param>
+        /// <returns>The revoke response.</returns>
+        /// <exception cref="ValidationException">Thrown when the token is invalid or cannot be revoked.</exception>
+        /// <exception cref="EntityUnauthorizedException">Thrown when the token doesn't belong to the user.</exception>
+        /// <exception cref="EntityServiceException">Thrown when revocation fails due to database errors.</exception>
+        public async Task<RevokeResponseDto> RevokeAsync(RevokeTokenRequestDto revokeTokenRequest, string userId)
         {
             logger.LogInformation("Token revocation attempt for user {UserId}.", userId);
 
@@ -274,25 +282,25 @@ namespace attendance_monitoring.Services
                 if (storedToken == null)
                 {
                     logger.LogWarning("Token revocation failed: Refresh token not found.");
-                    return (null, "Refresh token not found");
+                    throw new ValidationException("Refresh token not found");
                 }
 
                 if (storedToken.UserId != userId)
                 {
                     logger.LogWarning("Token revocation failed: Refresh token does not belong to the current user {UserId}.", userId);
-                    return (null, "Refresh token does not belong to the current user");
+                    throw new EntityUnauthorizedException("RefreshToken", "Revoke", userId, "Refresh token does not belong to the current user");
                 }
 
                 if (storedToken.IsRevoked)
                 {
                     logger.LogWarning("Token revocation failed: Refresh token has already been revoked.");
-                    return (null, "Refresh token has already been revoked");
+                    throw new ValidationException("Refresh token has already been revoked");
                 }
 
                 if (storedToken.ExpiresAt < DateTime.UtcNow)
                 {
                     logger.LogWarning("Token revocation failed: Refresh token has expired.");
-                    return (null, "Refresh token has expired");
+                    throw new ValidationException("Refresh token has expired");
                 }
 
                 storedToken.IsRevoked = true;
@@ -300,23 +308,30 @@ namespace attendance_monitoring.Services
                 await accountRepository.SaveChangesAsync().ConfigureAwait(false);
 
                 logger.LogInformation("Refresh token revoked successfully for user {UserId}.", userId);
-                var response = new RevokeResponseDto { Message = "Refresh token revoked successfully" };
-                return (response, null);
+                return new RevokeResponseDto { Message = "Refresh token revoked successfully" };
+            }
+            catch (ValidationException)
+            {
+                throw;
+            }
+            catch (EntityUnauthorizedException)
+            {
+                throw;
             }
             catch (DbUpdateConcurrencyException ex)
             {
                 logger.LogWarning(ex, "Token revocation concurrency issue for user {UserId}", userId);
-                return (null, "Token revocation failed due to a concurrency issue");
+                throw new EntityServiceException("RefreshToken", "Revoke", "Token revocation failed due to a concurrency issue", ex);
             }
             catch (DbUpdateException ex)
             {
                 logger.LogError(ex, "Token revocation database update failed for user {UserId}", userId);
-                return (null, "Token revocation failed due to a database error");
+                throw new EntityServiceException("RefreshToken", "Revoke", "Token revocation failed due to a database error", ex);
             }
             catch (Exception ex)
             {
                 logger.LogError(ex, "Token revocation operation failed for user {UserId}", userId);
-                return (null, "Token revocation failed due to an unexpected error");
+                throw ExceptionHandlingHelper.CreateServiceException("RefreshToken", "Revoke", ex);
             }
         }
         #endregion
@@ -551,7 +566,8 @@ namespace attendance_monitoring.Services
         /// </summary>
         /// <param name="userId">The user ID to retrieve profile for</param>
         /// <returns>User profile DTO with role-specific information</returns>
-        public async Task<(UserProfileResponseDto?, string?)> GetUserProfileAsync(string userId)
+        /// <exception cref="EntityNotFoundException{String}">Thrown when the user is not found.</exception>
+        public async Task<UserProfileResponseDto> GetUserProfileAsync(string userId)
         {
             logger.LogInformation("Fetching user profile for user ID: {UserId}", userId);
 
@@ -560,7 +576,7 @@ namespace attendance_monitoring.Services
             if (user == null)
             {
                 logger.LogWarning("User profile fetch failed: User not found for ID {UserId}", userId);
-                return (null, "User not found");
+                throw new EntityNotFoundException<string>("User", userId, "User not found");
             }
 
             // Get user roles
@@ -634,14 +650,23 @@ namespace attendance_monitoring.Services
             // Admin role: only base Identity information (already populated)
 
             logger.LogInformation("User profile fetched successfully for user ID: {UserId}", userId);
-            return (profile, null);
+            return profile;
         }
         #endregion
         #endregion
 
         #region Profile Update Methods
         #region UpdateUserProfileAsync
-        public async Task<(bool Success, UserProfileResponseDto? Profile, string? ErrorMessage)> UpdateUserProfileAsync(
+        /// <summary>
+        /// Updates a user's own profile information
+        /// </summary>
+        /// <param name="userId">The ID of the user updating their profile</param>
+        /// <param name="updateProfileDto">The profile update data</param>
+        /// <returns>Updated user profile</returns>
+        /// <exception cref="EntityNotFoundException{String}">Thrown when the user is not found</exception>
+        /// <exception cref="ValidationException">Thrown when validation fails</exception>
+        /// <exception cref="EntityAlreadyExistsException{String}">Thrown when email is already in use</exception>
+        public async Task<UserProfileResponseDto> UpdateUserProfileAsync(
             string userId,
             Models.DTO.Request.UpdateProfile updateProfileDto)
         {
@@ -652,7 +677,7 @@ namespace attendance_monitoring.Services
             if (user == null)
             {
                 logger.LogWarning("Profile update failed: User not found for ID {UserId}", userId);
-                return (false, null, "User not found");
+                throw new EntityNotFoundException<string>("User", userId, "User not found");
             }
 
             // Get user role
@@ -673,7 +698,7 @@ namespace attendance_monitoring.Services
                 if (emailExists)
                 {
                     logger.LogWarning("Profile update failed: Email {Email} already exists", updateProfileDto.Email);
-                    return (false, null, "Email address already in use");
+                    throw new EntityAlreadyExistsException<string>("User", "Email", updateProfileDto.Email);
                 }
 
                 // Update email
@@ -688,14 +713,14 @@ namespace attendance_monitoring.Services
                 if (string.IsNullOrEmpty(updateProfileDto.CurrentPassword))
                 {
                     logger.LogWarning("Profile update failed: Current password required for password change");
-                    return (false, null, "Current password is required to change password");
+                    throw new ValidationException("Current password is required to change password");
                 }
 
                 // Validate new password matches confirmation
                 if (updateProfileDto.NewPassword != updateProfileDto.ConfirmNewPassword)
                 {
                     logger.LogWarning("Profile update failed: New password and confirmation do not match");
-                    return (false, null, "New password and confirmation password do not match");
+                    throw new ValidationException("New password and confirmation password do not match");
                 }
 
                 // Verify current password
@@ -703,7 +728,7 @@ namespace attendance_monitoring.Services
                 if (!passwordCheck.Succeeded)
                 {
                     logger.LogWarning("Profile update failed: Invalid current password for user {UserId}", userId);
-                    return (false, null, "Current password is incorrect");
+                    throw new ValidationException("Current password is incorrect");
                 }
 
                 // Change password
@@ -716,7 +741,7 @@ namespace attendance_monitoring.Services
                 {
                     var errors = string.Join("; ", passwordResult.Errors.Select(e => e.Description));
                     logger.LogWarning("Profile update failed: Password change error - {Errors}", errors);
-                    return (false, null, $"Password change failed: {errors}");
+                    throw new ValidationException($"Password change failed: {errors}");
                 }
 
                 logger.LogInformation("Password updated successfully for user {UserId}", userId);
@@ -730,7 +755,7 @@ namespace attendance_monitoring.Services
                 {
                     var errors = string.Join("; ", updateResult.Errors.Select(e => e.Description));
                     logger.LogWarning("Profile update failed: User update error - {Errors}", errors);
-                    return (false, null, $"Profile update failed: {errors}");
+                    throw new ValidationException($"Profile update failed: {errors}");
                 }
             }
             catch (Microsoft.EntityFrameworkCore.DbUpdateException ex) when (ex.InnerException?.Message.Contains("duplicate") == true ||
@@ -738,7 +763,7 @@ namespace attendance_monitoring.Services
                                                                            ex.InnerException?.Message.Contains("IX_AspNetUsers_NormalizedEmail") == true)
             {
                 logger.LogWarning("Profile update failed: Email already exists for another user - {Email}", updateProfileDto.Email);
-                return (false, null, "Email address already in use");
+                throw new EntityAlreadyExistsException<string>("User", "Email", updateProfileDto.Email ?? "");
             }
 
             // Update role-specific profile
@@ -756,7 +781,7 @@ namespace attendance_monitoring.Services
                     {
                         // Firstname was provided but is empty or whitespace
                         logger.LogWarning("Profile update failed: Firstname is required for students");
-                        return (false, null, "Firstname is required and cannot be empty or whitespace");
+                        throw new ValidationException("Firstname is required and cannot be empty or whitespace");
                     }
 
                     if (!string.IsNullOrWhiteSpace(updateProfileDto.Lastname))
@@ -767,7 +792,7 @@ namespace attendance_monitoring.Services
                     {
                         // Lastname was provided but is empty or whitespace
                         logger.LogWarning("Profile update failed: Lastname is required for students");
-                        return (false, null, "Lastname is required and cannot be empty or whitespace");
+                        throw new ValidationException("Lastname is required and cannot be empty or whitespace");
                     }
                     if (updateProfileDto.SectionId.HasValue)
                     {
@@ -776,7 +801,7 @@ namespace attendance_monitoring.Services
                         if (section == null)
                         {
                             logger.LogWarning("Profile update failed: Section {SectionId} does not exist", updateProfileDto.SectionId.Value);
-                            return (false, null, "The specified section does not exist");
+                            throw new EntityNotFoundException<int>("Section", updateProfileDto.SectionId.Value);
                         }
                         student.SectionId = updateProfileDto.SectionId.Value;
                     }
@@ -813,13 +838,23 @@ namespace attendance_monitoring.Services
             logger.LogInformation("Profile updated successfully for user {UserId}", userId);
 
             // Return updated profile
-            var (updatedProfile, _) = await GetUserProfileAsync(userId).ConfigureAwait(false);
-            return (true, updatedProfile, null);
+            return await GetUserProfileAsync(userId).ConfigureAwait(false);
         }
+
         #endregion
 
         #region AdminUpdateUserProfileAsync
-        public async Task<(bool Success, UserProfileResponseDto? Profile, string? ErrorMessage)> AdminUpdateUserProfileAsync(
+        /// <summary>
+        /// Admin updates another user's profile information
+        /// </summary>
+        /// <param name="adminId">The ID of the admin performing the update</param>
+        /// <param name="adminUpdateDto">The profile update data including target user ID</param>
+        /// <returns>Updated user profile</returns>
+        /// <exception cref="EntityNotFoundException{String}">Thrown when admin or target user is not found</exception>
+        /// <exception cref="EntityUnauthorizedException">Thrown when user is not an admin</exception>
+        /// <exception cref="ValidationException">Thrown when validation fails</exception>
+        /// <exception cref="EntityAlreadyExistsException{String}">Thrown when email is already in use</exception>
+        public async Task<UserProfileResponseDto> AdminUpdateUserProfileAsync(
             string adminId,
             Models.DTO.Request.AdminUpdateUser adminUpdateDto)
         {
@@ -830,14 +865,14 @@ namespace attendance_monitoring.Services
             if (admin == null)
             {
                 logger.LogWarning("Admin profile update failed: Admin not found for ID {AdminId}", adminId);
-                return (false, null, "Admin user not found");
+                throw new EntityNotFoundException<string>("Admin", adminId, "Admin user not found");
             }
 
             var adminRoles = await accountRepository.GetUserRolesAsync(admin).ConfigureAwait(false);
             if (!adminRoles.Contains("Admin", StringComparer.OrdinalIgnoreCase))
             {
                 logger.LogWarning("Admin profile update failed: User {AdminId} is not an admin", adminId);
-                return (false, null, "Unauthorized: Admin role required");
+                throw new EntityUnauthorizedException("User", "update", "Admin role required");
             }
 
             // Validate target user exists
@@ -845,7 +880,7 @@ namespace attendance_monitoring.Services
             if (targetUser == null)
             {
                 logger.LogWarning("Admin profile update failed: Target user not found for ID {TargetUserId}", adminUpdateDto.UserId);
-                return (false, null, "Target user not found");
+                throw new EntityNotFoundException<string>("User", adminUpdateDto.UserId, "Target user not found");
             }
 
             // Get target user role
@@ -865,7 +900,7 @@ namespace attendance_monitoring.Services
                 if (emailExists)
                 {
                     logger.LogWarning("Admin profile update failed: Email {Email} already exists", adminUpdateDto.Email);
-                    return (false, null, "Email address already in use");
+                    throw new EntityAlreadyExistsException<string>("User", "Email", adminUpdateDto.Email);
                 }
 
                 // Update email
@@ -883,7 +918,7 @@ namespace attendance_monitoring.Services
                 {
                     var errors = string.Join("; ", resetResult.Errors.Select(e => e.Description));
                     logger.LogWarning("Admin profile update failed: Password reset error - {Errors}", errors);
-                    return (false, null, $"Password reset failed: {errors}");
+                    throw new ValidationException($"Password reset failed: {errors}");
                 }
 
                 logger.LogInformation("Admin {AdminId} reset password for user {TargetUserId}", adminId, adminUpdateDto.UserId);
@@ -897,7 +932,7 @@ namespace attendance_monitoring.Services
                 {
                     var errors = string.Join("; ", updateResult.Errors.Select(e => e.Description));
                     logger.LogWarning("Admin profile update failed: User update error - {Errors}", errors);
-                    return (false, null, $"Profile update failed: {errors}");
+                    throw new ValidationException($"Profile update failed: {errors}");
                 }
             }
             catch (Microsoft.EntityFrameworkCore.DbUpdateException ex) when (ex.InnerException?.Message.Contains("duplicate") == true ||
@@ -905,7 +940,7 @@ namespace attendance_monitoring.Services
                                                                            ex.InnerException?.Message.Contains("IX_AspNetUsers_NormalizedEmail") == true)
             {
                 logger.LogWarning("Admin profile update failed: Email already exists for another user - {Email}", adminUpdateDto.Email);
-                return (false, null, "Email address already in use");
+                throw new EntityAlreadyExistsException<string>("User", "Email", adminUpdateDto.Email ?? "");
             }
 
             // Update role-specific profile
@@ -923,7 +958,7 @@ namespace attendance_monitoring.Services
                     {
                         // Firstname was provided but is empty or whitespace
                         logger.LogWarning("Admin profile update failed: Firstname is required for students");
-                        return (false, null, "Firstname is required and cannot be empty or whitespace");
+                        throw new ValidationException("Firstname is required and cannot be empty or whitespace");
                     }
 
                     if (!string.IsNullOrWhiteSpace(adminUpdateDto.Lastname))
@@ -934,7 +969,7 @@ namespace attendance_monitoring.Services
                     {
                         // Lastname was provided but is empty or whitespace
                         logger.LogWarning("Admin profile update failed: Lastname is required for students");
-                        return (false, null, "Lastname is required and cannot be empty or whitespace");
+                        throw new ValidationException("Lastname is required and cannot be empty or whitespace");
                     }
                     if (adminUpdateDto.SectionId.HasValue)
                     {
@@ -943,7 +978,7 @@ namespace attendance_monitoring.Services
                         if (section == null)
                         {
                             logger.LogWarning("Admin profile update failed: Section {SectionId} does not exist", adminUpdateDto.SectionId.Value);
-                            return (false, null, "The specified section does not exist");
+                            throw new EntityNotFoundException<int>("Section", adminUpdateDto.SectionId.Value);
                         }
                         student.SectionId = adminUpdateDto.SectionId.Value;
                     }
@@ -990,13 +1025,21 @@ namespace attendance_monitoring.Services
             logger.LogInformation("Admin {AdminId} successfully updated profile for user {TargetUserId}", adminId, adminUpdateDto.UserId);
 
             // Return updated profile
-            var (updatedProfile, _) = await GetUserProfileAsync(adminUpdateDto.UserId).ConfigureAwait(false);
-            return (true, updatedProfile, null);
+            return await GetUserProfileAsync(adminUpdateDto.UserId).ConfigureAwait(false);
         }
         #endregion
 
         #region AdminDeleteUserAsync
-        public async Task<(bool Success, string Message, string ErrorCode)> AdminDeleteUserAsync(string adminId, string targetUserId)
+        /// <summary>
+        /// Admin deletes a user (soft delete)
+        /// </summary>
+        /// <param name="adminId">The ID of the admin performing the deletion</param>
+        /// <param name="targetUserId">The ID of the user to delete</param>
+        /// <exception cref="EntityNotFoundException{String}">Thrown when admin or target user is not found</exception>
+        /// <exception cref="EntityUnauthorizedException">Thrown when user is not an admin</exception>
+        /// <exception cref="ValidationException">Thrown when trying to delete self</exception>
+        /// <exception cref="EntityServiceException">Thrown when deletion fails</exception>
+        public async Task AdminDeleteUserAsync(string adminId, string targetUserId)
         {
             logger.LogInformation("Admin delete user attempt by admin {AdminId} for user {TargetUserId}", adminId, targetUserId);
 
@@ -1005,21 +1048,21 @@ namespace attendance_monitoring.Services
             if (admin == null)
             {
                 logger.LogWarning("Admin delete failed: Admin not found for ID {AdminId}", adminId);
-                return (false, "Admin user not found", "ADMIN_NOT_FOUND");
+                throw new EntityNotFoundException<string>("Admin", adminId, "Admin user not found");
             }
 
             var adminRoles = await accountRepository.GetUserRolesAsync(admin).ConfigureAwait(false);
             if (!adminRoles.Contains("Admin", StringComparer.OrdinalIgnoreCase))
             {
                 logger.LogWarning("Admin delete failed: User {AdminId} is not an admin", adminId);
-                return (false, "Unauthorized: Admin role required", "UNAUTHORIZED");
+                throw new EntityUnauthorizedException("User", "delete", "Admin role required");
             }
 
             // Prevent admin from deleting themselves
             if (adminId.Equals(targetUserId, StringComparison.OrdinalIgnoreCase))
             {
                 logger.LogWarning("Admin {AdminId} attempted to delete themselves", adminId);
-                return (false, "Cannot delete your own account", "SELF_DELETE");
+                throw new ValidationException("Cannot delete your own account");
             }
 
             // Validate target user exists
@@ -1027,7 +1070,7 @@ namespace attendance_monitoring.Services
             if (targetUser == null)
             {
                 logger.LogWarning("Admin delete failed: Target user not found for ID {TargetUserId}", targetUserId);
-                return (false, "Target user not found", "USER_NOT_FOUND");
+                throw new EntityNotFoundException<string>("User", targetUserId, "Target user not found");
             }
 
             // Perform soft delete using stored procedure
@@ -1036,9 +1079,7 @@ namespace attendance_monitoring.Services
             if (!success)
             {
                 logger.LogWarning("Admin {AdminId} failed to delete user {TargetUserId}: {Message}", adminId, targetUserId, message);
-                // Determine error code from message
-                var errorCode = message.Contains("not found", StringComparison.OrdinalIgnoreCase) ? "USER_NOT_FOUND" : "DELETE_FAILED";
-                return (false, message, errorCode);
+                throw new EntityServiceException("User", "delete", message);
             }
 
             // Revoke all active refresh tokens for the deleted user
@@ -1067,12 +1108,20 @@ namespace attendance_monitoring.Services
             }
 
             logger.LogInformation("Admin {AdminId} successfully deleted user {TargetUserId}", adminId, targetUserId);
-            return (true, message, "SUCCESS");
         }
         #endregion
 
         #region AdminHardDeleteUserAsync
-        public async Task<(bool Success, string Message, string ErrorCode)> AdminHardDeleteUserAsync(string adminId, string targetUserId)
+        /// <summary>
+        /// Admin permanently deletes a user and all associated data (hard delete)
+        /// </summary>
+        /// <param name="adminId">The ID of the admin performing the deletion</param>
+        /// <param name="targetUserId">The ID of the user to permanently delete</param>
+        /// <exception cref="EntityNotFoundException{String}">Thrown when admin or target user is not found</exception>
+        /// <exception cref="EntityUnauthorizedException">Thrown when user is not an admin</exception>
+        /// <exception cref="ValidationException">Thrown when trying to delete self</exception>
+        /// <exception cref="EntityServiceException">Thrown when deletion fails</exception>
+        public async Task AdminHardDeleteUserAsync(string adminId, string targetUserId)
         {
             logger.LogInformation("Admin hard delete user attempt by admin {AdminId} for user {TargetUserId}", adminId, targetUserId);
 
@@ -1081,21 +1130,21 @@ namespace attendance_monitoring.Services
             if (admin == null)
             {
                 logger.LogWarning("Admin hard delete failed: Admin not found for ID {AdminId}", adminId);
-                return (false, "Admin user not found", "ADMIN_NOT_FOUND");
+                throw new EntityNotFoundException<string>("Admin", adminId, "Admin user not found");
             }
 
             var adminRoles = await accountRepository.GetUserRolesAsync(admin).ConfigureAwait(false);
             if (!adminRoles.Contains("Admin", StringComparer.OrdinalIgnoreCase))
             {
                 logger.LogWarning("Admin hard delete failed: User {AdminId} is not an admin", adminId);
-                return (false, "Unauthorized: Admin role required", "UNAUTHORIZED");
+                throw new EntityUnauthorizedException("User", "hard delete", "Admin role required");
             }
 
             // Prevent admin from deleting themselves
             if (adminId.Equals(targetUserId, StringComparison.OrdinalIgnoreCase))
             {
                 logger.LogWarning("Admin {AdminId} attempted to hard delete themselves", adminId);
-                return (false, "Cannot delete your own account", "SELF_DELETE");
+                throw new ValidationException("Cannot delete your own account");
             }
 
             // Validate target user exists
@@ -1103,7 +1152,7 @@ namespace attendance_monitoring.Services
             if (targetUser == null)
             {
                 logger.LogWarning("Admin hard delete failed: Target user not found for ID {TargetUserId}", targetUserId);
-                return (false, "Target user not found", "USER_NOT_FOUND");
+                throw new EntityNotFoundException<string>("User", targetUserId, "Target user not found");
             }
 
             // Perform hard delete using stored procedure
@@ -1112,18 +1161,24 @@ namespace attendance_monitoring.Services
             if (!success)
             {
                 logger.LogWarning("Admin {AdminId} failed to hard delete user {TargetUserId}: {Message}", adminId, targetUserId, message);
-                // Determine error code from message
-                var errorCode = message.Contains("not found", StringComparison.OrdinalIgnoreCase) ? "USER_NOT_FOUND" : "DELETE_FAILED";
-                return (false, message, errorCode);
+                throw new EntityServiceException("User", "hard delete", message);
             }
 
             logger.LogInformation("Admin {AdminId} successfully hard deleted user {TargetUserId}", adminId, targetUserId);
-            return (true, message, "SUCCESS");
         }
         #endregion
 
         #region AdminRestoreUserAsync
-        public async Task<(bool Success, string Message, string ErrorCode)> AdminRestoreUserAsync(string adminId, string targetUserId)
+        /// <summary>
+        /// Admin restores a soft-deleted user (reactivates archived user)
+        /// </summary>
+        /// <param name="adminId">The ID of the admin performing the restoration</param>
+        /// <param name="targetUserId">The ID of the user to restore</param>
+        /// <exception cref="EntityNotFoundException{String}">Thrown when admin or target user is not found</exception>
+        /// <exception cref="EntityUnauthorizedException">Thrown when user is not an admin</exception>
+        /// <exception cref="ValidationException">Thrown when user is not deleted</exception>
+        /// <exception cref="EntityServiceException">Thrown when restoration fails</exception>
+        public async Task AdminRestoreUserAsync(string adminId, string targetUserId)
         {
             logger.LogInformation("Admin restore user attempt by admin {AdminId} for user {TargetUserId}", adminId, targetUserId);
 
@@ -1132,14 +1187,14 @@ namespace attendance_monitoring.Services
             if (admin == null)
             {
                 logger.LogWarning("Admin restore failed: Admin not found for ID {AdminId}", adminId);
-                return (false, "Admin user not found", "ADMIN_NOT_FOUND");
+                throw new EntityNotFoundException<string>("Admin", adminId, "Admin user not found");
             }
 
             var adminRoles = await accountRepository.GetUserRolesAsync(admin).ConfigureAwait(false);
             if (!adminRoles.Contains("Admin", StringComparer.OrdinalIgnoreCase))
             {
                 logger.LogWarning("Admin restore failed: User {AdminId} is not an admin", adminId);
-                return (false, "Unauthorized: Admin role required", "UNAUTHORIZED");
+                throw new EntityUnauthorizedException("User", "restore", "Admin role required");
             }
 
             // Validate target user exists
@@ -1147,7 +1202,7 @@ namespace attendance_monitoring.Services
             if (targetUser == null)
             {
                 logger.LogWarning("Admin restore failed: Target user not found for ID {TargetUserId}", targetUserId);
-                return (false, "Target user not found", "USER_NOT_FOUND");
+                throw new EntityNotFoundException<string>("User", targetUserId, "Target user not found");
             }
 
             // Perform restore using stored procedure
@@ -1156,15 +1211,16 @@ namespace attendance_monitoring.Services
             if (!success)
             {
                 logger.LogWarning("Admin {AdminId} failed to restore user {TargetUserId}: {Message}", adminId, targetUserId, message);
-                // Determine error code from message
-                var errorCode = message.Contains("not found", StringComparison.OrdinalIgnoreCase) ? "USER_NOT_FOUND" :
-                                message.Contains("not deleted", StringComparison.OrdinalIgnoreCase) ||
-                                message.Contains("already active", StringComparison.OrdinalIgnoreCase) ? "NOT_DELETED" : "RESTORE_FAILED";
-                return (false, message, errorCode);
+                // Use ValidationException for "not deleted" errors, EntityServiceException for other failures
+                if (message.Contains("not deleted", StringComparison.OrdinalIgnoreCase) ||
+                    message.Contains("already active", StringComparison.OrdinalIgnoreCase))
+                {
+                    throw new ValidationException(message);
+                }
+                throw new EntityServiceException("User", "restore", message);
             }
 
             logger.LogInformation("Admin {AdminId} successfully restored user {TargetUserId}", adminId, targetUserId);
-            return (true, message, "SUCCESS");
         }
         #endregion
         #endregion

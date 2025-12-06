@@ -4,6 +4,7 @@ using attendance_monitoring.Controllers;
 using attendance_monitoring.IServices;
 using attendance_monitoring.Models.DTO.Response;
 using attendance_monitoring.Models.DTO.Request;
+using attendance_monitoring.Exceptions;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Http;
 
@@ -328,13 +329,12 @@ public class UserControllerTest
         // Arrange
         var adminId = "admin-user-id";
         var targetUserId = "student-user-id";
-        var expectedMessage = "Student profile deleted successfully";
 
         SetupControllerWithUser(adminId);
 
         _mockAccountService
             .Setup(s => s.AdminDeleteUserAsync(adminId, targetUserId))
-            .ReturnsAsync((true, expectedMessage, "SUCCESS"));
+            .Returns(Task.CompletedTask);
 
         // Act
         var result = await _userController.SoftDeleteUser(targetUserId);
@@ -343,7 +343,7 @@ public class UserControllerTest
         var okResult = Assert.IsType<OkObjectResult>(result.Result);
         var response = Assert.IsType<DeleteUserResponseDto>(okResult.Value);
         Assert.True(response.Success);
-        Assert.Equal(expectedMessage, response.Message);
+        Assert.Equal("User deleted successfully", response.Message);
 
         // Verify service was called once with correct parameters
         _mockAccountService.Verify(s => s.AdminDeleteUserAsync(adminId, targetUserId), Times.Once);
@@ -355,13 +355,12 @@ public class UserControllerTest
         // Arrange
         var adminId = "admin-user-id";
         var targetUserId = "instructor-user-id";
-        var expectedMessage = "Instructor profile deleted successfully";
 
         SetupControllerWithUser(adminId);
 
         _mockAccountService
             .Setup(s => s.AdminDeleteUserAsync(adminId, targetUserId))
-            .ReturnsAsync((true, expectedMessage, "SUCCESS"));
+            .Returns(Task.CompletedTask);
 
         // Act
         var result = await _userController.SoftDeleteUser(targetUserId);
@@ -370,7 +369,7 @@ public class UserControllerTest
         var okResult = Assert.IsType<OkObjectResult>(result.Result);
         var response = Assert.IsType<DeleteUserResponseDto>(okResult.Value);
         Assert.True(response.Success);
-        Assert.Equal(expectedMessage, response.Message);
+        Assert.Equal("User deleted successfully", response.Message);
 
         // Verify service was called once with correct parameters
         _mockAccountService.Verify(s => s.AdminDeleteUserAsync(adminId, targetUserId), Times.Once);
@@ -382,13 +381,12 @@ public class UserControllerTest
         // Arrange
         var adminId = "admin-user-id";
         var targetUserId = "another-admin-user-id";
-        var expectedMessage = "Admin profile deleted successfully";
 
         SetupControllerWithUser(adminId);
 
         _mockAccountService
             .Setup(s => s.AdminDeleteUserAsync(adminId, targetUserId))
-            .ReturnsAsync((true, expectedMessage, "SUCCESS"));
+            .Returns(Task.CompletedTask);
 
         // Act
         var result = await _userController.SoftDeleteUser(targetUserId);
@@ -397,7 +395,7 @@ public class UserControllerTest
         var okResult = Assert.IsType<OkObjectResult>(result.Result);
         var response = Assert.IsType<DeleteUserResponseDto>(okResult.Value);
         Assert.True(response.Success);
-        Assert.Equal(expectedMessage, response.Message);
+        Assert.Equal("User deleted successfully", response.Message);
 
         // Verify service was called once with correct parameters
         _mockAccountService.Verify(s => s.AdminDeleteUserAsync(adminId, targetUserId), Times.Once);
@@ -415,7 +413,7 @@ public class UserControllerTest
 
         _mockAccountService
             .Setup(s => s.AdminDeleteUserAsync(adminId, targetUserId))
-            .ReturnsAsync((false, expectedMessage, "USER_NOT_FOUND"));
+            .ThrowsAsync(new EntityNotFoundException<string>("User", targetUserId, expectedMessage));
 
         // Act
         var result = await _userController.SoftDeleteUser(targetUserId);
@@ -424,7 +422,7 @@ public class UserControllerTest
         var notFoundResult = Assert.IsType<NotFoundObjectResult>(result.Result);
         var response = Assert.IsType<DeleteUserResponseDto>(notFoundResult.Value);
         Assert.False(response.Success);
-        Assert.Equal(expectedMessage, response.Message);
+        Assert.Contains(expectedMessage, response.Message);
 
         // Verify service was called once
         _mockAccountService.Verify(s => s.AdminDeleteUserAsync(adminId, targetUserId), Times.Once);
@@ -441,7 +439,7 @@ public class UserControllerTest
 
         _mockAccountService
             .Setup(s => s.AdminDeleteUserAsync(adminId, adminId))
-            .ReturnsAsync((false, expectedMessage, "SELF_DELETE"));
+            .ThrowsAsync(new ValidationException(expectedMessage));
 
         // Act
         var result = await _userController.SoftDeleteUser(adminId);
@@ -496,7 +494,7 @@ public class UserControllerTest
 
         _mockAccountService
             .Setup(s => s.AdminDeleteUserAsync(adminId, targetUserId))
-            .ReturnsAsync((false, expectedMessage, "UNAUTHORIZED"));
+            .ThrowsAsync(new EntityUnauthorizedException("User", "delete", expectedMessage));
 
         // Act
         var result = await _userController.SoftDeleteUser(targetUserId);
@@ -506,7 +504,6 @@ public class UserControllerTest
         Assert.Equal(StatusCodes.Status403Forbidden, forbiddenResult.StatusCode);
         var response = Assert.IsType<DeleteUserResponseDto>(forbiddenResult.Value);
         Assert.False(response.Success);
-        Assert.Equal(expectedMessage, response.Message);
 
         // Verify service was called once
         _mockAccountService.Verify(s => s.AdminDeleteUserAsync(adminId, targetUserId), Times.Once);
@@ -566,7 +563,7 @@ public class UserControllerTest
 
         _mockAccountService
             .Setup(s => s.AdminDeleteUserAsync(adminId, targetUserId))
-            .ReturnsAsync((false, expectedMessage, "USER_NOT_FOUND"));
+            .ThrowsAsync(new EntityNotFoundException<string>("User", targetUserId, expectedMessage));
 
         // Act
         var result = await _userController.SoftDeleteUser(targetUserId);
@@ -575,7 +572,7 @@ public class UserControllerTest
         var notFoundResult = Assert.IsType<NotFoundObjectResult>(result.Result);
         var response = Assert.IsType<DeleteUserResponseDto>(notFoundResult.Value);
         Assert.False(response.Success);
-        Assert.Equal(expectedMessage, response.Message);
+        Assert.Contains(expectedMessage, response.Message);
 
         // Verify service was called once
         _mockAccountService.Verify(s => s.AdminDeleteUserAsync(adminId, targetUserId), Times.Once);
@@ -591,13 +588,12 @@ public class UserControllerTest
         // Arrange
         var adminId = "admin-user-id";
         var targetUserId = "student-user-id";
-        var expectedMessage = "Student profile permanently deleted and all associated data removed";
 
         SetupControllerWithUser(adminId);
 
         _mockAccountService
             .Setup(s => s.AdminHardDeleteUserAsync(adminId, targetUserId))
-            .ReturnsAsync((true, expectedMessage, "SUCCESS"));
+            .Returns(Task.CompletedTask);
 
         // Act
         var result = await _userController.HardDeleteUser(targetUserId);
@@ -606,7 +602,7 @@ public class UserControllerTest
         var okResult = Assert.IsType<OkObjectResult>(result.Result);
         var response = Assert.IsType<DeleteUserResponseDto>(okResult.Value);
         Assert.True(response.Success);
-        Assert.Equal(expectedMessage, response.Message);
+        Assert.Equal("User permanently deleted successfully", response.Message);
 
         // Verify service was called once with correct parameters
         _mockAccountService.Verify(s => s.AdminHardDeleteUserAsync(adminId, targetUserId), Times.Once);
@@ -618,13 +614,12 @@ public class UserControllerTest
         // Arrange
         var adminId = "admin-user-id";
         var targetUserId = "instructor-user-id";
-        var expectedMessage = "Instructor profile permanently deleted and all associated data removed";
 
         SetupControllerWithUser(adminId);
 
         _mockAccountService
             .Setup(s => s.AdminHardDeleteUserAsync(adminId, targetUserId))
-            .ReturnsAsync((true, expectedMessage, "SUCCESS"));
+            .Returns(Task.CompletedTask);
 
         // Act
         var result = await _userController.HardDeleteUser(targetUserId);
@@ -633,7 +628,7 @@ public class UserControllerTest
         var okResult = Assert.IsType<OkObjectResult>(result.Result);
         var response = Assert.IsType<DeleteUserResponseDto>(okResult.Value);
         Assert.True(response.Success);
-        Assert.Equal(expectedMessage, response.Message);
+        Assert.Equal("User permanently deleted successfully", response.Message);
 
         // Verify service was called once with correct parameters
         _mockAccountService.Verify(s => s.AdminHardDeleteUserAsync(adminId, targetUserId), Times.Once);
@@ -645,13 +640,12 @@ public class UserControllerTest
         // Arrange
         var adminId = "admin-user-id";
         var targetUserId = "another-admin-user-id";
-        var expectedMessage = "Admin profile permanently deleted and all associated data removed";
 
         SetupControllerWithUser(adminId);
 
         _mockAccountService
             .Setup(s => s.AdminHardDeleteUserAsync(adminId, targetUserId))
-            .ReturnsAsync((true, expectedMessage, "SUCCESS"));
+            .Returns(Task.CompletedTask);
 
         // Act
         var result = await _userController.HardDeleteUser(targetUserId);
@@ -660,7 +654,7 @@ public class UserControllerTest
         var okResult = Assert.IsType<OkObjectResult>(result.Result);
         var response = Assert.IsType<DeleteUserResponseDto>(okResult.Value);
         Assert.True(response.Success);
-        Assert.Equal(expectedMessage, response.Message);
+        Assert.Equal("User permanently deleted successfully", response.Message);
 
         // Verify service was called once with correct parameters
         _mockAccountService.Verify(s => s.AdminHardDeleteUserAsync(adminId, targetUserId), Times.Once);
@@ -678,7 +672,7 @@ public class UserControllerTest
 
         _mockAccountService
             .Setup(s => s.AdminHardDeleteUserAsync(adminId, targetUserId))
-            .ReturnsAsync((false, expectedMessage, "USER_NOT_FOUND"));
+            .ThrowsAsync(new EntityNotFoundException<string>("User", targetUserId, expectedMessage));
 
         // Act
         var result = await _userController.HardDeleteUser(targetUserId);
@@ -687,7 +681,7 @@ public class UserControllerTest
         var notFoundResult = Assert.IsType<NotFoundObjectResult>(result.Result);
         var response = Assert.IsType<DeleteUserResponseDto>(notFoundResult.Value);
         Assert.False(response.Success);
-        Assert.Equal(expectedMessage, response.Message);
+        Assert.Contains(expectedMessage, response.Message);
 
         // Verify service was called once
         _mockAccountService.Verify(s => s.AdminHardDeleteUserAsync(adminId, targetUserId), Times.Once);
@@ -704,7 +698,7 @@ public class UserControllerTest
 
         _mockAccountService
             .Setup(s => s.AdminHardDeleteUserAsync(adminId, adminId))
-            .ReturnsAsync((false, expectedMessage, "SELF_DELETE"));
+            .ThrowsAsync(new ValidationException(expectedMessage));
 
         // Act
         var result = await _userController.HardDeleteUser(adminId);
@@ -759,7 +753,7 @@ public class UserControllerTest
 
         _mockAccountService
             .Setup(s => s.AdminHardDeleteUserAsync(adminId, targetUserId))
-            .ReturnsAsync((false, expectedMessage, "UNAUTHORIZED"));
+            .ThrowsAsync(new EntityUnauthorizedException("User", "hard delete", expectedMessage));
 
         // Act
         var result = await _userController.HardDeleteUser(targetUserId);
@@ -769,7 +763,6 @@ public class UserControllerTest
         Assert.Equal(StatusCodes.Status403Forbidden, forbiddenResult.StatusCode);
         var response = Assert.IsType<DeleteUserResponseDto>(forbiddenResult.Value);
         Assert.False(response.Success);
-        Assert.Equal(expectedMessage, response.Message);
 
         // Verify service was called once
         _mockAccountService.Verify(s => s.AdminHardDeleteUserAsync(adminId, targetUserId), Times.Once);
@@ -806,13 +799,12 @@ public class UserControllerTest
         // Arrange
         var adminId = "admin-user-id";
         var targetUserId = "student-user-id";
-        var expectedMessage = "Student profile restored successfully";
 
         SetupControllerWithUser(adminId);
 
         _mockAccountService
             .Setup(s => s.AdminRestoreUserAsync(adminId, targetUserId))
-            .ReturnsAsync((true, expectedMessage, "SUCCESS"));
+            .Returns(Task.CompletedTask);
 
         // Act
         var result = await _userController.RestoreUser(targetUserId);
@@ -821,7 +813,7 @@ public class UserControllerTest
         var okResult = Assert.IsType<OkObjectResult>(result.Result);
         var response = Assert.IsType<DeleteUserResponseDto>(okResult.Value);
         Assert.True(response.Success);
-        Assert.Equal(expectedMessage, response.Message);
+        Assert.Equal("User restored successfully", response.Message);
 
         // Verify service was called once with correct parameters
         _mockAccountService.Verify(s => s.AdminRestoreUserAsync(adminId, targetUserId), Times.Once);
@@ -833,13 +825,12 @@ public class UserControllerTest
         // Arrange
         var adminId = "admin-user-id";
         var targetUserId = "instructor-user-id";
-        var expectedMessage = "Instructor profile restored successfully";
 
         SetupControllerWithUser(adminId);
 
         _mockAccountService
             .Setup(s => s.AdminRestoreUserAsync(adminId, targetUserId))
-            .ReturnsAsync((true, expectedMessage, "SUCCESS"));
+            .Returns(Task.CompletedTask);
 
         // Act
         var result = await _userController.RestoreUser(targetUserId);
@@ -848,7 +839,7 @@ public class UserControllerTest
         var okResult = Assert.IsType<OkObjectResult>(result.Result);
         var response = Assert.IsType<DeleteUserResponseDto>(okResult.Value);
         Assert.True(response.Success);
-        Assert.Equal(expectedMessage, response.Message);
+        Assert.Equal("User restored successfully", response.Message);
 
         // Verify service was called once with correct parameters
         _mockAccountService.Verify(s => s.AdminRestoreUserAsync(adminId, targetUserId), Times.Once);
@@ -860,13 +851,12 @@ public class UserControllerTest
         // Arrange
         var adminId = "admin-user-id";
         var targetUserId = "another-admin-user-id";
-        var expectedMessage = "Admin profile restored successfully";
 
         SetupControllerWithUser(adminId);
 
         _mockAccountService
             .Setup(s => s.AdminRestoreUserAsync(adminId, targetUserId))
-            .ReturnsAsync((true, expectedMessage, "SUCCESS"));
+            .Returns(Task.CompletedTask);
 
         // Act
         var result = await _userController.RestoreUser(targetUserId);
@@ -875,7 +865,7 @@ public class UserControllerTest
         var okResult = Assert.IsType<OkObjectResult>(result.Result);
         var response = Assert.IsType<DeleteUserResponseDto>(okResult.Value);
         Assert.True(response.Success);
-        Assert.Equal(expectedMessage, response.Message);
+        Assert.Equal("User restored successfully", response.Message);
 
         // Verify service was called once with correct parameters
         _mockAccountService.Verify(s => s.AdminRestoreUserAsync(adminId, targetUserId), Times.Once);
@@ -893,7 +883,7 @@ public class UserControllerTest
 
         _mockAccountService
             .Setup(s => s.AdminRestoreUserAsync(adminId, targetUserId))
-            .ReturnsAsync((false, expectedMessage, "USER_NOT_FOUND"));
+            .ThrowsAsync(new EntityNotFoundException<string>("User", targetUserId, expectedMessage));
 
         // Act
         var result = await _userController.RestoreUser(targetUserId);
@@ -902,7 +892,7 @@ public class UserControllerTest
         var notFoundResult = Assert.IsType<NotFoundObjectResult>(result.Result);
         var response = Assert.IsType<DeleteUserResponseDto>(notFoundResult.Value);
         Assert.False(response.Success);
-        Assert.Equal(expectedMessage, response.Message);
+        Assert.Contains(expectedMessage, response.Message);
 
         // Verify service was called once
         _mockAccountService.Verify(s => s.AdminRestoreUserAsync(adminId, targetUserId), Times.Once);
@@ -920,7 +910,7 @@ public class UserControllerTest
 
         _mockAccountService
             .Setup(s => s.AdminRestoreUserAsync(adminId, targetUserId))
-            .ReturnsAsync((false, expectedMessage, "NOT_DELETED"));
+            .ThrowsAsync(new ValidationException(expectedMessage));
 
         // Act
         var result = await _userController.RestoreUser(targetUserId);
@@ -975,7 +965,7 @@ public class UserControllerTest
 
         _mockAccountService
             .Setup(s => s.AdminRestoreUserAsync(adminId, targetUserId))
-            .ReturnsAsync((false, expectedMessage, "UNAUTHORIZED"));
+            .ThrowsAsync(new EntityUnauthorizedException("User", "restore", expectedMessage));
 
         // Act
         var result = await _userController.RestoreUser(targetUserId);
@@ -985,7 +975,6 @@ public class UserControllerTest
         Assert.Equal(StatusCodes.Status403Forbidden, forbiddenResult.StatusCode);
         var response = Assert.IsType<DeleteUserResponseDto>(forbiddenResult.Value);
         Assert.False(response.Success);
-        Assert.Equal(expectedMessage, response.Message);
 
         // Verify service was called once
         _mockAccountService.Verify(s => s.AdminRestoreUserAsync(adminId, targetUserId), Times.Once);
@@ -1045,7 +1034,7 @@ public class UserControllerTest
 
         _mockAccountService
             .Setup(s => s.AdminRestoreUserAsync(adminId, targetUserId))
-            .ReturnsAsync((false, expectedMessage, "NOT_DELETED"));
+            .ThrowsAsync(new ValidationException(expectedMessage));
 
         // Act
         var result = await _userController.RestoreUser(targetUserId);

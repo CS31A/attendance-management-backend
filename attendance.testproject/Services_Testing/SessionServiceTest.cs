@@ -324,11 +324,10 @@ public class SessionServiceTest
             .ReturnsAsync(() => createdSession);
 
         // Act
-        var (result, error) = await _sessionService.CreateSessionAsync(request);
+        var result = await _sessionService.CreateSessionAsync(request);
 
         // Assert
         Assert.NotNull(result);
-        Assert.Null(error);
 
         // Verify schedule ID
         Assert.Equal(request.ScheduleId, result.ScheduleId);
@@ -352,7 +351,7 @@ public class SessionServiceTest
     }
 
     [Fact]
-    public async Task CreateSessionAsync_ReturnsError_WhenScheduleDoesNotExist()
+    public async Task CreateSessionAsync_ThrowsEntityNotFoundException_WhenScheduleDoesNotExist()
     {
         // Arrange
         var request = new CreateSession
@@ -365,17 +364,14 @@ public class SessionServiceTest
             .Setup(r => r.GetScheduleByIdAsync(request.ScheduleId))
             .ReturnsAsync((Schedules?)null);
 
-        // Act
-        var (result, error) = await _sessionService.CreateSessionAsync(request);
-
-        // Assert
-        Assert.Null(result);
-        Assert.NotNull(error);
-        Assert.Contains("not found", error);
+        // Act & Assert
+        var exception = await Assert.ThrowsAsync<EntityNotFoundException<int>>(
+            () => _sessionService.CreateSessionAsync(request));
+        Assert.Contains("not found", exception.Message);
     }
 
     [Fact]
-    public async Task CreateSessionAsync_ReturnsError_WhenSessionAlreadyExists()
+    public async Task CreateSessionAsync_ThrowsEntityAlreadyExistsException_WhenSessionAlreadyExists()
     {
         // Arrange
         var request = new CreateSession
@@ -394,17 +390,14 @@ public class SessionServiceTest
             .Setup(r => r.SessionExistsForScheduleAndDateAsync(request.ScheduleId, request.SessionDate!.Value))
             .ReturnsAsync(true);
 
-        // Act
-        var (result, error) = await _sessionService.CreateSessionAsync(request);
-
-        // Assert
-        Assert.Null(result);
-        Assert.NotNull(error);
-        Assert.Contains("already exists", error);
+        // Act & Assert
+        var exception = await Assert.ThrowsAsync<EntityAlreadyExistsException<int>>(
+            () => _sessionService.CreateSessionAsync(request));
+        Assert.Contains("already exists", exception.Message);
     }
 
     [Fact]
-    public async Task CreateSessionAsync_ReturnsError_WhenDateDoesNotMatchScheduleDayOfWeek()
+    public async Task CreateSessionAsync_ThrowsValidationException_WhenDateDoesNotMatchScheduleDayOfWeek()
     {
         // Arrange
         var mondayDate = new DateTime(2024, 1, 15); // Monday
@@ -424,17 +417,14 @@ public class SessionServiceTest
             .Setup(r => r.SessionExistsForScheduleAndDateAsync(request.ScheduleId, request.SessionDate!.Value))
             .ReturnsAsync(false);
 
-        // Act
-        var (result, error) = await _sessionService.CreateSessionAsync(request);
-
-        // Assert
-        Assert.Null(result);
-        Assert.NotNull(error);
-        Assert.Contains("does not match", error);
+        // Act & Assert
+        var exception = await Assert.ThrowsAsync<ValidationException>(
+            () => _sessionService.CreateSessionAsync(request));
+        Assert.Contains("does not match", exception.Message);
     }
 
     [Fact]
-    public async Task CreateSessionAsync_ReturnsError_WhenDateIsInPast()
+    public async Task CreateSessionAsync_ThrowsValidationException_WhenDateIsInPast()
     {
         // Arrange
         var pastDate = DateTime.UtcNow.Date.AddDays(-1);
@@ -454,13 +444,10 @@ public class SessionServiceTest
             .Setup(r => r.SessionExistsForScheduleAndDateAsync(request.ScheduleId, request.SessionDate!.Value))
             .ReturnsAsync(false);
 
-        // Act
-        var (result, error) = await _sessionService.CreateSessionAsync(request);
-
-        // Assert
-        Assert.Null(result);
-        Assert.NotNull(error);
-        Assert.Contains("past date", error);
+        // Act & Assert
+        var exception = await Assert.ThrowsAsync<ValidationException>(
+            () => _sessionService.CreateSessionAsync(request));
+        Assert.Contains("past date", exception.Message);
     }
 
     #endregion
@@ -519,12 +506,11 @@ public class SessionServiceTest
 
         // Act
         var beforeStart = DateTime.UtcNow;
-        var (result, error) = await _sessionService.StartSessionAsync(sessionId, request);
+        var result = await _sessionService.StartSessionAsync(sessionId, request);
         var afterStart = DateTime.UtcNow;
 
         // Assert
         Assert.NotNull(result);
-        Assert.Null(error);
 
         // Verify status change
         Assert.Equal("active", result.Status);
@@ -555,7 +541,7 @@ public class SessionServiceTest
     }
 
     [Fact]
-    public async Task StartSessionAsync_ReturnsError_WhenUserContextNotFound()
+    public async Task StartSessionAsync_ThrowsEntityUnauthorizedException_WhenUserContextNotFound()
     {
         // Arrange
         int sessionId = 1;
@@ -563,17 +549,14 @@ public class SessionServiceTest
 
         _mockHttpContextAccessor.Setup(x => x.HttpContext).Returns((HttpContext?)null);
 
-        // Act
-        var (result, error) = await _sessionService.StartSessionAsync(sessionId, request);
-
-        // Assert
-        Assert.Null(result);
-        Assert.NotNull(error);
-        Assert.Contains("User context not found", error);
+        // Act & Assert
+        var exception = await Assert.ThrowsAsync<EntityUnauthorizedException>(
+            () => _sessionService.StartSessionAsync(sessionId, request));
+        Assert.Contains("User context not found", exception.Message);
     }
 
     [Fact]
-    public async Task StartSessionAsync_ReturnsError_WhenInstructorNotFound()
+    public async Task StartSessionAsync_ThrowsEntityUnauthorizedException_WhenInstructorNotFound()
     {
         // Arrange
         int sessionId = 1;
@@ -583,17 +566,14 @@ public class SessionServiceTest
             .Setup(r => r.GetInstructorByUserIdAsync("user-123"))
             .ReturnsAsync((Instructor?)null);
 
-        // Act
-        var (result, error) = await _sessionService.StartSessionAsync(sessionId, request);
-
-        // Assert
-        Assert.Null(result);
-        Assert.NotNull(error);
-        Assert.Contains("Instructor profile not found", error);
+        // Act & Assert
+        var exception = await Assert.ThrowsAsync<EntityUnauthorizedException>(
+            () => _sessionService.StartSessionAsync(sessionId, request));
+        Assert.Contains("Instructor profile not found", exception.Message);
     }
 
     [Fact]
-    public async Task StartSessionAsync_ReturnsError_WhenInstructorNotAuthorized()
+    public async Task StartSessionAsync_ThrowsEntityUnauthorizedException_WhenInstructorNotAuthorized()
     {
         // Arrange
         int sessionId = 1;
@@ -612,17 +592,14 @@ public class SessionServiceTest
             .Setup(r => r.GetSessionByIdAsync(sessionId))
             .ReturnsAsync(session);
 
-        // Act
-        var (result, error) = await _sessionService.StartSessionAsync(sessionId, request);
-
-        // Assert
-        Assert.Null(result);
-        Assert.NotNull(error);
-        Assert.Contains("not authorized", error);
+        // Act & Assert
+        var exception = await Assert.ThrowsAsync<EntityUnauthorizedException>(
+            () => _sessionService.StartSessionAsync(sessionId, request));
+        Assert.Contains("not authorized", exception.Message);
     }
 
     [Fact]
-    public async Task StartSessionAsync_ReturnsError_WhenSessionAlreadyActive()
+    public async Task StartSessionAsync_ThrowsValidationException_WhenSessionAlreadyActive()
     {
         // Arrange
         int sessionId = 1;
@@ -641,17 +618,14 @@ public class SessionServiceTest
             .Setup(r => r.GetSessionByIdAsync(sessionId))
             .ReturnsAsync(session);
 
-        // Act
-        var (result, error) = await _sessionService.StartSessionAsync(sessionId, request);
-
-        // Assert
-        Assert.Null(result);
-        Assert.NotNull(error);
-        Assert.Contains("already been started", error);
+        // Act & Assert
+        var exception = await Assert.ThrowsAsync<ValidationException>(
+            () => _sessionService.StartSessionAsync(sessionId, request));
+        Assert.Contains("already been started", exception.Message);
     }
 
     [Fact]
-    public async Task StartSessionAsync_ReturnsError_WhenSessionDateNotToday()
+    public async Task StartSessionAsync_ThrowsValidationException_WhenSessionDateNotToday()
     {
         // Arrange
         int sessionId = 1;
@@ -670,13 +644,10 @@ public class SessionServiceTest
             .Setup(r => r.GetSessionByIdAsync(sessionId))
             .ReturnsAsync(session);
 
-        // Act
-        var (result, error) = await _sessionService.StartSessionAsync(sessionId, request);
-
-        // Assert
-        Assert.Null(result);
-        Assert.NotNull(error);
-        Assert.Contains("scheduled for", error);
+        // Act & Assert
+        var exception = await Assert.ThrowsAsync<ValidationException>(
+            () => _sessionService.StartSessionAsync(sessionId, request));
+        Assert.Contains("scheduled for", exception.Message);
     }
 
     #endregion
@@ -728,12 +699,11 @@ public class SessionServiceTest
 
         // Act
         var beforeEnd = DateTime.UtcNow;
-        var (result, error) = await _sessionService.EndSessionAsync(sessionId, request);
+        var result = await _sessionService.EndSessionAsync(sessionId, request);
         var afterEnd = DateTime.UtcNow;
 
         // Assert
         Assert.NotNull(result);
-        Assert.Null(error);
 
         // Verify status change
         Assert.Equal("ended", result.Status);
@@ -758,7 +728,7 @@ public class SessionServiceTest
     }
 
     [Fact]
-    public async Task EndSessionAsync_ReturnsError_WhenSessionNotActive()
+    public async Task EndSessionAsync_ThrowsValidationException_WhenSessionNotActive()
     {
         // Arrange
         int sessionId = 1;
@@ -777,13 +747,10 @@ public class SessionServiceTest
             .Setup(r => r.GetSessionByIdAsync(sessionId))
             .ReturnsAsync(session);
 
-        // Act
-        var (result, error) = await _sessionService.EndSessionAsync(sessionId, request);
-
-        // Assert
-        Assert.Null(result);
-        Assert.NotNull(error);
-        Assert.Contains("not been started", error);
+        // Act & Assert
+        var exception = await Assert.ThrowsAsync<ValidationException>(
+            () => _sessionService.EndSessionAsync(sessionId, request));
+        Assert.Contains("not been started", exception.Message);
     }
 
     #endregion
@@ -832,11 +799,10 @@ public class SessionServiceTest
             .ReturnsAsync(() => session); // Return the updated session
 
         // Act
-        var (result, error) = await _sessionService.CancelSessionAsync(sessionId, request);
+        var result = await _sessionService.CancelSessionAsync(sessionId, request);
 
         // Assert
         Assert.NotNull(result);
-        Assert.Null(error);
 
         // Verify status change
         Assert.Equal("cancelled", result.Status);
@@ -853,7 +819,7 @@ public class SessionServiceTest
     }
 
     [Fact]
-    public async Task CancelSessionAsync_ReturnsError_WhenSessionActive()
+    public async Task CancelSessionAsync_ThrowsValidationException_WhenSessionActive()
     {
         // Arrange
         int sessionId = 1;
@@ -872,13 +838,10 @@ public class SessionServiceTest
             .Setup(r => r.GetSessionByIdAsync(sessionId))
             .ReturnsAsync(session);
 
-        // Act
-        var (result, error) = await _sessionService.CancelSessionAsync(sessionId, request);
-
-        // Assert
-        Assert.Null(result);
-        Assert.NotNull(error);
-        Assert.Contains("active session", error);
+        // Act & Assert
+        var exception = await Assert.ThrowsAsync<ValidationException>(
+            () => _sessionService.CancelSessionAsync(sessionId, request));
+        Assert.Contains("active session", exception.Message);
     }
 
     #endregion
@@ -921,11 +884,10 @@ public class SessionServiceTest
             .ReturnsAsync(() => session); // Return the updated session
 
         // Act
-        var (result, error) = await _sessionService.UpdateSessionRoomAsync(sessionId, request);
+        var result = await _sessionService.UpdateSessionRoomAsync(sessionId, request);
 
         // Assert
         Assert.NotNull(result);
-        Assert.Null(error);
 
         // Verify room was updated
         Assert.Equal(request.ActualRoomId, result.ActualRoomId);
@@ -940,7 +902,7 @@ public class SessionServiceTest
     }
 
     [Fact]
-    public async Task UpdateSessionRoomAsync_ReturnsError_WhenSessionNotActive()
+    public async Task UpdateSessionRoomAsync_ThrowsValidationException_WhenSessionNotActive()
     {
         // Arrange
         int sessionId = 1;
@@ -952,17 +914,14 @@ public class SessionServiceTest
             .Setup(r => r.GetSessionByIdAsync(sessionId))
             .ReturnsAsync(session);
 
-        // Act
-        var (result, error) = await _sessionService.UpdateSessionRoomAsync(sessionId, request);
-
-        // Assert
-        Assert.Null(result);
-        Assert.NotNull(error);
-        Assert.Contains("not started", error);
+        // Act & Assert
+        var exception = await Assert.ThrowsAsync<ValidationException>(
+            () => _sessionService.UpdateSessionRoomAsync(sessionId, request));
+        Assert.Contains("not started", exception.Message);
     }
 
     [Fact]
-    public async Task UpdateSessionRoomAsync_ReturnsError_WhenClassroomNotFound()
+    public async Task UpdateSessionRoomAsync_ThrowsEntityNotFoundException_WhenClassroomNotFound()
     {
         // Arrange
         int sessionId = 1;
@@ -978,13 +937,10 @@ public class SessionServiceTest
             .Setup(r => r.GetClassroomByIdAsync(request.ActualRoomId))
             .ReturnsAsync((Classroom?)null);
 
-        // Act
-        var (result, error) = await _sessionService.UpdateSessionRoomAsync(sessionId, request);
-
-        // Assert
-        Assert.Null(result);
-        Assert.NotNull(error);
-        Assert.Contains("not found", error);
+        // Act & Assert
+        var exception = await Assert.ThrowsAsync<EntityNotFoundException<int>>(
+            () => _sessionService.UpdateSessionRoomAsync(sessionId, request));
+        Assert.Contains("not found", exception.Message);
     }
 
     #endregion
@@ -1090,10 +1046,9 @@ public class SessionServiceTest
             .ReturnsAsync(createdSession);
 
         // Act
-        var (result, error) = await _sessionService.CreateSessionAsync(request);
+        var result = await _sessionService.CreateSessionAsync(request);
 
         // Assert
-        Assert.Null(error);
         Assert.NotNull(result);
         Assert.Equal(today, result.SessionDate.Date);
         _mockSessionRepository.Verify(r => r.SessionExistsForScheduleAndDateAsync(request.ScheduleId, today), Times.Once);

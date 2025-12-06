@@ -1,5 +1,6 @@
 using attendance_monitoring.Classes;
 using attendance_monitoring.Exceptions;
+using attendance_monitoring.Helpers;
 using attendance_monitoring.IRepository;
 using attendance_monitoring.IServices;
 using attendance_monitoring.Models.DTO.Request;
@@ -89,8 +90,11 @@ public class SubjectService : ISubjectService
     /// Creates a new subject record
     /// </summary>
     /// <param name="createSubject">The subject data to create</param>
-    /// <returns>A tuple containing the created subject (if successful) and an error message (if any)</returns>
-    public async Task<(Subject?, string?)> CreateSubjectAsync(CreateSubject createSubject)
+    /// <returns>The created subject</returns>
+    /// <exception cref="ValidationException">Thrown when validation fails</exception>
+    /// <exception cref="EntityAlreadyExistsException{TKey}">Thrown when subject with code already exists</exception>
+    /// <exception cref="EntityServiceException">Thrown when an error occurs during creation</exception>
+    public async Task<Subject> CreateSubjectAsync(CreateSubject createSubject)
     {
         _logger.LogInformation("Creating new subject with name: {SubjectName}", createSubject.Name);
 
@@ -99,13 +103,13 @@ public class SubjectService : ISubjectService
             if (string.IsNullOrWhiteSpace(createSubject.Name))
             {
                 _logger.LogWarning("Subject creation failed: Subject name is required");
-                return (null, "Subject name is required");
+                throw new ValidationException("Subject name is required");
             }
 
             if (string.IsNullOrWhiteSpace(createSubject.Code))
             {
                 _logger.LogWarning("Subject creation failed: Subject code is required");
-                return (null, "Subject code is required");
+                throw new ValidationException("Subject code is required");
             }
 
             // Check if a subject with the same code already exists (first check)
@@ -113,7 +117,7 @@ public class SubjectService : ISubjectService
             if (existingSubject != null)
             {
                 _logger.LogWarning("Subject creation failed: Subject with code {Code} already exists", createSubject.Code);
-                return (null, $"A subject with code {createSubject.Code} already exists");
+                throw new EntityAlreadyExistsException<string>("Subject", "Code", createSubject.Code);
             }
 
             var subject = new Subject
@@ -130,18 +134,26 @@ public class SubjectService : ISubjectService
                 await _subjectRepository.SaveChangesAsync().ConfigureAwait(false);
 
                 _logger.LogInformation("Successfully created subject with ID: {Id} and name: {SubjectName}", createdSubject.Id, createdSubject.Name);
-                return (createdSubject, null);
+                return createdSubject;
             }
-            catch (DbUpdateException ex) when (IsUniqueConstraintViolation(ex))
+            catch (DbUpdateException ex) when (ExceptionHandlingHelper.IsUniqueConstraintViolation(ex))
             {
                 _logger.LogWarning("Subject creation failed due to unique constraint violation: Subject with code {Code} already exists", createSubject.Code);
-                return (null, $"A subject with code {createSubject.Code} already exists");
+                throw new EntityAlreadyExistsException<string>("Subject", "Code", createSubject.Code);
             }
+        }
+        catch (ValidationException)
+        {
+            throw;
+        }
+        catch (EntityAlreadyExistsException<string>)
+        {
+            throw;
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error occurred while creating subject with name: {SubjectName}", createSubject.Name);
-            throw new EntityServiceException("Subject", "CreateSubject", "An error occurred while creating the subject", ex);
+            throw ExceptionHandlingHelper.CreateServiceException("Subject", "CreateSubject", ex);
         }
     }
 
@@ -154,8 +166,11 @@ public class SubjectService : ISubjectService
     /// </summary>
     /// <param name="id">The ID of the subject to update</param>
     /// <param name="updateSubject">The updated subject data</param>
-    /// <returns>A tuple containing the updated subject (if successful) and an error message (if any)</returns>
-    public async Task<(Subject?, string?)> UpdateSubjectAsync(int id, UpdateSubject updateSubject)
+    /// <returns>The updated subject</returns>
+    /// <exception cref="EntityNotFoundException{TKey}">Thrown when subject not found</exception>
+    /// <exception cref="EntityAlreadyExistsException{TKey}">Thrown when subject with code already exists</exception>
+    /// <exception cref="EntityServiceException">Thrown when an error occurs during update</exception>
+    public async Task<Subject> UpdateSubjectAsync(int id, UpdateSubject updateSubject)
     {
         _logger.LogInformation("Updating subject with ID: {Id}", id);
 
@@ -176,7 +191,7 @@ public class SubjectService : ISubjectService
                 if (duplicateSubject != null && duplicateSubject.Id != id)
                 {
                     _logger.LogWarning("Subject update failed: Subject with code {Code} already exists", updateSubject.Code);
-                    return (null, $"A subject with code {updateSubject.Code} already exists");
+                    throw new EntityAlreadyExistsException<string>("Subject", "Code", updateSubject.Code);
                 }
             }
 
@@ -200,16 +215,16 @@ public class SubjectService : ISubjectService
                 if (rowsAffected == 0)
                 {
                     _logger.LogWarning("Subject update failed: Subject with ID {Id} may have been updated by another process", id);
-                    return (null, "Subject may have been updated by another process. Please try again.");
+                    throw new EntityServiceException("Subject", $"UpdateSubject: {id}", "Subject may have been updated by another process. Please try again.");
                 }
 
                 _logger.LogInformation("Successfully updated subject with ID: {Id}", id);
-                return (updatedSubject, null);
+                return updatedSubject;
             }
-            catch (DbUpdateException ex) when (IsUniqueConstraintViolation(ex))
+            catch (DbUpdateException ex) when (ExceptionHandlingHelper.IsUniqueConstraintViolation(ex))
             {
                 _logger.LogWarning("Subject update failed due to unique constraint violation: Subject with code {Code} already exists", updateSubject.Code);
-                return (null, $"A subject with code {updateSubject.Code} already exists");
+                throw new EntityAlreadyExistsException<string>("Subject", "Code", updateSubject.Code ?? "");
             }
         }
         catch (EntityNotFoundException<int>)
@@ -217,10 +232,18 @@ public class SubjectService : ISubjectService
             // Re-throw the specific exception for the controller to handle
             throw;
         }
+        catch (EntityAlreadyExistsException<string>)
+        {
+            throw;
+        }
+        catch (EntityServiceException)
+        {
+            throw;
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error occurred while updating subject with ID {Id}", id);
-            throw new EntityServiceException("Subject", $"UpdateSubject: {id}", "An error occurred while updating the subject", ex);
+            throw ExceptionHandlingHelper.CreateServiceException("Subject", $"UpdateSubject: {id}", ex);
         }
     }
 
@@ -232,8 +255,9 @@ public class SubjectService : ISubjectService
     /// Deletes a subject by ID
     /// </summary>
     /// <param name="id">The ID of the subject to delete</param>
-    /// <returns>An error message if deletion fails, null otherwise</returns>
-    public async Task<string?> DeleteSubjectAsync(int id)
+    /// <exception cref="EntityNotFoundException{TKey}">Thrown when subject not found</exception>
+    /// <exception cref="EntityServiceException">Thrown when an error occurs during deletion</exception>
+    public async Task DeleteSubjectAsync(int id)
     {
         _logger.LogInformation("Deleting subject with ID: {Id}", id);
 
@@ -250,21 +274,24 @@ public class SubjectService : ISubjectService
             if (!result)
             {
                 _logger.LogError("Subject deletion failed: Failed to delete subject with ID {Id}", id);
-                return "Failed to delete subject";
+                throw new EntityServiceException("Subject", $"DeleteSubject: {id}", "Failed to delete subject");
             }
 
             var rowsAffected = await _subjectRepository.SaveChangesAsync().ConfigureAwait(false);
             if (rowsAffected == 0)
             {
                 _logger.LogWarning("Subject deletion failed: Subject with ID {Id} may have been deleted by another process", id);
-                return "Subject may have been deleted by another process.";
+                throw new EntityServiceException("Subject", $"DeleteSubject: {id}", "Subject may have been deleted by another process.");
             }
             _logger.LogInformation("Successfully deleted subject with ID: {Id}", id);
-            return null;
         }
         catch (EntityNotFoundException<int>)
         {
             // Re-throw the specific exception for the controller to handle
+            throw;
+        }
+        catch (EntityServiceException)
+        {
             throw;
         }
         catch (DbUpdateException ex) when (ex.InnerException?.Message.Contains("REFERENCE constraint") == true
@@ -293,32 +320,8 @@ public class SubjectService : ISubjectService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error occurred while deleting subject with ID {Id}", id);
-            throw new EntityServiceException("Subject", $"DeleteSubject: {id}", "An error occurred while deleting the subject", ex);
+            throw ExceptionHandlingHelper.CreateServiceException("Subject", $"DeleteSubject: {id}", ex);
         }
-    }
-
-    #endregion
-
-    #region Private Helper Methods
-
-    /// <summary>
-    /// Determines if a DbUpdateException is caused by a unique constraint violation
-    /// </summary>
-    /// <param name="ex">The DbUpdateException to check</param>
-    /// <returns>True if the exception is caused by a unique constraint violation</returns>
-    private static bool IsUniqueConstraintViolation(DbUpdateException ex)
-    {
-        // Check for SQL Server unique constraint violations
-        var innerException = ex.InnerException;
-        if (innerException == null) return false;
-        var message = innerException.Message.ToLowerInvariant();
-
-        return message.Contains("unique constraint") ||
-               message.Contains("duplicate key") ||
-               message.Contains("cannot insert duplicate key") ||
-               message.Contains("unique index") ||
-               message.Contains("violation of unique key constraint");
-
     }
 
     #endregion

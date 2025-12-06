@@ -1,5 +1,7 @@
 using attendance_monitoring.Classes;
 using attendance_monitoring.Constants;
+using attendance_monitoring.Exceptions;
+using attendance_monitoring.Helpers;
 using attendance_monitoring.IRepository;
 using attendance_monitoring.IServices;
 using Microsoft.AspNetCore.Identity;
@@ -75,14 +77,20 @@ public class RefreshTokenService(
     #region Token Validation Methods
 
     #region ValidateRefreshTokenAsync
-    public async Task<(RefreshToken?, string?)> ValidateRefreshTokenAsync(string refreshToken)
+    /// <summary>
+    /// Validates a refresh token and returns the stored token entity.
+    /// </summary>
+    /// <param name="refreshToken">The refresh token to validate.</param>
+    /// <returns>The validated refresh token entity.</returns>
+    /// <exception cref="ValidationException">Thrown when the token is invalid, expired, or revoked.</exception>
+    public async Task<RefreshToken> ValidateRefreshTokenAsync(string refreshToken)
     {
         var tokenHash = HashRefreshToken(refreshToken);
         var storedToken = await refreshTokenRepository.GetByTokenHashAsync(tokenHash).ConfigureAwait(false);
 
         if (storedToken == null)
         {
-            return (null, "Invalid refresh token");
+            throw new ValidationException("Invalid refresh token");
         }
 
         if (storedToken.IsRevoked)
@@ -90,15 +98,15 @@ public class RefreshTokenService(
             // Security event - token reuse detected
             // Revoke the entire token family to prevent further abuse
             await RevokeTokenFamilyAsync(storedToken).ConfigureAwait(false);
-            return (null, "Refresh token has been revoked - security violation detected");
+            throw new ValidationException("Refresh token has been revoked - security violation detected");
         }
 
         if (storedToken.ExpiresAt < DateTime.UtcNow)
         {
-            return (null, "Refresh token has expired");
+            throw new ValidationException("Refresh token has expired");
         }
 
-        return (storedToken, null);
+        return storedToken;
     }
     #endregion
 
@@ -128,15 +136,18 @@ public class RefreshTokenService(
         }
     }
 
-    public async Task<(RefreshToken?, string?)> RotateRefreshTokenAsync(string oldRefreshToken, string userId)
+    /// <summary>
+    /// Rotates a refresh token by revoking the old one and creating a new one.
+    /// </summary>
+    /// <param name="oldRefreshToken">The old refresh token to rotate.</param>
+    /// <param name="userId">The user ID that owns the token.</param>
+    /// <returns>A tuple containing the new refresh token entity and the raw token string.</returns>
+    /// <exception cref="ValidationException">Thrown when the old token is invalid.</exception>
+    /// <exception cref="EntityServiceException">Thrown when rotation fails.</exception>
+    public async Task<(RefreshToken, string)> RotateRefreshTokenAsync(string oldRefreshToken, string userId)
     {
-        // Validate the old token first
-        var (storedToken, validationError) = await ValidateRefreshTokenAsync(oldRefreshToken).ConfigureAwait(false);
-
-        if (storedToken == null)
-        {
-            return (null, validationError);
-        }
+        // Validate the old token first - throws ValidationException if invalid
+        var storedToken = await ValidateRefreshTokenAsync(oldRefreshToken).ConfigureAwait(false);
 
         try
         {
@@ -156,10 +167,14 @@ public class RefreshTokenService(
 
             return (newRefreshTokenEntity, newRefreshToken);
         }
+        catch (ValidationException)
+        {
+            throw;
+        }
         catch (Exception ex)
         {
             logger.LogError(ex, "Error occurred while rotating refresh token for user ID: {UserId}", userId);
-            return (null, "An error occurred while rotating the refresh token. Please try again later.");
+            throw ExceptionHandlingHelper.CreateServiceException("RefreshToken", "RotateRefreshToken", ex);
         }
     }
 

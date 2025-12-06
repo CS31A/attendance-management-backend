@@ -285,9 +285,14 @@ public class InstructorController(IInstructorService instructorService, ILogger<
     public async Task<ActionResult<SoftDeleteResponse>> HardDeleteInstructor(int id)
     {
         logger.LogInformation("Hard deleting instructor with ID: {Id}", id);
-        var error = await instructorService.HardDeleteInstructorAsync(id, User);
+        await instructorService.HardDeleteInstructorAsync(id, User);
         logger.LogInformation("Hard delete operation completed for instructor with ID: {Id}", id);
-        return CreateResponse(error ?? string.Empty, "Instructor permanently deleted successfully");
+        return Ok(new SoftDeleteResponse
+        {
+            Success = true,
+            Message = "Instructor permanently deleted successfully"
+        });
+        // Exceptions are handled by global exception handler
     }
 
     // PATCH: api/Instructor/{id}/restore
@@ -296,9 +301,14 @@ public class InstructorController(IInstructorService instructorService, ILogger<
     public async Task<ActionResult<SoftDeleteResponse>> RestoreInstructor(int id)
     {
         logger.LogInformation("Restoring instructor with ID: {Id}", id);
-        var error = await instructorService.RestoreInstructorAsync(id, User);
+        await instructorService.RestoreInstructorAsync(id, User);
         logger.LogInformation("Restore operation completed for instructor with ID: {Id}", id);
-        return CreateResponse(error ?? string.Empty, "Instructor restored successfully");
+        return Ok(new SoftDeleteResponse
+        {
+            Success = true,
+            Message = "Instructor restored successfully"
+        });
+        // Exceptions are handled by global exception handler
     }
 
     #endregion

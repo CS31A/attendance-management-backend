@@ -87,37 +87,12 @@ public class ClassroomController(IClassroomService classroomService, ILogger<Cla
             return BadRequest(ModelState);
         }
 
-        try
-        {
-            var (classroom, error) = await classroomService.CreateClassroomAsync(createClassroom);
+        var classroom = await classroomService.CreateClassroomAsync(createClassroom);
 
-            if (error != null)
-            {
-                logger.LogWarning("Classroom creation failed: {Error}", error);
-                return BadRequest(new { message = error });
-            }
-
-            if (classroom == null)
-            {
-                logger.LogWarning("Classroom creation failed: Unexpected error occurred");
-                return BadRequest(new { message = "An unexpected error occurred while creating the classroom." });
-            }
-
-            logger.LogInformation("Successfully created classroom with ID: {Id} and name: {ClassroomName}", classroom.Id,
-                classroom.Name);
-            return CreatedAtAction(nameof(GetClassroom), new { id = classroom.Id }, classroom);
-        }
-        catch (EntityAlreadyExistsException<string> ex)
-        {
-            logger.LogWarning(ex, "Duplicate classroom detected");
-            return Conflict(new { message = ex.Message });
-        }
-        catch (EntityAlreadyExistsException<int> ex)
-        {
-            logger.LogWarning(ex, "Duplicate classroom detected");
-            return Conflict(new { message = ex.Message });
-        }
-        // No generic catch - global handler will manage unexpected errors
+        logger.LogInformation("Successfully created classroom with ID: {Id} and name: {ClassroomName}", classroom.Id,
+            classroom.Name);
+        return CreatedAtAction(nameof(GetClassroom), new { id = classroom.Id }, classroom);
+        // Exceptions are handled by global exception handler
     }
 
     #endregion
@@ -147,25 +122,11 @@ public class ClassroomController(IClassroomService classroomService, ILogger<Cla
             return BadRequest(ModelState);
         }
 
-        try
-        {
-            var (classroom, error) = await classroomService.UpdateClassroomAsync(id, updateClassroom);
+        var classroom = await classroomService.UpdateClassroomAsync(id, updateClassroom);
 
-            if (error != null)
-            {
-                logger.LogWarning("Classroom update failed for classroom ID {Id}: {Error}", id, error);
-                return BadRequest(new { message = error });
-            }
-
-            logger.LogInformation("Successfully updated classroom with ID: {Id}", id);
-            return Ok(classroom);
-        }
-        catch (EntityNotFoundException<int> ex)
-        {
-            logger.LogWarning(ex, "Classroom update failed: Classroom with ID {Id} not found", id);
-            return NotFound(new { message = ex.Message });
-        }
-        // No generic catch - global handler will manage unexpected errors
+        logger.LogInformation("Successfully updated classroom with ID: {Id}", id);
+        return Ok(classroom);
+        // Exceptions are handled by global exception handler
     }
 
     #endregion
@@ -187,25 +148,12 @@ public class ClassroomController(IClassroomService classroomService, ILogger<Cla
     public async Task<ActionResult> DeleteClassroom(int id)
     {
         logger.LogInformation("Deleting classroom with ID: {Id}", id);
-        try
-        {
-            var error = await classroomService.DeleteClassroomAsync(id);
 
-            if (error == null)
-            {
-                logger.LogInformation("Successfully deleted classroom with ID: {Id}", id);
-                return NoContent();
-            }
+        await classroomService.DeleteClassroomAsync(id);
 
-            logger.LogWarning("Classroom deletion failed for classroom ID {Id}: {Error}", id, error);
-            return BadRequest(new { message = error });
-        }
-        catch (EntityNotFoundException<int> ex)
-        {
-            logger.LogWarning(ex, "Classroom deletion failed: Classroom with ID {Id} not found", id);
-            return NotFound(new { message = ex.Message });
-        }
-        // No generic catch - global handler will manage unexpected errors
+        logger.LogInformation("Successfully deleted classroom with ID: {Id}", id);
+        return NoContent();
+        // Exceptions are handled by global exception handler
     }
 
     #endregion

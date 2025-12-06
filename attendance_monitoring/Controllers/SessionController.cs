@@ -163,24 +163,10 @@ public class SessionController(ISessionService sessionService, ILogger<SessionCo
             return BadRequest(ModelState);
         }
 
-        try
-        {
-            var (session, error) = await sessionService.UpdateSessionRoomAsync(id, updateRequest);
-
-            if (error != null)
-            {
-                logger.LogWarning("Session room update failed for session ID {SessionId}: {Error}", id, error);
-                return BadRequest(new { message = error });
-            }
-
-            logger.LogInformation("Successfully updated room for session ID: {SessionId}", id);
-            return Ok(session);
-        }
-        catch (EntityNotFoundException<int> ex)
-        {
-            logger.LogWarning(ex, "Session room update failed: Session with ID {SessionId} not found", id);
-            return NotFound(new { message = ex.Message });
-        }
+        var session = await sessionService.UpdateSessionRoomAsync(id, updateRequest);
+        logger.LogInformation("Successfully updated room for session ID: {SessionId}", id);
+        return Ok(session);
+        // Exceptions are handled by global exception handler
     }
 
     #endregion
@@ -211,24 +197,10 @@ public class SessionController(ISessionService sessionService, ILogger<SessionCo
             return BadRequest(ModelState);
         }
 
-        try
-        {
-            var (session, error) = await sessionService.CreateSessionAsync(request);
-
-            if (error != null)
-            {
-                logger.LogWarning("Session creation failed: {Error}", error);
-                return BadRequest(new { message = error });
-            }
-
-            logger.LogInformation("Successfully created session ID: {SessionId}", session!.Id);
-            return CreatedAtAction(nameof(GetSession), new { id = session.Id }, session);
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Error occurred while creating session for schedule ID {ScheduleId}", request.ScheduleId);
-            return StatusCode(500, new { message = "An error occurred while creating the session" });
-        }
+        var session = await sessionService.CreateSessionAsync(request);
+        logger.LogInformation("Successfully created session ID: {SessionId}", session.Id);
+        return CreatedAtAction(nameof(GetSession), new { id = session.Id }, session);
+        // Exceptions are handled by global exception handler
     }
 
     /// <summary>
@@ -255,29 +227,10 @@ public class SessionController(ISessionService sessionService, ILogger<SessionCo
             return BadRequest(ModelState);
         }
 
-        try
-        {
-            var (session, error) = await sessionService.StartSessionAsync(id, request);
-
-            if (error != null)
-            {
-                logger.LogWarning("Session start failed for session ID {SessionId}: {Error}", id, error);
-                return BadRequest(new { message = error });
-            }
-
-            logger.LogInformation("Successfully started session ID: {SessionId}", id);
-            return Ok(session);
-        }
-        catch (EntityNotFoundException<int> ex)
-        {
-            logger.LogWarning(ex, "Session start failed: Session with ID {SessionId} not found", id);
-            return NotFound(new { message = ex.Message });
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Error occurred while starting session ID {SessionId}", id);
-            return StatusCode(500, new { message = "An error occurred while starting the session" });
-        }
+        var session = await sessionService.StartSessionAsync(id, request);
+        logger.LogInformation("Successfully started session ID: {SessionId}", id);
+        return Ok(session);
+        // Exceptions are handled by global exception handler
     }
 
     /// <summary>
@@ -304,29 +257,10 @@ public class SessionController(ISessionService sessionService, ILogger<SessionCo
             return BadRequest(ModelState);
         }
 
-        try
-        {
-            var (session, error) = await sessionService.EndSessionAsync(id, request);
-
-            if (error != null)
-            {
-                logger.LogWarning("Session end failed for session ID {SessionId}: {Error}", id, error);
-                return BadRequest(new { message = error });
-            }
-
-            logger.LogInformation("Successfully ended session ID: {SessionId}", id);
-            return Ok(session);
-        }
-        catch (EntityNotFoundException<int> ex)
-        {
-            logger.LogWarning(ex, "Session end failed: Session with ID {SessionId} not found", id);
-            return NotFound(new { message = ex.Message });
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Error occurred while ending session ID {SessionId}", id);
-            return StatusCode(500, new { message = "An error occurred while ending the session" });
-        }
+        var session = await sessionService.EndSessionAsync(id, request);
+        logger.LogInformation("Successfully ended session ID: {SessionId}", id);
+        return Ok(session);
+        // Exceptions are handled by global exception handler
     }
 
     /// <summary>
@@ -353,29 +287,10 @@ public class SessionController(ISessionService sessionService, ILogger<SessionCo
             return BadRequest(ModelState);
         }
 
-        try
-        {
-            var (session, error) = await sessionService.CancelSessionAsync(id, request);
-
-            if (error != null)
-            {
-                logger.LogWarning("Session cancellation failed for session ID {SessionId}: {Error}", id, error);
-                return BadRequest(new { message = error });
-            }
-
-            logger.LogInformation("Successfully cancelled session ID: {SessionId}", id);
-            return Ok(session);
-        }
-        catch (EntityNotFoundException<int> ex)
-        {
-            logger.LogWarning(ex, "Session cancellation failed: Session with ID {SessionId} not found", id);
-            return NotFound(new { message = ex.Message });
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Error occurred while cancelling session ID {SessionId}", id);
-            return StatusCode(500, new { message = "An error occurred while cancelling the session" });
-        }
+        var session = await sessionService.CancelSessionAsync(id, request);
+        logger.LogInformation("Successfully cancelled session ID: {SessionId}", id);
+        return Ok(session);
+        // Exceptions are handled by global exception handler
     }
 
     #endregion

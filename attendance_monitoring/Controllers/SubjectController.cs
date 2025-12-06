@@ -87,37 +87,12 @@ public class SubjectController(ISubjectService subjectService, ILogger<SubjectCo
             return BadRequest(ModelState);
         }
 
-        try
-        {
-            var (subject, error) = await subjectService.CreateSubjectAsync(createSubject);
+        var subject = await subjectService.CreateSubjectAsync(createSubject);
 
-            if (error != null)
-            {
-                logger.LogWarning("Subject creation failed: {Error}", error);
-                return BadRequest(new { message = error });
-            }
-
-            if (subject == null)
-            {
-                logger.LogWarning("Subject creation failed: Unexpected error occurred");
-                return BadRequest(new { message = "An unexpected error occurred while creating the subject." });
-            }
-
-            logger.LogInformation("Successfully created subject with ID: {Id} and name: {SubjectName}", subject.Id,
-                subject.Name);
-            return CreatedAtAction(nameof(GetSubject), new { id = subject.Id }, subject);
-        }
-        catch (EntityAlreadyExistsException<string> ex)
-        {
-            logger.LogWarning(ex, "Duplicate subject detected");
-            return Conflict(new { message = ex.Message });
-        }
-        catch (EntityAlreadyExistsException<int> ex)
-        {
-            logger.LogWarning(ex, "Duplicate subject detected");
-            return Conflict(new { message = ex.Message });
-        }
-        // No generic catch - global handler will manage unexpected errors
+        logger.LogInformation("Successfully created subject with ID: {Id} and name: {SubjectName}", subject.Id,
+            subject.Name);
+        return CreatedAtAction(nameof(GetSubject), new { id = subject.Id }, subject);
+        // Exceptions are handled by global exception handler
     }
 
     #endregion
@@ -147,25 +122,11 @@ public class SubjectController(ISubjectService subjectService, ILogger<SubjectCo
             return BadRequest(ModelState);
         }
 
-        try
-        {
-            var (subject, error) = await subjectService.UpdateSubjectAsync(id, updateSubject);
+        var subject = await subjectService.UpdateSubjectAsync(id, updateSubject);
 
-            if (error != null)
-            {
-                logger.LogWarning("Subject update failed for subject ID {Id}: {Error}", id, error);
-                return BadRequest(new { message = error });
-            }
-
-            logger.LogInformation("Successfully updated subject with ID: {Id}", id);
-            return Ok(subject);
-        }
-        catch (EntityNotFoundException<int> ex)
-        {
-            logger.LogWarning(ex, "Subject update failed: Subject with ID {Id} not found", id);
-            return NotFound(new { message = ex.Message });
-        }
-        // No generic catch - global handler will manage unexpected errors
+        logger.LogInformation("Successfully updated subject with ID: {Id}", id);
+        return Ok(subject);
+        // Exceptions are handled by global exception handler
     }
 
     #endregion
@@ -187,25 +148,12 @@ public class SubjectController(ISubjectService subjectService, ILogger<SubjectCo
     public async Task<ActionResult> DeleteSubject(int id)
     {
         logger.LogInformation("Deleting subject with ID: {Id}", id);
-        try
-        {
-            var error = await subjectService.DeleteSubjectAsync(id);
 
-            if (error == null)
-            {
-                logger.LogInformation("Successfully deleted subject with ID: {Id}", id);
-                return NoContent();
-            }
+        await subjectService.DeleteSubjectAsync(id);
 
-            logger.LogWarning("Subject deletion failed for subject ID {Id}: {Error}", id, error);
-            return BadRequest(new { message = error });
-        }
-        catch (EntityNotFoundException<int> ex)
-        {
-            logger.LogWarning(ex, "Subject deletion failed: Subject with ID {Id} not found", id);
-            return NotFound(new { message = ex.Message });
-        }
-        // No generic catch - global handler will manage unexpected errors
+        logger.LogInformation("Successfully deleted subject with ID: {Id}", id);
+        return NoContent();
+        // Exceptions are handled by global exception handler
     }
 
     #endregion

@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using attendance_monitoring.Classes;
 using attendance_monitoring.Exceptions;
+using attendance_monitoring.Helpers;
 using attendance_monitoring.IRepository;
 using attendance_monitoring.IServices;
 using attendance_monitoring.Models.DTO.Request;
@@ -260,58 +261,69 @@ namespace attendance_monitoring.Services
         /// </summary>
         /// <param name="createInstructor">The instructor data to create</param>
         /// <param name="userPrincipal">The claims principal of the current user</param>
-        /// <returns>A tuple containing the created instructor (if successful) and an error message (if any)</returns>
-        public async Task<(Instructor?, string?)> CreateInstructorAsync(CreateInstructor createInstructor, ClaimsPrincipal userPrincipal)
+        /// <returns>The created instructor</returns>
+        /// <exception cref="ValidationException">Thrown when validation fails</exception>
+        /// <exception cref="EntityAlreadyExistsException{TKey}">Thrown when instructor already exists for user</exception>
+        /// <exception cref="EntityServiceException">Thrown when an error occurs during creation</exception>
+        public async Task<Instructor> CreateInstructorAsync(CreateInstructor createInstructor, ClaimsPrincipal userPrincipal)
         {
             _logger.LogInformation("Creating new instructor with name: {FirstName} {LastName}",
                 createInstructor.Firstname, createInstructor.Lastname);
 
-            // Validate basic user information
-            if (string.IsNullOrWhiteSpace(createInstructor.Firstname) ||
-                string.IsNullOrWhiteSpace(createInstructor.Lastname))
-            {
-                _logger.LogWarning("Instructor creation failed: First name and last name are required");
-                return (null, "First name and last name are required");
-            }
-
-            var userId = await _userContextService.GetUserIdAsync(userPrincipal).ConfigureAwait(false);
-            if (string.IsNullOrEmpty(userId))
-            {
-                _logger.LogWarning("Instructor creation failed: User ID not found in token");
-                return (null, "User ID not found in token");
-            }
-
-            // Check if instructor already exists for this user
-            var existingInstructor = await _instructorRepository.GetInstructorByUserIdAsync(userId).ConfigureAwait(false);
-            if (existingInstructor != null)
-            {
-                _logger.LogWarning("Instructor creation failed: An instructor record already exists for this user");
-                return (null, "An instructor record already exists for this user");
-            }
-
-            var instructor = new Instructor
-            {
-                Firstname = createInstructor.Firstname,
-                Lastname = createInstructor.Lastname,
-                UserId = userId,
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
-            };
-
             try
             {
+                // Validate basic user information
+                if (string.IsNullOrWhiteSpace(createInstructor.Firstname) ||
+                    string.IsNullOrWhiteSpace(createInstructor.Lastname))
+                {
+                    _logger.LogWarning("Instructor creation failed: First name and last name are required");
+                    throw new ValidationException("First name and last name are required");
+                }
+
+                var userId = await _userContextService.GetUserIdAsync(userPrincipal).ConfigureAwait(false);
+                if (string.IsNullOrEmpty(userId))
+                {
+                    _logger.LogWarning("Instructor creation failed: User ID not found in token");
+                    throw new ValidationException("User ID not found in token");
+                }
+
+                // Check if instructor already exists for this user
+                var existingInstructor = await _instructorRepository.GetInstructorByUserIdAsync(userId).ConfigureAwait(false);
+                if (existingInstructor != null)
+                {
+                    _logger.LogWarning("Instructor creation failed: An instructor record already exists for this user");
+                    throw new EntityAlreadyExistsException<string>("Instructor", "UserId", userId);
+                }
+
+                var instructor = new Instructor
+                {
+                    Firstname = createInstructor.Firstname,
+                    Lastname = createInstructor.Lastname,
+                    UserId = userId,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                };
+
                 var createdInstructor = await _instructorRepository.CreateInstructorAsync(instructor).ConfigureAwait(false);
                 await _instructorRepository.SaveChangesAsync().ConfigureAwait(false);
 
                 _logger.LogInformation("Successfully created instructor with ID: {Id} and name: {FirstName} {LastName}",
                     createdInstructor.Id, createdInstructor.Firstname, createdInstructor.Lastname);
-                return (createdInstructor, null);
+                return createdInstructor;
+            }
+            catch (ValidationException)
+            {
+                throw;
+            }
+            catch (EntityAlreadyExistsException<string>)
+            {
+                throw;
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error occurred while creating instructor with name: {FirstName} {LastName}",
                     createInstructor.Firstname, createInstructor.Lastname);
-                return (null, "An error occurred while creating the instructor. Please try again later.");
+                throw ExceptionHandlingHelper.CreateServiceException("Instructor", "CreateInstructor", ex);
             }
         }
         #endregion
@@ -476,56 +488,73 @@ namespace attendance_monitoring.Services
         /// </summary>
         /// <param name="id">The ID of the instructor to delete</param>
         /// <param name="userPrincipal">The claims principal of the current user</param>
-        /// <returns>A message indicating the result of the operation</returns>
-        public async Task<string?> HardDeleteInstructorAsync(int id, ClaimsPrincipal userPrincipal)
+        /// <exception cref="ValidationException">Thrown when validation fails</exception>
+        /// <exception cref="EntityNotFoundException{TKey}">Thrown when instructor not found</exception>
+        /// <exception cref="EntityUnauthorizedException">Thrown when user is not authorized</exception>
+        /// <exception cref="EntityServiceException">Thrown when an error occurs during deletion</exception>
+        public async Task HardDeleteInstructorAsync(int id, ClaimsPrincipal userPrincipal)
         {
             _logger.LogInformation("Hard deleting instructor with ID: {Id}", id);
 
-            if (id <= 0)
-            {
-                _logger.LogWarning("Instructor hard delete failed: Invalid instructor ID {Id}", id);
-                return "Invalid instructor ID";
-            }
-
-            var userId = await _userContextService.GetUserIdAsync(userPrincipal).ConfigureAwait(false);
-            if (string.IsNullOrEmpty(userId))
-            {
-                _logger.LogWarning("Instructor hard delete failed: User ID not found in token");
-                return "User ID not found in token";
-            }
-
-            var existingInstructor = await _instructorRepository.GetInstructorByIdAsync(id).ConfigureAwait(false);
-            if (existingInstructor == null)
-            {
-                _logger.LogWarning("Instructor hard delete failed: Instructor with ID {Id} not found", id);
-                return "Instructor not found";
-            }
-
-            var isAuthorized = await _userContextService.IsAuthorizedAsync(userPrincipal, existingInstructor.UserId, "Admin").ConfigureAwait(false);
-            if (!isAuthorized)
-            {
-                _logger.LogWarning("Instructor hard delete failed: User not authorized to permanently delete instructor with ID {Id}", id);
-                return "You are not authorized to permanently delete this instructor record.";
-            }
-
-            var result = await _instructorRepository.HardDeleteInstructorAsync(id).ConfigureAwait(false);
-            if (!result)
-            {
-                _logger.LogError("Instructor hard delete failed: Failed to hard delete instructor with ID {Id}", id);
-                return "Failed to hard delete instructor";
-            }
-
             try
             {
-                await _instructorRepository.SaveChangesAsync().ConfigureAwait(false);
+                if (id <= 0)
+                {
+                    _logger.LogWarning("Instructor hard delete failed: Invalid instructor ID {Id}", id);
+                    throw new ValidationException("Invalid instructor ID");
+                }
 
+                var userId = await _userContextService.GetUserIdAsync(userPrincipal).ConfigureAwait(false);
+                if (string.IsNullOrEmpty(userId))
+                {
+                    _logger.LogWarning("Instructor hard delete failed: User ID not found in token");
+                    throw new ValidationException("User ID not found in token");
+                }
+
+                var existingInstructor = await _instructorRepository.GetInstructorByIdAsync(id).ConfigureAwait(false);
+                if (existingInstructor == null)
+                {
+                    _logger.LogWarning("Instructor hard delete failed: Instructor with ID {Id} not found", id);
+                    throw new EntityNotFoundException<int>("Instructor", id);
+                }
+
+                var isAuthorized = await _userContextService.IsAuthorizedAsync(userPrincipal, existingInstructor.UserId, "Admin").ConfigureAwait(false);
+                if (!isAuthorized)
+                {
+                    _logger.LogWarning("Instructor hard delete failed: User not authorized to permanently delete instructor with ID {Id}", id);
+                    throw new EntityUnauthorizedException("Instructor", $"Hard delete instructor with ID {id}", "You are not authorized to permanently delete this instructor record.");
+                }
+
+                var result = await _instructorRepository.HardDeleteInstructorAsync(id).ConfigureAwait(false);
+                if (!result)
+                {
+                    _logger.LogError("Instructor hard delete failed: Failed to hard delete instructor with ID {Id}", id);
+                    throw new EntityServiceException("Instructor", $"HardDeleteInstructor: {id}", "Failed to hard delete instructor");
+                }
+
+                await _instructorRepository.SaveChangesAsync().ConfigureAwait(false);
                 _logger.LogInformation("Successfully hard deleted instructor with ID: {Id}", id);
-                return null;
+            }
+            catch (ValidationException)
+            {
+                throw;
+            }
+            catch (EntityNotFoundException<int>)
+            {
+                throw;
+            }
+            catch (EntityUnauthorizedException)
+            {
+                throw;
+            }
+            catch (EntityServiceException)
+            {
+                throw;
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error occurred while hard deleting instructor with ID: {Id}", id);
-                return "An error occurred while hard deleting the instructor. Please try again later.";
+                throw ExceptionHandlingHelper.CreateServiceException("Instructor", $"HardDeleteInstructor: {id}", ex);
             }
         }
         #endregion
@@ -536,63 +565,80 @@ namespace attendance_monitoring.Services
         /// </summary>
         /// <param name="id">The ID of the instructor to restore</param>
         /// <param name="userPrincipal">The claims principal of the current user</param>
-        /// <returns>A message indicating the result of the operation</returns>
-        public async Task<string?> RestoreInstructorAsync(int id, ClaimsPrincipal userPrincipal)
+        /// <exception cref="ValidationException">Thrown when validation fails</exception>
+        /// <exception cref="EntityNotFoundException{TKey}">Thrown when instructor not found</exception>
+        /// <exception cref="EntityUnauthorizedException">Thrown when user is not authorized</exception>
+        /// <exception cref="EntityServiceException">Thrown when an error occurs during restore</exception>
+        public async Task RestoreInstructorAsync(int id, ClaimsPrincipal userPrincipal)
         {
             _logger.LogInformation("Restoring instructor with ID: {Id}", id);
 
-            if (id <= 0)
-            {
-                _logger.LogWarning("Instructor restore failed: Invalid instructor ID {Id}", id);
-                return "Invalid instructor ID";
-            }
-
-            var userId = await _userContextService.GetUserIdAsync(userPrincipal).ConfigureAwait(false);
-            if (string.IsNullOrEmpty(userId))
-            {
-                _logger.LogWarning("Instructor restore failed: User ID not found in token");
-                return "User ID not found in token";
-            }
-
-            var existingInstructor = await _instructorRepository.GetInstructorByIdIgnoreDeleteStatus(id).ConfigureAwait(false);
-            if (existingInstructor == null)
-            {
-                _logger.LogWarning("Instructor restore failed: Instructor with ID {Id} not found", id);
-                return "Instructor not found";
-            }
-
-            var isAuthorized = await _userContextService.IsAuthorizedAsync(userPrincipal, existingInstructor.UserId, "Admin", "Teacher").ConfigureAwait(false);
-            if (!isAuthorized)
-            {
-                _logger.LogWarning("Instructor restore failed: User not authorized to restore instructor with ID {Id}", id);
-                return "You are not authorized to restore this instructor record.";
-            }
-
-            // Check if instructor is actually deleted before restoring
-            if (existingInstructor.DeletedAt == null)
-            {
-                _logger.LogWarning("Instructor restore failed: Instructor with ID {Id} is not deleted", id);
-                return "Instructor is not deleted";
-            }
-
-            var result = await _instructorRepository.RestoreInstructorAsync(id).ConfigureAwait(false);
-            if (!result)
-            {
-                _logger.LogError("Instructor restore failed: Failed to restore instructor with ID {Id}", id);
-                return "Failed to restore instructor";
-            }
-
             try
             {
-                await _instructorRepository.SaveChangesAsync().ConfigureAwait(false);
+                if (id <= 0)
+                {
+                    _logger.LogWarning("Instructor restore failed: Invalid instructor ID {Id}", id);
+                    throw new ValidationException("Invalid instructor ID");
+                }
 
+                var userId = await _userContextService.GetUserIdAsync(userPrincipal).ConfigureAwait(false);
+                if (string.IsNullOrEmpty(userId))
+                {
+                    _logger.LogWarning("Instructor restore failed: User ID not found in token");
+                    throw new ValidationException("User ID not found in token");
+                }
+
+                var existingInstructor = await _instructorRepository.GetInstructorByIdIgnoreDeleteStatus(id).ConfigureAwait(false);
+                if (existingInstructor == null)
+                {
+                    _logger.LogWarning("Instructor restore failed: Instructor with ID {Id} not found", id);
+                    throw new EntityNotFoundException<int>("Instructor", id);
+                }
+
+                var isAuthorized = await _userContextService.IsAuthorizedAsync(userPrincipal, existingInstructor.UserId, "Admin", "Teacher").ConfigureAwait(false);
+                if (!isAuthorized)
+                {
+                    _logger.LogWarning("Instructor restore failed: User not authorized to restore instructor with ID {Id}", id);
+                    throw new EntityUnauthorizedException("Instructor", $"Restore instructor with ID {id}", "You are not authorized to restore this instructor record.");
+                }
+
+                // Check if instructor is actually deleted before restoring
+                if (existingInstructor.DeletedAt == null)
+                {
+                    _logger.LogWarning("Instructor restore failed: Instructor with ID {Id} is not deleted", id);
+                    throw new ValidationException("Instructor is not deleted");
+                }
+
+                var result = await _instructorRepository.RestoreInstructorAsync(id).ConfigureAwait(false);
+                if (!result)
+                {
+                    _logger.LogError("Instructor restore failed: Failed to restore instructor with ID {Id}", id);
+                    throw new EntityServiceException("Instructor", $"RestoreInstructor: {id}", "Failed to restore instructor");
+                }
+
+                await _instructorRepository.SaveChangesAsync().ConfigureAwait(false);
                 _logger.LogInformation("Successfully restored instructor with ID: {Id}", id);
-                return null;
+            }
+            catch (ValidationException)
+            {
+                throw;
+            }
+            catch (EntityNotFoundException<int>)
+            {
+                throw;
+            }
+            catch (EntityUnauthorizedException)
+            {
+                throw;
+            }
+            catch (EntityServiceException)
+            {
+                throw;
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error occurred while restoring instructor with ID: {Id}", id);
-                return "An error occurred while restoring the instructor. Please try again later.";
+                throw ExceptionHandlingHelper.CreateServiceException("Instructor", $"RestoreInstructor: {id}", ex);
             }
         }
         #endregion

@@ -106,41 +106,11 @@ namespace attendance_monitoring.Controllers
                 return BadRequest(ModelState);
             }
 
-            try
-            {
-                var (schedule, error) = await scheduleService.CreateScheduleAsync(createSchedule);
+            var schedule = await scheduleService.CreateScheduleAsync(createSchedule);
 
-                if (error != null)
-                {
-                    logger.LogWarning("Schedule creation failed: {Error}", error);
-                    return BadRequest(new { message = error });
-                }
-
-                if (schedule == null)
-                {
-                    logger.LogWarning("Schedule creation failed: Unexpected error occurred");
-                    return BadRequest(new { message = "An unexpected error occurred while creating the schedule." });
-                }
-
-                logger.LogInformation("Successfully created schedule with ID: {Id} and TimeIn: {TimeIn}, TimeOut: {TimeOut}", schedule.Id, schedule.TimeIn, schedule.TimeOut);
-                return CreatedAtAction(nameof(GetSchedule), new { id = schedule.Id }, schedule);
-            }
-            catch (EntityNotFoundException<int> ex)
-            {
-                logger.LogWarning(ex, "Entity not found while creating schedule");
-                return NotFound(new { message = ex.Message });
-            }
-            catch (EntityAlreadyExistsException<string> ex)
-            {
-                logger.LogWarning(ex, "Duplicate schedule detected");
-                return Conflict(new { message = ex.Message });
-            }
-            catch (EntityAlreadyExistsException<int> ex)
-            {
-                logger.LogWarning(ex, "Duplicate schedule detected");
-                return Conflict(new { message = ex.Message });
-            }
-            // No generic catch - global handler will manage unexpected errors
+            logger.LogInformation("Successfully created schedule with ID: {Id} and TimeIn: {TimeIn}, TimeOut: {TimeOut}", schedule.Id, schedule.TimeIn, schedule.TimeOut);
+            return CreatedAtAction(nameof(GetSchedule), new { id = schedule.Id }, schedule);
+            // Exceptions are handled by global exception handler
         }
 
         #endregion
@@ -169,25 +139,11 @@ namespace attendance_monitoring.Controllers
                 return BadRequest(ModelState);
             }
 
-            try
-            {
-                var (schedule, error) = await scheduleService.UpdateScheduleAsync(id, updateSchedule);
+            var schedule = await scheduleService.UpdateScheduleAsync(id, updateSchedule);
 
-                if (error != null)
-                {
-                    logger.LogWarning("Schedule update failed for schedule ID {Id}: {Error}", id, error);
-                    return BadRequest(new { message = error });
-                }
-
-                logger.LogInformation("Successfully updated schedule with ID: {Id}", id);
-                return Ok(schedule);
-            }
-            catch (EntityNotFoundException<int> ex)
-            {
-                logger.LogWarning(ex, "Schedule update failed: Schedule with ID {Id} not found", id);
-                return NotFound(new { message = ex.Message });
-            }
-            // No generic catch - global handler will manage unexpected errors
+            logger.LogInformation("Successfully updated schedule with ID: {Id}", id);
+            return Ok(schedule);
+            // Exceptions are handled by global exception handler
         }
 
         #endregion
@@ -208,30 +164,12 @@ namespace attendance_monitoring.Controllers
         public async Task<ActionResult> DeleteSchedule(int id)
         {
             logger.LogInformation("Deleting schedule with ID: {Id}", id);
-            try
-            {
-                var error = await scheduleService.DeleteScheduleAsync(id, User);
 
-                if (error == null)
-                {
-                    logger.LogInformation("Successfully deleted schedule with ID: {Id}", id);
-                    return NoContent();
-                }
+            await scheduleService.DeleteScheduleAsync(id, User);
 
-                logger.LogWarning("Schedule deletion failed for schedule ID {Id}: {Error}", id, error);
-                return BadRequest(new { message = error });
-            }
-            catch (EntityNotFoundException<int> ex)
-            {
-                logger.LogWarning(ex, "Schedule deletion failed: Schedule with ID {Id} not found", id);
-                return NotFound(new { message = ex.Message });
-            }
-            catch (EntityUnauthorizedException ex)
-            {
-                logger.LogWarning(ex, "Unauthorized schedule deletion attempt for schedule ID {Id}", id);
-                return Forbid();
-            }
-            // No generic catch - global handler will manage unexpected errors
+            logger.LogInformation("Successfully deleted schedule with ID: {Id}", id);
+            return NoContent();
+            // Exceptions are handled by global exception handler
         }
 
         #endregion
