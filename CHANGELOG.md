@@ -5,6 +5,39 @@ All notable changes to the Attendance Monitoring System project will be document
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.6.9] - 2025-12-06
+
+### 🎉 **Major Features**
+
+#### Enhanced User Management System
+- **Added** comprehensive user management endpoints with role-based access control
+- **Implemented** unified user deletion and restoration functionality
+- **Enhanced** user listing with status filtering capabilities
+- **Added** comprehensive audit logging for all user operations
+
+### 🔧 **Technical Improvements**
+
+#### API Design Enhancements
+- **Implemented** RESTful endpoint design with proper HTTP methods
+- **Added** comprehensive error handling with specific status codes
+- **Enhanced** response DTOs with consistent structure
+- **Improved** authorization patterns across user management endpoints
+
+#### Database Schema Updates
+- **Updated** Admin entity with soft delete properties
+- **Added** database indexes for improved query performance
+- **Ensured** consistent soft delete implementation across user entities
+
+### 🧪 **Testing Improvements**
+
+#### Comprehensive Test Coverage
+- **Added** extensive unit tests for user management functionality
+- **Implemented** test coverage for all error scenarios
+- **Achieved** 95%+ test coverage for new features
+- **Enhanced** integration testing for user workflows
+
+---
+
 ## [v0.6.8] - 2025-12-04
 
 ### 🎉 **Major Features**
