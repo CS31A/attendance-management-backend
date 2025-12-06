@@ -1,0 +1,10 @@
+final/
+final/
+final
+.env.local
+.env.*.local
+.env
+
+obj
+bin
+.idea
