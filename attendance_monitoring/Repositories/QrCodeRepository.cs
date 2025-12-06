@@ -423,7 +423,16 @@ public class QrCodeRepository(ApplicationDbContext context, ILogger<QrCodeReposi
                 return null;
             }
 
-            qrCode.UsageCount++;
+            // Overflow protection: deactivate QR code if usage count reaches maximum
+            if (qrCode.UsageCount >= int.MaxValue - 1)
+            {
+                logger.LogWarning("QR Code {QrCodeId} has reached maximum usage count, deactivating.", id);
+                qrCode.IsActive = false;
+            }
+            else
+            {
+                qrCode.UsageCount++;
+            }
             qrCode.UpdatedAt = DateTime.UtcNow;
 
             context.QrCodes.Update(qrCode);
@@ -452,7 +461,16 @@ public class QrCodeRepository(ApplicationDbContext context, ILogger<QrCodeReposi
                 return null;
             }
 
-            qrCode.UsageCount++;
+            // Overflow protection: deactivate QR code if usage count reaches maximum
+            if (qrCode.UsageCount >= int.MaxValue - 1)
+            {
+                logger.LogWarning("QR Code with hash {QrHash} has reached maximum usage count, deactivating.", qrHash);
+                qrCode.IsActive = false;
+            }
+            else
+            {
+                qrCode.UsageCount++;
+            }
             qrCode.UpdatedAt = DateTime.UtcNow;
 
             context.QrCodes.Update(qrCode);
