@@ -5,10 +5,10 @@ using Microsoft.Extensions.Logging;
 using attendance_monitoring.Controllers;
 using attendance_monitoring.IServices;
 using attendance_monitoring.Models.DTO;
+using attendance_monitoring.Models.DTO.Request;
 using attendance_monitoring.Models.DTO.Response;
 using attendance_monitoring.Exceptions;
 using System.Security.Claims;
-
 
 namespace attendance.testproject.Controllers_Testing;
 
@@ -367,5 +367,823 @@ public class AccountControllerTest
         Assert.Equal("testuser", responseDto.User);
         Assert.Equal("Student", responseDto.Role);
     }
+    #endregion
+
+    #region Register Exception Tests
+
+    [Fact]
+    public async Task Register_ReturnsConflict_WhenUsernameAlreadyExists()
+    {
+        // Arrange
+        var registerDto = new RegisterDto
+        {
+            Username = "existinguser",
+            Password = "Test@123",
+            Email = "new@test.com",
+            RepeatedPassword = "Test@123",
+            Role = "Student",
+            SectionId = 1
+        };
+        _mockAccountService.Setup(s => s.RegisterAsync(It.IsAny<RegisterDto>()))
+            .ThrowsAsync(new EntityAlreadyExistsException<string>("User", "Username", "existinguser", "Username already exists"));
+
+        // Act
+        var result = await _accountController.Register(registerDto);
+
+        // Assert
+        var conflictResult = Assert.IsType<ConflictObjectResult>(result.Result);
+        var responseDto = Assert.IsType<RegisterResponseDto>(conflictResult.Value);
+        Assert.False(responseDto.Success);
+    }
+
+    [Fact]
+    public async Task Register_ReturnsNotFound_WhenSectionNotFound()
+    {
+        // Arrange
+        var registerDto = new RegisterDto
+        {
+            Username = "newuser",
+            Password = "Test@123",
+            Email = "new@test.com",
+            RepeatedPassword = "Test@123",
+            Role = "Student",
+            SectionId = 999
+        };
+        _mockAccountService.Setup(s => s.RegisterAsync(It.IsAny<RegisterDto>()))
+            .ThrowsAsync(new EntityNotFoundException<int>("Section", 999));
+
+        // Act
+        var result = await _accountController.Register(registerDto);
+
+        // Assert
+        var notFoundResult = Assert.IsType<NotFoundObjectResult>(result.Result);
+        var responseDto = Assert.IsType<RegisterResponseDto>(notFoundResult.Value);
+        Assert.False(responseDto.Success);
+    }
+
+    [Fact]
+    public async Task Register_ReturnsBadRequest_WhenValidationExceptionThrown()
+    {
+        // Arrange
+        var registerDto = new RegisterDto
+        {
+            Username = "newuser",
+            Password = "weak",
+            Email = "new@test.com",
+            RepeatedPassword = "weak",
+            Role = "Student",
+            SectionId = 1
+        };
+        _mockAccountService.Setup(s => s.RegisterAsync(It.IsAny<RegisterDto>()))
+            .ThrowsAsync(new ValidationException("Password does not meet requirements"));
+
+        // Act
+        var result = await _accountController.Register(registerDto);
+
+        // Assert
+        var badRequestResult = Assert.IsType<BadRequestObjectResult>(result.Result);
+        var responseDto = Assert.IsType<RegisterResponseDto>(badRequestResult.Value);
+        Assert.False(responseDto.Success);
+        Assert.Contains("Password", responseDto.Message);
+    }
+
+    [Fact]
+    public async Task Register_ReturnsBadRequest_WhenEntityServiceExceptionThrown()
+    {
+        // Arrange
+        var registerDto = new RegisterDto
+        {
+            Username = "newuser",
+            Password = "Test@123",
+            Email = "new@test.com",
+            RepeatedPassword = "Test@123",
+            Role = "Student",
+            SectionId = 1
+        };
+        _mockAccountService.Setup(s => s.RegisterAsync(It.IsAny<RegisterDto>()))
+            .ThrowsAsync(new EntityServiceException("User", "register", "An error occurred while creating the user"));
+
+        // Act
+        var result = await _accountController.Register(registerDto);
+
+        // Assert
+        var badRequestResult = Assert.IsType<BadRequestObjectResult>(result.Result);
+        var responseDto = Assert.IsType<RegisterResponseDto>(badRequestResult.Value);
+        Assert.False(responseDto.Success);
+    }
+
+    #endregion
+
+    #region Login Exception Tests
+
+    [Fact]
+    public async Task Login_ReturnsBadRequest_WhenModelStateInvalid()
+    {
+        // Arrange
+        var loginDto = new LoginDto { Username = "", Password = "" };
+        _accountController.ModelState.AddModelError("Username", "Required");
+
+        // Act
+        var result = await _accountController.Login(loginDto);
+
+        // Assert
+        var badRequestResult = Assert.IsType<BadRequestObjectResult>(result.Result);
+        var responseDto = Assert.IsType<LoginResponseDto>(badRequestResult.Value);
+        Assert.False(responseDto.Success);
+        Assert.Equal("Invalid request data", responseDto.Message);
+    }
+
+    [Fact]
+    public async Task Login_ReturnsUnauthorized_WhenCredentialsInvalid()
+    {
+        // Arrange
+        var loginDto = new LoginDto { Username = "wronguser", Password = "wrongpassword" };
+        _mockAccountService.Setup(s => s.LoginAsync(loginDto))
+            .ThrowsAsync(new ValidationException("Invalid email or username or password"));
+
+        // Act
+        var result = await _accountController.Login(loginDto);
+
+        // Assert
+        var unauthorizedResult = Assert.IsType<UnauthorizedObjectResult>(result.Result);
+        var responseDto = Assert.IsType<LoginResponseDto>(unauthorizedResult.Value);
+        Assert.False(responseDto.Success);
+        Assert.Contains("Invalid", responseDto.Message);
+    }
+
+    #endregion
+
+    #region WebLogin Tests
+
+    [Fact]
+    public async Task WebLogin_ReturnsOk_WhenLoginSuccessful()
+    {
+        // Arrange
+        var webLoginDto = new WebLoginDto { Identifier = "test@test.com", Password = "Test@123" };
+        var tokenResponseDto = new TokenResponseDto { AccessToken = "access_token", RefreshToken = "refresh_token" };
+        var loginResult = new LoginResult { TokenResponse = tokenResponseDto, Username = "testuser", Role = "Student" };
+
+        _mockAccountService.Setup(s => s.LoginAsync(It.IsAny<LoginDto>())).ReturnsAsync(loginResult);
+
+        // Setup mock HttpResponse for cookies
+        var httpContext = new DefaultHttpContext();
+        _accountController.ControllerContext = new ControllerContext { HttpContext = httpContext };
+
+        // Act
+        var result = await _accountController.WebLogin(webLoginDto);
+
+        // Assert
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        var responseDto = Assert.IsType<WebLoginResponseDto>(okResult.Value);
+        Assert.True(responseDto.Success);
+        Assert.Equal("testuser", responseDto.Username);
+        Assert.Equal("Student", responseDto.Role);
+    }
+
+    [Fact]
+    public async Task WebLogin_ReturnsBadRequest_WhenModelStateInvalid()
+    {
+        // Arrange
+        var webLoginDto = new WebLoginDto { Identifier = "", Password = "" };
+        _accountController.ModelState.AddModelError("Identifier", "Required");
+
+        // Act
+        var result = await _accountController.WebLogin(webLoginDto);
+
+        // Assert
+        var badRequestResult = Assert.IsType<BadRequestObjectResult>(result.Result);
+        var responseDto = Assert.IsType<WebLoginResponseDto>(badRequestResult.Value);
+        Assert.False(responseDto.Success);
+    }
+
+    [Fact]
+    public async Task WebLogin_ReturnsUnauthorized_WhenCredentialsInvalid()
+    {
+        // Arrange
+        var webLoginDto = new WebLoginDto { Identifier = "wrong@test.com", Password = "wrongpassword" };
+        _mockAccountService.Setup(s => s.LoginAsync(It.IsAny<LoginDto>()))
+            .ThrowsAsync(new ValidationException("Invalid email or username or password"));
+
+        var httpContext = new DefaultHttpContext();
+        _accountController.ControllerContext = new ControllerContext { HttpContext = httpContext };
+
+        // Act
+        var result = await _accountController.WebLogin(webLoginDto);
+
+        // Assert
+        var unauthorizedResult = Assert.IsType<UnauthorizedObjectResult>(result.Result);
+        var responseDto = Assert.IsType<WebLoginResponseDto>(unauthorizedResult.Value);
+        Assert.False(responseDto.Success);
+    }
+
+    #endregion
+
+    #region Refresh Tests
+
+    [Fact]
+    public async Task Refresh_ReturnsOk_WhenRefreshSuccessful()
+    {
+        // Arrange
+        var refreshRequest = new RefreshTokenRequestDto { RefreshToken = "valid_refresh_token" };
+        var tokenResponse = new TokenResponseDto { AccessToken = "new_access_token", RefreshToken = "new_refresh_token" };
+        _mockAccountService.Setup(s => s.RefreshAsync(refreshRequest)).ReturnsAsync(tokenResponse);
+
+        // Act
+        var result = await _accountController.Refresh(refreshRequest);
+
+        // Assert
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        var responseDto = Assert.IsType<RefreshResponseDto>(okResult.Value);
+        Assert.True(responseDto.Success);
+        Assert.Equal("new_access_token", responseDto.AccessToken);
+    }
+
+    [Fact]
+    public async Task Refresh_ReturnsBadRequest_WhenModelStateInvalid()
+    {
+        // Arrange
+        var refreshRequest = new RefreshTokenRequestDto { RefreshToken = "" };
+        _accountController.ModelState.AddModelError("RefreshToken", "Required");
+
+        // Act
+        var result = await _accountController.Refresh(refreshRequest);
+
+        // Assert
+        var badRequestResult = Assert.IsType<BadRequestObjectResult>(result.Result);
+        var responseDto = Assert.IsType<RefreshResponseDto>(badRequestResult.Value);
+        Assert.False(responseDto.Success);
+    }
+
+    [Fact]
+    public async Task Refresh_ReturnsUnauthorized_WhenValidationExceptionThrown()
+    {
+        // Arrange
+        var refreshRequest = new RefreshTokenRequestDto { RefreshToken = "expired_token" };
+        _mockAccountService.Setup(s => s.RefreshAsync(refreshRequest))
+            .ThrowsAsync(new ValidationException("Refresh token has expired"));
+
+        // Act
+        var result = await _accountController.Refresh(refreshRequest);
+
+        // Assert
+        var unauthorizedResult = Assert.IsType<UnauthorizedObjectResult>(result.Result);
+        var responseDto = Assert.IsType<RefreshResponseDto>(unauthorizedResult.Value);
+        Assert.False(responseDto.Success);
+    }
+
+    [Fact]
+    public async Task Refresh_ReturnsUnauthorized_WhenTokenNotFound()
+    {
+        // Arrange
+        var refreshRequest = new RefreshTokenRequestDto { RefreshToken = "nonexistent_token" };
+        _mockAccountService.Setup(s => s.RefreshAsync(refreshRequest))
+            .ThrowsAsync(new EntityNotFoundException<string>("RefreshToken", "nonexistent_token"));
+
+        // Act
+        var result = await _accountController.Refresh(refreshRequest);
+
+        // Assert
+        var unauthorizedResult = Assert.IsType<UnauthorizedObjectResult>(result.Result);
+        var responseDto = Assert.IsType<RefreshResponseDto>(unauthorizedResult.Value);
+        Assert.False(responseDto.Success);
+    }
+
+    #endregion
+
+    #region Revoke Tests
+
+    [Fact]
+    public async Task Revoke_ReturnsOk_WhenRevocationSuccessful()
+    {
+        // Arrange
+        var revokeRequest = new RevokeTokenRequestDto { RefreshToken = "valid_refresh_token" };
+        var revokeResponse = new RevokeResponseDto { Success = true, Message = "Token revoked successfully" };
+        
+        var claims = new List<Claim> { new(ClaimTypes.NameIdentifier, "user123") };
+        var identity = new ClaimsIdentity(claims, "TestAuthType");
+        var claimsPrincipal = new ClaimsPrincipal(identity);
+        _accountController.ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext { User = claimsPrincipal } };
+
+        _mockAccountService.Setup(s => s.RevokeAsync(revokeRequest, "user123")).ReturnsAsync(revokeResponse);
+
+        // Act
+        var result = await _accountController.Revoke(revokeRequest);
+
+        // Assert
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        var responseDto = Assert.IsType<RevokeResponseDto>(okResult.Value);
+        Assert.True(responseDto.Success);
+    }
+
+    [Fact]
+    public async Task Revoke_ReturnsBadRequest_WhenModelStateInvalid()
+    {
+        // Arrange
+        var revokeRequest = new RevokeTokenRequestDto { RefreshToken = "" };
+        _accountController.ModelState.AddModelError("RefreshToken", "Required");
+
+        // Act
+        var result = await _accountController.Revoke(revokeRequest);
+
+        // Assert
+        var badRequestResult = Assert.IsType<BadRequestObjectResult>(result.Result);
+        var responseDto = Assert.IsType<RevokeResponseDto>(badRequestResult.Value);
+        Assert.False(responseDto.Success);
+    }
+
+    [Fact]
+    public async Task Revoke_ReturnsUnauthorized_WhenUserNotFound()
+    {
+        // Arrange
+        var revokeRequest = new RevokeTokenRequestDto { RefreshToken = "valid_token" };
+        
+        // No claims set - user not found
+        _accountController.ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() };
+
+        // Act
+        var result = await _accountController.Revoke(revokeRequest);
+
+        // Assert
+        var unauthorizedResult = Assert.IsType<UnauthorizedObjectResult>(result.Result);
+        var responseDto = Assert.IsType<RevokeResponseDto>(unauthorizedResult.Value);
+        Assert.False(responseDto.Success);
+        Assert.Equal("User not found", responseDto.Message);
+    }
+
+    [Fact]
+    public async Task Revoke_ReturnsUnauthorized_WhenValidationExceptionThrown()
+    {
+        // Arrange
+        var revokeRequest = new RevokeTokenRequestDto { RefreshToken = "invalid_token" };
+        
+        var claims = new List<Claim> { new(ClaimTypes.NameIdentifier, "user123") };
+        var identity = new ClaimsIdentity(claims, "TestAuthType");
+        var claimsPrincipal = new ClaimsPrincipal(identity);
+        _accountController.ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext { User = claimsPrincipal } };
+
+        _mockAccountService.Setup(s => s.RevokeAsync(revokeRequest, "user123"))
+            .ThrowsAsync(new ValidationException("Token is invalid or already revoked"));
+
+        // Act
+        var result = await _accountController.Revoke(revokeRequest);
+
+        // Assert
+        var unauthorizedResult = Assert.IsType<UnauthorizedObjectResult>(result.Result);
+        var responseDto = Assert.IsType<RevokeResponseDto>(unauthorizedResult.Value);
+        Assert.False(responseDto.Success);
+    }
+
+    [Fact]
+    public async Task Revoke_ReturnsUnauthorized_WhenEntityUnauthorizedExceptionThrown()
+    {
+        // Arrange
+        var revokeRequest = new RevokeTokenRequestDto { RefreshToken = "another_users_token" };
+        
+        var claims = new List<Claim> { new(ClaimTypes.NameIdentifier, "user123") };
+        var identity = new ClaimsIdentity(claims, "TestAuthType");
+        var claimsPrincipal = new ClaimsPrincipal(identity);
+        _accountController.ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext { User = claimsPrincipal } };
+
+        _mockAccountService.Setup(s => s.RevokeAsync(revokeRequest, "user123"))
+            .ThrowsAsync(new EntityUnauthorizedException("RefreshToken", "revoke", "Token does not belong to this user"));
+
+        // Act
+        var result = await _accountController.Revoke(revokeRequest);
+
+        // Assert
+        var unauthorizedResult = Assert.IsType<UnauthorizedObjectResult>(result.Result);
+        var responseDto = Assert.IsType<RevokeResponseDto>(unauthorizedResult.Value);
+        Assert.False(responseDto.Success);
+    }
+
+    #endregion
+
+    #region GetMe Tests
+
+    [Fact]
+    public async Task GetMe_ReturnsOk_WhenProfileFetchSuccessful()
+    {
+        // Arrange
+        var claims = new List<Claim> { new(ClaimTypes.NameIdentifier, "user123") };
+        var identity = new ClaimsIdentity(claims, "TestAuthType");
+        var claimsPrincipal = new ClaimsPrincipal(identity);
+        _accountController.ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext { User = claimsPrincipal } };
+
+        var profileResponse = new UserProfileResponseDto
+        {
+            UserId = "user123",
+            Username = "testuser",
+            Email = "test@test.com",
+            Role = "Student"
+        };
+        _mockAccountService.Setup(s => s.GetUserProfileAsync("user123")).ReturnsAsync(profileResponse);
+
+        // Act
+        var result = await _accountController.GetMe();
+
+        // Assert
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        var responseDto = Assert.IsType<UserProfileResponseDto>(okResult.Value);
+        Assert.Equal("testuser", responseDto.Username);
+    }
+
+    [Fact]
+    public async Task GetMe_ReturnsUnauthorized_WhenUserNotInClaims()
+    {
+        // Arrange - No claims set
+        _accountController.ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() };
+
+        // Act
+        var result = await _accountController.GetMe();
+
+        // Assert
+        Assert.IsType<UnauthorizedObjectResult>(result.Result);
+    }
+
+    [Fact]
+    public async Task GetMe_ReturnsUnauthorized_WhenUserNotFound()
+    {
+        // Arrange
+        var claims = new List<Claim> { new(ClaimTypes.NameIdentifier, "nonexistent_user") };
+        var identity = new ClaimsIdentity(claims, "TestAuthType");
+        var claimsPrincipal = new ClaimsPrincipal(identity);
+        _accountController.ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext { User = claimsPrincipal } };
+
+        _mockAccountService.Setup(s => s.GetUserProfileAsync("nonexistent_user"))
+            .ThrowsAsync(new EntityNotFoundException<string>("User", "nonexistent_user"));
+
+        // Act
+        var result = await _accountController.GetMe();
+
+        // Assert
+        Assert.IsType<UnauthorizedObjectResult>(result.Result);
+    }
+
+    #endregion
+
+    #region UpdateProfile Tests
+
+    [Fact]
+    public async Task UpdateProfile_ReturnsOk_WhenUpdateSuccessful()
+    {
+        // Arrange
+        var updateProfileDto = new UpdateProfile { Email = "newemail@test.com" };
+        var claims = new List<Claim> { new(ClaimTypes.NameIdentifier, "user123") };
+        var identity = new ClaimsIdentity(claims, "TestAuthType");
+        var claimsPrincipal = new ClaimsPrincipal(identity);
+        _accountController.ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext { User = claimsPrincipal } };
+
+        var profileResponse = new UserProfileResponseDto
+        {
+            UserId = "user123",
+            Username = "testuser",
+            Email = "newemail@test.com",
+            Role = "Student"
+        };
+        _mockAccountService.Setup(s => s.UpdateUserProfileAsync("user123", updateProfileDto)).ReturnsAsync(profileResponse);
+
+        // Act
+        var result = await _accountController.UpdateProfile(updateProfileDto);
+
+        // Assert
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        var responseDto = Assert.IsType<UpdateProfileResponse>(okResult.Value);
+        Assert.True(responseDto.Success);
+    }
+
+    [Fact]
+    public async Task UpdateProfile_ReturnsBadRequest_WhenModelStateInvalid()
+    {
+        // Arrange
+        var updateProfileDto = new UpdateProfile();
+        _accountController.ModelState.AddModelError("Email", "Invalid format");
+
+        // Act
+        var result = await _accountController.UpdateProfile(updateProfileDto);
+
+        // Assert
+        var badRequestResult = Assert.IsType<BadRequestObjectResult>(result.Result);
+        var responseDto = Assert.IsType<UpdateProfileResponse>(badRequestResult.Value);
+        Assert.False(responseDto.Success);
+    }
+
+    [Fact]
+    public async Task UpdateProfile_ReturnsUnauthorized_WhenUserNotInClaims()
+    {
+        // Arrange
+        var updateProfileDto = new UpdateProfile { Email = "newemail@test.com" };
+        _accountController.ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() };
+
+        // Act
+        var result = await _accountController.UpdateProfile(updateProfileDto);
+
+        // Assert
+        var unauthorizedResult = Assert.IsType<UnauthorizedObjectResult>(result.Result);
+        var responseDto = Assert.IsType<UpdateProfileResponse>(unauthorizedResult.Value);
+        Assert.False(responseDto.Success);
+    }
+
+    [Fact]
+    public async Task UpdateProfile_ReturnsNotFound_WhenUserNotFound()
+    {
+        // Arrange
+        var updateProfileDto = new UpdateProfile { Email = "newemail@test.com" };
+        var claims = new List<Claim> { new(ClaimTypes.NameIdentifier, "user123") };
+        var identity = new ClaimsIdentity(claims, "TestAuthType");
+        var claimsPrincipal = new ClaimsPrincipal(identity);
+        _accountController.ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext { User = claimsPrincipal } };
+
+        _mockAccountService.Setup(s => s.UpdateUserProfileAsync("user123", updateProfileDto))
+            .ThrowsAsync(new EntityNotFoundException<string>("User", "user123"));
+
+        // Act
+        var result = await _accountController.UpdateProfile(updateProfileDto);
+
+        // Assert
+        var notFoundResult = Assert.IsType<NotFoundObjectResult>(result.Result);
+        var responseDto = Assert.IsType<UpdateProfileResponse>(notFoundResult.Value);
+        Assert.False(responseDto.Success);
+    }
+
+    [Fact]
+    public async Task UpdateProfile_ReturnsConflict_WhenEmailAlreadyExists()
+    {
+        // Arrange
+        var updateProfileDto = new UpdateProfile { Email = "existing@test.com" };
+        var claims = new List<Claim> { new(ClaimTypes.NameIdentifier, "user123") };
+        var identity = new ClaimsIdentity(claims, "TestAuthType");
+        var claimsPrincipal = new ClaimsPrincipal(identity);
+        _accountController.ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext { User = claimsPrincipal } };
+
+        _mockAccountService.Setup(s => s.UpdateUserProfileAsync("user123", updateProfileDto))
+            .ThrowsAsync(new EntityAlreadyExistsException<string>("User", "Email", "existing@test.com", "Email already in use"));
+
+        // Act
+        var result = await _accountController.UpdateProfile(updateProfileDto);
+
+        // Assert
+        var conflictResult = Assert.IsType<ConflictObjectResult>(result.Result);
+        var responseDto = Assert.IsType<UpdateProfileResponse>(conflictResult.Value);
+        Assert.False(responseDto.Success);
+    }
+
+    [Fact]
+    public async Task UpdateProfile_ReturnsBadRequest_WhenValidationExceptionThrown()
+    {
+        // Arrange
+        var updateProfileDto = new UpdateProfile { Email = "invalid-email" };
+        var claims = new List<Claim> { new(ClaimTypes.NameIdentifier, "user123") };
+        var identity = new ClaimsIdentity(claims, "TestAuthType");
+        var claimsPrincipal = new ClaimsPrincipal(identity);
+        _accountController.ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext { User = claimsPrincipal } };
+
+        _mockAccountService.Setup(s => s.UpdateUserProfileAsync("user123", updateProfileDto))
+            .ThrowsAsync(new ValidationException("Invalid email format"));
+
+        // Act
+        var result = await _accountController.UpdateProfile(updateProfileDto);
+
+        // Assert
+        var badRequestResult = Assert.IsType<BadRequestObjectResult>(result.Result);
+        var responseDto = Assert.IsType<UpdateProfileResponse>(badRequestResult.Value);
+        Assert.False(responseDto.Success);
+    }
+
+    #endregion
+
+    #region AdminUpdateUser Tests
+
+    [Fact]
+    public async Task AdminUpdateUser_ReturnsOk_WhenUpdateSuccessful()
+    {
+        // Arrange
+        var targetUserId = "target123";
+        var adminUpdateDto = new AdminUpdateUser { Email = "newemail@test.com" };
+        var claims = new List<Claim> { new(ClaimTypes.NameIdentifier, "admin123"), new(ClaimTypes.Role, "Admin") };
+        var identity = new ClaimsIdentity(claims, "TestAuthType");
+        var claimsPrincipal = new ClaimsPrincipal(identity);
+        _accountController.ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext { User = claimsPrincipal } };
+
+        var profileResponse = new UserProfileResponseDto
+        {
+            UserId = targetUserId,
+            Username = "targetuser",
+            Email = "newemail@test.com",
+            Role = "Student"
+        };
+        _mockAccountService.Setup(s => s.AdminUpdateUserProfileAsync("admin123", It.IsAny<AdminUpdateUser>())).ReturnsAsync(profileResponse);
+
+        // Act
+        var result = await _accountController.AdminUpdateUser(targetUserId, adminUpdateDto);
+
+        // Assert
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        var responseDto = Assert.IsType<UpdateProfileResponse>(okResult.Value);
+        Assert.True(responseDto.Success);
+    }
+
+    [Fact]
+    public async Task AdminUpdateUser_ReturnsBadRequest_WhenModelStateInvalid()
+    {
+        // Arrange
+        var adminUpdateDto = new AdminUpdateUser();
+        _accountController.ModelState.AddModelError("Email", "Invalid format");
+
+        // Act
+        var result = await _accountController.AdminUpdateUser("target123", adminUpdateDto);
+
+        // Assert
+        var badRequestResult = Assert.IsType<BadRequestObjectResult>(result.Result);
+        var responseDto = Assert.IsType<UpdateProfileResponse>(badRequestResult.Value);
+        Assert.False(responseDto.Success);
+    }
+
+    [Fact]
+    public async Task AdminUpdateUser_ReturnsUnauthorized_WhenAdminNotInClaims()
+    {
+        // Arrange
+        var adminUpdateDto = new AdminUpdateUser { Email = "newemail@test.com" };
+        _accountController.ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() };
+
+        // Act
+        var result = await _accountController.AdminUpdateUser("target123", adminUpdateDto);
+
+        // Assert
+        var unauthorizedResult = Assert.IsType<UnauthorizedObjectResult>(result.Result);
+        var responseDto = Assert.IsType<UpdateProfileResponse>(unauthorizedResult.Value);
+        Assert.False(responseDto.Success);
+    }
+
+    [Fact]
+    public async Task AdminUpdateUser_ReturnsNotFound_WhenTargetUserNotFound()
+    {
+        // Arrange
+        var targetUserId = "nonexistent123";
+        var adminUpdateDto = new AdminUpdateUser { Email = "newemail@test.com" };
+        var claims = new List<Claim> { new(ClaimTypes.NameIdentifier, "admin123"), new(ClaimTypes.Role, "Admin") };
+        var identity = new ClaimsIdentity(claims, "TestAuthType");
+        var claimsPrincipal = new ClaimsPrincipal(identity);
+        _accountController.ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext { User = claimsPrincipal } };
+
+        _mockAccountService.Setup(s => s.AdminUpdateUserProfileAsync("admin123", It.IsAny<AdminUpdateUser>()))
+            .ThrowsAsync(new EntityNotFoundException<string>("User", targetUserId));
+
+        // Act
+        var result = await _accountController.AdminUpdateUser(targetUserId, adminUpdateDto);
+
+        // Assert
+        var notFoundResult = Assert.IsType<NotFoundObjectResult>(result.Result);
+        var responseDto = Assert.IsType<UpdateProfileResponse>(notFoundResult.Value);
+        Assert.False(responseDto.Success);
+    }
+
+    [Fact]
+    public async Task AdminUpdateUser_ReturnsForbidden_WhenUnauthorizedException()
+    {
+        // Arrange
+        var targetUserId = "target123";
+        var adminUpdateDto = new AdminUpdateUser { Email = "newemail@test.com" };
+        var claims = new List<Claim> { new(ClaimTypes.NameIdentifier, "admin123"), new(ClaimTypes.Role, "Admin") };
+        var identity = new ClaimsIdentity(claims, "TestAuthType");
+        var claimsPrincipal = new ClaimsPrincipal(identity);
+        _accountController.ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext { User = claimsPrincipal } };
+
+        _mockAccountService.Setup(s => s.AdminUpdateUserProfileAsync("admin123", It.IsAny<AdminUpdateUser>()))
+            .ThrowsAsync(new EntityUnauthorizedException("User", "update", "Cannot update this user"));
+
+        // Act
+        var result = await _accountController.AdminUpdateUser(targetUserId, adminUpdateDto);
+
+        // Assert
+        var statusResult = Assert.IsType<ObjectResult>(result.Result);
+        Assert.Equal(StatusCodes.Status403Forbidden, statusResult.StatusCode);
+    }
+
+    [Fact]
+    public async Task AdminUpdateUser_ReturnsConflict_WhenEmailAlreadyExists()
+    {
+        // Arrange
+        var targetUserId = "target123";
+        var adminUpdateDto = new AdminUpdateUser { Email = "existing@test.com" };
+        var claims = new List<Claim> { new(ClaimTypes.NameIdentifier, "admin123"), new(ClaimTypes.Role, "Admin") };
+        var identity = new ClaimsIdentity(claims, "TestAuthType");
+        var claimsPrincipal = new ClaimsPrincipal(identity);
+        _accountController.ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext { User = claimsPrincipal } };
+
+        _mockAccountService.Setup(s => s.AdminUpdateUserProfileAsync("admin123", It.IsAny<AdminUpdateUser>()))
+            .ThrowsAsync(new EntityAlreadyExistsException<string>("User", "Email", "existing@test.com", "Email already in use"));
+
+        // Act
+        var result = await _accountController.AdminUpdateUser(targetUserId, adminUpdateDto);
+
+        // Assert
+        var conflictResult = Assert.IsType<ConflictObjectResult>(result.Result);
+        var responseDto = Assert.IsType<UpdateProfileResponse>(conflictResult.Value);
+        Assert.False(responseDto.Success);
+    }
+
+    #endregion
+
+    #region Logout Tests
+
+    [Fact]
+    public async Task Logout_ReturnsOk_WhenLogoutSuccessful()
+    {
+        // Arrange
+        var claims = new List<Claim> { new(ClaimTypes.NameIdentifier, "user123") };
+        var identity = new ClaimsIdentity(claims, "TestAuthType");
+        var claimsPrincipal = new ClaimsPrincipal(identity);
+        
+        var httpContext = new DefaultHttpContext { User = claimsPrincipal };
+        httpContext.Request.Headers["Authorization"] = "Bearer test_token";
+        _accountController.ControllerContext = new ControllerContext { HttpContext = httpContext };
+
+        _mockAccountService.Setup(s => s.LogoutAsync("user123", "test_token"))
+            .ReturnsAsync(new LogoutResponseDto { Success = true, Message = "Logged out successfully" });
+
+        // Act
+        var result = await _accountController.Logout();
+
+        // Assert
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        var responseDto = Assert.IsType<LogoutResponseDto>(okResult.Value);
+        Assert.True(responseDto.Success);
+    }
+
+    [Fact]
+    public async Task Logout_ReturnsOk_WhenUserNotInClaims()
+    {
+        // Arrange - No claims (prevents timing attacks by always returning success)
+        _accountController.ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() };
+
+        // Act
+        var result = await _accountController.Logout();
+
+        // Assert
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        var responseDto = Assert.IsType<LogoutResponseDto>(okResult.Value);
+        Assert.True(responseDto.Success); // Always returns success to prevent timing attacks
+    }
+
+    #endregion
+
+    #region WebLogout Tests
+
+    [Fact]
+    public async Task WebLogout_ReturnsOk_WhenLogoutSuccessful()
+    {
+        // Arrange
+        var claims = new List<Claim> { new(ClaimTypes.NameIdentifier, "user123") };
+        var identity = new ClaimsIdentity(claims, "TestAuthType");
+        var claimsPrincipal = new ClaimsPrincipal(identity);
+        
+        var httpContext = new DefaultHttpContext { User = claimsPrincipal };
+        httpContext.Request.Headers.Cookie = "accessToken=test_token; refreshToken=test_refresh";
+        _accountController.ControllerContext = new ControllerContext { HttpContext = httpContext };
+
+        _mockAccountService.Setup(s => s.WebLogoutAsync("user123", It.IsAny<string?>()))
+            .ReturnsAsync(new LogoutResponseDto { Success = true, Message = "Logged out successfully" });
+
+        // Act
+        var result = await _accountController.WebLogout();
+
+        // Assert
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        var responseDto = Assert.IsType<LogoutResponseDto>(okResult.Value);
+        Assert.True(responseDto.Success);
+    }
+
+    [Fact]
+    public async Task WebLogout_ReturnsOk_WhenUserNotInClaims()
+    {
+        // Arrange - No claims (prevents timing attacks by always returning success)
+        _accountController.ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() };
+
+        // Act
+        var result = await _accountController.WebLogout();
+
+        // Assert
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        var responseDto = Assert.IsType<LogoutResponseDto>(okResult.Value);
+        Assert.True(responseDto.Success); // Always returns success to prevent timing attacks
+    }
+
+    #endregion
+
+    #region Helper Methods
+
+    private void SetupAuthenticatedUser(string userId, string? username = null, string? role = null)
+    {
+        var claims = new List<Claim> { new(ClaimTypes.NameIdentifier, userId) };
+        if (!string.IsNullOrEmpty(username))
+            claims.Add(new Claim(ClaimTypes.Name, username));
+        if (!string.IsNullOrEmpty(role))
+            claims.Add(new Claim(ClaimTypes.Role, role));
+
+        var identity = new ClaimsIdentity(claims, "TestAuthType");
+        var claimsPrincipal = new ClaimsPrincipal(identity);
+        _accountController.ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext { User = claimsPrincipal } };
+    }
+
     #endregion
 }
