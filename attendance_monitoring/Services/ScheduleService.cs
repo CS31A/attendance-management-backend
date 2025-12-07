@@ -3,6 +3,7 @@ using attendance_monitoring.Data;
 using attendance_monitoring.Exceptions;
 using attendance_monitoring.Helpers;
 using attendance_monitoring.IRepository;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 using attendance_monitoring.IServices;
@@ -13,6 +14,9 @@ namespace attendance_monitoring.Services
 {
     public class ScheduleService(
         IScheduleRepository scheduleRepository,
+        IInstructorRepository instructorRepository,
+        UserContextService userContextService,
+        IHttpContextAccessor httpContextAccessor,
         ApplicationDbContext context,
         ILogger<ScheduleService> logger)
         : IScheduleService
@@ -77,6 +81,53 @@ namespace attendance_monitoring.Services
                 logger.LogError(ex, "Error occurred while retrieving schedules for instructor ID {InstructorId}", instructorId);
                 throw new EntityServiceException("Schedule", $"GetSchedulesByInstructorId: {instructorId}",
                     "An error occurred while retrieving schedules for the instructor", ex);
+            }
+        }
+
+        public async Task<IEnumerable<ScheduleResponseDto>> GetMySchedulesAsync()
+        {
+            logger.LogInformation("Retrieving schedules for the current instructor");
+
+            try
+            {
+                // Get current user context
+                var httpContext = httpContextAccessor.HttpContext;
+                if (httpContext?.User == null)
+                {
+                    var errorMessage = "User context not found.";
+                    logger.LogWarning("GetMySchedules failed: {ErrorMessage}", errorMessage);
+                    throw new EntityUnauthorizedException("Schedule", "GetMySchedules", "unknown", errorMessage);
+                }
+
+                var userId = await userContextService.GetUserIdAsync(httpContext.User).ConfigureAwait(false);
+                if (string.IsNullOrEmpty(userId))
+                {
+                    var errorMessage = "User ID not found in context.";
+                    logger.LogWarning("GetMySchedules failed: {ErrorMessage}", errorMessage);
+                    throw new EntityUnauthorizedException("Schedule", "GetMySchedules", "unknown", errorMessage);
+                }
+
+                // Get instructor by user ID
+                var instructor = await instructorRepository.GetInstructorByUserIdAsync(userId).ConfigureAwait(false);
+                if (instructor == null)
+                {
+                    var errorMessage = "Instructor profile not found for the current user.";
+                    logger.LogWarning("GetMySchedules failed: {ErrorMessage}", errorMessage);
+                    throw new EntityUnauthorizedException("Schedule", "GetMySchedules", userId, errorMessage);
+                }
+
+                // Use existing method to get schedules for this instructor
+                return await GetSchedulesByInstructorIdAsync(instructor.Id).ConfigureAwait(false);
+            }
+            catch (EntityUnauthorizedException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Error occurred while retrieving schedules for the current instructor");
+                throw new EntityServiceException("Schedule", "GetMySchedules",
+                    "An error occurred while retrieving your schedules", ex);
             }
         }
 

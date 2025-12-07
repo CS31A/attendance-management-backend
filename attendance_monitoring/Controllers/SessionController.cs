@@ -36,6 +36,25 @@ public class SessionController(ISessionService sessionService, ILogger<SessionCo
     }
 
     /// <summary>
+    /// Get all sessions belonging to the current instructor.
+    /// </summary>
+    /// <returns>A list of sessions for the current instructor</returns>
+    /// <response code="200">Returns the list of sessions for the instructor</response>
+    /// <response code="401">Not authorized</response>
+    /// <response code="403">Instructor profile not found</response>
+    /// <response code="500">Internal server error</response>
+    [HttpGet("my-sessions")]
+    [Authorize(Policy = "InstructorPolicy")]
+    public async Task<ActionResult<IEnumerable<SessionResponseDto>>> GetMySessions()
+    {
+        logger.LogInformation("Getting sessions for the current instructor");
+
+        var sessions = await sessionService.GetMySessionsAsync();
+        logger.LogInformation("Successfully retrieved {Count} sessions for the current instructor", sessions.Count());
+        return Ok(sessions);
+    }
+
+    /// <summary>
     /// Get a specific session by ID.
     /// </summary>
     /// <param name="id">The ID of the session to retrieve</param>

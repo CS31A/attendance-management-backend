@@ -98,4 +98,12 @@ public interface ISessionService
     /// <exception cref="ValidationException">Thrown when session cannot be cancelled</exception>
     /// <exception cref="EntityServiceException">Thrown when an unexpected error occurs</exception>
     Task<SessionResponseDto> CancelSessionAsync(int sessionId, CancelSession request);
+
+    /// <summary>
+    /// Retrieves all sessions belonging to the current instructor.
+    /// </summary>
+    /// <returns>Collection of session response DTOs for the current instructor</returns>
+    /// <exception cref="EntityUnauthorizedException">Thrown when instructor context is not found</exception>
+    /// <exception cref="EntityServiceException">Thrown when an unexpected error occurs</exception>
+    Task<IEnumerable<SessionResponseDto>> GetMySessionsAsync();
 }

@@ -37,6 +37,27 @@ namespace attendance_monitoring.Controllers
         }
 
         /// <summary>
+        /// Get all schedules assigned to the current instructor
+        /// </summary>
+        /// <returns>A list of schedules assigned to the current instructor</returns>
+        /// <response code="200">Returns the list of schedules for the instructor</response>
+        /// <response code="401">Not authorized</response>
+        /// <response code="403">Instructor profile not found</response>
+        /// <response code="500">Internal server error</response>
+        [HttpGet("my-schedules")]
+        [Authorize(Policy = "InstructorPolicy")]
+        public async Task<ActionResult<IEnumerable<ScheduleResponseDto>>> GetMySchedules()
+        {
+            logger.LogInformation("Getting schedules for the current instructor");
+
+            var schedules = await scheduleService.GetMySchedulesAsync();
+            logger.LogInformation("Successfully retrieved {Count} schedules for the current instructor",
+                schedules.Count());
+            return Ok(schedules);
+            // No try-catch - global handler will catch any unexpected errors
+        }
+
+        /// <summary>
         /// Get a specific schedule by ID
         /// </summary>
         /// <param name="id">The ID of the schedule to retrieve</param>

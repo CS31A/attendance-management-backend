@@ -178,6 +178,65 @@ public class SessionService : ISessionService
         }
     }
 
+    /// <summary>
+    /// Retrieves all sessions belonging to the current instructor.
+    /// </summary>
+    public async Task<IEnumerable<SessionResponseDto>> GetMySessionsAsync()
+    {
+        _logger.LogInformation("Retrieving sessions for the current instructor");
+
+        try
+        {
+            // Get current user context
+            var httpContext = _httpContextAccessor.HttpContext;
+            if (httpContext?.User == null)
+            {
+                var errorMessage = "User context not found.";
+                _logger.LogWarning("GetMySessions failed: {ErrorMessage}", errorMessage);
+                throw new EntityUnauthorizedException("Session", "GetMySessions", "unknown", errorMessage);
+            }
+
+            var userId = await _userContextService.GetUserIdAsync(httpContext.User).ConfigureAwait(false);
+            if (string.IsNullOrEmpty(userId))
+            {
+                var errorMessage = "User ID not found in context.";
+                _logger.LogWarning("GetMySessions failed: {ErrorMessage}", errorMessage);
+                throw new EntityUnauthorizedException("Session", "GetMySessions", "unknown", errorMessage);
+            }
+
+            // Get instructor by user ID
+            var instructor = await _instructorRepository.GetInstructorByUserIdAsync(userId).ConfigureAwait(false);
+            if (instructor == null)
+            {
+                var errorMessage = "Instructor profile not found for the current user.";
+                _logger.LogWarning("GetMySessions failed: {ErrorMessage}", errorMessage);
+                throw new EntityUnauthorizedException("Session", "GetMySessions", userId, errorMessage);
+            }
+
+            // Get all sessions for this instructor (using existing repository method for active sessions)
+            // We need to get all sessions, not just active ones
+            var allSessions = await _sessionRepository.GetAllSessionsAsync().ConfigureAwait(false);
+            var instructorSessions = allSessions
+                .Where(s => s.Schedule?.InstructorId == instructor.Id)
+                .ToList();
+
+            _logger.LogInformation("Successfully retrieved {Count} sessions for instructor ID: {InstructorId}",
+                instructorSessions.Count, instructor.Id);
+
+            return instructorSessions.Select(MapToResponseDto);
+        }
+        catch (EntityUnauthorizedException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error occurred while retrieving sessions for the current instructor");
+            throw new EntityServiceException("Session", "GetMySessions",
+                "An error occurred while retrieving your sessions", ex);
+        }
+    }
+
     #endregion
 
     #region Update Operations
@@ -268,8 +327,8 @@ public class SessionService : ISessionService
     /// </summary>
     public async Task<SessionResponseDto> CreateSessionAsync(CreateSession request)
     {
-        // Use provided date or default to current date
-        var effectiveSessionDate = request.SessionDate ?? DateTime.UtcNow.Date;
+        // Use provided date or default to current date (using local time for session scheduling)
+        var effectiveSessionDate = request.SessionDate ?? DateTime.Now.Date;
 
         _logger.LogInformation("Creating session for schedule ID: {ScheduleId} on date: {SessionDate:yyyy-MM-dd}",
             request.ScheduleId, effectiveSessionDate);
@@ -305,8 +364,8 @@ public class SessionService : ISessionService
                 throw new ValidationException(errorMessage);
             }
 
-            // Validate that the session date is not in the past
-            if (effectiveSessionDate.Date < DateTime.UtcNow.Date)
+            // Validate that the session date is not in the past (using local time)
+            if (effectiveSessionDate.Date < DateTime.Now.Date)
             {
                 var errorMessage = "Cannot create a session for a past date.";
                 _logger.LogWarning("Session creation failed: {ErrorMessage}", errorMessage);
@@ -420,10 +479,10 @@ public class SessionService : ISessionService
                 throw new ValidationException(errorMessage);
             }
 
-            // Validate that the session date is today
-            if (session.SessionDate.Date != DateTime.UtcNow.Date)
+            // Validate that the session date is today (using local time)
+            if (session.SessionDate.Date != DateTime.Now.Date)
             {
-                var errorMessage = $"Cannot start session. The session is scheduled for {session.SessionDate:yyyy-MM-dd}, but today is {DateTime.UtcNow:yyyy-MM-dd}.";
+                var errorMessage = $"Cannot start session. The session is scheduled for {session.SessionDate:yyyy-MM-dd}, but today is {DateTime.Now:yyyy-MM-dd}.";
                 _logger.LogWarning("Session start failed: {ErrorMessage}", errorMessage);
                 throw new ValidationException(errorMessage);
             }
@@ -441,9 +500,9 @@ public class SessionService : ISessionService
                 }
             }
 
-            // Calculate attendance cutoff time
+            // Calculate attendance cutoff time (using local time)
             var attendanceCutoffMinutes = request.AttendanceCutoffMinutes ?? 15;
-            var actualStartTime = DateTime.UtcNow;
+            var actualStartTime = DateTime.Now;
             var attendanceCutoff = actualStartTime.AddMinutes(attendanceCutoffMinutes);
 
             // Update the session
@@ -557,7 +616,7 @@ public class SessionService : ISessionService
 
             // Update the session
             session.Status = "ended";
-            session.ActualEndTime = DateTime.UtcNow;
+            session.ActualEndTime = DateTime.Now;
             session.EndedBy = instructor.Id;
 
             // Update description if provided

@@ -467,8 +467,8 @@ public class SessionServiceTest
 
         var instructor = CreateTestInstructor(1, "user-123");
         var classroom = CreateTestClassroom(1);
-        var session = CreateTestSession(sessionId, status: "not_started", sessionDate: DateTime.UtcNow.Date);
-        session.Schedule = CreateTestSchedule(1, DateTime.UtcNow.DayOfWeek.ToString());
+        var session = CreateTestSession(sessionId, status: "not_started", sessionDate: DateTime.Now.Date);
+        session.Schedule = CreateTestSchedule(1, DateTime.Now.DayOfWeek.ToString());
         session.Schedule.InstructorId = instructor.Id;
 
         _mockInstructorRepository
@@ -505,9 +505,9 @@ public class SessionServiceTest
             .ReturnsAsync(() => session); // Return the updated session
 
         // Act
-        var beforeStart = DateTime.UtcNow;
+        var beforeStart = DateTime.Now;
         var result = await _sessionService.StartSessionAsync(sessionId, request);
-        var afterStart = DateTime.UtcNow;
+        var afterStart = DateTime.Now;
 
         // Assert
         Assert.NotNull(result);
@@ -632,8 +632,8 @@ public class SessionServiceTest
         var request = new StartSession();
 
         var instructor = CreateTestInstructor(1, "user-123");
-        var session = CreateTestSession(sessionId, status: "not_started", sessionDate: DateTime.UtcNow.Date.AddDays(1));
-        session.Schedule = CreateTestSchedule(1, "Monday");
+        var session = CreateTestSession(sessionId, status: "not_started", sessionDate: DateTime.Now.Date.AddDays(1));
+        session.Schedule = CreateTestSchedule(1, DateTime.Now.AddDays(1).DayOfWeek.ToString());
         session.Schedule.InstructorId = instructor.Id;
 
         _mockInstructorRepository
@@ -698,9 +698,9 @@ public class SessionServiceTest
             .ReturnsAsync(() => session); // Return the updated session
 
         // Act
-        var beforeEnd = DateTime.UtcNow;
+        var beforeEnd = DateTime.Now;
         var result = await _sessionService.EndSessionAsync(sessionId, request);
-        var afterEnd = DateTime.UtcNow;
+        var afterEnd = DateTime.Now;
 
         // Assert
         Assert.NotNull(result);
@@ -1006,7 +1006,7 @@ public class SessionServiceTest
     public async Task CreateSessionAsync_UsesCurrentDate_WhenSessionDateIsNull()
     {
         // Arrange
-        var today = DateTime.UtcNow.Date;
+        var today = DateTime.Now.Date;
         var request = new CreateSession
         {
             ScheduleId = 1,

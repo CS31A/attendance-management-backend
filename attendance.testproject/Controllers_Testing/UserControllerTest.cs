@@ -40,11 +40,14 @@ public class UserControllerTest
                 Username = "john.doe",
                 Email = "john.doe@example.com",
                 Role = "Student",
-                ProfileId = 1,
-                Firstname = "John",
-                Lastname = "Doe",
-                CreatedAt = DateTime.UtcNow.AddDays(-30),
-                UpdatedAt = DateTime.UtcNow.AddDays(-1)
+                StudentProfile = new StudentProfileDto
+                {
+                    Id = 1,
+                    Firstname = "John",
+                    Lastname = "Doe",
+                    CreatedAt = DateTime.UtcNow.AddDays(-30),
+                    UpdatedAt = DateTime.UtcNow.AddDays(-1)
+                }
             },
             new GetAllUsersDto
             {
@@ -52,11 +55,14 @@ public class UserControllerTest
                 Username = "jane.smith",
                 Email = "jane.smith@example.com",
                 Role = "Instructor",
-                ProfileId = 2,
-                Firstname = "Jane",
-                Lastname = "Smith",
-                CreatedAt = DateTime.UtcNow.AddDays(-60),
-                UpdatedAt = DateTime.UtcNow.AddDays(-2)
+                InstructorProfile = new InstructorProfileDto
+                {
+                    Id = 2,
+                    Firstname = "Jane",
+                    Lastname = "Smith",
+                    CreatedAt = DateTime.UtcNow.AddDays(-60),
+                    UpdatedAt = DateTime.UtcNow.AddDays(-2)
+                }
             },
             new GetAllUsersDto
             {
@@ -64,11 +70,14 @@ public class UserControllerTest
                 Username = "admin.user",
                 Email = "admin@example.com",
                 Role = "Admin",
-                ProfileId = 1,
-                Firstname = "Admin",
-                Lastname = "User",
-                CreatedAt = DateTime.UtcNow.AddDays(-90),
-                UpdatedAt = DateTime.UtcNow.AddDays(-3)
+                AdminProfile = new AdminProfileDto
+                {
+                    Id = 1,
+                    Firstname = "Admin",
+                    Lastname = "User",
+                    CreatedAt = DateTime.UtcNow.AddDays(-90),
+                    UpdatedAt = DateTime.UtcNow.AddDays(-3)
+                }
             }
         };
 
@@ -90,9 +99,10 @@ public class UserControllerTest
         Assert.Equal("john.doe", firstUser.Username);
         Assert.Equal("john.doe@example.com", firstUser.Email);
         Assert.Equal("Student", firstUser.Role);
-        Assert.Equal(1, firstUser.ProfileId);
-        Assert.Equal("John", firstUser.Firstname);
-        Assert.Equal("Doe", firstUser.Lastname);
+        Assert.NotNull(firstUser.StudentProfile);
+        Assert.Equal(1, firstUser.StudentProfile.Id);
+        Assert.Equal("John", firstUser.StudentProfile.Firstname);
+        Assert.Equal("Doe", firstUser.StudentProfile.Lastname);
 
         // Verify service was called once with default Active status
         _mockAccountService.Verify(s => s.GetAllUsersAsync(UserStatus.Active), Times.Once);
@@ -164,11 +174,14 @@ public class UserControllerTest
                 Username = "john.doe",
                 Email = "john.doe@example.com",
                 Role = "Student",
-                ProfileId = 1,
-                Firstname = "John",
-                Lastname = "Doe",
-                CreatedAt = DateTime.UtcNow.AddDays(-30),
-                UpdatedAt = DateTime.UtcNow.AddDays(-1)
+                StudentProfile = new StudentProfileDto
+                {
+                    Id = 1,
+                    Firstname = "John",
+                    Lastname = "Doe",
+                    CreatedAt = DateTime.UtcNow.AddDays(-30),
+                    UpdatedAt = DateTime.UtcNow.AddDays(-1)
+                }
             }
         };
 
@@ -201,11 +214,14 @@ public class UserControllerTest
                 Username = "archived.user",
                 Email = "archived@example.com",
                 Role = "Student",
-                ProfileId = 2,
-                Firstname = "Archived",
-                Lastname = "User",
-                CreatedAt = DateTime.UtcNow.AddDays(-60),
-                UpdatedAt = DateTime.UtcNow.AddDays(-5)
+                StudentProfile = new StudentProfileDto
+                {
+                    Id = 2,
+                    Firstname = "Archived",
+                    Lastname = "User",
+                    CreatedAt = DateTime.UtcNow.AddDays(-60),
+                    UpdatedAt = DateTime.UtcNow.AddDays(-5)
+                }
             }
         };
 
@@ -238,11 +254,14 @@ public class UserControllerTest
                 Username = "active.user",
                 Email = "active@example.com",
                 Role = "Student",
-                ProfileId = 1,
-                Firstname = "Active",
-                Lastname = "User",
-                CreatedAt = DateTime.UtcNow.AddDays(-30),
-                UpdatedAt = DateTime.UtcNow.AddDays(-1)
+                StudentProfile = new StudentProfileDto
+                {
+                    Id = 1,
+                    Firstname = "Active",
+                    Lastname = "User",
+                    CreatedAt = DateTime.UtcNow.AddDays(-30),
+                    UpdatedAt = DateTime.UtcNow.AddDays(-1)
+                }
             },
             new GetAllUsersDto
             {
@@ -250,11 +269,14 @@ public class UserControllerTest
                 Username = "archived.user",
                 Email = "archived@example.com",
                 Role = "Instructor",
-                ProfileId = 2,
-                Firstname = "Archived",
-                Lastname = "User",
-                CreatedAt = DateTime.UtcNow.AddDays(-60),
-                UpdatedAt = DateTime.UtcNow.AddDays(-5)
+                InstructorProfile = new InstructorProfileDto
+                {
+                    Id = 2,
+                    Firstname = "Archived",
+                    Lastname = "User",
+                    CreatedAt = DateTime.UtcNow.AddDays(-60),
+                    UpdatedAt = DateTime.UtcNow.AddDays(-5)
+                }
             }
         };
 
@@ -286,11 +308,7 @@ public class UserControllerTest
                 Username = "incomplete.user",
                 Email = "incomplete@example.com",
                 Role = "Student",
-                ProfileId = null,
-                Firstname = null,
-                Lastname = null,
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
+                StudentProfile = null // No profile data
             }
         };
 
@@ -311,9 +329,9 @@ public class UserControllerTest
         Assert.Equal("incomplete.user", user.Username);
         Assert.Equal("incomplete@example.com", user.Email);
         Assert.Equal("Student", user.Role);
-        Assert.Null(user.ProfileId);
-        Assert.Null(user.Firstname);
-        Assert.Null(user.Lastname);
+        Assert.Null(user.StudentProfile);
+        Assert.Null(user.InstructorProfile);
+        Assert.Null(user.AdminProfile);
 
         // Verify service was called once
         _mockAccountService.Verify(s => s.GetAllUsersAsync(It.IsAny<UserStatus>()), Times.Once);

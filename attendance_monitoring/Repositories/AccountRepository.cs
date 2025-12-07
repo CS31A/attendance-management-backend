@@ -59,7 +59,10 @@ namespace attendance_monitoring.Repositories
             from role in roles.DefaultIfEmpty()
 
                 // Get student profile - filter based on status
-            join student in context.Students.Where(s =>
+            join student in context.Students
+                .Include(s => s.Section)
+                    .ThenInclude(sec => sec.Course)
+                .Where(s =>
                 status == UserStatus.All ||
                 (status == UserStatus.Active && !s.IsDeleted) ||
                 (status == UserStatus.Archived && s.IsDeleted))
@@ -88,26 +91,46 @@ namespace attendance_monitoring.Repositories
                 Username = user.UserName ?? string.Empty,
                 Email = user.Email ?? string.Empty,
                 Role = role.Name ?? "Unknown",
-                ProfileId = student != null ? (int?)student.Id :
-                            instructor != null ? (int?)instructor.Id :
-                            admin != null ? (int?)admin.Id : null,
-                Firstname = student != null ? student.Firstname :
-                            instructor != null ? instructor.Firstname :
-                            admin != null ? admin.Firstname : null,
-                Lastname = student != null ? student.Lastname :
-                        instructor != null ? instructor.Lastname :
-                        admin != null ? admin.Lastname : null,
-                CreatedAt = student != null ? student.CreatedAt :
-                            instructor != null ? instructor.CreatedAt :
-                            admin != null ? admin.CreatedAt : DateTime.UtcNow,
-                UpdatedAt = student != null ? student.UpdatedAt :
-                            instructor != null ? instructor.UpdatedAt :
-                            admin != null ? admin.UpdatedAt : DateTime.UtcNow
+                StudentProfile = student != null ? new StudentProfileDto
+                {
+                    Id = student.Id,
+                    Firstname = student.Firstname,
+                    Lastname = student.Lastname,
+                    IsRegular = student.IsRegular,
+                    SectionId = student.SectionId,
+                    SectionName = student.Section != null ? student.Section.Name : null,
+                    CourseId = student.Section != null && student.Section.Course != null ? student.Section.Course.Id : null,
+                    CourseName = student.Section != null && student.Section.Course != null ? student.Section.Course.Name : null,
+                    CreatedAt = student.CreatedAt,
+                    UpdatedAt = student.UpdatedAt,
+                    IsDeleted = student.IsDeleted,
+                    DeletedAt = student.DeletedAt
+                } : null,
+                InstructorProfile = instructor != null ? new InstructorProfileDto
+                {
+                    Id = instructor.Id,
+                    Firstname = instructor.Firstname,
+                    Lastname = instructor.Lastname,
+                    CreatedAt = instructor.CreatedAt,
+                    UpdatedAt = instructor.UpdatedAt,
+                    IsDeleted = instructor.IsDeleted,
+                    DeletedAt = instructor.DeletedAt
+                } : null,
+                AdminProfile = admin != null ? new AdminProfileDto
+                {
+                    Id = admin.Id,
+                    Firstname = admin.Firstname,
+                    Lastname = admin.Lastname,
+                    CreatedAt = admin.CreatedAt,
+                    UpdatedAt = admin.UpdatedAt,
+                    IsDeleted = admin.IsDeleted,
+                    DeletedAt = admin.DeletedAt
+                } : null
             })
             .Where(u =>
                 // Only include users that have a profile matching the status filter
                 // Users without profiles are orphaned records and should be excluded unless status is All
-                status == UserStatus.All || u.ProfileId != null)
+                status == UserStatus.All || u.StudentProfile != null || u.InstructorProfile != null || u.AdminProfile != null)
             .ToListAsync()
             .ConfigureAwait(false);
 
@@ -124,12 +147,81 @@ namespace attendance_monitoring.Repositories
 
             var parameters = new { Status = (int)status };
 
-            var users = await connection.QueryAsync<GetAllUsersDto>(
+            // The stored procedure returns flat data, so we need to map it to the new structure
+            var flatResults = await connection.QueryAsync<UserSpResultDto>(
                 "sp_GetAllUsers",
                 parameters,
                 commandType: CommandType.StoredProcedure
             );
+
+            // Map flat results to the new profile-based structure
+            var users = flatResults.Select(r => new GetAllUsersDto
+            {
+                UserId = r.UserId,
+                Username = r.Username,
+                Email = r.Email,
+                Role = r.Role,
+                StudentProfile = r.Role.Equals("Student", StringComparison.OrdinalIgnoreCase) ? new StudentProfileDto
+                {
+                    Id = r.ProfileId ?? 0,
+                    Firstname = r.Firstname ?? string.Empty,
+                    Lastname = r.Lastname ?? string.Empty,
+                    SectionId = r.SectionId ?? 0,
+                    SectionName = r.SectionName,
+                    CourseId = r.CourseId,
+                    CourseName = r.CourseName,
+                    IsRegular = r.IsRegular ?? false,
+                    CreatedAt = r.CreatedAt ?? DateTime.UtcNow,
+                    UpdatedAt = r.UpdatedAt ?? DateTime.UtcNow,
+                    IsDeleted = r.IsDeleted ?? false,
+                    DeletedAt = r.DeletedAt
+                } : null,
+                InstructorProfile = (r.Role.Equals("Instructor", StringComparison.OrdinalIgnoreCase) || r.Role.Equals("Teacher", StringComparison.OrdinalIgnoreCase)) ? new InstructorProfileDto
+                {
+                    Id = r.ProfileId ?? 0,
+                    Firstname = r.Firstname,
+                    Lastname = r.Lastname,
+                    CreatedAt = r.CreatedAt ?? DateTime.UtcNow,
+                    UpdatedAt = r.UpdatedAt ?? DateTime.UtcNow,
+                    IsDeleted = r.IsDeleted ?? false,
+                    DeletedAt = r.DeletedAt
+                } : null,
+                AdminProfile = r.Role.Equals("Admin", StringComparison.OrdinalIgnoreCase) ? new AdminProfileDto
+                {
+                    Id = r.ProfileId ?? 0,
+                    Firstname = r.Firstname,
+                    Lastname = r.Lastname,
+                    CreatedAt = r.CreatedAt ?? DateTime.UtcNow,
+                    UpdatedAt = r.UpdatedAt ?? DateTime.UtcNow,
+                    IsDeleted = r.IsDeleted ?? false,
+                    DeletedAt = r.DeletedAt
+                } : null
+            }).ToList();
+
             return users;
+        }
+
+        /// <summary>
+        /// Internal DTO for mapping flat stored procedure results
+        /// </summary>
+        private class UserSpResultDto
+        {
+            public string UserId { get; set; } = string.Empty;
+            public string Username { get; set; } = string.Empty;
+            public string Email { get; set; } = string.Empty;
+            public string Role { get; set; } = string.Empty;
+            public int? ProfileId { get; set; }
+            public string? Firstname { get; set; }
+            public string? Lastname { get; set; }
+            public int? SectionId { get; set; }
+            public string? SectionName { get; set; }
+            public int? CourseId { get; set; }
+            public string? CourseName { get; set; }
+            public bool? IsRegular { get; set; }
+            public DateTime? CreatedAt { get; set; }
+            public DateTime? UpdatedAt { get; set; }
+            public bool? IsDeleted { get; set; }
+            public DateTime? DeletedAt { get; set; }
         }
 
         #region User Lookup Methods
@@ -495,13 +587,45 @@ namespace attendance_monitoring.Repositories
                             UserId = result.UserId,
                             Username = result.Username,
                             Email = result.Email,
-                            Role = result.Role,
-                            ProfileId = result.ProfileId,
-                            Firstname = result.Firstname,
-                            Lastname = result.Lastname,
-                            CreatedAt = result.CreatedAt,
-                            UpdatedAt = result.UpdatedAt
+                            Role = result.Role
                         };
+
+                        // Populate appropriate profile based on role
+                        string role = result.Role?.ToString() ?? "";
+                        if (role.Equals("Student", StringComparison.OrdinalIgnoreCase))
+                        {
+                            userDto.StudentProfile = new StudentProfileDto
+                            {
+                                Id = result.ProfileId,
+                                Firstname = result.Firstname ?? string.Empty,
+                                Lastname = result.Lastname ?? string.Empty,
+                                CreatedAt = result.CreatedAt,
+                                UpdatedAt = result.UpdatedAt
+                            };
+                        }
+                        else if (role.Equals("Instructor", StringComparison.OrdinalIgnoreCase) || role.Equals("Teacher", StringComparison.OrdinalIgnoreCase))
+                        {
+                            userDto.InstructorProfile = new InstructorProfileDto
+                            {
+                                Id = result.ProfileId,
+                                Firstname = result.Firstname,
+                                Lastname = result.Lastname,
+                                CreatedAt = result.CreatedAt,
+                                UpdatedAt = result.UpdatedAt
+                            };
+                        }
+                        else if (role.Equals("Admin", StringComparison.OrdinalIgnoreCase))
+                        {
+                            userDto.AdminProfile = new AdminProfileDto
+                            {
+                                Id = result.ProfileId,
+                                Firstname = result.Firstname,
+                                Lastname = result.Lastname,
+                                CreatedAt = result.CreatedAt,
+                                UpdatedAt = result.UpdatedAt
+                            };
+                        }
+
                         return (true, userDto, message);
                     }
 
