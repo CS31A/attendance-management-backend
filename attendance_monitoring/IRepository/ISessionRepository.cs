@@ -71,6 +71,13 @@ public interface ISessionRepository : ISaveableRepository
     Task<IEnumerable<Session>> GetActiveSessionsByInstructorIdAsync(int instructorId);
 
     /// <summary>
+    /// Retrieves all sessions for a specific instructor (all statuses).
+    /// </summary>
+    /// <param name="instructorId">The instructor ID</param>
+    /// <returns>Collection of all sessions for the instructor</returns>
+    Task<IEnumerable<Session>> GetSessionsByInstructorIdAsync(int instructorId);
+
+    /// <summary>
     /// Retrieves a session by its ID without tracking (for read-only operations).
     /// </summary>
     /// <param name="id">The session ID</param>

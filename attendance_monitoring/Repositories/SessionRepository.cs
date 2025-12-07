@@ -226,6 +226,32 @@ public class SessionRepository(ApplicationDbContext context) : ISessionRepositor
     }
 
     /// <summary>
+    /// Retrieves all sessions for a specific instructor (all statuses).
+    /// </summary>
+    public async Task<IEnumerable<Session>> GetSessionsByInstructorIdAsync(int instructorId)
+    {
+        return await context.Sessions
+            .AsNoTracking()
+            .AsSplitQuery()
+            .Include(s => s.Schedule)
+                .ThenInclude(sch => sch.Subject)
+            .Include(s => s.Schedule)
+                .ThenInclude(sch => sch.Section)
+            .Include(s => s.Schedule)
+                .ThenInclude(sch => sch.Classroom)
+            .Include(s => s.Schedule)
+                .ThenInclude(sch => sch.Instructor)
+            .Include(s => s.ActualRoom)
+            .Include(s => s.InstructorWhoStarted)
+            .Include(s => s.InstructorWhoEnded)
+            .Where(s => s.Schedule.InstructorId == instructorId)
+            .OrderByDescending(s => s.SessionDate)
+            .ThenByDescending(s => s.CreatedAt)
+            .ToListAsync()
+            .ConfigureAwait(false);
+    }
+
+    /// <summary>
     /// Retrieves a session by its ID without tracking (for read-only operations).
     /// </summary>
     public async Task<Session?> GetSessionByIdNoTrackingAsync(int id)

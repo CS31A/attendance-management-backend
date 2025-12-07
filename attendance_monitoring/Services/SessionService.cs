@@ -213,17 +213,14 @@ public class SessionService : ISessionService
                 throw new EntityUnauthorizedException("Session", "GetMySessions", userId, errorMessage);
             }
 
-            // Get all sessions for this instructor (using existing repository method for active sessions)
-            // We need to get all sessions, not just active ones
-            var allSessions = await _sessionRepository.GetAllSessionsAsync().ConfigureAwait(false);
-            var instructorSessions = allSessions
-                .Where(s => s.Schedule?.InstructorId == instructor.Id)
-                .ToList();
+            // Get all sessions for this instructor using the database-level filtered query
+            var instructorSessions = await _sessionRepository.GetSessionsByInstructorIdAsync(instructor.Id).ConfigureAwait(false);
+            var sessionList = instructorSessions.ToList();
 
             _logger.LogInformation("Successfully retrieved {Count} sessions for instructor ID: {InstructorId}",
-                instructorSessions.Count, instructor.Id);
+                sessionList.Count, instructor.Id);
 
-            return instructorSessions.Select(MapToResponseDto);
+            return sessionList.Select(MapToResponseDto);
         }
         catch (EntityUnauthorizedException)
         {
