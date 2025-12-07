@@ -269,11 +269,11 @@ public class QrCodeController(
                     return NotFound(new { message = $"Session {sessionId} not found", errorCode = "SESSION_NOT_FOUND" });
                 }
 
-                if (session.Schedule?.InstructorId != instructorId.Value)
+                if (session.Schedule.InstructorId != instructorId.Value)
                 {
                     logger.LogWarning(
                         "Instructor {InstructorId} attempted unauthorized access to QR codes for session {SessionId} owned by instructor {OwnerId}",
-                        instructorId.Value, sessionId, session.Schedule?.InstructorId);
+                        instructorId.Value, sessionId, session.Schedule.InstructorId);
                     return StatusCode(StatusCodes.Status403Forbidden,
                         new { message = "You do not have permission to view QR codes for this session", errorCode = "FORBIDDEN" });
                 }

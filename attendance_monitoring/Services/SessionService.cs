@@ -454,11 +454,11 @@ public class SessionService : ISessionService
             }
 
             // Validate that the instructor is authorized to start this session
-            if (session.Schedule?.InstructorId != instructor.Id)
+            if (session.Schedule.InstructorId != instructor.Id)
             {
                 var errorMessage = "You are not authorized to start this session. Only the assigned instructor can start it.";
                 _logger.LogWarning("Session start failed: {ErrorMessage} - Instructor ID: {InstructorId}, Schedule Instructor ID: {ScheduleInstructorId}",
-                    errorMessage, instructor.Id, session.Schedule?.InstructorId);
+                    errorMessage, instructor.Id, session.Schedule.InstructorId);
                 throw new EntityUnauthorizedException("Session", "Start", userId, errorMessage);
             }
 
@@ -589,11 +589,11 @@ public class SessionService : ISessionService
             }
 
             // Validate that the instructor is authorized to end this session
-            if (session.Schedule?.InstructorId != instructor.Id)
+            if (session.Schedule.InstructorId != instructor.Id)
             {
                 var errorMessage = "You are not authorized to end this session. Only the assigned instructor can end it.";
                 _logger.LogWarning("Session end failed: {ErrorMessage} - Instructor ID: {InstructorId}, Schedule Instructor ID: {ScheduleInstructorId}",
-                    errorMessage, instructor.Id, session.Schedule?.InstructorId);
+                    errorMessage, instructor.Id, session.Schedule.InstructorId);
                 throw new EntityUnauthorizedException("Session", "End", userId, errorMessage);
             }
 
@@ -704,11 +704,11 @@ public class SessionService : ISessionService
             }
 
             // Validate that the instructor is authorized to cancel this session
-            if (session.Schedule?.InstructorId != instructor.Id)
+            if (session.Schedule.InstructorId != instructor.Id)
             {
                 var errorMessage = "You are not authorized to cancel this session. Only the assigned instructor can cancel it.";
                 _logger.LogWarning("Session cancellation failed: {ErrorMessage} - Instructor ID: {InstructorId}, Schedule Instructor ID: {ScheduleInstructorId}",
-                    errorMessage, instructor.Id, session.Schedule?.InstructorId);
+                    errorMessage, instructor.Id, session.Schedule.InstructorId);
                 throw new EntityUnauthorizedException("Session", "Cancel", userId, errorMessage);
             }
 
