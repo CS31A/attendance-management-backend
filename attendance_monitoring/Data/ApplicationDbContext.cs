@@ -133,6 +133,12 @@ namespace attendance_monitoring.Data
                 .IsUnique()
                 .HasDatabaseName("IX_QrCodes_QrHash");
 
+            // Configure optimistic concurrency for QrCode entity
+            // Prevents conflicting updates during concurrent QR code scans
+            builder.Entity<QrCode>()
+                .Property(q => q.RowVersion)
+                .IsConcurrencyToken();
+
             // Configure AttendanceRecord relationships
             builder.Entity<AttendanceRecord>()
                 .HasOne(a => a.Student)

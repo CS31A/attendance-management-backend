@@ -81,6 +81,13 @@ public class QrCode
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
 
+    /// <summary>
+    /// Optimistic concurrency token for detecting conflicting updates.
+    /// SQL Server will manage this automatically as a rowversion.
+    /// </summary>
+    [Timestamp]
+    public byte[]? RowVersion { get; set; }
+
     // Navigation properties
     [ForeignKey("SessionId")]
     [JsonIgnore]
