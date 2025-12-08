@@ -389,7 +389,7 @@ namespace attendance_monitoring.Services
 
             await context.Classrooms.AddRangeAsync(classrooms);
             await context.SaveChangesAsync();
-            logger.LogInformation($"Seeded {classrooms.Count} classrooms.");
+            logger.LogInformation("Seeded {Count} classrooms.", classrooms.Count);
         }
 
         private async Task SeedCoursesAndSectionsAsync()
@@ -402,7 +402,7 @@ namespace attendance_monitoring.Services
                 course = new Course { Name = courseName, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow };
                 context.Courses.Add(course);
                 await context.SaveChangesAsync();
-                logger.LogInformation($"Seeded course: {courseName}");
+                logger.LogInformation("Seeded course: {CourseName}", courseName);
             }
 
             // Seed Sections
@@ -418,7 +418,7 @@ namespace attendance_monitoring.Services
                 }
                 else if (section.CourseId != course.Id)
                 {
-                    logger.LogWarning($"Section {sectionName} exists but belongs to Course {section.CourseId} instead of {course.Id}");
+                    logger.LogWarning("Section {SectionName} exists but belongs to Course {CurrentCourseId} instead of {ExpectedCourseId}", sectionName, section.CourseId, course.Id);
                 }
             }
             await context.SaveChangesAsync();
