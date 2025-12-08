@@ -1,0 +1,320 @@
+@baseUrl = http://localhost:8080
+
+# Authentication tokens (replace with actual tokens after login)
+@adminToken = {{loginAdmin.response.body.accessToken}}
+@instructorToken = {{loginInstructor.response.body.accessToken}}
+@studentToken = {{loginStudent.response.body.accessToken}}
+
+###
+
+# ===== LOGIN OPERATIONS =====
+# NOTE: Run these first to get authentication tokens
+
+### Admin Login
+# @name loginAdmin
+POST {{baseUrl}}/api/account/login
+Content-Type: application/json
+
+{
+  "username": "admin@attendance.com",
+  "password": "Admin@123!"
+}
+
+###
+
+### Instructor Login
+# @name loginInstructor
+POST {{baseUrl}}/api/account/login
+Content-Type: application/json
+
+{
+  "username": "annalyn.gelicame@instructor.com",
+  "password": "DefaultPassword123!"
+}
+
+###
+
+### Student Login
+# @name loginStudent
+POST {{baseUrl}}/api/account/login
+Content-Type: application/json
+
+{
+  "username": "christian.dave.alicaba@student.com",
+  "password": "DefaultPassword123!"
+}
+
+###
+
+# ===== STUDENT ENDPOINTS - SUCCESS OPERATIONS =====
+
+### Test 1: Get All Students (Success - Privileged User)
+# Returns StudentListDto (lightweight DTOs with database projection)
+# Policy: PrivilegedPolicy (Admin or Teacher)
+GET {{baseUrl}}/api/students
+Authorization: Bearer {{adminToken}}
+
+###
+
+### Test 2: Get All Students as Instructor (Success)
+GET {{baseUrl}}/api/students
+Authorization: Bearer {{instructorToken}}
+
+###
+
+### Test 3: Get Student by ID (Success)
+# Policy: PrivilegedPolicy
+GET {{baseUrl}}/api/students/2060
+Authorization: Bearer {{adminToken}}
+
+###
+
+### Test 4: Search Students by Name (Success)
+# Returns StudentListDto
+# Policy: PrivilegedPolicy
+GET {{baseUrl}}/api/students/search/name?query=christian&pageNumber=1&pageSize=50
+Authorization: Bearer {{adminToken}}
+
+###
+
+### Test 5: Search Students by Email (Success)
+# Returns StudentListDto
+# Policy: PrivilegedPolicy
+GET {{baseUrl}}/api/students/search/email?query=@student.com&pageNumber=1&pageSize=20
+Authorization: Bearer {{adminToken}}
+
+###
+
+### Test 6: Get My Subjects (Success - Student)
+# Policy: Any authenticated user (but only works for students)
+GET {{baseUrl}}/api/students/my-subjects
+Authorization: Bearer {{studentToken}}
+
+###
+
+# ===== STUDENT ENDPOINTS - ERROR HANDLING =====
+
+### Test 7: Get All Students - Forbidden (Student cannot access)
+# Expected: 403 Forbidden
+GET {{baseUrl}}/api/students
+Authorization: Bearer {{studentToken}}
+
+###
+
+### Test 8: Get All Students - Unauthorized (No token)
+# Expected: 401 Unauthorized
+GET {{baseUrl}}/api/students
+
+###
+
+### Test 9: Get Non-existent Student (Not Found)
+# Expected: 404 Not Found
+GET {{baseUrl}}/api/students/999999
+Authorization: Bearer {{adminToken}}
+
+###
+
+### Test 10: Search by Name - Empty Query (Bad Request)
+# Expected: 400 Bad Request
+GET {{baseUrl}}/api/students/search/name?query=
+Authorization: Bearer {{adminToken}}
+
+###
+
+### Test 11: Search by Name - Query Too Short (Bad Request)
+# Expected: 400 Bad Request (minimum 2 characters)
+GET {{baseUrl}}/api/students/search/name?query=a
+Authorization: Bearer {{adminToken}}
+
+###
+
+### Test 12: Search by Name - Invalid Page Number (Bad Request)
+# Expected: 400 Bad Request
+GET {{baseUrl}}/api/students/search/name?query=john&pageNumber=0
+Authorization: Bearer {{adminToken}}
+
+###
+
+### Test 13: Search by Name - Invalid Page Size (Bad Request)
+# Expected: 400 Bad Request (max 100)
+GET {{baseUrl}}/api/students/search/name?query=john&pageSize=200
+Authorization: Bearer {{adminToken}}
+
+###
+
+### Test 14: Search by Email - Empty Query (Bad Request)
+# Expected: 400 Bad Request
+GET {{baseUrl}}/api/students/search/email?query=
+Authorization: Bearer {{adminToken}}
+
+###
+
+### Test 15: Get My Subjects - Non-Student User (Not Found)
+# Expected: 404 Not Found (instructor doesn't have student record)
+GET {{baseUrl}}/api/students/my-subjects
+Authorization: Bearer {{instructorToken}}
+
+###
+
+# ===== STUDENT UPDATE OPERATIONS =====
+
+### Test 16: Update Student (Success)
+# Policy: PrivilegedPolicy
+# Note: Replace ID with existing student ID
+PATCH {{baseUrl}}/api/students/1
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "firstname": "UpdatedFirstName",
+  "lastname": "UpdatedLastName"
+}
+
+###
+
+### Test 17: Update Student - Partial Update (Only Firstname)
+PATCH {{baseUrl}}/api/students/1
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "firstname": "PartialUpdate"
+}
+
+###
+
+### Test 18: Update Student - Toggle Regular Status
+PATCH {{baseUrl}}/api/students/1
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "isRegular": false
+}
+
+###
+
+### Test 19: Update Non-existent Student (Not Found)
+# Expected: 404 Not Found
+PATCH {{baseUrl}}/api/students/999999
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "firstname": "Test"
+}
+
+###
+
+### Test 20: Update Student - Forbidden (Student updating another student)
+# Expected: 401 Unauthorized
+PATCH {{baseUrl}}/api/students/1
+Authorization: Bearer {{studentToken}}
+Content-Type: application/json
+
+{
+  "firstname": "Unauthorized"
+}
+
+###
+
+# ===== STUDENT DELETE OPERATIONS =====
+
+### Test 21: Soft Delete - Forbidden (Not Admin)
+# Expected: 403 Forbidden
+# Policy: AdminPolicy
+PATCH {{baseUrl}}/api/students/1/soft-delete
+Authorization: Bearer {{instructorToken}}
+
+###
+
+### Test 22: Soft Delete Non-existent Student
+# Expected: 404 Not Found
+PATCH {{baseUrl}}/api/students/999999/soft-delete
+Authorization: Bearer {{adminToken}}
+
+###
+
+### Test 23: Hard Delete - Forbidden (Not Admin)
+# Expected: 403 Forbidden
+# Policy: AdminPolicy
+DELETE {{baseUrl}}/api/students/1
+Authorization: Bearer {{instructorToken}}
+
+###
+
+### Test 24: Hard Delete Non-existent Student
+# Expected: 404 Not Found (or error message)
+DELETE {{baseUrl}}/api/students/999999
+Authorization: Bearer {{adminToken}}
+
+###
+
+# ===== STUDENT RESTORE OPERATIONS =====
+
+### Test 25: Restore - Forbidden (Not Admin)
+# Expected: 403 Forbidden
+# Policy: AdminPolicy
+PATCH {{baseUrl}}/api/students/1/restore
+Authorization: Bearer {{instructorToken}}
+
+###
+
+### Test 26: Restore Non-existent Student
+# Expected: 404 Not Found (or error message)
+PATCH {{baseUrl}}/api/students/999999/restore
+Authorization: Bearer {{adminToken}}
+
+###
+
+### Test 27: Restore Non-deleted Student
+# Expected: 400 Bad Request (student is not deleted)
+# Note: This will fail if student ID 1 is already soft deleted
+PATCH {{baseUrl}}/api/students/1/restore
+Authorization: Bearer {{adminToken}}
+
+###
+
+# ===== PAGINATION TESTS =====
+
+### Test 28: Search with Custom Pagination
+GET {{baseUrl}}/api/students/search/name?query=a&pageNumber=2&pageSize=10
+Authorization: Bearer {{adminToken}}
+
+###
+
+### Test 29: Search with Maximum Page Size
+GET {{baseUrl}}/api/students/search/name?query=student&pageNumber=1&pageSize=100
+Authorization: Bearer {{adminToken}}
+
+###
+
+# ===== SOFT DELETE + RESTORE WORKFLOW =====
+# Run these in sequence for a complete workflow test
+
+### Test 30: Soft Delete Student (Success)
+# Note: Use a test student ID that you can restore
+# Policy: AdminPolicy
+PATCH {{baseUrl}}/api/students/2/soft-delete
+Authorization: Bearer {{adminToken}}
+
+###
+
+### Test 31: Verify Soft Deleted Student Not in List
+# The soft deleted student should not appear in this list
+GET {{baseUrl}}/api/students
+Authorization: Bearer {{adminToken}}
+
+###
+
+### Test 32: Restore Soft Deleted Student
+PATCH {{baseUrl}}/api/students/2/restore
+Authorization: Bearer {{adminToken}}
+
+###
+
+### Test 33: Verify Restored Student Back in List
+GET {{baseUrl}}/api/students
+Authorization: Bearer {{adminToken}}
+
+###
