@@ -62,7 +62,7 @@ public class StudentController(IStudentService studentService, ILogger<StudentCo
     // GET: api/Student
     [Authorize(Policy = "PrivilegedPolicy")]
     [HttpGet]
-    public async Task<ActionResult<IList<Student>>> GetStudents()
+    public async Task<ActionResult<IList<StudentListDto>>> GetStudents()
     {
         try
         {
@@ -320,7 +320,7 @@ public class StudentController(IStudentService studentService, ILogger<StudentCo
     // GET: api/students/search/name?query=john&pageNumber=1&pageSize=50
     [HttpGet("search/name")]
     [Authorize(Policy = "PrivilegedPolicy")]
-    public async Task<ActionResult<IEnumerable<Student>>> SearchStudentsByName(
+    public async Task<ActionResult<IEnumerable<StudentListDto>>> SearchStudentsByName(
         [FromQuery] string query,
         [FromQuery] int pageNumber = 1,
         [FromQuery] int pageSize = 50)
@@ -362,7 +362,7 @@ public class StudentController(IStudentService studentService, ILogger<StudentCo
     // GET: api/students/search/email?query=@example.com&pageNumber=1&pageSize=50
     [HttpGet("search/email")]
     [Authorize(Policy = "PrivilegedPolicy")]
-    public async Task<ActionResult<IEnumerable<Student>>> SearchStudentsByEmail(
+    public async Task<ActionResult<IEnumerable<StudentListDto>>> SearchStudentsByEmail(
         [FromQuery] string query,
         [FromQuery] int pageNumber = 1,
         [FromQuery] int pageSize = 50)

@@ -3,6 +3,7 @@ using attendance_monitoring.Controllers;
 using attendance_monitoring.IServices;
 using attendance_monitoring.Classes;
 using attendance_monitoring.Exceptions;
+using attendance_monitoring.Models.DTO.Response;
 using Microsoft.Extensions.Logging;
 
 namespace attendance.testproject.Controllers_Testing;
@@ -26,10 +27,10 @@ public class StudentControllerTest
     public async Task GetStudents_ReturnsOkResult_WithStudentsList()
     {
         // Arrange
-        var expectedStudents = new List<Student>
+        var expectedStudents = new List<StudentListDto>
         {
-            new Student { Id = 1, Firstname = "John", Lastname = "Doe" },
-            new Student { Id = 2, Firstname = "Jane", Lastname = "Smith" }
+            new StudentListDto { Id = 1, Firstname = "John", Lastname = "Doe" },
+            new StudentListDto { Id = 2, Firstname = "Jane", Lastname = "Smith" }
         };
 
         _mockStudentService
@@ -41,7 +42,7 @@ public class StudentControllerTest
 
         // Assert
         var okResult = Assert.IsType<OkObjectResult>(result.Result);
-        var students = Assert.IsAssignableFrom<IList<Student>>(okResult.Value);
+        var students = Assert.IsAssignableFrom<IList<StudentListDto>>(okResult.Value);
         Assert.Equal(2, students.Count);
         Assert.Equal("John", students.First().Firstname);
         Assert.Equal("Smith", students.Last().Lastname);
@@ -57,10 +58,10 @@ public class StudentControllerTest
     {
         // Arrange
         var searchTerm = "john";
-        var expectedStudents = new List<Student>
+        var expectedStudents = new List<StudentListDto>
         {
-            new Student { Id = 1, Firstname = "John", Lastname = "Doe", UserId = "user1" },
-            new Student { Id = 2, Firstname = "Johnny", Lastname = "Smith", UserId = "user2" }
+            new StudentListDto { Id = 1, Firstname = "John", Lastname = "Doe", UserId = "user1" },
+            new StudentListDto { Id = 2, Firstname = "Johnny", Lastname = "Smith", UserId = "user2" }
         };
 
         _mockStudentService
@@ -72,7 +73,7 @@ public class StudentControllerTest
 
         // Assert
         var okResult = Assert.IsType<OkObjectResult>(result.Result);
-        var students = Assert.IsAssignableFrom<IEnumerable<Student>>(okResult.Value);
+        var students = Assert.IsAssignableFrom<IEnumerable<StudentListDto>>(okResult.Value);
         Assert.Equal(2, students.Count());
         _mockStudentService.Verify(s => s.SearchStudentsByNameAsync(searchTerm, 1, 50), Times.Once);
     }
@@ -84,9 +85,9 @@ public class StudentControllerTest
         var searchTerm = "doe";
         var pageNumber = 2;
         var pageSize = 20;
-        var expectedStudents = new List<Student>
+        var expectedStudents = new List<StudentListDto>
         {
-            new Student { Id = 3, Firstname = "Jane", Lastname = "Doe", UserId = "user3" }
+            new StudentListDto { Id = 3, Firstname = "Jane", Lastname = "Doe", UserId = "user3" }
         };
 
         _mockStudentService
@@ -98,7 +99,7 @@ public class StudentControllerTest
 
         // Assert
         var okResult = Assert.IsType<OkObjectResult>(result.Result);
-        var students = Assert.IsAssignableFrom<IEnumerable<Student>>(okResult.Value);
+        var students = Assert.IsAssignableFrom<IEnumerable<StudentListDto>>(okResult.Value);
         Assert.Single(students);
         _mockStudentService.Verify(s => s.SearchStudentsByNameAsync(searchTerm, pageNumber, pageSize), Times.Once);
     }
@@ -108,7 +109,7 @@ public class StudentControllerTest
     {
         // Arrange
         var searchTerm = "nonexistent";
-        var expectedStudents = new List<Student>();
+        var expectedStudents = new List<StudentListDto>();
 
         _mockStudentService
             .Setup(s => s.SearchStudentsByNameAsync(searchTerm, 1, 50))
@@ -119,7 +120,7 @@ public class StudentControllerTest
 
         // Assert
         var okResult = Assert.IsType<OkObjectResult>(result.Result);
-        var students = Assert.IsAssignableFrom<IEnumerable<Student>>(okResult.Value);
+        var students = Assert.IsAssignableFrom<IEnumerable<StudentListDto>>(okResult.Value);
         Assert.Empty(students);
         _mockStudentService.Verify(s => s.SearchStudentsByNameAsync(searchTerm, 1, 50), Times.Once);
     }
@@ -188,10 +189,10 @@ public class StudentControllerTest
     {
         // Arrange
         var searchTerm = "@example.com";
-        var expectedStudents = new List<Student>
+        var expectedStudents = new List<StudentListDto>
         {
-            new Student { Id = 1, Firstname = "John", Lastname = "Doe", UserId = "user1" },
-            new Student { Id = 2, Firstname = "Jane", Lastname = "Smith", UserId = "user2" }
+            new StudentListDto { Id = 1, Firstname = "John", Lastname = "Doe", UserId = "user1" },
+            new StudentListDto { Id = 2, Firstname = "Jane", Lastname = "Smith", UserId = "user2" }
         };
 
         _mockStudentService
@@ -203,7 +204,7 @@ public class StudentControllerTest
 
         // Assert
         var okResult = Assert.IsType<OkObjectResult>(result.Result);
-        var students = Assert.IsAssignableFrom<IEnumerable<Student>>(okResult.Value);
+        var students = Assert.IsAssignableFrom<IEnumerable<StudentListDto>>(okResult.Value);
         Assert.Equal(2, students.Count());
         _mockStudentService.Verify(s => s.SearchStudentsByEmailAsync(searchTerm, 1, 50), Times.Once);
     }
@@ -215,9 +216,9 @@ public class StudentControllerTest
         var searchTerm = "test";
         var pageNumber = 3;
         var pageSize = 10;
-        var expectedStudents = new List<Student>
+        var expectedStudents = new List<StudentListDto>
         {
-            new Student { Id = 5, Firstname = "Test", Lastname = "User", UserId = "user5" }
+            new StudentListDto { Id = 5, Firstname = "Test", Lastname = "User", UserId = "user5" }
         };
 
         _mockStudentService
@@ -229,7 +230,7 @@ public class StudentControllerTest
 
         // Assert
         var okResult = Assert.IsType<OkObjectResult>(result.Result);
-        var students = Assert.IsAssignableFrom<IEnumerable<Student>>(okResult.Value);
+        var students = Assert.IsAssignableFrom<IEnumerable<StudentListDto>>(okResult.Value);
         Assert.Single(students);
         _mockStudentService.Verify(s => s.SearchStudentsByEmailAsync(searchTerm, pageNumber, pageSize), Times.Once);
     }
@@ -239,7 +240,7 @@ public class StudentControllerTest
     {
         // Arrange
         var searchTerm = "nonexistent@domain.com";
-        var expectedStudents = new List<Student>();
+        var expectedStudents = new List<StudentListDto>();
 
         _mockStudentService
             .Setup(s => s.SearchStudentsByEmailAsync(searchTerm, 1, 50))
@@ -250,7 +251,7 @@ public class StudentControllerTest
 
         // Assert
         var okResult = Assert.IsType<OkObjectResult>(result.Result);
-        var students = Assert.IsAssignableFrom<IEnumerable<Student>>(okResult.Value);
+        var students = Assert.IsAssignableFrom<IEnumerable<StudentListDto>>(okResult.Value);
         Assert.Empty(students);
         _mockStudentService.Verify(s => s.SearchStudentsByEmailAsync(searchTerm, 1, 50), Times.Once);
     }

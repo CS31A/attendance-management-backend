@@ -52,15 +52,15 @@ namespace attendance_monitoring.Services
         }
 
         /// <summary>
-        /// Retrieves all non-deleted students
+        /// Retrieves all non-deleted students as lightweight DTOs.
+        /// Performance: Uses database projection for optimal performance.
         /// </summary>
-        /// <returns>A collection of non-deleted students</returns>
-        public async Task<IList<Student>> GetAllNonDeletedStudentsAsync()
+        /// <returns>A collection of non-deleted students as DTOs</returns>
+        public async Task<IList<StudentListDto>> GetAllNonDeletedStudentsAsync()
         {
             try
             {
                 _logger.LogInformation("Retrieving all non-deleted students");
-
                 var students = await _studentRepository.GetAllNonDeletedStudentsAsync().ConfigureAwait(false);
                 _logger.LogInformation("Successfully retrieved {Count} non-deleted students", students.Count);
                 return students;
@@ -562,18 +562,12 @@ namespace attendance_monitoring.Services
 
         #region Search Operations
         /// <summary>
-        /// Searches for students by name with pagination
+        /// Searches for students by name with pagination, returning lightweight DTOs.
         /// </summary>
-        /// <param name="searchTerm">The search term to match against first or last name</param>
-        /// <param name="pageNumber">The page number (1-based)</param>
-        /// <param name="pageSize">The number of items per page</param>
-        /// <returns>A paginated collection of students matching the search criteria</returns>
-        /// <exception cref="EntityServiceException">Thrown when validation fails or an error occurs during search</exception>
-        public async Task<IEnumerable<Student>> SearchStudentsByNameAsync(string searchTerm, int pageNumber, int pageSize)
+        public async Task<IEnumerable<StudentListDto>> SearchStudentsByNameAsync(string searchTerm, int pageNumber, int pageSize)
         {
             try
             {
-                // Validate search term
                 if (string.IsNullOrWhiteSpace(searchTerm))
                 {
                     _logger.LogWarning("Student name search failed: Search term is null or empty");
@@ -581,26 +575,21 @@ namespace attendance_monitoring.Services
                 }
 
                 searchTerm = searchTerm.Trim();
-
                 if (searchTerm.Length < 2)
                 {
                     _logger.LogWarning("Student name search failed: Search term too short");
                     throw new EntityServiceException("Student", "SearchStudentsByName", "Search term must be at least 2 characters");
                 }
-
                 if (searchTerm.Length > 100)
                 {
                     _logger.LogWarning("Student name search failed: Search term too long");
                     throw new EntityServiceException("Student", "SearchStudentsByName", "Search term cannot exceed 100 characters");
                 }
-
-                // Validate pagination parameters
                 if (pageNumber < 1)
                 {
                     _logger.LogWarning("Student name search failed: Invalid page number {PageNumber}", pageNumber);
                     throw new EntityServiceException("Student", "SearchStudentsByName", "Page number must be greater than or equal to 1");
                 }
-
                 if (pageSize < 1 || pageSize > 100)
                 {
                     _logger.LogWarning("Student name search failed: Invalid page size {PageSize}", pageSize);
@@ -615,11 +604,7 @@ namespace attendance_monitoring.Services
                 _logger.LogInformation("Successfully retrieved {Count} students matching name search", students.Count());
                 return students;
             }
-            catch (EntityServiceException)
-            {
-                // Re-throw EntityServiceException as-is
-                throw;
-            }
+            catch (EntityServiceException) { throw; }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error occurred while searching students by name with term: {SearchTerm}", searchTerm);
@@ -628,18 +613,12 @@ namespace attendance_monitoring.Services
         }
 
         /// <summary>
-        /// Searches for students by email with pagination
+        /// Searches for students by email with pagination, returning lightweight DTOs.
         /// </summary>
-        /// <param name="searchTerm">The search term to match against user email</param>
-        /// <param name="pageNumber">The page number (1-based)</param>
-        /// <param name="pageSize">The number of items per page</param>
-        /// <returns>A paginated collection of students matching the search criteria</returns>
-        /// <exception cref="EntityServiceException">Thrown when validation fails or an error occurs during search</exception>
-        public async Task<IEnumerable<Student>> SearchStudentsByEmailAsync(string searchTerm, int pageNumber, int pageSize)
+        public async Task<IEnumerable<StudentListDto>> SearchStudentsByEmailAsync(string searchTerm, int pageNumber, int pageSize)
         {
             try
             {
-                // Validate search term
                 if (string.IsNullOrWhiteSpace(searchTerm))
                 {
                     _logger.LogWarning("Student email search failed: Search term is null or empty");
@@ -647,26 +626,21 @@ namespace attendance_monitoring.Services
                 }
 
                 searchTerm = searchTerm.Trim();
-
                 if (searchTerm.Length < 2)
                 {
                     _logger.LogWarning("Student email search failed: Search term too short");
                     throw new EntityServiceException("Student", "SearchStudentsByEmail", "Search term must be at least 2 characters");
                 }
-
                 if (searchTerm.Length > 100)
                 {
                     _logger.LogWarning("Student email search failed: Search term too long");
                     throw new EntityServiceException("Student", "SearchStudentsByEmail", "Search term cannot exceed 100 characters");
                 }
-
-                // Validate pagination parameters
                 if (pageNumber < 1)
                 {
                     _logger.LogWarning("Student email search failed: Invalid page number {PageNumber}", pageNumber);
                     throw new EntityServiceException("Student", "SearchStudentsByEmail", "Page number must be greater than or equal to 1");
                 }
-
                 if (pageSize < 1 || pageSize > 100)
                 {
                     _logger.LogWarning("Student email search failed: Invalid page size {PageSize}", pageSize);
@@ -681,11 +655,7 @@ namespace attendance_monitoring.Services
                 _logger.LogInformation("Successfully retrieved {Count} students matching email search", students.Count());
                 return students;
             }
-            catch (EntityServiceException)
-            {
-                // Re-throw EntityServiceException as-is
-                throw;
-            }
+            catch (EntityServiceException) { throw; }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error occurred while searching students by email with term: {SearchTerm}", searchTerm);

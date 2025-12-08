@@ -10,22 +10,29 @@ public class InstructorRepository(ApplicationDbContext context) : IInstructorRep
     #region Read Operations
 
     #region GetAllInstructorsAsync
+    /// <summary>
+    /// Retrieves all non-deleted instructors.
+    /// Performance: Single query, no navigation properties loaded.
+    /// Note: User navigation property has [JsonIgnore] and is not needed for API responses.
+    /// </summary>
     public async Task<IEnumerable<Instructor>> GetAllInstructorsAsync()
     {
         return await context.Instructors
-            .Include(i => i.User)
             .AsNoTracking()
-            .Where(i => !i.IsDeleted) // Only return non-deleted instructors
+            .Where(i => !i.IsDeleted)
             .OrderBy(i => i.Id)
             .ToListAsync().ConfigureAwait(false);
     }
     #endregion
 
     #region GetInstructorByIdAsync
+    /// <summary>
+    /// Retrieves an instructor by ID (read-only).
+    /// Performance: Single query, no navigation properties loaded.
+    /// </summary>
     public async Task<Instructor?> GetInstructorByIdAsync(int id)
     {
         return await context.Instructors
-            .Include(i => i.User)
             .AsNoTracking()
             .FirstOrDefaultAsync(i => i.Id == id && !i.IsDeleted)
             .ConfigureAwait(false);
@@ -33,20 +40,26 @@ public class InstructorRepository(ApplicationDbContext context) : IInstructorRep
     #endregion
 
     #region GetInstructorByIdTrackedAsync
+    /// <summary>
+    /// Retrieves an instructor by ID with change tracking for updates.
+    /// Performance: Single query, no navigation properties loaded.
+    /// </summary>
     public async Task<Instructor?> GetInstructorByIdTrackedAsync(int id)
     {
         return await context.Instructors
-            .Include(i => i.User)
             .FirstOrDefaultAsync(i => i.Id == id && !i.IsDeleted)
             .ConfigureAwait(false);
     }
     #endregion
 
     #region GetInstructorByUserIdAsync
+    /// <summary>
+    /// Retrieves an instructor by their Identity User ID.
+    /// Performance: Single query, no navigation properties loaded.
+    /// </summary>
     public async Task<Instructor?> GetInstructorByUserIdAsync(string userId)
     {
         return await context.Instructors
-            .Include(i => i.User)
             .AsNoTracking()
             .FirstOrDefaultAsync(i => i.UserId == userId && !i.IsDeleted)
             .ConfigureAwait(false);
@@ -54,10 +67,13 @@ public class InstructorRepository(ApplicationDbContext context) : IInstructorRep
     #endregion
 
     #region GetInstructorByIdIgnoreDeleteStatus
+    /// <summary>
+    /// Retrieves an instructor by ID regardless of delete status.
+    /// Performance: Single query, no navigation properties loaded.
+    /// </summary>
     public async Task<Instructor?> GetInstructorByIdIgnoreDeleteStatus(int id)
     {
         return await context.Instructors
-            .Include(i => i.User)
             .AsNoTracking()
             .FirstOrDefaultAsync(i => i.Id == id)
             .ConfigureAwait(false);

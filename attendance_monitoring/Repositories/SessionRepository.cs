@@ -14,12 +14,12 @@ public class SessionRepository(ApplicationDbContext context) : ISessionRepositor
 
     /// <summary>
     /// Retrieves a session by its ID with all navigation properties loaded.
+    /// Performance: Single JOIN query (no split query for single record retrieval).
     /// </summary>
     public async Task<Session?> GetSessionByIdAsync(int id)
     {
         return await context.Sessions
             .AsNoTracking()
-            .AsSplitQuery() // Optimize performance for multiple Include chains
             .Include(s => s.Schedule)
                 .ThenInclude(sch => sch.Subject)
             .Include(s => s.Schedule)
@@ -253,12 +253,12 @@ public class SessionRepository(ApplicationDbContext context) : ISessionRepositor
 
     /// <summary>
     /// Retrieves a session by its ID without tracking (for read-only operations).
+    /// Performance: Single JOIN query (no split query for single record retrieval).
     /// </summary>
     public async Task<Session?> GetSessionByIdNoTrackingAsync(int id)
     {
         return await context.Sessions
             .AsNoTracking()
-            .AsSplitQuery()
             .Include(s => s.Schedule)
                 .ThenInclude(sch => sch.Subject)
             .Include(s => s.Schedule)

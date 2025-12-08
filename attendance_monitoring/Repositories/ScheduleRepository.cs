@@ -10,10 +10,15 @@ namespace attendance_monitoring.Repositories
         #region Read Operations
 
         #region GetAllSchedulesAsync
+        /// <summary>
+        /// Retrieves all schedules with navigation properties.
+        /// Performance: Uses split query to avoid cartesian explosion with multiple includes.
+        /// </summary>
         public async Task<IEnumerable<Schedules>> GetAllSchedulesAsync()
         {
             return await context.Schedules
                 .AsNoTracking()
+                .AsSplitQuery()
                 .Include(s => s.Subject)
                 .Include(s => s.Classroom)
                 .Include(s => s.Section)

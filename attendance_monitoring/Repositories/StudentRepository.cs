@@ -1,5 +1,6 @@
 using attendance_monitoring.Classes;
 using attendance_monitoring.Data;
+using attendance_monitoring.Models.DTO.Response;
 using Microsoft.EntityFrameworkCore;
 using attendance_monitoring.IRepository;
 
@@ -9,32 +10,55 @@ public class StudentRepository(ApplicationDbContext context) : IStudentRepositor
 {
 
     #region GetAllStudentsAsync
+    /// <summary>
+    /// Retrieves all students.
+    /// Performance: Single query, no navigation properties loaded.
+    /// Note: User navigation property has [JsonIgnore] and is not needed for API responses.
+    /// </summary>
     public async Task<IList<Student>> GetAllStudentsAsync()
     {
         return await context.Students
-            .Include(s => s.User)
             .AsNoTracking()
             .ToListAsync();
     }
     #endregion
 
     #region GetAllNonDeletedStudentsAsync
-    public async Task<IList<Student>> GetAllNonDeletedStudentsAsync()
+    /// <summary>
+    /// Retrieves all non-deleted students as lightweight DTOs.
+    /// Performance: Uses database projection - only SELECTs needed columns.
+    /// </summary>
+    public async Task<IList<StudentListDto>> GetAllNonDeletedStudentsAsync()
     {
         return await context.Students
-            .Include(s => s.User)
             .AsNoTracking()
-            .Where(student => !student.IsDeleted)
+            .Where(s => !s.IsDeleted)
+            .Select(s => new StudentListDto
+            {
+                Id = s.Id,
+                Firstname = s.Firstname,
+                Lastname = s.Lastname,
+                IsRegular = s.IsRegular,
+                UserId = s.UserId,
+                SectionId = s.SectionId,
+                CreatedAt = s.CreatedAt,
+                UpdatedAt = s.UpdatedAt,
+                IsDeleted = s.IsDeleted,
+                DeletedAt = s.DeletedAt
+            })
             .ToListAsync()
             .ConfigureAwait(false);
     }
     #endregion
 
     #region GetStudentByIdAsync
+    /// <summary>
+    /// Retrieves a student by ID (read-only).
+    /// Performance: Single query, no navigation properties loaded.
+    /// </summary>
     public async Task<Student?> GetStudentByIdAsync(int id)
     {
         return await context.Students
-            .Include(s => s.User)
             .AsNoTracking()
             .FirstOrDefaultAsync(s => s.Id == id && !s.IsDeleted)
             .ConfigureAwait(false);
@@ -42,20 +66,26 @@ public class StudentRepository(ApplicationDbContext context) : IStudentRepositor
     #endregion
 
     #region GetStudentByIdTrackedAsync
+    /// <summary>
+    /// Retrieves a student by ID with change tracking for updates.
+    /// Performance: Single query, no navigation properties loaded.
+    /// </summary>
     public async Task<Student?> GetStudentByIdTrackedAsync(int id)
     {
         return await context.Students
-            .Include(s => s.User)
             .FirstOrDefaultAsync(s => s.Id == id && !s.IsDeleted)
             .ConfigureAwait(false);
     }
     #endregion
 
     #region GetStudentByUserIdAsync
+    /// <summary>
+    /// Retrieves a student by their Identity User ID.
+    /// Performance: Single query, no navigation properties loaded.
+    /// </summary>
     public async Task<Student?> GetStudentByUserIdAsync(string userId)
     {
         return await context.Students
-            .Include(s => s.User)
             .AsNoTracking()
             .FirstOrDefaultAsync(s => s.UserId == userId && !s.IsDeleted)
             .ConfigureAwait(false);
@@ -63,10 +93,13 @@ public class StudentRepository(ApplicationDbContext context) : IStudentRepositor
     #endregion
 
     #region GetStudentByIdIgnoreDeleteStatus
+    /// <summary>
+    /// Retrieves a student by ID regardless of delete status.
+    /// Performance: Single query, no navigation properties loaded.
+    /// </summary>
     public async Task<Student?> GetStudentByIdIgnoreDeleteStatus(int id)
     {
         return await context.Students
-            .Include(s => s.User)
             .AsNoTracking()
             .FirstOrDefaultAsync(s => s.Id == id)
             .ConfigureAwait(false);
@@ -165,10 +198,13 @@ public class StudentRepository(ApplicationDbContext context) : IStudentRepositor
     #endregion
 
     #region SearchStudentsByNameAsync
-    public async Task<IEnumerable<Student>> SearchStudentsByNameAsync(string searchTerm, int pageNumber, int pageSize)
+    /// <summary>
+    /// Searches students by name with pagination, returning lightweight DTOs.
+    /// Performance: Uses database projection for optimal performance.
+    /// </summary>
+    public async Task<IEnumerable<StudentListDto>> SearchStudentsByNameAsync(string searchTerm, int pageNumber, int pageSize)
     {
         return await context.Students
-            .Include(s => s.User)
             .AsNoTracking()
             .Where(s => !s.IsDeleted &&
                    (EF.Functions.Like(s.Firstname, $"%{searchTerm}%") ||
@@ -177,16 +213,32 @@ public class StudentRepository(ApplicationDbContext context) : IStudentRepositor
             .ThenBy(s => s.Firstname)
             .Skip((pageNumber - 1) * pageSize)
             .Take(pageSize)
+            .Select(s => new StudentListDto
+            {
+                Id = s.Id,
+                Firstname = s.Firstname,
+                Lastname = s.Lastname,
+                IsRegular = s.IsRegular,
+                UserId = s.UserId,
+                SectionId = s.SectionId,
+                CreatedAt = s.CreatedAt,
+                UpdatedAt = s.UpdatedAt,
+                IsDeleted = s.IsDeleted,
+                DeletedAt = s.DeletedAt
+            })
             .ToListAsync()
             .ConfigureAwait(false);
     }
     #endregion
 
     #region SearchStudentsByEmailAsync
-    public async Task<IEnumerable<Student>> SearchStudentsByEmailAsync(string searchTerm, int pageNumber, int pageSize)
+    /// <summary>
+    /// Searches students by email with pagination, returning lightweight DTOs.
+    /// Performance: Uses database projection - User accessed only for filtering/ordering.
+    /// </summary>
+    public async Task<IEnumerable<StudentListDto>> SearchStudentsByEmailAsync(string searchTerm, int pageNumber, int pageSize)
     {
         return await context.Students
-            .Include(s => s.User)
             .AsNoTracking()
             .Where(s => !s.IsDeleted &&
                    s.User != null &&
@@ -194,6 +246,19 @@ public class StudentRepository(ApplicationDbContext context) : IStudentRepositor
             .OrderBy(s => s.User!.Email)
             .Skip((pageNumber - 1) * pageSize)
             .Take(pageSize)
+            .Select(s => new StudentListDto
+            {
+                Id = s.Id,
+                Firstname = s.Firstname,
+                Lastname = s.Lastname,
+                IsRegular = s.IsRegular,
+                UserId = s.UserId,
+                SectionId = s.SectionId,
+                CreatedAt = s.CreatedAt,
+                UpdatedAt = s.UpdatedAt,
+                IsDeleted = s.IsDeleted,
+                DeletedAt = s.DeletedAt
+            })
             .ToListAsync()
             .ConfigureAwait(false);
     }

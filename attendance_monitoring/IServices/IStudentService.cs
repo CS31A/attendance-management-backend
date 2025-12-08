@@ -8,7 +8,7 @@ namespace attendance_monitoring.IServices;
 public interface IStudentService
 {
     Task<IList<Student>> GetAllStudentsAsync();
-    Task<IList<Student>> GetAllNonDeletedStudentsAsync();
+    Task<IList<StudentListDto>> GetAllNonDeletedStudentsAsync();
     Task<Student> GetStudentByIdAsync(int id);
     Task<Student> CreateStudentAsync(CreateStudent createStudent, ClaimsPrincipal user);
     Task<Student> UpdateStudentAsync(int id, UpdateStudent updateStudent, ClaimsPrincipal user);
@@ -16,6 +16,6 @@ public interface IStudentService
     Task<string?> HardDeleteStudentAsync(int id, ClaimsPrincipal user);
     Task<string?> RestoreStudentAsync(int id, ClaimsPrincipal user);
     Task<IEnumerable<StudentSubjectResponseDto>> GetStudentSubjectsAsync(ClaimsPrincipal user);
-    Task<IEnumerable<Student>> SearchStudentsByNameAsync(string searchTerm, int pageNumber, int pageSize);
-    Task<IEnumerable<Student>> SearchStudentsByEmailAsync(string searchTerm, int pageNumber, int pageSize);
+    Task<IEnumerable<StudentListDto>> SearchStudentsByNameAsync(string searchTerm, int pageNumber, int pageSize);
+    Task<IEnumerable<StudentListDto>> SearchStudentsByEmailAsync(string searchTerm, int pageNumber, int pageSize);
 }

@@ -1,4 +1,5 @@
 using attendance_monitoring.Classes;
+using attendance_monitoring.Models.DTO.Response;
 
 namespace attendance_monitoring.IRepository;
 
@@ -14,9 +15,22 @@ public interface IStudentRepository : ISaveableRepository
     Task<IList<Student>> GetAllStudentsAsync();
 
     /// <summary>
-    /// Retrieves all non-deleted students
+    /// Retrieves all non-deleted students as lightweight DTOs.
+    /// Performance: Uses database projection for optimal performance.
     /// </summary>
-    Task<IList<Student>> GetAllNonDeletedStudentsAsync();
+    Task<IList<StudentListDto>> GetAllNonDeletedStudentsAsync();
+
+    /// <summary>
+    /// Searches students by name with pagination, returning lightweight DTOs.
+    /// Performance: Uses database projection for optimal performance.
+    /// </summary>
+    Task<IEnumerable<StudentListDto>> SearchStudentsByNameAsync(string searchTerm, int pageNumber, int pageSize);
+
+    /// <summary>
+    /// Searches students by email with pagination, returning lightweight DTOs.
+    /// Performance: Uses database projection for optimal performance.
+    /// </summary>
+    Task<IEnumerable<StudentListDto>> SearchStudentsByEmailAsync(string searchTerm, int pageNumber, int pageSize);
 
     /// <summary>
     /// Retrieves a student by their ID.
@@ -87,23 +101,4 @@ public interface IStudentRepository : ISaveableRepository
     /// <param name="userId">The user ID of the student.</param>
     /// <returns>A collection of subjects with schedule details for the student.</returns>
     Task<IEnumerable<(Subject Subject, Schedules Schedule, Instructor Instructor, Classroom Classroom)>> GetStudentSubjectsAsync(string userId);
-
-    /// <summary>
-    /// Searches for students by name with pagination.
-    /// </summary>
-    /// <param name="searchTerm">The search term to match against first or last name.</param>
-    /// <param name="pageNumber">The page number (1-based).</param>
-    /// <param name="pageSize">The number of items per page.</param>
-    /// <returns>A paginated collection of students matching the search criteria.</returns>
-    Task<IEnumerable<Student>> SearchStudentsByNameAsync(string searchTerm, int pageNumber, int pageSize);
-
-    /// <summary>
-    /// Searches for students by email with pagination.
-    /// </summary>
-    /// <param name="searchTerm">The search term to match against user email.</param>
-    /// <param name="pageNumber">The page number (1-based).</param>
-    /// <param name="pageSize">The number of items per page.</param>
-    /// <returns>A paginated collection of students matching the search criteria.</returns>
-    Task<IEnumerable<Student>> SearchStudentsByEmailAsync(string searchTerm, int pageNumber, int pageSize);
-
 }
