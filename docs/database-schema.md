@@ -14,6 +14,17 @@ The system uses **SQL Server** with **Entity Framework Core** as the ORM. The da
 - **Indexing**: Optimized for common query patterns
 - **Audit Trail**: CreatedAt/UpdatedAt timestamps on all entities
 
+## Intentional Legacy Differences
+
+The EF Core model snapshot is the authoritative source of truth for schema. Any intentional deviations (legacy systems, manual hotfixes, or transitional tables) must be listed here to keep documentation and migrations aligned.
+
+**Authoritative legacy sources:**
+- None documented yet. Add explicit sources here as they are identified.
+
+| Legacy Source | EF Model/Table | Difference | Rationale | Impact | Migration/Decommission Notes |
+|---|---|---|---|---|---|
+| None documented | - | - | - | - | - |
+
 ## Entity Relationship Diagram
 
 ```mermaid
