@@ -27,6 +27,20 @@ A comprehensive attendance tracking system built with ASP.NET Core 9.0, Entity F
 - **Documentation**: Swagger/OpenAPI with Scalar UI
 - **Additional**: QRCoder, DotNetEnv
 
+## 🖥️ System Consumers
+
+This backend API serves two client applications:
+
+- **Vue Frontend** - Web application using cookie-based authentication
+  - Authentication: `/api/account/web/login`
+  - Tokens stored in HTTP-only cookies
+  - CORS configured for `http://localhost:5173` (default Vite dev server)
+
+- **Flutter Mobile App** - Mobile application using JWT Bearer tokens
+  - Authentication: `/api/account/login`
+  - Tokens managed by client application
+  - Access token in `Authorization: Bearer <token>` header
+
 ## 📚 Documentation Hub
 
 For more detailed documentation, see the `/docs` folder:
