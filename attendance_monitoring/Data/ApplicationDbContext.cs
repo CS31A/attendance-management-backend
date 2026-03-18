@@ -25,6 +25,10 @@ namespace attendance_monitoring.Data
         public DbSet<StudentEnrollment> StudentEnrollments { get; set; } = null!;
         public DbSet<Session> Sessions { get; set; } = null!;
         public DbSet<AttendanceRecord> AttendanceRecords { get; set; } = null!;
+        public DbSet<Fingerprint> Fingerprints { get; set; } = null!;
+        public DbSet<FingerprintDevice> FingerprintDevices { get; set; } = null!;
+        public DbSet<FingerprintScanEvent> FingerprintScanEvents { get; set; } = null!;
+        public DbSet<FingerprintEnrollmentSession> FingerprintEnrollmentSessions { get; set; } = null!;
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
@@ -164,6 +168,131 @@ namespace attendance_monitoring.Data
                 .HasIndex(a => new { a.StudentId, a.SessionId })
                 .IsUnique()
                 .HasDatabaseName("IX_AttendanceRecords_StudentId_SessionId");
+
+            // Configure Fingerprint relationships
+            builder.Entity<Fingerprint>()
+                .HasOne(f => f.User)
+                .WithMany()
+                .HasForeignKey(f => f.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Index for fast fingerprint lookup by user
+            builder.Entity<Fingerprint>()
+                .HasIndex(f => f.UserId)
+                .HasDatabaseName("IX_Fingerprints_UserId");
+
+            builder.Entity<Fingerprint>()
+                .HasIndex(f => f.UserId)
+                .IsUnique()
+                .HasFilter("[IsDeleted] = 0")
+                .HasDatabaseName("IX_Fingerprints_UserId_Active");
+
+            // Composite index for device + sensor ID lookups
+            builder.Entity<Fingerprint>()
+                .HasIndex(f => new { f.DeviceId, f.SensorFingerprintId })
+                .HasDatabaseName("IX_Fingerprints_DeviceId_SensorFingerprintId");
+
+            builder.Entity<Fingerprint>()
+                .HasIndex(f => new { f.DeviceId, f.SensorFingerprintId })
+                .IsUnique()
+                .HasFilter("[IsDeleted] = 0")
+                .HasDatabaseName("IX_Fingerprints_DeviceId_SensorFingerprintId_Active");
+
+            // Configure FingerprintDevice unique identifier and operational indexes
+            builder.Entity<FingerprintDevice>()
+                .HasIndex(d => d.DeviceIdentifier)
+                .IsUnique()
+                .HasDatabaseName("IX_FingerprintDevices_DeviceIdentifier");
+
+            builder.Entity<FingerprintDevice>()
+                .HasIndex(d => d.IsActive)
+                .HasDatabaseName("IX_FingerprintDevices_IsActive");
+
+            // Configure FingerprintScanEvent relationships
+            builder.Entity<FingerprintScanEvent>()
+                .HasOne(e => e.Device)
+                .WithMany(d => d.ScanEvents)
+                .HasForeignKey(e => e.DeviceId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            builder.Entity<FingerprintScanEvent>()
+                .HasOne(e => e.MatchedStudent)
+                .WithMany()
+                .HasForeignKey(e => e.MatchedStudentId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            builder.Entity<FingerprintScanEvent>()
+                .HasOne(e => e.Session)
+                .WithMany()
+                .HasForeignKey(e => e.SessionId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            builder.Entity<FingerprintScanEvent>()
+                .HasOne(e => e.AttendanceRecord)
+                .WithMany()
+                .HasForeignKey(e => e.AttendanceRecordId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            builder.Entity<FingerprintScanEvent>()
+                .HasIndex(e => e.EventId)
+                .IsUnique()
+                .HasDatabaseName("IX_FingerprintScanEvents_EventId");
+
+            builder.Entity<FingerprintScanEvent>()
+                .HasIndex(e => new { e.DeviceId, e.CapturedAt })
+                .HasDatabaseName("IX_FingerprintScanEvents_DeviceId_CapturedAt");
+
+            builder.Entity<FingerprintScanEvent>()
+                .HasIndex(e => new { e.MatchedStudentId, e.CapturedAt })
+                .HasDatabaseName("IX_FingerprintScanEvents_MatchedStudentId_CapturedAt");
+
+            builder.Entity<FingerprintScanEvent>()
+                .HasIndex(e => e.Status)
+                .HasDatabaseName("IX_FingerprintScanEvents_Status");
+
+            builder.Entity<FingerprintScanEvent>()
+                .HasIndex(e => e.AttendanceRecordId)
+                .IsUnique()
+                .HasFilter("[AttendanceRecordId] IS NOT NULL")
+                .HasDatabaseName("IX_FingerprintScanEvents_AttendanceRecordId");
+
+            builder.Entity<FingerprintScanEvent>()
+                .Property(e => e.RowVersion)
+                .IsRowVersion();
+
+            builder.Entity<FingerprintScanEvent>()
+                .Property(e => e.MatchScore)
+                .HasPrecision(5, 4);
+
+            builder.Entity<FingerprintScanEvent>()
+                .Property(e => e.ThresholdUsed)
+                .HasPrecision(5, 4);
+
+            // Configure FingerprintEnrollmentSession relationships and indexes
+            builder.Entity<FingerprintEnrollmentSession>()
+                .HasOne(e => e.Device)
+                .WithMany()
+                .HasForeignKey(e => e.DeviceId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            builder.Entity<FingerprintEnrollmentSession>()
+                .HasOne(e => e.Student)
+                .WithMany()
+                .HasForeignKey(e => e.StudentId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            builder.Entity<FingerprintEnrollmentSession>()
+                .HasIndex(e => e.EnrollmentSessionId)
+                .IsUnique()
+                .HasDatabaseName("IX_FingerprintEnrollmentSessions_EnrollmentSessionId");
+
+            builder.Entity<FingerprintEnrollmentSession>()
+                .HasIndex(e => new { e.DeviceId, e.Status })
+                .HasDatabaseName("IX_FingerprintEnrollmentSessions_DeviceId_Status");
+
+            builder.Entity<FingerprintEnrollmentSession>()
+                .HasIndex(e => new { e.StudentId, e.Status })
+                .HasDatabaseName("IX_FingerprintEnrollmentSessions_StudentId_Status");
         }
     }
 }

@@ -83,6 +83,26 @@ namespace attendance_monitoring.Repositories
         }
         #endregion
 
+        #region GetSchedulesBySectionsAndSubjectsAsync
+        /// <summary>
+        /// Retrieves schedules for multiple sections and subjects.
+        /// Used for finding active sessions for a student.
+        /// </summary>
+        public async Task<IEnumerable<Schedules>> GetSchedulesBySectionsAndSubjectsAsync(
+            IEnumerable<int> sectionIds,
+            IEnumerable<int> subjectIds)
+        {
+            return await context.Schedules
+                .AsNoTracking()
+                .Include(s => s.Subject)
+                .Include(s => s.Section)
+                .Include(s => s.Classroom)
+                .Include(s => s.Instructor)
+                .Where(s => sectionIds.Contains(s.SectionId) && subjectIds.Contains(s.SubjectId))
+                .ToListAsync();
+        }
+        #endregion
+
         #endregion
 
         #region Write Operations

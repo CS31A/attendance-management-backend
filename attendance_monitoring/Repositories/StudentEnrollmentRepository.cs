@@ -212,4 +212,22 @@ public class StudentEnrollmentRepository : IStudentEnrollmentRepository
         await _context.SaveChangesAsync();
         return true;
     }
+
+    /// <summary>
+    /// Gets enrollments for a specific student.
+    /// Used for finding active sessions in fingerprint attendance.
+    /// </summary>
+    public async Task<IEnumerable<StudentEnrollment>> GetByStudentIdAsync(int studentId)
+    {
+        return await GetStudentEnrollmentsAsync(studentId);
+    }
+
+    /// <summary>
+    /// Gets a specific enrollment for a student in a section-subject combination.
+    /// Used for verifying enrollment in fingerprint attendance.
+    /// </summary>
+    public async Task<StudentEnrollment?> GetByStudentSectionSubjectAsync(int studentId, int sectionId, int subjectId)
+    {
+        return await GetEnrollmentAsync(studentId, sectionId, subjectId);
+    }
 }

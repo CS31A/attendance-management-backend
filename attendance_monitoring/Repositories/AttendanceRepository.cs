@@ -355,6 +355,28 @@ public class AttendanceRepository(ApplicationDbContext context) : IAttendanceRep
     }
 
     /// <summary>
+    /// Gets attendance record for a specific student and session combination.
+    /// Used for duplicate checking in fingerprint attendance.
+    /// </summary>
+    public async Task<AttendanceRecord?> GetAttendanceByStudentAndSessionAsync(int studentId, int sessionId)
+    {
+        return await context.AttendanceRecords
+            .AsNoTracking()
+            .Include(a => a.Session)
+                .ThenInclude(s => s.Schedule)
+                    .ThenInclude(sch => sch.Subject)
+            .Include(a => a.Session)
+                .ThenInclude(s => s.Schedule)
+                    .ThenInclude(sch => sch.Section)
+            .Include(a => a.Session)
+                .ThenInclude(s => s.ActualRoom)
+            .Include(a => a.Student)
+            .Where(a => a.StudentId == studentId && a.SessionId == sessionId)
+            .FirstOrDefaultAsync()
+            .ConfigureAwait(false);
+    }
+
+    /// <summary>
     /// Gets the count of attendance records for a student, optionally filtered by status.
     /// </summary>
     public async Task<int> GetAttendanceCountAsync(int studentId, string? status = null)

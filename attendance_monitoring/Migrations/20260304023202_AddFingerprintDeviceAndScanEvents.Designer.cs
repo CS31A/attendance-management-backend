@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using attendance_monitoring.Data;
 
@@ -11,9 +12,11 @@ using attendance_monitoring.Data;
 namespace attendance_monitoring.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260304023202_AddFingerprintDeviceAndScanEvents")]
+    partial class AddFingerprintDeviceAndScanEvents
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -444,14 +447,10 @@ namespace attendance_monitoring.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("UserId")
-                        .IsUnique()
-                        .HasDatabaseName("IX_Fingerprints_UserId_Active")
-                        .HasFilter("[IsDeleted] = 0");
+                        .HasDatabaseName("IX_Fingerprints_UserId");
 
                     b.HasIndex("DeviceId", "SensorFingerprintId")
-                        .IsUnique()
-                        .HasDatabaseName("IX_Fingerprints_DeviceId_SensorFingerprintId_Active")
-                        .HasFilter("[IsDeleted] = 0");
+                        .HasDatabaseName("IX_Fingerprints_DeviceId_SensorFingerprintId");
 
                     b.ToTable("Fingerprints");
                 });
@@ -499,70 +498,6 @@ namespace attendance_monitoring.Migrations
                         .HasDatabaseName("IX_FingerprintDevices_IsActive");
 
                     b.ToTable("FingerprintDevices");
-                });
-
-            modelBuilder.Entity("attendance_monitoring.Classes.FingerprintEnrollmentSession", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<int>("AssignedSensorFingerprintId")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime?>("CompletedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<int>("DeviceId")
-                        .HasColumnType("int");
-
-                    b.Property<Guid>("EnrollmentSessionId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<DateTime>("ExpiresAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("FailureReason")
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
-                    b.Property<string>("RequestedByUserId")
-                        .IsRequired()
-                        .HasMaxLength(450)
-                        .HasColumnType("nvarchar(450)");
-
-                    b.Property<DateTime?>("StartedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasMaxLength(30)
-                        .HasColumnType("nvarchar(30)");
-
-                    b.Property<int>("StudentId")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("EnrollmentSessionId")
-                        .IsUnique()
-                        .HasDatabaseName("IX_FingerprintEnrollmentSessions_EnrollmentSessionId");
-
-                    b.HasIndex("DeviceId", "Status")
-                        .HasDatabaseName("IX_FingerprintEnrollmentSessions_DeviceId_Status");
-
-                    b.HasIndex("StudentId", "Status")
-                        .HasDatabaseName("IX_FingerprintEnrollmentSessions_StudentId_Status");
-
-                    b.ToTable("FingerprintEnrollmentSessions");
                 });
 
             modelBuilder.Entity("attendance_monitoring.Classes.FingerprintScanEvent", b =>
@@ -1202,25 +1137,6 @@ namespace attendance_monitoring.Migrations
                         .IsRequired();
 
                     b.Navigation("User");
-                });
-
-            modelBuilder.Entity("attendance_monitoring.Classes.FingerprintEnrollmentSession", b =>
-                {
-                    b.HasOne("attendance_monitoring.Classes.FingerprintDevice", "Device")
-                        .WithMany()
-                        .HasForeignKey("DeviceId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("attendance_monitoring.Classes.Student", "Student")
-                        .WithMany()
-                        .HasForeignKey("StudentId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("Device");
-
-                    b.Navigation("Student");
                 });
 
             modelBuilder.Entity("attendance_monitoring.Classes.FingerprintScanEvent", b =>

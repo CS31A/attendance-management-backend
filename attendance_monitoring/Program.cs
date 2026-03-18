@@ -22,6 +22,7 @@ builder.Services.AddApiDocumentation();
 // Response Handling & CORS
 builder.Services.AddResponseHandling();
 builder.Services.AddCorsPolicy(builder.Configuration);
+builder.Services.AddDataProtection();
 
 // SignalR
 builder.Services.AddSignalRServices();

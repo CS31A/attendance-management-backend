@@ -94,12 +94,11 @@ public static class AuthenticationServiceExtensions
         services.AddAuthorization(options =>
         {
             options.AddPolicy("AdminPolicy", policy => policy.RequireRole("Admin"));
-            options.AddPolicy("InstructorPolicy", policy => policy.RequireRole("Admin", "Teacher"));
-            options.AddPolicy("PrivilegedPolicy", policy => policy.RequireRole("Admin", "Teacher"));
-            options.AddPolicy("UserPolicy", policy => policy.RequireRole("Admin", "Teacher", "Student"));
+            options.AddPolicy("InstructorPolicy", policy => policy.RequireRole("Admin", "Teacher", "Instructor"));
+            options.AddPolicy("PrivilegedPolicy", policy => policy.RequireRole("Admin", "Teacher", "Instructor"));
+            options.AddPolicy("UserPolicy", policy => policy.RequireRole("Admin", "Teacher", "Instructor", "Student"));
         });
 
         return services;
     }
 }
-

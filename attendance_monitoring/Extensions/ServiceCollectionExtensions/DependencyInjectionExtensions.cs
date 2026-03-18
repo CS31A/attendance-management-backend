@@ -30,6 +30,7 @@ public static class DependencyInjectionExtensions
         services.AddScoped<IStudentEnrollmentRepository, StudentEnrollmentRepository>();
         services.AddScoped<ISessionRepository, SessionRepository>();
         services.AddScoped<IAttendanceRepository, AttendanceRepository>();
+        services.AddScoped<IFingerprintRepository, FingerprintRepository>();
 
         return services;
     }
@@ -60,6 +61,7 @@ public static class DependencyInjectionExtensions
         services.AddScoped<ISessionService, SessionService>();
         services.AddScoped<IAttendanceService, AttendanceService>();
         services.AddScoped<IDataSeederService, DataSeederService>();
+        services.AddScoped<IFingerprintService, FingerprintService>();
 
         // SignalR and Notification services
         services.AddSingleton<IUserConnectionManager, UserConnectionManager>();

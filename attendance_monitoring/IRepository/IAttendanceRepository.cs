@@ -144,6 +144,15 @@ public interface IAttendanceRepository : ISaveableRepository
     Task<bool> SessionHasAttendanceAsync(int sessionId);
 
     /// <summary>
+    /// Gets attendance record for a specific student and session combination.
+    /// Used for duplicate checking in fingerprint attendance.
+    /// </summary>
+    /// <param name="studentId">The student ID</param>
+    /// <param name="sessionId">The session ID</param>
+    /// <returns>The attendance record if found, null otherwise</returns>
+    Task<AttendanceRecord?> GetAttendanceByStudentAndSessionAsync(int studentId, int sessionId);
+
+    /// <summary>
     /// Gets the count of attendance records for a student, optionally filtered by status.
     /// </summary>
     /// <param name="studentId">The student ID</param>

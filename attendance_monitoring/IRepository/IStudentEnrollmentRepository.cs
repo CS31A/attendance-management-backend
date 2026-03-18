@@ -22,4 +22,15 @@ public interface IStudentEnrollmentRepository
     Task<IEnumerable<Subject>> GetStudentSubjectsAsync(int studentId);
     Task<bool> DeactivateEnrollmentAsync(int enrollmentId);
     Task<bool> ReactivateEnrollmentAsync(int enrollmentId);
+
+    // New methods for fingerprint attendance
+    /// <summary>
+    /// Gets all enrollments for a student.
+    /// </summary>
+    Task<IEnumerable<StudentEnrollment>> GetByStudentIdAsync(int studentId);
+
+    /// <summary>
+    /// Gets a specific enrollment for a student in a section-subject combination.
+    /// </summary>
+    Task<StudentEnrollment?> GetByStudentSectionSubjectAsync(int studentId, int sectionId, int subjectId);
 }

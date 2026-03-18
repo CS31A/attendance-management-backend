@@ -12,5 +12,14 @@ namespace attendance_monitoring.IRepository
         Task<Schedules> AddScheduleAsync(Schedules schedule);
         Task<Schedules?> UpdateScheduleAsync(Schedules schedule);
         Task<bool> DeleteScheduleAsync(int id);
+
+        // New methods for fingerprint attendance
+        /// <summary>
+        /// Retrieves schedules for multiple sections and subjects.
+        /// Used for finding active sessions for a student.
+        /// </summary>
+        Task<IEnumerable<Schedules>> GetSchedulesBySectionsAndSubjectsAsync(
+            IEnumerable<int> sectionIds,
+            IEnumerable<int> subjectIds);
     }
 }
