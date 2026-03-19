@@ -139,44 +139,46 @@ internal sealed class ProfileService
         string userId,
         UpdateProfile updateProfileDto)
     {
-        _logger.LogInformation("User profile update attempt for user ID: {UserId}", userId);
-
-        // Validate user exists
-        var user = await _accountRepository.FindUserByIdAsync(userId).ConfigureAwait(false);
-        if (user == null)
+        return await ExecuteInTransactionAsync(async () =>
         {
-            _logger.LogWarning("Profile update failed: User not found for ID {UserId}", userId);
-            throw new EntityNotFoundException<string>("User", userId, "User not found");
-        }
+            _logger.LogInformation("User profile update attempt for user ID: {UserId}", userId);
 
-        // Get user role
-        var roles = await _accountRepository.GetUserRolesAsync(user).ConfigureAwait(false);
-        var role = roles?.FirstOrDefault();
-        if (string.IsNullOrEmpty(role))
-        {
-            _logger.LogWarning("User {Username} (ID: {UserId}) has no assigned roles during profile update.", user.UserName, user.Id);
-            role = "Unknown";
-        }
-
-        // Validate email uniqueness if email is being changed
-        if (!string.IsNullOrEmpty(updateProfileDto.Email) &&
-            !updateProfileDto.Email.Equals(user.Email, StringComparison.OrdinalIgnoreCase))
-        {
-            var emailExists = await _accountRepository.EmailExistsAsync(updateProfileDto.Email, userId).ConfigureAwait(false);
-            if (emailExists)
+            // Validate user exists
+            var user = await _accountRepository.FindUserByIdAsync(userId).ConfigureAwait(false);
+            if (user == null)
             {
-                _logger.LogWarning("Profile update failed: Email {Email} already exists", updateProfileDto.Email);
-                throw new EntityAlreadyExistsException<string>("User", "Email", updateProfileDto.Email);
+                _logger.LogWarning("Profile update failed: User not found for ID {UserId}", userId);
+                throw new EntityNotFoundException<string>("User", userId, "User not found");
             }
 
-            // Update email
-            user.Email = updateProfileDto.Email;
-            user.NormalizedEmail = updateProfileDto.Email.ToUpperInvariant();
-        }
+            // Get user role
+            var roles = await _accountRepository.GetUserRolesAsync(user).ConfigureAwait(false);
+            var role = roles?.FirstOrDefault();
+            if (string.IsNullOrEmpty(role))
+            {
+                _logger.LogWarning("User {Username} (ID: {UserId}) has no assigned roles during profile update.", user.UserName, user.Id);
+                role = "Unknown";
+            }
 
-        // Validate and update password if provided
-        if (!string.IsNullOrEmpty(updateProfileDto.NewPassword))
-        {
+            // Validate email uniqueness if email is being changed
+            if (!string.IsNullOrEmpty(updateProfileDto.Email) &&
+                !updateProfileDto.Email.Equals(user.Email, StringComparison.OrdinalIgnoreCase))
+            {
+                var emailExists = await _accountRepository.EmailExistsAsync(updateProfileDto.Email, userId).ConfigureAwait(false);
+                if (emailExists)
+                {
+                    _logger.LogWarning("Profile update failed: Email {Email} already exists", updateProfileDto.Email);
+                    throw new EntityAlreadyExistsException<string>("User", "Email", updateProfileDto.Email);
+                }
+
+                // Update email
+                user.Email = updateProfileDto.Email;
+                user.NormalizedEmail = updateProfileDto.Email.ToUpperInvariant();
+            }
+
+            // Validate and update password if provided
+            if (!string.IsNullOrEmpty(updateProfileDto.NewPassword))
+            {
             // Validate current password is provided
             if (string.IsNullOrEmpty(updateProfileDto.CurrentPassword))
             {
@@ -213,95 +215,121 @@ internal sealed class ProfileService
             }
 
             _logger.LogInformation("Password updated successfully for user {UserId}", userId);
-        }
-
-        // Update user in Identity
-        try
-        {
-            var updateResult = await _accountRepository.UpdateUserAsync(user).ConfigureAwait(false);
-            if (!updateResult.Succeeded)
-            {
-                var errors = string.Join("; ", updateResult.Errors.Select(e => e.Description));
-                _logger.LogWarning("Profile update failed: User update error - {Errors}", errors);
-                throw new ValidationException($"Profile update failed: {errors}");
             }
-        }
-        catch (Microsoft.EntityFrameworkCore.DbUpdateException ex) when (ex.InnerException?.Message.Contains("duplicate") == true ||
-                                                                       ex.InnerException?.Message.Contains("unique") == true ||
-                                                                       ex.InnerException?.Message.Contains("IX_AspNetUsers_NormalizedEmail") == true)
-        {
-            _logger.LogWarning("Profile update failed: Email already exists for another user - {Email}", updateProfileDto.Email);
-            throw new EntityAlreadyExistsException<string>("User", "Email", updateProfileDto.Email ?? "");
-        }
 
-        // Update role-specific profile
-        if (role.Equals("Student", StringComparison.OrdinalIgnoreCase))
-        {
-            var student = await _accountRepository.GetStudentByUserIdAsync(userId).ConfigureAwait(false);
-            if (student != null)
+            // Update user in Identity
+            try
             {
-                // Update student-specific fields if provided
-                if (!string.IsNullOrWhiteSpace(updateProfileDto.Firstname))
+                var updateResult = await _accountRepository.UpdateUserAsync(user).ConfigureAwait(false);
+                if (!updateResult.Succeeded)
                 {
-                    student.Firstname = updateProfileDto.Firstname;
+                    var errors = string.Join("; ", updateResult.Errors.Select(e => e.Description));
+                    _logger.LogWarning("Profile update failed: User update error - {Errors}", errors);
+                    throw new ValidationException($"Profile update failed: {errors}");
                 }
-                else if (updateProfileDto.Firstname != null)
-                {
-                    _logger.LogWarning("Profile update failed: Firstname is required for students");
-                    throw new ValidationException("Firstname is required and cannot be empty or whitespace");
-                }
+            }
+            catch (Microsoft.EntityFrameworkCore.DbUpdateException ex) when (ex.InnerException?.Message.Contains("duplicate") == true ||
+                                                                           ex.InnerException?.Message.Contains("unique") == true ||
+                                                                           ex.InnerException?.Message.Contains("IX_AspNetUsers_NormalizedEmail") == true)
+            {
+                _logger.LogWarning("Profile update failed: Email already exists for another user - {Email}", updateProfileDto.Email);
+                throw new EntityAlreadyExistsException<string>("User", "Email", updateProfileDto.Email ?? "");
+            }
 
-                if (!string.IsNullOrWhiteSpace(updateProfileDto.Lastname))
+            // Update role-specific profile
+            if (role.Equals("Student", StringComparison.OrdinalIgnoreCase))
+            {
+                var student = await _accountRepository.GetStudentByUserIdAsync(userId).ConfigureAwait(false);
+                if (student != null)
                 {
-                    student.Lastname = updateProfileDto.Lastname;
-                }
-                else if (updateProfileDto.Lastname != null)
-                {
-                    _logger.LogWarning("Profile update failed: Lastname is required for students");
-                    throw new ValidationException("Lastname is required and cannot be empty or whitespace");
-                }
-                if (updateProfileDto.SectionId.HasValue)
-                {
-                    var section = await _sectionRepository.GetSectionByIdAsync(updateProfileDto.SectionId.Value).ConfigureAwait(false);
-                    if (section == null)
+                    // Update student-specific fields if provided
+                    if (!string.IsNullOrWhiteSpace(updateProfileDto.Firstname))
                     {
-                        _logger.LogWarning("Profile update failed: Section {SectionId} does not exist", updateProfileDto.SectionId.Value);
-                        throw new EntityNotFoundException<int>("Section", updateProfileDto.SectionId.Value);
+                        student.Firstname = updateProfileDto.Firstname;
                     }
-                    student.SectionId = updateProfileDto.SectionId.Value;
-                }
-                if (updateProfileDto.IsRegular.HasValue)
-                {
-                    student.IsRegular = updateProfileDto.IsRegular.Value;
-                }
+                    else if (updateProfileDto.Firstname != null)
+                    {
+                        _logger.LogWarning("Profile update failed: Firstname is required for students");
+                        throw new ValidationException("Firstname is required and cannot be empty or whitespace");
+                    }
 
-                await _accountRepository.UpdateStudentProfileAsync(student).ConfigureAwait(false);
+                    if (!string.IsNullOrWhiteSpace(updateProfileDto.Lastname))
+                    {
+                        student.Lastname = updateProfileDto.Lastname;
+                    }
+                    else if (updateProfileDto.Lastname != null)
+                    {
+                        _logger.LogWarning("Profile update failed: Lastname is required for students");
+                        throw new ValidationException("Lastname is required and cannot be empty or whitespace");
+                    }
+                    if (updateProfileDto.SectionId.HasValue)
+                    {
+                        var section = await _sectionRepository.GetSectionByIdAsync(updateProfileDto.SectionId.Value).ConfigureAwait(false);
+                        if (section == null)
+                        {
+                            _logger.LogWarning("Profile update failed: Section {SectionId} does not exist", updateProfileDto.SectionId.Value);
+                            throw new EntityNotFoundException<int>("Section", updateProfileDto.SectionId.Value);
+                        }
+                        student.SectionId = updateProfileDto.SectionId.Value;
+                    }
+                    if (updateProfileDto.IsRegular.HasValue)
+                    {
+                        student.IsRegular = updateProfileDto.IsRegular.Value;
+                    }
+
+                    await _accountRepository.UpdateStudentProfileAsync(student).ConfigureAwait(false);
+                }
             }
-        }
-        else if (role.Equals(RoleConstants.Instructor, StringComparison.OrdinalIgnoreCase))
-        {
-            var instructor = await _accountRepository.GetInstructorByUserIdAsync(userId).ConfigureAwait(false);
-            if (instructor != null)
+            else if (role.Equals(RoleConstants.Instructor, StringComparison.OrdinalIgnoreCase))
             {
-                if (!string.IsNullOrEmpty(updateProfileDto.Firstname))
+                var instructor = await _accountRepository.GetInstructorByUserIdAsync(userId).ConfigureAwait(false);
+                if (instructor != null)
                 {
-                    instructor.Firstname = updateProfileDto.Firstname;
-                }
-                if (!string.IsNullOrEmpty(updateProfileDto.Lastname))
-                {
-                    instructor.Lastname = updateProfileDto.Lastname;
-                }
+                    if (!string.IsNullOrEmpty(updateProfileDto.Firstname))
+                    {
+                        instructor.Firstname = updateProfileDto.Firstname;
+                    }
+                    if (!string.IsNullOrEmpty(updateProfileDto.Lastname))
+                    {
+                        instructor.Lastname = updateProfileDto.Lastname;
+                    }
 
-                await _accountRepository.UpdateInstructorProfileAsync(instructor).ConfigureAwait(false);
+                    await _accountRepository.UpdateInstructorProfileAsync(instructor).ConfigureAwait(false);
+                }
             }
+
+            // Save all changes
+            await _accountRepository.SaveChangesAsync().ConfigureAwait(false);
+
+            _logger.LogInformation("Profile updated successfully for user {UserId}", userId);
+
+            // Return updated profile
+            return await GetUserProfileAsync(userId).ConfigureAwait(false);
+        }).ConfigureAwait(false);
+    }
+
+    private async Task<T> ExecuteInTransactionAsync<T>(Func<Task<T>> operation)
+    {
+        if (_context.Database.IsInMemory() || _context.Database.CurrentTransaction != null)
+        {
+            return await operation().ConfigureAwait(false);
         }
 
-        // Save all changes
-        await _accountRepository.SaveChangesAsync().ConfigureAwait(false);
-
-        _logger.LogInformation("Profile updated successfully for user {UserId}", userId);
-
-        // Return updated profile
-        return await GetUserProfileAsync(userId).ConfigureAwait(false);
+        var strategy = _context.Database.CreateExecutionStrategy();
+        return await strategy.ExecuteAsync(async () =>
+        {
+            await using var transaction = await _context.Database.BeginTransactionAsync().ConfigureAwait(false);
+            try
+            {
+                var result = await operation().ConfigureAwait(false);
+                await transaction.CommitAsync().ConfigureAwait(false);
+                return result;
+            }
+            catch
+            {
+                await transaction.RollbackAsync().ConfigureAwait(false);
+                throw;
+            }
+        }).ConfigureAwait(false);
     }
 }
