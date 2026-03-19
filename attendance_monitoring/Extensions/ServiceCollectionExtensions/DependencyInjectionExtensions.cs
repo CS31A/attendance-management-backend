@@ -56,11 +56,13 @@ public static class DependencyInjectionExtensions
         services.AddScoped<IQrCodeService>(sp => new QrCodeService(
             sp.GetRequiredService<QrCodeQueryService>(),
             sp.GetRequiredService<QrCodeWriteService>(),
-            sp.GetRequiredService<QrCodeGenerationService>()));
+            sp.GetRequiredService<QrCodeGenerationService>(),
+            sp.GetRequiredService<QrCodeScanService>()));
         services.AddScoped<QrCodeAuthorizationService>();
         services.AddScoped<QrCodeQueryService>();
         services.AddScoped<QrCodeWriteService>();
         services.AddScoped<QrCodeGenerationService>();
+        services.AddScoped<QrCodeScanService>();
         services.AddScoped<IRoleInitializationService, RoleInitializationService>();
         services.AddScoped<UserContextService>();
         services.AddScoped<ITokenValidationService, TokenValidationService>();
