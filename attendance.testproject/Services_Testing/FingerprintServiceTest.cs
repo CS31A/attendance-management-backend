@@ -83,7 +83,7 @@ public class FingerprintServiceTest
         _configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
-                ["FingerprintDeviceAuth:ApiKey"] = "device-secret"
+                ["FingerprintDeviceAuth:Devices:esp32-attendance-01"] = "device-secret"
             })
             .Build();
 
@@ -146,6 +146,75 @@ public class FingerprintServiceTest
 
         await Assert.ThrowsAsync<EntityUnauthorizedException>(() =>
             service.GetPendingEnrollmentSessionAsync("esp32-attendance-01", "wrong-secret"));
+    }
+
+    [Fact]
+    public async Task GetPendingEnrollmentSessionAsync_WithRegisteredDeviceAndMatchingApiKey_ReturnsPendingSession()
+    {
+        var service = CreateService();
+        var now = DateTime.UtcNow;
+        var device = new FingerprintDevice
+        {
+            Id = 7,
+            DeviceIdentifier = "esp32-attendance-01",
+            IsActive = true,
+            CreatedAt = now,
+            UpdatedAt = now
+        };
+        var student = new Student
+        {
+            Id = 1,
+            UserId = "user-1",
+            Firstname = "John",
+            Lastname = "Doe",
+            IsDeleted = false
+        };
+        var enrollmentSession = new FingerprintEnrollmentSession
+        {
+            EnrollmentSessionId = Guid.NewGuid(),
+            DeviceId = device.Id,
+            StudentId = student.Id,
+            RequestedByUserId = "admin-1",
+            AssignedSensorFingerprintId = 9,
+            Status = "Pending",
+            ExpiresAt = now.AddMinutes(5),
+            CreatedAt = now,
+            UpdatedAt = now
+        };
+
+        _context.FingerprintDevices.Add(device);
+        _context.Students.Add(student);
+        _context.FingerprintEnrollmentSessions.Add(enrollmentSession);
+        await _context.SaveChangesAsync();
+
+        _mockStudentRepository
+            .Setup(repository => repository.GetStudentByIdAsync(student.Id))
+            .ReturnsAsync(student);
+
+        var response = await service.GetPendingEnrollmentSessionAsync(device.DeviceIdentifier, "device-secret");
+
+        Assert.NotNull(response);
+        Assert.True(response!.Success);
+        Assert.Equal(enrollmentSession.EnrollmentSessionId, response.EnrollmentSessionId);
+        Assert.Equal("InProgress", response.Status);
+    }
+
+    [Fact]
+    public async Task GetPendingEnrollmentSessionAsync_WithGlobalKeyForDifferentDevice_ThrowsUnauthorized()
+    {
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["FingerprintDeviceAuth:ApiKey"] = "legacy-global-secret",
+                ["FingerprintDeviceAuth:Devices:esp32-attendance-01"] = "device-secret"
+            })
+            .Build();
+        var service = CreateService(configuration);
+
+        await Assert.ThrowsAsync<EntityUnauthorizedException>(() =>
+            service.GetPendingEnrollmentSessionAsync("esp32-attendance-02", "legacy-global-secret"));
+
+        Assert.Empty(_context.FingerprintDevices);
     }
 
     [Fact]
@@ -480,7 +549,7 @@ public class FingerprintServiceTest
         Assert.Equal("Late", response.AttendanceStatus);
     }
 
-    private FingerprintService CreateService()
+    private FingerprintService CreateService(IConfiguration? configurationOverride = null)
     {
         _mockFingerprintRepository
             .Setup(repository => repository.BeginTransactionAsync())
@@ -497,7 +566,7 @@ public class FingerprintServiceTest
             _mockNotificationService.Object,
             _context,
             _userContextService,
-            _configuration,
+            configurationOverride ?? _configuration,
             _dataProtectionProvider,
             _mockLogger.Object);
     }

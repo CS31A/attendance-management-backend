@@ -9,6 +9,8 @@ using attendance_monitoring.Models.DTO.Request;
 using attendance_monitoring.Models.DTO.Response;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Cryptography;
+using System.Text;
 using ValidationException = attendance_monitoring.Exceptions.ValidationException;
 
 namespace attendance_monitoring.Services;
@@ -201,7 +203,7 @@ public class FingerprintService(
             throw new ValidationException("Student already has an active fingerprint registration");
         }
 
-        var device = await GetOrCreateActiveDeviceAsync(request.DeviceId).ConfigureAwait(false);
+        var device = await GetOrCreateManagedDeviceAsync(request.DeviceId).ConfigureAwait(false);
         await ExpireStaleEnrollmentSessionsAsync(device.Id).ConfigureAwait(false);
 
         var activeSession = await context.FingerprintEnrollmentSessions
@@ -246,9 +248,9 @@ public class FingerprintService(
 
     public async Task<FingerprintEnrollmentSessionResponseDto?> GetPendingEnrollmentSessionAsync(string deviceId, string apiKey)
     {
-        ValidateDeviceApiKey(apiKey);
+        ValidateDeviceApiKey(deviceId, apiKey);
 
-        var device = await GetOrCreateActiveDeviceAsync(deviceId).ConfigureAwait(false);
+        var device = await GetProvisionedActiveDeviceAsync(deviceId).ConfigureAwait(false);
         await ExpireStaleEnrollmentSessionsAsync(device.Id).ConfigureAwait(false);
 
         var enrollmentSession = await context.FingerprintEnrollmentSessions
@@ -283,7 +285,7 @@ public class FingerprintService(
         CompleteFingerprintEnrollmentRequest request,
         string apiKey)
     {
-        ValidateDeviceApiKey(apiKey);
+        ValidateDeviceApiKey(request.DeviceId, apiKey);
 
         var enrollmentSession = await context.FingerprintEnrollmentSessions
             .Include(session => session.Device)
@@ -442,9 +444,9 @@ public class FingerprintService(
             request.DeviceId,
             request.SensorFingerprintId);
 
-        ValidateDeviceApiKey(apiKey);
+        ValidateDeviceApiKey(request.DeviceId, apiKey);
 
-        var device = await GetOrCreateActiveDeviceAsync(request.DeviceId).ConfigureAwait(false);
+        var device = await GetProvisionedActiveDeviceAsync(request.DeviceId).ConfigureAwait(false);
         var scanEvent = new FingerprintScanEvent
         {
             DeviceId = device.Id,
@@ -974,17 +976,56 @@ public class FingerprintService(
         return currentUserId;
     }
 
-    private void ValidateDeviceApiKey(string apiKey)
+    private void ValidateDeviceApiKey(string deviceId, string apiKey)
     {
-        var configuredApiKey = configuration["FingerprintDeviceAuth:ApiKey"];
-        if (string.IsNullOrWhiteSpace(configuredApiKey) || !string.Equals(apiKey, configuredApiKey, StringComparison.Ordinal))
+        var configuredApiKey = configuration[$"FingerprintDeviceAuth:Devices:{deviceId}"];
+        if (string.IsNullOrWhiteSpace(configuredApiKey) || string.IsNullOrWhiteSpace(apiKey))
+        {
+            throw new EntityUnauthorizedException("FingerprintDevice", "Authenticate", "device", "Invalid device API key");
+        }
+
+        var configuredApiKeyBytes = Encoding.UTF8.GetBytes(configuredApiKey);
+        var providedApiKeyBytes = Encoding.UTF8.GetBytes(apiKey);
+        if (!CryptographicOperations.FixedTimeEquals(configuredApiKeyBytes, providedApiKeyBytes))
         {
             throw new EntityUnauthorizedException("FingerprintDevice", "Authenticate", "device", "Invalid device API key");
         }
     }
 
-    private async Task<FingerprintDevice> GetOrCreateActiveDeviceAsync(string deviceIdentifier)
+    private async Task<FingerprintDevice> GetProvisionedActiveDeviceAsync(string deviceIdentifier)
     {
+        var device = await context.FingerprintDevices
+            .FirstOrDefaultAsync(existingDevice => existingDevice.DeviceIdentifier == deviceIdentifier)
+            .ConfigureAwait(false);
+
+        if (device == null)
+        {
+            throw new EntityUnauthorizedException(
+                "FingerprintDevice",
+                "Authenticate",
+                deviceIdentifier,
+                "Fingerprint device is not provisioned for API access");
+        }
+
+        if (!device.IsActive)
+        {
+            throw new ValidationException("The fingerprint device is inactive");
+        }
+
+        device.LastSeenAt = DateTime.UtcNow;
+        device.UpdatedAt = DateTime.UtcNow;
+        await context.SaveChangesAsync().ConfigureAwait(false);
+        return device;
+    }
+
+    private async Task<FingerprintDevice> GetOrCreateManagedDeviceAsync(string deviceIdentifier)
+    {
+        var configuredApiKey = configuration[$"FingerprintDeviceAuth:Devices:{deviceIdentifier}"];
+        if (string.IsNullOrWhiteSpace(configuredApiKey))
+        {
+            throw new ValidationException("The fingerprint device is not registered for API access");
+        }
+
         var device = await context.FingerprintDevices
             .FirstOrDefaultAsync(existingDevice => existingDevice.DeviceIdentifier == deviceIdentifier)
             .ConfigureAwait(false);
