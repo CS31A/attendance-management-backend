@@ -1,8 +1,10 @@
 using System.Security.Claims;
+using attendance_monitoring.Classes;
 using attendance_monitoring.IRepository;
 using attendance_monitoring.IServices;
 using attendance_monitoring.Models.DTO.Request;
 using attendance_monitoring.Models.DTO.Response;
+using QrCodeEntity = attendance_monitoring.Classes.QrCode;
 
 namespace attendance_monitoring.Services.QrCode;
 
@@ -106,13 +108,7 @@ internal sealed class QrCodeScanService
             {
                 _logger.LogWarning("QR code scan failed: Student {StudentId} is not authorized for section {SectionId}",
                     validateQrCode.StudentId, sectionId);
-                return new QrCodeScanResponseDto
-                {
-                    Success = false,
-                    Message = "You are not enrolled in this section or subject",
-                    AttendanceMarked = false,
-                    StudentName = $"{student.Firstname} {student.Lastname}"
-                };
+                return CreateUnauthorizedStudentResponse(student);
             }
 
             _logger.LogDebug("Checking for duplicate attendance: StudentId={StudentId}, SessionId={SessionId}",
@@ -132,22 +128,7 @@ internal sealed class QrCodeScanService
                     ? Math.Max(0, qrCode.MaxUsage.Value - qrCode.UsageCount)
                     : int.MaxValue;
 
-                return new QrCodeScanResponseDto
-                {
-                    Success = true,
-                    Message = "You have already checked in for this session",
-                    AttendanceMarked = false,
-                    AttendanceTime = utcNow,
-                    StudentName = $"{student.Firstname} {student.Lastname}",
-                    ClassName = qrCode.Session?.Schedule?.Section?.Name ?? "Unknown",
-                    SubjectName = qrCode.Session?.Schedule?.Subject?.Name ?? "Unknown",
-                    RoomName = qrCode.Session?.ActualRoom?.Name ?? "Unknown",
-                    InstructorName = qrCode.Session?.Schedule?.Instructor != null
-                        ? $"{qrCode.Session.Schedule.Instructor.Firstname} {qrCode.Session.Schedule.Instructor.Lastname}"
-                        : "Unknown",
-                    RemainingScans = remainingScansForDuplicate,
-                    IsDuplicateScan = true
-                };
+                return CreateDuplicateScanResponse(qrCode, student, utcNow, remainingScansForDuplicate);
             }
 
             _logger.LogInformation("No duplicate found, incrementing usage counter for QR hash: {QrHash}", validateQrCode.QrHash);
@@ -200,24 +181,13 @@ internal sealed class QrCodeScanService
                 _logger.LogInformation("Successfully processed QR code scan for student ID: {StudentId}, attendance record ID: {AttendanceId}",
                     validateQrCode.StudentId, attendanceRecord.Id);
 
-                return new QrCodeScanResponseDto
-                {
-                    Success = true,
-                    Message = "Attendance marked successfully",
-                    AttendanceMarked = true,
-                    AttendanceTime = utcNow,
-                    StudentName = $"{student.Firstname} {student.Lastname}",
-                    ClassName = qrCode.Session?.Schedule?.Section?.Name ?? "Unknown",
-                    SubjectName = qrCode.Session?.Schedule?.Subject?.Name ?? "Unknown",
-                    RoomName = qrCode.Session?.ActualRoom?.Name ?? "Unknown",
-                    InstructorName = qrCode.Session?.Schedule?.Instructor != null
-                        ? $"{qrCode.Session.Schedule.Instructor.Firstname} {qrCode.Session.Schedule.Instructor.Lastname}"
-                        : "Unknown",
-                    RemainingScans = remainingScans,
-                    AttendanceRecordId = attendanceRecord.Id,
-                    AttendanceStatus = attendanceRecord.Status,
-                    IsDuplicateScan = false
-                };
+                return CreateSuccessfulScanResponse(
+                    qrCode,
+                    student,
+                    utcNow,
+                    remainingScans,
+                    attendanceRecord.Id,
+                    attendanceRecord.Status);
             }
             catch (InvalidOperationException ex) when (ex.Message.Contains("duplicate"))
             {
@@ -230,22 +200,7 @@ internal sealed class QrCodeScanService
                     ? Math.Max(0, qrCode.MaxUsage.Value - qrCode.UsageCount)
                     : int.MaxValue;
 
-                return new QrCodeScanResponseDto
-                {
-                    Success = true,
-                    Message = "You have already checked in for this session",
-                    AttendanceMarked = false,
-                    AttendanceTime = utcNow,
-                    StudentName = $"{student.Firstname} {student.Lastname}",
-                    ClassName = qrCode.Session?.Schedule?.Section?.Name ?? "Unknown",
-                    SubjectName = qrCode.Session?.Schedule?.Subject?.Name ?? "Unknown",
-                    RoomName = qrCode.Session?.ActualRoom?.Name ?? "Unknown",
-                    InstructorName = qrCode.Session?.Schedule?.Instructor != null
-                        ? $"{qrCode.Session.Schedule.Instructor.Firstname} {qrCode.Session.Schedule.Instructor.Lastname}"
-                        : "Unknown",
-                    RemainingScans = remainingScansEdge,
-                    IsDuplicateScan = true
-                };
+                return CreateDuplicateScanResponse(qrCode, student, utcNow, remainingScansEdge);
             }
         }
         catch (Exception ex)
@@ -261,4 +216,83 @@ internal sealed class QrCodeScanService
             };
         }
     }
+
+    private static QrCodeScanResponseDto CreateUnauthorizedStudentResponse(Student student)
+        => new()
+        {
+            Success = false,
+            Message = "You are not enrolled in this section or subject",
+            AttendanceMarked = false,
+            StudentName = GetStudentName(student)
+        };
+
+    private static QrCodeScanResponseDto CreateDuplicateScanResponse(
+        QrCodeEntity qrCode,
+        Student student,
+        DateTime attendanceTime,
+        int remainingScans)
+        => CreateScanResponse(
+            qrCode,
+            student,
+            success: true,
+            message: "You have already checked in for this session",
+            attendanceMarked: false,
+            attendanceTime: attendanceTime,
+            remainingScans: remainingScans,
+            isDuplicateScan: true);
+
+    private static QrCodeScanResponseDto CreateSuccessfulScanResponse(
+        QrCodeEntity qrCode,
+        Student student,
+        DateTime attendanceTime,
+        int remainingScans,
+        int attendanceRecordId,
+        string? attendanceStatus)
+        => CreateScanResponse(
+            qrCode,
+            student,
+            success: true,
+            message: "Attendance marked successfully",
+            attendanceMarked: true,
+            attendanceTime: attendanceTime,
+            remainingScans: remainingScans,
+            attendanceRecordId: attendanceRecordId,
+            attendanceStatus: attendanceStatus,
+            isDuplicateScan: false);
+
+    private static QrCodeScanResponseDto CreateScanResponse(
+        QrCodeEntity qrCode,
+        Student student,
+        bool success,
+        string message,
+        bool attendanceMarked,
+        DateTime attendanceTime,
+        int remainingScans,
+        bool isDuplicateScan,
+        int? attendanceRecordId = null,
+        string? attendanceStatus = null)
+        => new()
+        {
+            Success = success,
+            Message = message,
+            AttendanceMarked = attendanceMarked,
+            AttendanceTime = attendanceTime,
+            StudentName = GetStudentName(student),
+            ClassName = qrCode.Session?.Schedule?.Section?.Name ?? "Unknown",
+            SubjectName = qrCode.Session?.Schedule?.Subject?.Name ?? "Unknown",
+            RoomName = qrCode.Session?.ActualRoom?.Name ?? "Unknown",
+            InstructorName = GetInstructorName(qrCode),
+            RemainingScans = remainingScans,
+            AttendanceRecordId = attendanceRecordId,
+            AttendanceStatus = attendanceStatus,
+            IsDuplicateScan = isDuplicateScan
+        };
+
+    private static string GetStudentName(Student student)
+        => $"{student.Firstname} {student.Lastname}";
+
+    private static string GetInstructorName(QrCodeEntity qrCode)
+        => qrCode.Session?.Schedule?.Instructor != null
+            ? $"{qrCode.Session.Schedule.Instructor.Firstname} {qrCode.Session.Schedule.Instructor.Lastname}"
+            : "Unknown";
 }
