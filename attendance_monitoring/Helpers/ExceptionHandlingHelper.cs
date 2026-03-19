@@ -18,25 +18,33 @@ public static class ExceptionHandlingHelper
     /// <returns>True if the exception is due to a unique constraint violation; otherwise, false.</returns>
     public static bool IsUniqueConstraintViolation(DbUpdateException ex)
     {
+        return IsUniqueConstraintViolation(ex, Array.Empty<string>());
+    }
+
+    /// <summary>
+    /// Determines if the exception is caused by a unique constraint violation for a specific constraint/index.
+    /// Supports both SQL Server and SQLite database providers.
+    /// </summary>
+    /// <param name="ex">The DbUpdateException to analyze.</param>
+    /// <param name="constraintHints">Constraint or column hints expected in the provider error message.</param>
+    /// <returns>True if the exception is due to the matching unique constraint; otherwise, false.</returns>
+    public static bool IsUniqueConstraintViolation(DbUpdateException ex, params string[] constraintHints)
+    {
         var innerException = ex.InnerException?.Message ?? ex.Message;
 
-        // SQL Server unique constraint violation (Error 2601, 2627)
-        if (innerException.Contains("UNIQUE constraint failed") ||
-            innerException.Contains("duplicate key") ||
-            innerException.Contains("Cannot insert duplicate key") ||
-            innerException.Contains("Violation of UNIQUE KEY constraint") ||
-            innerException.Contains("UNIQUE KEY constraint"))
+        if (!IsUniqueConstraintViolationMessage(innerException))
+        {
+            return false;
+        }
+
+        if (constraintHints.Length == 0)
         {
             return true;
         }
 
-        // SQLite unique constraint violation
-        if (innerException.Contains("UNIQUE constraint failed"))
-        {
-            return true;
-        }
-
-        return false;
+        return constraintHints.Any(hint =>
+            !string.IsNullOrWhiteSpace(hint) &&
+            innerException.Contains(hint, StringComparison.OrdinalIgnoreCase));
     }
 
     /// <summary>
@@ -134,5 +142,14 @@ public static class ExceptionHandlingHelper
         return ex != null
             ? new EntityServiceException(entityName, operation, message, ex)
             : new EntityServiceException(entityName, operation, message);
+    }
+
+    private static bool IsUniqueConstraintViolationMessage(string message)
+    {
+        return message.Contains("UNIQUE constraint failed", StringComparison.OrdinalIgnoreCase) ||
+               message.Contains("duplicate key", StringComparison.OrdinalIgnoreCase) ||
+               message.Contains("Cannot insert duplicate key", StringComparison.OrdinalIgnoreCase) ||
+               message.Contains("Violation of UNIQUE KEY constraint", StringComparison.OrdinalIgnoreCase) ||
+               message.Contains("UNIQUE KEY constraint", StringComparison.OrdinalIgnoreCase);
     }
 }
