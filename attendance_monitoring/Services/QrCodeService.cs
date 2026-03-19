@@ -15,15 +15,18 @@ public class QrCodeService : IQrCodeService
     private readonly QrCodeQueryService _queryService;
     private readonly QrCodeWriteService _writeService;
     private readonly QrCodeGenerationService _generationService;
+    private readonly QrCodeScanService _scanService;
 
     internal QrCodeService(
         QrCodeQueryService queryService,
         QrCodeWriteService writeService,
-        QrCodeGenerationService generationService)
+        QrCodeGenerationService generationService,
+        QrCodeScanService scanService)
     {
         _queryService = queryService ?? throw new ArgumentNullException(nameof(queryService));
         _writeService = writeService ?? throw new ArgumentNullException(nameof(writeService));
         _generationService = generationService ?? throw new ArgumentNullException(nameof(generationService));
+        _scanService = scanService ?? throw new ArgumentNullException(nameof(scanService));
     }
 
     #region Read Operations
@@ -96,7 +99,7 @@ public class QrCodeService : IQrCodeService
         => _writeService.ValidateQrCodeAsync(qrHash);
 
     public Task<QrCodeScanResponseDto> ScanQrCodeAsync(ValidateQrCode validateQrCode, ClaimsPrincipal user)
-        => _generationService.ScanQrCodeAsync(validateQrCode, user);
+        => _scanService.ScanQrCodeAsync(validateQrCode, user);
 
     public Task<bool> QrHashExistsAsync(string qrHash)
         => _generationService.QrHashExistsAsync(qrHash);
