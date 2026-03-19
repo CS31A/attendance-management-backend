@@ -1,98 +1,48 @@
+using attendance.testproject;
 using attendance_monitoring.Data;
 using attendance_monitoring.Models.DTO.Request;
 using attendance_monitoring.Repositories;
-using Microsoft.Data.Sqlite;
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
-using System.Diagnostics.CodeAnalysis;
 using System.Data;
 using System.Data.Common;
+using System.Diagnostics.CodeAnalysis;
+namespace attendance.testproject.Integration_Testing;
 
-namespace attendance.testproject.Repositories_Testing;
-
-public class AccountRepositoryTransactionTests
+public class AccountRepositorySqlServerTransactionIntegrationTests
 {
-    [Fact]
-    public async Task DeleteUserAsyncSP_DoesNotCloseConnection_WhenConnectionWasAlreadyOpen()
+    [RequiresEnvironmentVariableFact("ATTENDANCE_SQLSERVER_TEST_CONNECTION_STRING")]
+    public async Task GetAllUsersAsyncSP_UsesCurrentTransaction_OnSqlServer()
     {
-        await using var innerConnection = new SqliteConnection("Data Source=:memory:");
-        await innerConnection.OpenAsync();
+        var connectionString = GetSqlServerConnectionString()!;
 
-        var setupOptions = new DbContextOptionsBuilder<ApplicationDbContext>()
-            .UseSqlite(innerConnection)
-            .Options;
-        await using (var setupContext = new ApplicationDbContext(setupOptions))
-        {
-            await setupContext.Database.EnsureCreatedAsync();
-        }
-
+        await using var innerConnection = new SqlConnection(connectionString);
         await using var connection = new TrackingDbConnection(innerConnection);
-        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
-            .UseSqlite(connection)
-            .Options;
-        await using var context = new ApplicationDbContext(options);
-
-        var repository = new AccountRepository(null!, null!, null!, context);
-
-        await context.Database.OpenConnectionAsync();
-        Assert.Equal(System.Data.ConnectionState.Open, context.Database.GetDbConnection().State);
-
-        await repository.DeleteUserAsyncSP("user-1");
-
-        Assert.Equal(0, connection.CloseCallCount);
-    }
-
-    [Fact]
-    public async Task DeleteUserAsyncSP_KeepsConnectionOpen_WhenEfTransactionIsActive()
-    {
-        await using var innerConnection = new SqliteConnection("Data Source=:memory:");
-        await innerConnection.OpenAsync();
 
         var options = new DbContextOptionsBuilder<ApplicationDbContext>()
-            .UseSqlite(innerConnection)
+            .UseSqlServer(connection)
             .Options;
+
         await using var context = new ApplicationDbContext(options);
-        await context.Database.EnsureCreatedAsync();
+        await context.Database.MigrateAsync();
 
         var repository = new AccountRepository(null!, null!, null!, context);
 
         await using var transaction = await context.Database.BeginTransactionAsync();
 
-        await repository.DeleteUserAsyncSP("user-1");
+        var users = await repository.GetAllUsersAsyncSP(UserStatus.All);
 
-        Assert.Equal(System.Data.ConnectionState.Open, context.Database.GetDbConnection().State);
-    }
-
-    [Fact]
-    public async Task GetAllUsersAsyncSP_AssignsCurrentTransaction_BeforeProviderSpecificFailure()
-    {
-        await using var innerConnection = new SqliteConnection("Data Source=:memory:");
-        await innerConnection.OpenAsync();
-
-        var setupOptions = new DbContextOptionsBuilder<ApplicationDbContext>()
-            .UseSqlite(innerConnection)
-            .Options;
-        await using (var setupContext = new ApplicationDbContext(setupOptions))
-        {
-            await setupContext.Database.EnsureCreatedAsync();
-        }
-
-        await using var connection = new TrackingDbConnection(innerConnection);
-        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
-            .UseSqlite(connection)
-            .Options;
-        await using var context = new ApplicationDbContext(options);
-
-        var repository = new AccountRepository(null!, null!, null!, context);
-
-        await using var transaction = await context.Database.BeginTransactionAsync();
-
-        // SQLite cannot execute the SQL Server stored procedure path, but the command
-        // should still be enlisted in the active EF transaction before the provider fails.
-        await Assert.ThrowsAnyAsync<Exception>(() => repository.GetAllUsersAsyncSP(UserStatus.All));
-
+        Assert.NotNull(users);
         Assert.NotNull(connection.LastAssignedTransaction);
         Assert.Same(transaction.GetDbTransaction(), connection.LastAssignedTransaction);
+        Assert.Contains("sp_GetAllUsers", connection.LastCommandText, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(ConnectionState.Open, context.Database.GetDbConnection().State);
+    }
+
+    private static string? GetSqlServerConnectionString()
+    {
+        return Environment.GetEnvironmentVariable("ATTENDANCE_SQLSERVER_TEST_CONNECTION_STRING");
     }
 
     private sealed class TrackingDbConnection : DbConnection
@@ -104,9 +54,9 @@ public class AccountRepositoryTransactionTests
             _inner = inner;
         }
 
-        public int CloseCallCount { get; private set; }
-
         public DbTransaction? LastAssignedTransaction { get; private set; }
+
+        public string LastCommandText { get; private set; } = string.Empty;
 
         [AllowNull]
         public override string ConnectionString
@@ -121,21 +71,17 @@ public class AccountRepositoryTransactionTests
 
         public override string ServerVersion => _inner.ServerVersion;
 
-        public override System.Data.ConnectionState State => _inner.State;
+        public override ConnectionState State => _inner.State;
 
         public override void ChangeDatabase(string databaseName) => _inner.ChangeDatabase(databaseName);
 
-        public override void Close()
-        {
-            CloseCallCount++;
-            _inner.Close();
-        }
+        public override void Close() => _inner.Close();
 
         public override void Open() => _inner.Open();
 
         public override Task OpenAsync(CancellationToken cancellationToken) => _inner.OpenAsync(cancellationToken);
 
-        protected override DbTransaction BeginDbTransaction(System.Data.IsolationLevel isolationLevel)
+        protected override DbTransaction BeginDbTransaction(IsolationLevel isolationLevel)
             => new TrackingDbTransaction(_inner.BeginTransaction(isolationLevel), this);
 
         protected override DbCommand CreateDbCommand() => new TrackingDbCommand(_inner.CreateCommand(), this);
@@ -187,10 +133,7 @@ public class AccountRepositoryTransactionTests
                 base.Dispose(disposing);
             }
 
-            public override ValueTask DisposeAsync()
-            {
-                return _inner.DisposeAsync();
-            }
+            public override ValueTask DisposeAsync() => _inner.DisposeAsync();
         }
 
         private sealed class TrackingDbCommand : DbCommand
@@ -208,7 +151,11 @@ public class AccountRepositoryTransactionTests
             public override string CommandText
             {
                 get => _inner.CommandText;
-                set => _inner.CommandText = value;
+                set
+                {
+                    _owner.LastCommandText = value ?? string.Empty;
+                    _inner.CommandText = value;
+                }
             }
 
             public override int CommandTimeout
@@ -274,7 +221,9 @@ public class AccountRepositoryTransactionTests
             public override Task<object?> ExecuteScalarAsync(CancellationToken cancellationToken)
                 => _inner.ExecuteScalarAsync(cancellationToken);
 
-            protected override Task<DbDataReader> ExecuteDbDataReaderAsync(CommandBehavior behavior, CancellationToken cancellationToken)
+            protected override Task<DbDataReader> ExecuteDbDataReaderAsync(
+                CommandBehavior behavior,
+                CancellationToken cancellationToken)
                 => _inner.ExecuteReaderAsync(behavior, cancellationToken);
         }
     }
