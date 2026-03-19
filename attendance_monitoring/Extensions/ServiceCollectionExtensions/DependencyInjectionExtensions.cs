@@ -2,6 +2,7 @@ using attendance_monitoring.IRepository;
 using attendance_monitoring.IServices;
 using attendance_monitoring.Repositories;
 using attendance_monitoring.Services;
+using attendance_monitoring.Services.Account;
 using attendance_monitoring.Services.QrCode;
 
 namespace attendance_monitoring.Extensions.ServiceCollectionExtensions;
@@ -46,7 +47,15 @@ public static class DependencyInjectionExtensions
         services.AddScoped<IStudentService, StudentService>();
         services.AddScoped<IInstructorService, InstructorService>();
         services.AddScoped<IRefreshTokenService, RefreshTokenService>();
-        services.AddScoped<IAccountService, AccountService>();
+        services.AddScoped<IAccountService>(sp => new AccountService(
+            sp.GetRequiredService<RegistrationService>(),
+            sp.GetRequiredService<AuthenticationService>(),
+            sp.GetRequiredService<ProfileService>(),
+            sp.GetRequiredService<AdminService>()));
+        services.AddScoped<RegistrationService>();
+        services.AddScoped<AuthenticationService>();
+        services.AddScoped<ProfileService>();
+        services.AddScoped<AdminService>();
         services.AddScoped<IUserFactory, attendance_monitoring.Classes.Factory.UserFactory>();
         services.AddScoped<ISectionService, SectionService>();
         services.AddScoped<ICourseService, CourseService>();

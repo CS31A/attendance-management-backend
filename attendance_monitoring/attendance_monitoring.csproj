@@ -13,6 +13,11 @@
     </PropertyGroup>
 
     <ItemGroup>
+        <InternalsVisibleTo Include="attendance.testproject" />
+        <InternalsVisibleTo Include="attendance_monitoring.tests" />
+    </ItemGroup>
+
+    <ItemGroup>
         <PackageReference Include="dapper" Version="2.1.66" />
         <PackageReference Include="DotNetEnv" Version="3.1.1" />
         <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.2" />

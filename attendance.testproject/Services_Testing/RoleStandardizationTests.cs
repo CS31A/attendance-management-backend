@@ -7,6 +7,7 @@ using attendance_monitoring.IRepository;
 using attendance_monitoring.IServices;
 using attendance_monitoring.Models.DTO;
 using attendance_monitoring.Services;
+using attendance_monitoring.Services.Account;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Http;
@@ -14,6 +15,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Microsoft.AspNetCore.Identity;
 
@@ -82,22 +84,13 @@ public class RoleStandardizationTests
         accountRepository.Setup(repository => repository.FindUserByEmailAsync("legacy-teacher@test.com")).ReturnsAsync((IdentityUser?)null);
 
         var sectionRepository = new Mock<ISectionRepository>();
-        var refreshTokenService = new Mock<IRefreshTokenService>();
         var userFactory = new Mock<IUserFactory>();
-        var instructorRepository = new Mock<IInstructorRepository>();
-        var configuration = new ConfigurationBuilder().Build();
-        var logger = new Mock<ILogger<AccountService>>();
-        var context = new ApplicationDbContext(new DbContextOptionsBuilder<ApplicationDbContext>().Options);
 
-        var service = new AccountService(
-            configuration,
-            context,
-            refreshTokenService.Object,
-            logger.Object,
+        var service = new RegistrationService(
             accountRepository.Object,
             sectionRepository.Object,
             userFactory.Object,
-            instructorRepository.Object);
+            NullLogger<RegistrationService>.Instance);
 
         var registerDto = new RegisterDto
         {
