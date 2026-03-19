@@ -1,6 +1,6 @@
 # Attendance Monitoring System
 
-A comprehensive attendance tracking system built with ASP.NET Core 9.0, Entity Framework Core, and Cookie-based Authentication for Web and JWT authentication for mobile. This system enables educational institutions to manage students, instructors, courses, and track attendance efficiently.
+A comprehensive attendance tracking system built with ASP.NET Core 10.0, Entity Framework Core, and Cookie-based Authentication for Web and JWT authentication for mobile. This system enables educational institutions to manage students, instructors, courses, and track attendance efficiently.
 
 ## 🚀 Features
 
@@ -20,7 +20,7 @@ A comprehensive attendance tracking system built with ASP.NET Core 9.0, Entity F
 
 ## 🏗️ Technology Stack
 
-- **Framework**: ASP.NET Core 9.0 Web API
+- **Framework**: ASP.NET Core 10.0 Web API
 - **Database**: Entity Framework Core with SQL Server
 - **Authentication**: JWT Bearer tokens + ASP.NET Core Identity
 - **Testing**: xUnit with Moq
@@ -68,7 +68,7 @@ For more detailed documentation, see the `/docs` folder:
 
 Before setting up the project, ensure you have the following installed:
 
-- [.NET 9.0 SDK](https://dotnet.microsoft.com/download/dotnet/9.0)
+- [.NET 10.0 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)
 - [SQL Server](https://www.microsoft.com/en-us/sql-server/sql-server-downloads) or [SQL Server Express](https://www.microsoft.com/en-us/sql-server/sql-server-downloads)
 - [Visual Studio 2022](https://visualstudio.microsoft.com/) or [Visual Studio Code](https://code.visualstudio.com/)
 - [Git](https://git-scm.com/)
