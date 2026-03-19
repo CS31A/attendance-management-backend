@@ -2,6 +2,7 @@ using attendance_monitoring.IRepository;
 using attendance_monitoring.IServices;
 using attendance_monitoring.Repositories;
 using attendance_monitoring.Services;
+using attendance_monitoring.Services.QrCode;
 
 namespace attendance_monitoring.Extensions.ServiceCollectionExtensions;
 
@@ -52,7 +53,14 @@ public static class DependencyInjectionExtensions
         services.AddScoped<ISubjectService, SubjectService>();
         services.AddScoped<IClassroomService, ClassroomService>();
         services.AddScoped<IScheduleService, ScheduleService>();
-        services.AddScoped<IQrCodeService, QrCodeService>();
+        services.AddScoped<IQrCodeService>(sp => new QrCodeService(
+            sp.GetRequiredService<QrCodeQueryService>(),
+            sp.GetRequiredService<QrCodeWriteService>(),
+            sp.GetRequiredService<QrCodeGenerationService>()));
+        services.AddScoped<QrCodeAuthorizationService>();
+        services.AddScoped<QrCodeQueryService>();
+        services.AddScoped<QrCodeWriteService>();
+        services.AddScoped<QrCodeGenerationService>();
         services.AddScoped<IRoleInitializationService, RoleInitializationService>();
         services.AddScoped<UserContextService>();
         services.AddScoped<ITokenValidationService, TokenValidationService>();
@@ -104,4 +112,3 @@ public static class DependencyInjectionExtensions
         return services;
     }
 }
-
