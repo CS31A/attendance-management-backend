@@ -60,44 +60,4 @@ public class SubjectControllerTest
     }
 
     #endregion
-
-    //#region GetSubject Tests
-
-    //[Fact]
-    //public async Task GetSubject_ReturnsOkResult_WithSubject()
-    //{
-    //    // Arrange
-    //    var expectedSubject = new Subject { Id = 1, Name = "Mathematics" };
-    //    _mockSubjectService
-    //        .Setup(s => s.GetSubjectByIdAsync(1))
-    //        .ReturnsAsync(expectedSubject);
-
-    //    // Act
-    //    var result = await _controller.GetSubject(1);
-
-    //    // Assert
-    //    var okResult = Assert.IsType<OkObjectResult>(result.Result);
-    //    var subject = Assert.IsType<Subject>(okResult.Value);
-    //    Assert.Equal(1, subject.Id);
-    //    Assert.Equal("Mathematics", subject.Name);
-    //    _mockSubjectService.Verify(s => s.GetSubjectByIdAsync(1), Times.Once);
-    //}
-
-    //[Fact]
-    //public async Task GetSubject_ReturnsNotFound_WhenSubjectDoesNotExist()
-    //{
-    //    // Arrange
-    //    _mockSubjectService
-    //        .Setup(s => s.GetSubjectByIdAsync(99));
-    //        //.ThrowsAsync(new SubjectNotFoundException("Subject not found"));
-
-    //    // Act
-    //    var result = await _controller.GetSubject(99);
-
-    //    // Assert
-    //    var notFoundResult = Assert.IsType<NotFoundObjectResult>(result.Result);
-    //    Assert.Equal("Subject not found", notFoundResult.Value);
-    //}
-
-    //#endregion
 }

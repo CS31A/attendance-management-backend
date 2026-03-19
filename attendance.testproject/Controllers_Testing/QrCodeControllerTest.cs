@@ -127,58 +127,6 @@ public class QrCodeControllerTest
             Times.Once);
     }
 
-    //[Fact]
-    //public async Task GenerateQrCode_WithoutUniqueKey_GeneratesGuidAndReturnsFileResult()
-    //{
-    //    // Arrange
-    //    var request = new QrCodeRequest
-    //    {
-    //        SectionId = 2,
-    //        Schedule = 1002,
-    //        RoomId = 202,
-    //        SubjectName = "Physics",
-    //        UniqueKey = null // No unique key provided
-    //    };
-
-    //    // Act
-    //    var result = await _qrCodeController.GenerateQrCode(request);
-
-    //    // Assert
-    //    var fileResult = Assert.IsType<FileContentResult>(result);
-    //    Assert.Equal("image/png", fileResult.ContentType);
-    //    Assert.NotNull(fileResult.FileContents);
-    //    Assert.True(fileResult.FileContents.Length > 0);
-
-    //    // Verify that UniqueKey was generated
-    //    Assert.False(string.IsNullOrEmpty(request.UniqueKey));
-    //    Assert.True(Guid.TryParse(request.UniqueKey, out _));
-    //}
-
-    //[Fact]
-    //public async Task GenerateQrCode_WithEmptyUniqueKey_GeneratesGuidAndReturnsFileResult()
-    //{
-    //    // Arrange
-    //    var request = new QrCodeRequest
-    //    {
-    //        SectionId = 3,
-    //        Schedule = 1003,
-    //        RoomId = 303,
-    //        SubjectName = "Chemistry",
-    //        UniqueKey = "" // Empty unique key
-    //    };
-
-    //    // Act
-    //    var result = await _qrCodeController.GenerateQrCode(request);
-
-    //    // Assert
-    //    var fileResult = Assert.IsType<FileContentResult>(result);
-    //    Assert.NotNull(fileResult.FileContents);
-
-    //    // Verify that UniqueKey was generated
-    //    Assert.False(string.IsNullOrEmpty(request.UniqueKey));
-    //    Assert.True(Guid.TryParse(request.UniqueKey, out _));
-    //}
-
     [Fact]
     public async Task GenerateQrCode_WithMinimalData_ReturnsFileResult()
     {
