@@ -57,7 +57,9 @@ internal sealed class AdminService
         string adminId,
         AdminUpdateUser adminUpdateDto)
     {
-        _logger.LogInformation("Admin profile update attempt by admin {AdminId} for user {TargetUserId}", adminId, adminUpdateDto.UserId);
+        return await ExecuteInTransactionAsync(async () =>
+        {
+            _logger.LogInformation("Admin profile update attempt by admin {AdminId} for user {TargetUserId}", adminId, adminUpdateDto.UserId);
 
         // Verify admin has Admin role
         var admin = await _accountRepository.FindUserByIdAsync(adminId).ConfigureAwait(false);
@@ -217,8 +219,9 @@ internal sealed class AdminService
 
         _logger.LogInformation("Admin {AdminId} successfully updated profile for user {TargetUserId}", adminId, adminUpdateDto.UserId);
 
-        // Return updated profile
-        return await _profileService.GetUserProfileAsync(adminUpdateDto.UserId).ConfigureAwait(false);
+            // Return updated profile
+            return await _profileService.GetUserProfileAsync(adminUpdateDto.UserId).ConfigureAwait(false);
+        }).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -232,73 +235,70 @@ internal sealed class AdminService
     /// <exception cref="EntityServiceException">Thrown when deletion fails</exception>
     public async Task AdminDeleteUserAsync(string adminId, string targetUserId)
     {
-        _logger.LogInformation("Admin delete user attempt by admin {AdminId} for user {TargetUserId}", adminId, targetUserId);
-
-        // Verify admin has Admin role
-        var admin = await _accountRepository.FindUserByIdAsync(adminId).ConfigureAwait(false);
-        if (admin == null)
+        await ExecuteInTransactionAsync(async () =>
         {
-            _logger.LogWarning("Admin delete failed: Admin not found for ID {AdminId}", adminId);
-            throw new EntityNotFoundException<string>("Admin", adminId, "Admin user not found");
-        }
+            _logger.LogInformation("Admin delete user attempt by admin {AdminId} for user {TargetUserId}", adminId, targetUserId);
 
-        var adminRoles = await _accountRepository.GetUserRolesAsync(admin).ConfigureAwait(false);
-        if (!adminRoles.Contains("Admin", StringComparer.OrdinalIgnoreCase))
-        {
-            _logger.LogWarning("Admin delete failed: User {AdminId} is not an admin", adminId);
-            throw new EntityUnauthorizedException("User", "delete", "Admin role required");
-        }
-
-        // Prevent admin from deleting themselves
-        if (adminId.Equals(targetUserId, StringComparison.OrdinalIgnoreCase))
-        {
-            _logger.LogWarning("Admin {AdminId} attempted to delete themselves", adminId);
-            throw new ValidationException("Cannot delete your own account");
-        }
-
-        // Validate target user exists
-        var targetUser = await _accountRepository.FindUserByIdAsync(targetUserId).ConfigureAwait(false);
-        if (targetUser == null)
-        {
-            _logger.LogWarning("Admin delete failed: Target user not found for ID {TargetUserId}", targetUserId);
-            throw new EntityNotFoundException<string>("User", targetUserId, "Target user not found");
-        }
-
-        // Perform soft delete using stored procedure
-        var (success, message) = await _accountRepository.DeleteUserAsyncSP(targetUserId).ConfigureAwait(false);
-
-        if (!success)
-        {
-            _logger.LogWarning("Admin {AdminId} failed to delete user {TargetUserId}: {Message}", adminId, targetUserId, message);
-            throw new EntityServiceException("User", "delete", message);
-        }
-
-        // Revoke all active refresh tokens for the deleted user
-        try
-        {
-            var activeRefreshTokens = await _context.RefreshTokens
-                .Where(rt => rt.UserId == targetUserId && !rt.IsRevoked && rt.ExpiresAt > DateTime.UtcNow)
-                .ToListAsync().ConfigureAwait(false);
-
-            foreach (var token in activeRefreshTokens)
+            var admin = await _accountRepository.FindUserByIdAsync(adminId).ConfigureAwait(false);
+            if (admin == null)
             {
-                token.IsRevoked = true;
-                token.RevokedAt = DateTime.UtcNow;
+                _logger.LogWarning("Admin delete failed: Admin not found for ID {AdminId}", adminId);
+                throw new EntityNotFoundException<string>("Admin", adminId, "Admin user not found");
             }
 
-            if (activeRefreshTokens.Count > 0)
+            var adminRoles = await _accountRepository.GetUserRolesAsync(admin).ConfigureAwait(false);
+            if (!adminRoles.Contains("Admin", StringComparer.OrdinalIgnoreCase))
             {
-                await _context.SaveChangesAsync().ConfigureAwait(false);
-                _logger.LogInformation("Revoked {TokenCount} active refresh tokens for deleted user {TargetUserId}", activeRefreshTokens.Count, targetUserId);
+                _logger.LogWarning("Admin delete failed: User {AdminId} is not an admin", adminId);
+                throw new EntityUnauthorizedException("User", "delete", "Admin role required");
             }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Failed to revoke tokens for deleted user {TargetUserId}, but user was deleted successfully", targetUserId);
-            // Continue - user is deleted even if token revocation fails
-        }
 
-        _logger.LogInformation("Admin {AdminId} successfully deleted user {TargetUserId}", adminId, targetUserId);
+            if (adminId.Equals(targetUserId, StringComparison.OrdinalIgnoreCase))
+            {
+                _logger.LogWarning("Admin {AdminId} attempted to delete themselves", adminId);
+                throw new ValidationException("Cannot delete your own account");
+            }
+
+            var targetUser = await _accountRepository.FindUserByIdAsync(targetUserId).ConfigureAwait(false);
+            if (targetUser == null)
+            {
+                _logger.LogWarning("Admin delete failed: Target user not found for ID {TargetUserId}", targetUserId);
+                throw new EntityNotFoundException<string>("User", targetUserId, "Target user not found");
+            }
+
+            var (success, message) = await _accountRepository.DeleteUserAsyncSP(targetUserId).ConfigureAwait(false);
+            if (!success)
+            {
+                _logger.LogWarning("Admin {AdminId} failed to delete user {TargetUserId}: {Message}", adminId, targetUserId, message);
+                throw new EntityServiceException("User", "delete", message);
+            }
+
+            try
+            {
+                var activeRefreshTokens = await _context.RefreshTokens
+                    .Where(rt => rt.UserId == targetUserId && !rt.IsRevoked && rt.ExpiresAt > DateTime.UtcNow)
+                    .ToListAsync().ConfigureAwait(false);
+
+                foreach (var token in activeRefreshTokens)
+                {
+                    token.IsRevoked = true;
+                    token.RevokedAt = DateTime.UtcNow;
+                }
+
+                if (activeRefreshTokens.Count > 0)
+                {
+                    await _context.SaveChangesAsync().ConfigureAwait(false);
+                    _logger.LogInformation("Revoked {TokenCount} active refresh tokens for deleted user {TargetUserId}", activeRefreshTokens.Count, targetUserId);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to revoke refresh tokens for deleted user {TargetUserId}", targetUserId);
+                throw new EntityServiceException("User", "delete", "Failed to revoke refresh tokens for deleted user", ex);
+            }
+
+            _logger.LogInformation("Admin {AdminId} successfully deleted user {TargetUserId}", adminId, targetUserId);
+        }).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -408,5 +408,55 @@ internal sealed class AdminService
         }
 
         _logger.LogInformation("Admin {AdminId} successfully restored user {TargetUserId}", adminId, targetUserId);
+    }
+
+    private async Task<T> ExecuteInTransactionAsync<T>(Func<Task<T>> operation)
+    {
+        if (_context.Database.IsInMemory() || _context.Database.CurrentTransaction != null)
+        {
+            return await operation().ConfigureAwait(false);
+        }
+
+        var strategy = _context.Database.CreateExecutionStrategy();
+        return await strategy.ExecuteAsync(async () =>
+        {
+            await using var transaction = await _context.Database.BeginTransactionAsync().ConfigureAwait(false);
+            try
+            {
+                var result = await operation().ConfigureAwait(false);
+                await transaction.CommitAsync().ConfigureAwait(false);
+                return result;
+            }
+            catch
+            {
+                await transaction.RollbackAsync().ConfigureAwait(false);
+                throw;
+            }
+        }).ConfigureAwait(false);
+    }
+
+    private async Task ExecuteInTransactionAsync(Func<Task> operation)
+    {
+        if (_context.Database.IsInMemory() || _context.Database.CurrentTransaction != null)
+        {
+            await operation().ConfigureAwait(false);
+            return;
+        }
+
+        var strategy = _context.Database.CreateExecutionStrategy();
+        await strategy.ExecuteAsync(async () =>
+        {
+            await using var transaction = await _context.Database.BeginTransactionAsync().ConfigureAwait(false);
+            try
+            {
+                await operation().ConfigureAwait(false);
+                await transaction.CommitAsync().ConfigureAwait(false);
+            }
+            catch
+            {
+                await transaction.RollbackAsync().ConfigureAwait(false);
+                throw;
+            }
+        }).ConfigureAwait(false);
     }
 }

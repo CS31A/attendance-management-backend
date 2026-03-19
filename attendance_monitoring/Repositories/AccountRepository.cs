@@ -7,7 +7,9 @@ using attendance_monitoring.Models.DTO.Response;
 using attendance_monitoring.Models.DTO.Request;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 using System.Data;
+using System.Data.Common;
 
 namespace attendance_monitoring.Repositories
 {
@@ -141,19 +143,12 @@ namespace attendance_monitoring.Repositories
 
         public async Task<IEnumerable<GetAllUsersDto>> GetAllUsersAsyncSP(UserStatus status = UserStatus.Active)
         {
-            var connection = context.Database.GetDbConnection();
-
-            if (connection.State != ConnectionState.Open)
-                await connection.OpenAsync();
-
             var parameters = new { Status = (int)status };
 
             // The stored procedure returns flat data, so we need to map it to the new structure
-            var flatResults = await connection.QueryAsync<UserSpResultDto>(
+            var flatResults = await QueryStoredProcedureAsync<UserSpResultDto>(
                 "sp_GetAllUsers",
-                parameters,
-                commandType: CommandType.StoredProcedure
-            );
+                parameters).ConfigureAwait(false);
 
             // Map flat results to the new profile-based structure
             var users = flatResults.Select(r => new GetAllUsersDto
@@ -444,19 +439,12 @@ namespace attendance_monitoring.Repositories
         /// </summary>
         public async Task<(bool Success, string Message)> DeleteUserAsyncSP(string userId)
         {
-            using var connection = context.Database.GetDbConnection();
-            if (connection.State != ConnectionState.Open)
-                await connection.OpenAsync().ConfigureAwait(false);
-
-            var parameters = new { UserId = userId };
-
             try
             {
-                var result = await connection.QueryFirstOrDefaultAsync<dynamic>(
+                var parameters = new { UserId = userId };
+                var result = await QueryFirstOrDefaultStoredProcedureAsync<dynamic>(
                     "sp_DeleteUser",
-                    parameters,
-                    commandType: CommandType.StoredProcedure
-                ).ConfigureAwait(false);
+                    parameters).ConfigureAwait(false);
 
                 if (result != null)
                 {
@@ -479,23 +467,14 @@ namespace attendance_monitoring.Repositories
         /// </summary>
         public async Task<(bool Success, string Message)> HardDeleteUserAsyncSP(string userId)
         {
-            using var connection = context.Database.GetDbConnection();
-            if (connection.State != ConnectionState.Open)
-                await connection.OpenAsync().ConfigureAwait(false);
-
-            var parameters = new DynamicParameters();
-            parameters.Add("@UserId", userId, DbType.String, ParameterDirection.Input);
-            parameters.Add("@ConfirmDeletion", true, DbType.Boolean, ParameterDirection.Input);
-            parameters.Add("@Success", dbType: DbType.Boolean, direction: ParameterDirection.Output);
-            parameters.Add("@Message", dbType: DbType.String, direction: ParameterDirection.Output, size: 500);
-
             try
             {
-                await connection.ExecuteAsync(
-                    "sp_HardDeleteUser",
-                    parameters,
-                    commandType: CommandType.StoredProcedure
-                ).ConfigureAwait(false);
+                var parameters = new DynamicParameters();
+                parameters.Add("@UserId", userId, DbType.String, ParameterDirection.Input);
+                parameters.Add("@ConfirmDeletion", true, DbType.Boolean, ParameterDirection.Input);
+                parameters.Add("@Success", dbType: DbType.Boolean, direction: ParameterDirection.Output);
+                parameters.Add("@Message", dbType: DbType.String, direction: ParameterDirection.Output, size: 500);
+                await ExecuteStoredProcedureAsync("sp_HardDeleteUser", parameters).ConfigureAwait(false);
 
                 bool success = parameters.Get<bool>("@Success");
                 string message = parameters.Get<string>("@Message") ?? "Unknown error";
@@ -516,19 +495,12 @@ namespace attendance_monitoring.Repositories
         /// <returns>Tuple containing success flag and message.</returns>
         public async Task<(bool Success, string Message)> RestoreUserAsyncSP(string userId)
         {
-            using var connection = context.Database.GetDbConnection();
-            if (connection.State != ConnectionState.Open)
-                await connection.OpenAsync().ConfigureAwait(false);
-
-            var parameters = new { UserId = userId };
-
             try
             {
-                var result = await connection.QueryFirstOrDefaultAsync<dynamic>(
+                var parameters = new { UserId = userId };
+                var result = await QueryFirstOrDefaultStoredProcedureAsync<dynamic>(
                     "sp_RestoreUser",
-                    parameters,
-                    commandType: CommandType.StoredProcedure
-                ).ConfigureAwait(false);
+                    parameters).ConfigureAwait(false);
 
                 if (result != null)
                 {
@@ -557,27 +529,20 @@ namespace attendance_monitoring.Repositories
             int? sectionId = null,
             bool? isRegular = null)
         {
-            using var connection = context.Database.GetDbConnection();
-            if (connection.State != ConnectionState.Open)
-                await connection.OpenAsync().ConfigureAwait(false);
-
-            var parameters = new
-            {
-                UserId = userId,
-                Email = email,
-                Firstname = firstname,
-                Lastname = lastname,
-                SectionId = sectionId,
-                IsRegular = isRegular
-            };
-
             try
             {
-                var result = await connection.QueryFirstOrDefaultAsync<dynamic>(
+                var parameters = new
+                {
+                    UserId = userId,
+                    Email = email,
+                    Firstname = firstname,
+                    Lastname = lastname,
+                    SectionId = sectionId,
+                    IsRegular = isRegular
+                };
+                var result = await QueryFirstOrDefaultStoredProcedureAsync<dynamic>(
                     "sp_UpdateUser",
-                    parameters,
-                    commandType: CommandType.StoredProcedure
-                ).ConfigureAwait(false);
+                    parameters).ConfigureAwait(false);
 
                 if (result != null)
                 {
@@ -644,6 +609,80 @@ namespace attendance_monitoring.Repositories
             }
         }
         #endregion
+
+        private async Task<IEnumerable<T>> QueryStoredProcedureAsync<T>(string storedProcedure, object? parameters = null)
+        {
+            return await ExecuteWithManagedConnectionAsync((connection, transaction) =>
+                connection.QueryAsync<T>(
+                    storedProcedure,
+                    parameters,
+                    transaction: transaction,
+                    commandType: CommandType.StoredProcedure)).ConfigureAwait(false);
+        }
+
+        private async Task<T?> QueryFirstOrDefaultStoredProcedureAsync<T>(string storedProcedure, object? parameters = null)
+        {
+            return await ExecuteWithManagedConnectionAsync((connection, transaction) =>
+                connection.QueryFirstOrDefaultAsync<T>(
+                    storedProcedure,
+                    parameters,
+                    transaction: transaction,
+                    commandType: CommandType.StoredProcedure)).ConfigureAwait(false);
+        }
+
+        private async Task<int> ExecuteStoredProcedureAsync(string storedProcedure, object? parameters = null)
+        {
+            return await ExecuteWithManagedConnectionAsync((connection, transaction) =>
+                connection.ExecuteAsync(
+                    storedProcedure,
+                    parameters,
+                    transaction: transaction,
+                    commandType: CommandType.StoredProcedure)).ConfigureAwait(false);
+        }
+
+        private async Task<T> ExecuteWithManagedConnectionAsync<T>(Func<DbConnection, DbTransaction?, Task<T>> operation)
+        {
+            var connection = context.Database.GetDbConnection();
+            var shouldCloseConnection = await OpenConnectionIfNeededAsync().ConfigureAwait(false);
+
+            try
+            {
+                return await operation(connection, GetCurrentDbTransaction()).ConfigureAwait(false);
+            }
+            finally
+            {
+                await CloseConnectionIfOwnedAsync(shouldCloseConnection).ConfigureAwait(false);
+            }
+        }
+
+        private async Task<bool> OpenConnectionIfNeededAsync()
+        {
+            var connection = context.Database.GetDbConnection();
+            var hasActiveTransaction = context.Database.CurrentTransaction != null;
+
+            if (connection.State == ConnectionState.Open)
+            {
+                return false;
+            }
+
+            await context.Database.OpenConnectionAsync().ConfigureAwait(false);
+            return !hasActiveTransaction;
+        }
+
+        private async Task CloseConnectionIfOwnedAsync(bool shouldCloseConnection)
+        {
+            if (!shouldCloseConnection)
+            {
+                return;
+            }
+
+            await context.Database.CloseConnectionAsync().ConfigureAwait(false);
+        }
+
+        private DbTransaction? GetCurrentDbTransaction()
+        {
+            return context.Database.CurrentTransaction?.GetDbTransaction();
+        }
 
     }
 }
