@@ -35,14 +35,6 @@ namespace attendance_monitoring.Controllers
         {
             logger.LogInformation("Registration attempt for username: {Username}", registerDto.Username);
 
-            // Validate that SectionId is provided for student registrations
-            // Only check for students (default role is Student if not specified)
-            // Instructor is an alias for Teacher, so treat it as such
-            if (!string.IsNullOrEmpty(registerDto.Role) && registerDto.Role.Equals("Instructor", StringComparison.OrdinalIgnoreCase))
-            {
-                registerDto.Role = "Teacher";
-            }
-
             if (!ModelState.IsValid)
             {
                 logger.LogWarning("Registration failed due to invalid model state for username: {Username}", registerDto.Username);

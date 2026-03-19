@@ -1,3 +1,4 @@
+using attendance_monitoring.Constants;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Identity;
@@ -16,14 +17,8 @@ public class UserContextService(UserManager<IdentityUser> userManager, Applicati
 
     private static readonly HashSet<string> ValidRoles = new(StringComparer.OrdinalIgnoreCase)
     {
-        "Student", "Teacher", "Admin", "Instructor"
+        RoleConstants.Student, RoleConstants.Admin, RoleConstants.Instructor
     };
-
-    // Equivalent na ani, basin malimot ka
-    // private static readonly HashSet<string> ValidRoles = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-    // {
-    //     "Student", "Teacher", "Admin"
-    // };
 
     #region User Information Operations
     /// <summary>

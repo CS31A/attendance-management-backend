@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 using System.Security.Claims;
+using attendance_monitoring.Constants;
 using attendance_monitoring.Services;
 using attendance_monitoring.IRepository;
 
@@ -105,9 +106,9 @@ public class NotificationHub : Hub
             var user = Context.User;
             if (user == null) return false;
 
-            if (user.IsInRole("Admin")) return true;
+            if (user.IsInRole(RoleConstants.Admin)) return true;
 
-            if (user.IsInRole("Teacher"))
+            if (user.IsInRole(RoleConstants.Instructor))
             {
                 var instructor = await _instructorRepository.GetInstructorByUserIdAsync(userId);
                 return instructor != null && session.Schedule.InstructorId == instructor.Id;

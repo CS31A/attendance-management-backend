@@ -70,11 +70,16 @@ namespace attendance_monitoring.Services
                 throw new EntityAlreadyExistsException<string>("User", registerDto.Email, "Email already exists");
             }
 
-            var validRoles = new[] { "Admin", "Teacher", "Student" };
+            var validRoles = new[] { RoleConstants.Admin, RoleConstants.Instructor, RoleConstants.Student };
             // Role assignment logic (roles are now ensured to exist at application startup)
-            var roleToAssign = "Student";
-            if (!string.IsNullOrEmpty(registerDto.Role) && validRoles.Contains(registerDto.Role, StringComparer.OrdinalIgnoreCase))
+            var roleToAssign = RoleConstants.Student;
+            if (!string.IsNullOrEmpty(registerDto.Role))
             {
+                if (!validRoles.Contains(registerDto.Role, StringComparer.OrdinalIgnoreCase))
+                {
+                    throw new ValidationException("Invalid role specified. Valid roles are: Student, Instructor, Admin");
+                }
+
                 roleToAssign = registerDto.Role;
             }
 
@@ -630,7 +635,7 @@ namespace attendance_monitoring.Services
                     profile.UpdatedAt = student.UpdatedAt;
                 }
             }
-            else if (role.Equals("Teacher", StringComparison.OrdinalIgnoreCase) || role.Equals("Instructor", StringComparison.OrdinalIgnoreCase))
+            else if (role.Equals(RoleConstants.Instructor, StringComparison.OrdinalIgnoreCase))
             {
                 var instructor = await instructorRepository.GetInstructorByUserIdAsync(userId).ConfigureAwait(false);
                 if (instructor != null)
@@ -813,7 +818,7 @@ namespace attendance_monitoring.Services
                     await accountRepository.UpdateStudentProfileAsync(student).ConfigureAwait(false);
                 }
             }
-            else if (role.Equals("Teacher", StringComparison.OrdinalIgnoreCase))
+            else if (role.Equals(RoleConstants.Instructor, StringComparison.OrdinalIgnoreCase))
             {
                 var instructor = await accountRepository.GetInstructorByUserIdAsync(userId).ConfigureAwait(false);
                 if (instructor != null)
@@ -995,7 +1000,7 @@ namespace attendance_monitoring.Services
                     await accountRepository.UpdateStudentProfileAsync(student).ConfigureAwait(false);
                 }
             }
-            else if (targetRole.Equals("Teacher", StringComparison.OrdinalIgnoreCase))
+            else if (targetRole.Equals(RoleConstants.Instructor, StringComparison.OrdinalIgnoreCase))
             {
                 var instructor = await accountRepository.GetInstructorByUserIdAsync(adminUpdateDto.UserId).ConfigureAwait(false);
                 if (instructor != null)

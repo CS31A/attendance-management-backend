@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using attendance_monitoring.Classes;
+using attendance_monitoring.Constants;
 using attendance_monitoring.Exceptions;
 using attendance_monitoring.IRepository;
 using attendance_monitoring.IServices;
@@ -222,7 +223,7 @@ namespace attendance_monitoring.Services
                     throw new EntityNotFoundException<int>("Student", id);
                 }
 
-                var isAuthorized = await _userContextService.IsAuthorizedAsync(userPrincipal, existingStudent.UserId, "Admin", "Teacher").ConfigureAwait(false);
+                var isAuthorized = await _userContextService.IsAuthorizedAsync(userPrincipal, existingStudent.UserId, RoleConstants.Admin, RoleConstants.Instructor).ConfigureAwait(false);
                 if (!isAuthorized)
                 {
                     _logger.LogWarning("Student update failed: User not authorized to update student with ID {Id}", id);
@@ -311,7 +312,7 @@ namespace attendance_monitoring.Services
                     throw new EntityNotFoundException<int>("Student", id);
                 }
 
-                var isAuthorized = await _userContextService.IsAuthorizedAsync(userPrincipal, existingStudent.UserId, "Admin", "Teacher").ConfigureAwait(false);
+                var isAuthorized = await _userContextService.IsAuthorizedAsync(userPrincipal, existingStudent.UserId, RoleConstants.Admin, RoleConstants.Instructor).ConfigureAwait(false);
                 if (!isAuthorized)
                 {
                     _logger.LogWarning("Student soft delete failed: User not authorized to delete student with ID {Id}", id);
@@ -438,7 +439,7 @@ namespace attendance_monitoring.Services
                 return "Student not found";
             }
 
-            var isAuthorized = await _userContextService.IsAuthorizedAsync(userPrincipal, existingStudent.UserId, "Admin", "Teacher").ConfigureAwait(false);
+            var isAuthorized = await _userContextService.IsAuthorizedAsync(userPrincipal, existingStudent.UserId, RoleConstants.Admin, RoleConstants.Instructor).ConfigureAwait(false);
             if (!isAuthorized)
             {
                 _logger.LogWarning("Student restore failed: User not authorized to restore student with ID {Id}", id);

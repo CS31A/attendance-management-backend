@@ -115,17 +115,16 @@ public class AccountControllerTest
     }
 
     [Fact]
-    public async Task Register_ReturnsOk_WhenTeacherRegistrationWithoutSectionId()
+    public async Task Register_ReturnsOk_WhenInstructorRegistrationWithoutSectionId()
     {
         // Arrange
         var registerDto = new RegisterDto
         {
-            Username = "teacheruser",
+            Username = "instructoruser",
             Password = "Test@123",
-            Email = "teacher@test.com",
+            Email = "instructor@test.com",
             RepeatedPassword = "Test@123",
-            Role = "Teacher"
-            // No SectionId - this is valid for teachers
+            Role = "Instructor"
         };
         var response = new RegisterResponseDto { Success = true, Message = "User registered successfully" };
         _mockAccountService.Setup(s => s.RegisterAsync(registerDto)).ReturnsAsync(response);
@@ -140,7 +139,7 @@ public class AccountControllerTest
     }
 
     [Fact]
-    public async Task Register_ReturnsBadRequest_WhenTeacherRegistrationWithSectionId()
+    public async Task Register_ReturnsBadRequest_WhenTeacherRoleProvided()
     {
         // Arrange
         var registerDto = new RegisterDto
@@ -149,8 +148,7 @@ public class AccountControllerTest
             Password = "Test@123",
             Email = "teacher@test.com",
             RepeatedPassword = "Test@123",
-            Role = "Teacher",
-            SectionId = 1 // Invalid - teachers should not have section ID
+            Role = "Teacher"
         };
 
         // Manually trigger validation context to simulate ModelState validation
@@ -238,7 +236,7 @@ public class AccountControllerTest
             Password = "Test@123",
             Email = "instructor@test.com",
             RepeatedPassword = "Test@123",
-            Role = "Instructor", // Instructor is alias for Teacher
+            Role = "Instructor",
             SectionId = 1 // Invalid - instructors should not have section ID
         };
 
@@ -261,7 +259,7 @@ public class AccountControllerTest
     }
 
     [Fact]
-    public async Task Register_NormalizesInstructorToTeacher_BeforeCallingService()
+    public async Task Register_PassesInstructorThrough_BeforeCallingService()
     {
         // Arrange
         var registerDto = new RegisterDto
@@ -286,11 +284,11 @@ public class AccountControllerTest
 
         // Assert
         Assert.NotNull(capturedDto);
-        Assert.Equal("Teacher", capturedDto.Role);
+        Assert.Equal("Instructor", capturedDto.Role);
         _mockAccountService.Verify(s => s.RegisterAsync(It.IsAny<RegisterDto>()), Times.Once);
     }
     [Fact]
-    public async Task Register_ReturnsBadRequest_WhenTeacherRegistrationWithSectionId_RedundantCheck()
+    public async Task Register_ReturnsBadRequest_WhenTeacherRegistrationWithSectionId()
     {
         // Arrange
         var registerDto = new RegisterDto

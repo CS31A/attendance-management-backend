@@ -45,9 +45,9 @@ public class RegisterDto : IValidatableObject
     public string RepeatedPassword { get; set; } = string.Empty;
 
     /// <summary>
-    /// User role - valid values are: "Student", "Teacher", "Instructor", "Admin"
+    /// User role - valid values are: "Student", "Instructor", "Admin"
     /// </summary>
-    [RegularExpression("^(Student|Teacher|Instructor|Admin|student|teacher|instructor|admin)$", ErrorMessage = "Invalid role specified. Valid roles are: Student, Teacher, Instructor, Admin")]
+    [RegularExpression("^(Student|Instructor|Admin|student|instructor|admin)$", ErrorMessage = "Invalid role specified. Valid roles are: Student, Instructor, Admin")]
     public string? Role { get; set; }
 
     /// <summary>
@@ -59,12 +59,6 @@ public class RegisterDto : IValidatableObject
     {
         // Determine effective role (defaults to Student if not specified)
         var effectiveRole = string.IsNullOrEmpty(Role) ? "Student" : Role;
-
-        // Normalize Instructor alias to Teacher
-        if (effectiveRole.Equals("Instructor", StringComparison.OrdinalIgnoreCase))
-        {
-            effectiveRole = "Teacher";
-        }
 
         // Validation 1: Students MUST have a valid SectionId
         if (string.Equals(effectiveRole, "Student", StringComparison.OrdinalIgnoreCase) && (SectionId is null or <= 0))

@@ -189,7 +189,7 @@ public class InstructorController(IInstructorService instructorService, ILogger<
     // }
 
     // REDUNDANT ENDPOINT: This endpoint is redundant because instructor records are automatically 
-    // created during user registration when a user registers with the "Teacher" role. Additionally, 
+    // created during user registration when a user registers with the "Instructor" role. Additionally,
     // this endpoint had a security issue as it allowed any authenticated user to create instructor 
     // records. Do not remove this code block entirely as it might be needed for future 
     // administrative purposes, but it's currently commented out to prevent confusion and 

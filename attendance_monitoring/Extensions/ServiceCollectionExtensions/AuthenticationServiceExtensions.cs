@@ -1,7 +1,9 @@
+using attendance_monitoring.Constants;
 using attendance_monitoring.IServices;
 using attendance_monitoring.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
+using System.Security.Claims;
 
 namespace attendance_monitoring.Extensions.ServiceCollectionExtensions;
 
@@ -62,6 +64,11 @@ public static class AuthenticationServiceExtensions
                 },
                 OnTokenValidated = async context =>
                 {
+                    if (context.Principal != null)
+                    {
+                        context.Principal = NormalizeLegacyRoleClaims(context.Principal);
+                    }
+
                     // Check if the token has been blacklisted
                     var tokenValidationService = context.HttpContext.RequestServices
                         .GetRequiredService<ITokenValidationService>();
@@ -83,6 +90,34 @@ public static class AuthenticationServiceExtensions
         return services;
     }
 
+    private static ClaimsPrincipal NormalizeLegacyRoleClaims(ClaimsPrincipal principal)
+    {
+        var normalizedIdentities = principal.Identities.Select(identity =>
+        {
+            var claims = identity.Claims
+                .Where(claim => !(claim.Type == ClaimTypes.Role &&
+                                  string.Equals(claim.Value, RoleConstants.LegacyTeacher, StringComparison.OrdinalIgnoreCase)))
+                .ToList();
+
+            var hasLegacyTeacherRole = identity.Claims.Any(claim =>
+                claim.Type == ClaimTypes.Role &&
+                string.Equals(claim.Value, RoleConstants.LegacyTeacher, StringComparison.OrdinalIgnoreCase));
+
+            var hasInstructorRole = identity.Claims.Any(claim =>
+                claim.Type == ClaimTypes.Role &&
+                string.Equals(claim.Value, RoleConstants.Instructor, StringComparison.OrdinalIgnoreCase));
+
+            if (hasLegacyTeacherRole && !hasInstructorRole)
+            {
+                claims.Add(new Claim(ClaimTypes.Role, RoleConstants.Instructor));
+            }
+
+            return new ClaimsIdentity(claims, identity.AuthenticationType, identity.NameClaimType, identity.RoleClaimType);
+        });
+
+        return new ClaimsPrincipal(normalizedIdentities);
+    }
+
     /// <summary>
     /// Adds authorization policies to the service collection.
     /// Defines AdminPolicy, PrivilegedPolicy, and UserPolicy based on roles.
@@ -93,10 +128,10 @@ public static class AuthenticationServiceExtensions
     {
         services.AddAuthorization(options =>
         {
-            options.AddPolicy("AdminPolicy", policy => policy.RequireRole("Admin"));
-            options.AddPolicy("InstructorPolicy", policy => policy.RequireRole("Admin", "Teacher", "Instructor"));
-            options.AddPolicy("PrivilegedPolicy", policy => policy.RequireRole("Admin", "Teacher", "Instructor"));
-            options.AddPolicy("UserPolicy", policy => policy.RequireRole("Admin", "Teacher", "Instructor", "Student"));
+            options.AddPolicy("AdminPolicy", policy => policy.RequireRole(RoleConstants.Admin));
+            options.AddPolicy("InstructorPolicy", policy => policy.RequireRole(RoleConstants.Admin, RoleConstants.Instructor));
+            options.AddPolicy("PrivilegedPolicy", policy => policy.RequireRole(RoleConstants.Admin, RoleConstants.Instructor));
+            options.AddPolicy("UserPolicy", policy => policy.RequireRole(RoleConstants.Admin, RoleConstants.Instructor, RoleConstants.Student));
         });
 
         return services;

@@ -21,7 +21,7 @@ public class UserProfileResponseDto
     public string Email { get; set; } = string.Empty;
 
     /// <summary>
-    /// User's role (Student, Teacher, Admin)
+    /// User's role (Student, Instructor, Admin)
     /// </summary>
     public string Role { get; set; } = string.Empty;
 
@@ -41,7 +41,7 @@ public class UserProfileResponseDto
     public StudentProfileInfo? StudentProfile { get; set; }
 
     /// <summary>
-    /// Instructor profile information (populated only for Teacher role)
+    /// Instructor profile information (populated only for Instructor role)
     /// </summary>
     public InstructorProfileInfo? InstructorProfile { get; set; }
 }

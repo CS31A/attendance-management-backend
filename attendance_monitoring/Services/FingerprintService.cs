@@ -967,8 +967,7 @@ public class FingerprintService(
         var currentUserId = await userContextService.GetUserIdAsync(user).ConfigureAwait(false);
 
         if (currentUserRole != RoleConstants.Admin &&
-            currentUserRole != RoleConstants.Instructor &&
-            !string.Equals(currentUserRole, "Teacher", StringComparison.OrdinalIgnoreCase))
+            currentUserRole != RoleConstants.Instructor)
         {
             throw new EntityUnauthorizedException("Fingerprint", operation, currentUserId ?? "unknown", $"Only Admin and Instructors can {operation}.");
         }

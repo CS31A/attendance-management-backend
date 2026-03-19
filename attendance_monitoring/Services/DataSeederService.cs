@@ -1,4 +1,5 @@
 using attendance_monitoring.Classes;
+using attendance_monitoring.Constants;
 using attendance_monitoring.Data;
 using attendance_monitoring.IServices;
 using Microsoft.AspNetCore.Identity;
@@ -502,10 +503,10 @@ namespace attendance_monitoring.Services
                         }
 
                         // Add role
-                        var roleResult = await userManager.AddToRoleAsync(user, "Teacher");
+                        var roleResult = await userManager.AddToRoleAsync(user, RoleConstants.Instructor);
                         if (!roleResult.Succeeded)
                         {
-                            logger.LogError("Failed to assign Teacher role to user {Email}: {Errors}", email, string.Join(", ", roleResult.Errors.Select(e => e.Description)));
+                            logger.LogError("Failed to assign Instructor role to user {Email}: {Errors}", email, string.Join(", ", roleResult.Errors.Select(e => e.Description)));
                             await transaction.RollbackAsync();
                             return;
                         }

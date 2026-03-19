@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using attendance_monitoring.Classes;
+using attendance_monitoring.Constants;
 using attendance_monitoring.Exceptions;
 using attendance_monitoring.Helpers;
 using attendance_monitoring.IRepository;
@@ -359,7 +360,7 @@ namespace attendance_monitoring.Services
                     throw new EntityNotFoundException<int>("Instructor", id);
                 }
 
-                var isAuthorized = await _userContextService.IsAuthorizedAsync(userPrincipal, existingInstructor.UserId, "Admin", "Teacher").ConfigureAwait(false);
+                var isAuthorized = await _userContextService.IsAuthorizedAsync(userPrincipal, existingInstructor.UserId, RoleConstants.Admin, RoleConstants.Instructor).ConfigureAwait(false);
                 if (!isAuthorized)
                 {
                     _logger.LogWarning("Instructor update failed: User not authorized to update instructor with ID {Id}", id);
@@ -442,7 +443,7 @@ namespace attendance_monitoring.Services
                     throw new EntityNotFoundException<int>("Instructor", id);
                 }
 
-                var isAuthorized = await _userContextService.IsAuthorizedAsync(userPrincipal, existingInstructor.UserId, "Admin", "Teacher").ConfigureAwait(false);
+                var isAuthorized = await _userContextService.IsAuthorizedAsync(userPrincipal, existingInstructor.UserId, RoleConstants.Admin, RoleConstants.Instructor).ConfigureAwait(false);
                 if (!isAuthorized)
                 {
                     _logger.LogWarning("Instructor soft delete failed: User not authorized to delete instructor with ID {Id}", id);
@@ -595,7 +596,7 @@ namespace attendance_monitoring.Services
                     throw new EntityNotFoundException<int>("Instructor", id);
                 }
 
-                var isAuthorized = await _userContextService.IsAuthorizedAsync(userPrincipal, existingInstructor.UserId, "Admin", "Teacher").ConfigureAwait(false);
+                var isAuthorized = await _userContextService.IsAuthorizedAsync(userPrincipal, existingInstructor.UserId, RoleConstants.Admin, RoleConstants.Instructor).ConfigureAwait(false);
                 if (!isAuthorized)
                 {
                     _logger.LogWarning("Instructor restore failed: User not authorized to restore instructor with ID {Id}", id);

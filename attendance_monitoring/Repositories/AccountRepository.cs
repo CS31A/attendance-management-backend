@@ -1,4 +1,5 @@
 using attendance_monitoring.Classes;
+using attendance_monitoring.Constants;
 using Dapper;
 using attendance_monitoring.Data;
 using attendance_monitoring.IRepository;
@@ -90,7 +91,7 @@ namespace attendance_monitoring.Repositories
                 UserId = user.Id,
                 Username = user.UserName ?? string.Empty,
                 Email = user.Email ?? string.Empty,
-                Role = role.Name ?? "Unknown",
+                Role = string.IsNullOrEmpty(role.Name) ? "Unknown" : RoleConstants.NormalizeRole(role.Name),
                 StudentProfile = student != null ? new StudentProfileDto
                 {
                     Id = student.Id,
@@ -160,7 +161,7 @@ namespace attendance_monitoring.Repositories
                 UserId = r.UserId,
                 Username = r.Username,
                 Email = r.Email,
-                Role = r.Role,
+                Role = string.IsNullOrEmpty(r.Role) ? "Unknown" : RoleConstants.NormalizeRole(r.Role),
                 StudentProfile = r.Role.Equals("Student", StringComparison.OrdinalIgnoreCase) ? new StudentProfileDto
                 {
                     Id = r.ProfileId ?? 0,
@@ -176,7 +177,7 @@ namespace attendance_monitoring.Repositories
                     IsDeleted = r.IsDeleted ?? false,
                     DeletedAt = r.DeletedAt
                 } : null,
-                InstructorProfile = (r.Role.Equals("Instructor", StringComparison.OrdinalIgnoreCase) || r.Role.Equals("Teacher", StringComparison.OrdinalIgnoreCase)) ? new InstructorProfileDto
+                InstructorProfile = RoleConstants.IsInstructorRole(r.Role) ? new InstructorProfileDto
                 {
                     Id = r.ProfileId ?? 0,
                     Firstname = r.Firstname,
@@ -268,7 +269,7 @@ namespace attendance_monitoring.Repositories
         #region EnsureRolesExistAsync
         public async Task EnsureRolesExistAsync(IEnumerable<string> roles)
         {
-            foreach (var role in roles)
+            foreach (var role in roles.Select(RoleConstants.NormalizeRole).Distinct(StringComparer.OrdinalIgnoreCase))
             {
                 if (!await roleManager.RoleExistsAsync(role).ConfigureAwait(false))
                 {
@@ -281,14 +282,17 @@ namespace attendance_monitoring.Repositories
         #region AddUserToRoleAsync
         public async Task AddUserToRoleAsync(IdentityUser user, string role)
         {
-            await userManager.AddToRoleAsync(user, role).ConfigureAwait(false);
+            await userManager.AddToRoleAsync(user, RoleConstants.NormalizeRole(role)).ConfigureAwait(false);
         }
         #endregion
 
         #region GetUserRolesAsync
         public async Task<IList<string>> GetUserRolesAsync(IdentityUser user)
         {
-            return await userManager.GetRolesAsync(user).ConfigureAwait(false);
+            return (await userManager.GetRolesAsync(user).ConfigureAwait(false))
+                .Select(RoleConstants.NormalizeRole)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
         }
         #endregion
 
@@ -603,7 +607,7 @@ namespace attendance_monitoring.Repositories
                                 UpdatedAt = result.UpdatedAt
                             };
                         }
-                        else if (role.Equals("Instructor", StringComparison.OrdinalIgnoreCase) || role.Equals("Teacher", StringComparison.OrdinalIgnoreCase))
+                        else if (RoleConstants.IsInstructorRole(role))
                         {
                             userDto.InstructorProfile = new InstructorProfileDto
                             {
