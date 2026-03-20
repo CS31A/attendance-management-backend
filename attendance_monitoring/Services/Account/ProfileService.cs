@@ -1,3 +1,4 @@
+using attendance_monitoring.Classes;
 using attendance_monitoring.Constants;
 using attendance_monitoring.Data;
 using attendance_monitoring.Exceptions;
@@ -264,7 +265,20 @@ internal sealed class ProfileService
                     }
                     if (updateProfileDto.SectionId.HasValue)
                     {
-                        var section = await _sectionRepository.GetSectionByIdAsync(updateProfileDto.SectionId.Value).ConfigureAwait(false);
+                        Section? section;
+                        try
+                        {
+                            section = await _sectionRepository.GetSectionByIdAsync(updateProfileDto.SectionId.Value).ConfigureAwait(false);
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogError(ex,
+                                "Profile update failed for user {UserId}: Section lookup failed for SectionId {SectionId}",
+                                userId,
+                                updateProfileDto.SectionId.Value);
+                            throw;
+                        }
+
                         if (section == null)
                         {
                             _logger.LogWarning("Profile update failed: Section {SectionId} does not exist", updateProfileDto.SectionId.Value);

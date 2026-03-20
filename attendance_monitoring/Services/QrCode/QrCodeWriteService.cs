@@ -70,7 +70,7 @@ internal sealed class QrCodeWriteService
         catch (EntityNotFoundException<int>) { throw; }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error occurred while updating QR code");
+            _logger.LogError(ex, "Error occurred while updating QR code with ID: {QrCodeId}", id);
             throw new EntityServiceException("QrCode", "Update", "An error occurred while updating the QR code", ex);
         }
     }
@@ -112,7 +112,7 @@ internal sealed class QrCodeWriteService
         catch (EntityNotFoundException<int>) { throw; }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error occurred while deactivating QR code");
+            _logger.LogError(ex, "Error occurred while deactivating QR code with ID: {QrCodeId}", id);
             throw new EntityServiceException("QrCode", "Deactivate", "An error occurred while deactivating the QR code", ex);
         }
     }
@@ -162,7 +162,7 @@ internal sealed class QrCodeWriteService
         catch (EntityNotFoundException<int>) { throw; }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error occurred while revoking QR code");
+            _logger.LogError(ex, "Error occurred while revoking QR code with ID: {QrCodeId}", id);
             throw new EntityServiceException("QrCode", "Revoke", "An error occurred while revoking the QR code", ex);
         }
     }
@@ -204,7 +204,7 @@ internal sealed class QrCodeWriteService
         catch (EntityNotFoundException<string>) { throw; }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error occurred while deactivating QR code");
+            _logger.LogError(ex, "Error occurred while deactivating QR code with hash: {QrHash}", qrHash);
             throw new EntityServiceException("QrCode", "Deactivate", "An error occurred while deactivating the QR code", ex);
         }
     }
@@ -254,7 +254,7 @@ internal sealed class QrCodeWriteService
         catch (EntityNotFoundException<string>) { throw; }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error occurred while revoking QR code");
+            _logger.LogError(ex, "Error occurred while revoking QR code with hash: {QrHash}", qrHash);
             throw new EntityServiceException("QrCode", "Revoke", "An error occurred while revoking the QR code", ex);
         }
     }
@@ -309,7 +309,7 @@ internal sealed class QrCodeWriteService
         catch (EntityUnauthorizedException) { throw; }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error occurred while reactivating QR code");
+            _logger.LogError(ex, "Error occurred while reactivating QR code with ID: {QrCodeId}", id);
             throw ExceptionHandlingHelper.CreateServiceException("QrCode", "Reactivate", ex);
         }
     }
@@ -364,7 +364,7 @@ internal sealed class QrCodeWriteService
         catch (EntityUnauthorizedException) { throw; }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error occurred while reactivating QR code");
+            _logger.LogError(ex, "Error occurred while reactivating QR code with hash: {QrHash}", qrHash);
             throw ExceptionHandlingHelper.CreateServiceException("QrCode", "Reactivate", ex);
         }
     }
@@ -405,7 +405,7 @@ internal sealed class QrCodeWriteService
         catch (EntityUnauthorizedException) { throw; }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error occurred while deleting QR code");
+            _logger.LogError(ex, "Error occurred while deleting QR code with ID: {QrCodeId}", id);
             throw ExceptionHandlingHelper.CreateServiceException("QrCode", "Delete", ex);
         }
     }
@@ -453,7 +453,10 @@ internal sealed class QrCodeWriteService
         catch (EntityUnauthorizedException) { throw; }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error occurred while extending QR code expiration");
+            _logger.LogError(ex,
+                "Error occurred while extending QR code expiration for ID: {QrCodeId} by {Minutes} minutes",
+                id,
+                additionalMinutes);
             throw ExceptionHandlingHelper.CreateServiceException("QrCode", "ExtendExpiration", ex);
         }
     }
@@ -583,7 +586,7 @@ internal sealed class QrCodeWriteService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error occurred while retrieving QR codes expiring soon");
+            _logger.LogError(ex, "Error occurred while retrieving QR codes expiring within {Minutes} minutes", expiringWithinMinutes);
             throw new EntityServiceException("QrCode", "GetQrCodesExpiringSoon", "An error occurred while retrieving expiring QR codes", ex);
         }
     }

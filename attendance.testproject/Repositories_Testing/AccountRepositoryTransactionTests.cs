@@ -37,7 +37,7 @@ public class AccountRepositoryTransactionTests
         await context.Database.OpenConnectionAsync();
         Assert.Equal(System.Data.ConnectionState.Open, context.Database.GetDbConnection().State);
 
-        await repository.DeleteUserAsyncSP("user-1");
+        await Assert.ThrowsAnyAsync<Exception>(() => repository.DeleteUserAsyncSP("user-1"));
 
         Assert.Equal(0, connection.CloseCallCount);
     }
@@ -58,7 +58,7 @@ public class AccountRepositoryTransactionTests
 
         await using var transaction = await context.Database.BeginTransactionAsync();
 
-        await repository.DeleteUserAsyncSP("user-1");
+        await Assert.ThrowsAnyAsync<Exception>(() => repository.DeleteUserAsyncSP("user-1"));
 
         Assert.Equal(System.Data.ConnectionState.Open, context.Database.GetDbConnection().State);
     }

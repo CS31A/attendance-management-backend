@@ -439,27 +439,19 @@ namespace attendance_monitoring.Repositories
         /// </summary>
         public async Task<(bool Success, string Message)> DeleteUserAsyncSP(string userId)
         {
-            try
-            {
-                var parameters = new { UserId = userId };
-                var result = await QueryFirstOrDefaultStoredProcedureAsync<dynamic>(
-                    "sp_DeleteUser",
-                    parameters).ConfigureAwait(false);
+            var parameters = new { UserId = userId };
+            var result = await QueryFirstOrDefaultStoredProcedureAsync<dynamic>(
+                "sp_DeleteUser",
+                parameters).ConfigureAwait(false);
 
-                if (result != null)
-                {
-                    bool success = result.Success;
-                    string message = result.Message ?? "Unknown error";
-                    return (success, message);
-                }
-
-                return (false, "No response from stored procedure");
-            }
-            catch (Exception)
+            if (result != null)
             {
-                // Exception details are not exposed to prevent information leakage
-                return (false, "Failed to delete user due to a database error");
+                bool success = result.Success;
+                string message = result.Message ?? "Unknown error";
+                return (success, message);
             }
+
+            return (false, "No response from stored procedure");
         }
 
         /// <summary>
@@ -467,25 +459,17 @@ namespace attendance_monitoring.Repositories
         /// </summary>
         public async Task<(bool Success, string Message)> HardDeleteUserAsyncSP(string userId)
         {
-            try
-            {
-                var parameters = new DynamicParameters();
-                parameters.Add("@UserId", userId, DbType.String, ParameterDirection.Input);
-                parameters.Add("@ConfirmDeletion", true, DbType.Boolean, ParameterDirection.Input);
-                parameters.Add("@Success", dbType: DbType.Boolean, direction: ParameterDirection.Output);
-                parameters.Add("@Message", dbType: DbType.String, direction: ParameterDirection.Output, size: 500);
-                await ExecuteStoredProcedureAsync("sp_HardDeleteUser", parameters).ConfigureAwait(false);
+            var parameters = new DynamicParameters();
+            parameters.Add("@UserId", userId, DbType.String, ParameterDirection.Input);
+            parameters.Add("@ConfirmDeletion", true, DbType.Boolean, ParameterDirection.Input);
+            parameters.Add("@Success", dbType: DbType.Boolean, direction: ParameterDirection.Output);
+            parameters.Add("@Message", dbType: DbType.String, direction: ParameterDirection.Output, size: 500);
+            await ExecuteStoredProcedureAsync("sp_HardDeleteUser", parameters).ConfigureAwait(false);
 
-                bool success = parameters.Get<bool>("@Success");
-                string message = parameters.Get<string>("@Message") ?? "Unknown error";
+            bool success = parameters.Get<bool>("@Success");
+            string message = parameters.Get<string>("@Message") ?? "Unknown error";
 
-                return (success, message);
-            }
-            catch (Exception)
-            {
-                // Exception details are not exposed to prevent information leakage
-                return (false, "Failed to permanently delete user due to a database error");
-            }
+            return (success, message);
         }
 
         /// <summary>
@@ -495,27 +479,19 @@ namespace attendance_monitoring.Repositories
         /// <returns>Tuple containing success flag and message.</returns>
         public async Task<(bool Success, string Message)> RestoreUserAsyncSP(string userId)
         {
-            try
-            {
-                var parameters = new { UserId = userId };
-                var result = await QueryFirstOrDefaultStoredProcedureAsync<dynamic>(
-                    "sp_RestoreUser",
-                    parameters).ConfigureAwait(false);
+            var parameters = new { UserId = userId };
+            var result = await QueryFirstOrDefaultStoredProcedureAsync<dynamic>(
+                "sp_RestoreUser",
+                parameters).ConfigureAwait(false);
 
-                if (result != null)
-                {
-                    bool success = result.Success;
-                    string message = result.Message ?? "Unknown error";
-                    return (success, message);
-                }
-
-                return (false, "No response from stored procedure");
-            }
-            catch (Exception)
+            if (result != null)
             {
-                // Exception details are not exposed to prevent information leakage
-                return (false, "Failed to restore user due to a database error");
+                bool success = result.Success;
+                string message = result.Message ?? "Unknown error";
+                return (success, message);
             }
+
+            return (false, "No response from stored procedure");
         }
 
         /// <summary>

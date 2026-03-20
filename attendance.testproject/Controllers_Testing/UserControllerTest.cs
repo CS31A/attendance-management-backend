@@ -130,7 +130,7 @@ public class UserControllerTest
     }
 
     [Fact]
-    public async Task GetAllUsers_ReturnsInternalServerError_WhenServiceThrowsException()
+    public async Task GetAllUsers_PropagatesUnexpectedException_ToGlobalHandler()
     {
         // Arrange
         var exceptionMessage = "Database connection failed";
@@ -139,26 +139,10 @@ public class UserControllerTest
             .ThrowsAsync(new Exception(exceptionMessage));
 
         // Act
-        var result = await _userController.GetAllUsers();
+        var exception = await Assert.ThrowsAsync<Exception>(() => _userController.GetAllUsers());
 
         // Assert
-        var statusCodeResult = Assert.IsType<ObjectResult>(result.Result);
-        Assert.Equal(500, statusCodeResult.StatusCode);
-
-        // Verify error response structure
-        var errorResponse = statusCodeResult.Value;
-        Assert.NotNull(errorResponse);
-
-        // Use reflection to check anonymous object properties
-        var successProperty = errorResponse.GetType().GetProperty("Success");
-        var messageProperty = errorResponse.GetType().GetProperty("Message");
-
-        Assert.NotNull(successProperty);
-        Assert.NotNull(messageProperty);
-        Assert.False((bool)successProperty.GetValue(errorResponse)!);
-        Assert.Equal("An error occurred while retrieving users", messageProperty.GetValue(errorResponse));
-
-        // Verify service was called once
+        Assert.Equal(exceptionMessage, exception.Message);
         _mockAccountService.Verify(s => s.GetAllUsersAsync(It.IsAny<UserStatus>()), Times.Once);
     }
 

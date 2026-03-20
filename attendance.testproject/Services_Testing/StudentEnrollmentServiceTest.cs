@@ -2,6 +2,7 @@ using attendance_monitoring.Classes;
 using attendance_monitoring.Exceptions;
 using attendance_monitoring.IRepository;
 using attendance_monitoring.Services;
+using Microsoft.Extensions.Logging;
 
 namespace attendance.testproject.Services_Testing;
 
@@ -15,6 +16,7 @@ public class StudentEnrollmentServiceTest
     private readonly Mock<IStudentRepository> _mockStudentRepo;
     private readonly Mock<ISectionRepository> _mockSectionRepo;
     private readonly Mock<ISubjectRepository> _mockSubjectRepo;
+    private readonly Mock<ILogger<StudentEnrollmentService>> _mockLogger;
     private readonly StudentEnrollmentService _service;
 
     public StudentEnrollmentServiceTest()
@@ -23,12 +25,14 @@ public class StudentEnrollmentServiceTest
         _mockStudentRepo = new Mock<IStudentRepository>();
         _mockSectionRepo = new Mock<ISectionRepository>();
         _mockSubjectRepo = new Mock<ISubjectRepository>();
+        _mockLogger = new Mock<ILogger<StudentEnrollmentService>>();
 
         _service = new StudentEnrollmentService(
             _mockEnrollmentRepo.Object,
             _mockStudentRepo.Object,
             _mockSectionRepo.Object,
-            _mockSubjectRepo.Object
+            _mockSubjectRepo.Object,
+            _mockLogger.Object
         );
     }
 
@@ -36,10 +40,11 @@ public class StudentEnrollmentServiceTest
     public void Constructor_NullDependency_ThrowsArgumentNullException()
     {
         // Arrange & Act & Assert
-        Assert.Throws<ArgumentNullException>(() => new StudentEnrollmentService(null!, _mockStudentRepo.Object, _mockSectionRepo.Object, _mockSubjectRepo.Object));
-        Assert.Throws<ArgumentNullException>(() => new StudentEnrollmentService(_mockEnrollmentRepo.Object, null!, _mockSectionRepo.Object, _mockSubjectRepo.Object));
-        Assert.Throws<ArgumentNullException>(() => new StudentEnrollmentService(_mockEnrollmentRepo.Object, _mockStudentRepo.Object, null!, _mockSubjectRepo.Object));
-        Assert.Throws<ArgumentNullException>(() => new StudentEnrollmentService(_mockEnrollmentRepo.Object, _mockStudentRepo.Object, _mockSectionRepo.Object, null!));
+        Assert.Throws<ArgumentNullException>(() => new StudentEnrollmentService(null!, _mockStudentRepo.Object, _mockSectionRepo.Object, _mockSubjectRepo.Object, _mockLogger.Object));
+        Assert.Throws<ArgumentNullException>(() => new StudentEnrollmentService(_mockEnrollmentRepo.Object, null!, _mockSectionRepo.Object, _mockSubjectRepo.Object, _mockLogger.Object));
+        Assert.Throws<ArgumentNullException>(() => new StudentEnrollmentService(_mockEnrollmentRepo.Object, _mockStudentRepo.Object, null!, _mockSubjectRepo.Object, _mockLogger.Object));
+        Assert.Throws<ArgumentNullException>(() => new StudentEnrollmentService(_mockEnrollmentRepo.Object, _mockStudentRepo.Object, _mockSectionRepo.Object, null!, _mockLogger.Object));
+        Assert.Throws<ArgumentNullException>(() => new StudentEnrollmentService(_mockEnrollmentRepo.Object, _mockStudentRepo.Object, _mockSectionRepo.Object, _mockSubjectRepo.Object, null!));
     }
 
     #region EnrollStudentAsync Tests
@@ -205,6 +210,37 @@ public class StudentEnrollmentServiceTest
         // Act & Assert
         await Assert.ThrowsAsync<EntityNotFoundException<int>>(
             () => _service.EnrollStudentAsync(studentId, sectionId, 1));
+    }
+
+    [Fact]
+    public async Task EnrollStudentAsync_UnexpectedSectionRepositoryFailure_LogsContextAndRethrows()
+    {
+        // Arrange
+        var studentId = 1;
+        var sectionId = 2;
+        var subjectId = 3;
+        var student = new Student { Id = studentId, SectionId = 5, IsDeleted = false };
+        var expectedException = new InvalidOperationException("Section lookup failed");
+
+        _mockStudentRepo.Setup(r => r.GetStudentByIdAsync(studentId)).ReturnsAsync(student);
+        _mockSectionRepo.Setup(r => r.GetSectionByIdAsync(sectionId)).ThrowsAsync(expectedException);
+
+        // Act
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => _service.EnrollStudentAsync(studentId, sectionId, subjectId));
+
+        // Assert
+        Assert.Same(expectedException, exception);
+        _mockLogger.Verify(
+            x => x.Log(
+                LogLevel.Error,
+                It.IsAny<EventId>(),
+                It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains("student 1")
+                                                && v.ToString()!.Contains("section 2")
+                                                && v.ToString()!.Contains("subject 3")),
+                expectedException,
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+            Times.Once);
     }
 
     [Fact]
@@ -755,4 +791,3 @@ public class StudentEnrollmentServiceTest
 
     #endregion
 }
-
