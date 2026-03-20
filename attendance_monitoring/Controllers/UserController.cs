@@ -21,19 +21,11 @@ public class UserController(IAccountService accountService, ILogger<UserControll
     [HttpGet]
     public async Task<ActionResult<IEnumerable<GetAllUsersDto>>> GetAllUsers([FromQuery] UserStatus status = UserStatus.Active)
     {
-        try
-        {
-            logger.LogInformation("Getting all users with status filter: {Status}", status);
-            var users = await accountService.GetAllUsersAsync(status);
-            var usersList = users.ToList();
-            logger.LogInformation("Successfully retrieved {Count} users with status: {Status}", usersList.Count, status);
-            return Ok(usersList);
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Error retrieving all users with status: {Status}", status);
-            return StatusCode(500, new { Success = false, Message = "An error occurred while retrieving users" });
-        }
+        logger.LogInformation("Getting all users with status filter: {Status}", status);
+        var users = await accountService.GetAllUsersAsync(status);
+        var usersList = users.ToList();
+        logger.LogInformation("Successfully retrieved {Count} users with status: {Status}", usersList.Count, status);
+        return Ok(usersList);
     }
 
     /// <summary>

@@ -1,3 +1,4 @@
+using attendance_monitoring.Classes;
 using attendance_monitoring.Constants;
 using attendance_monitoring.Exceptions;
 using attendance_monitoring.IRepository;
@@ -95,7 +96,20 @@ internal sealed class RegistrationService
                 throw new ValidationException("SectionId is required for student registration");
             }
 
-            var section = await _sectionRepository.GetSectionByIdAsync(registerDto.SectionId.Value).ConfigureAwait(false);
+            Section? section;
+            try
+            {
+                section = await _sectionRepository.GetSectionByIdAsync(registerDto.SectionId.Value).ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex,
+                    "Student registration failed for username {Username}: Section lookup failed for SectionId {SectionId}",
+                    registerDto.Username,
+                    registerDto.SectionId.Value);
+                throw;
+            }
+
             if (section == null)
             {
                 _logger.LogWarning("Student registration failed for username {Username}: SectionId {SectionId} does not exist", registerDto.Username, registerDto.SectionId);

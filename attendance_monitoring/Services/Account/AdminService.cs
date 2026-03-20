@@ -1,3 +1,4 @@
+using attendance_monitoring.Classes;
 using attendance_monitoring.Constants;
 using attendance_monitoring.Data;
 using attendance_monitoring.Exceptions;
@@ -170,7 +171,20 @@ internal sealed class AdminService
                 }
                 if (adminUpdateDto.SectionId.HasValue)
                 {
-                    var section = await _sectionRepository.GetSectionByIdAsync(adminUpdateDto.SectionId.Value).ConfigureAwait(false);
+                    Section? section;
+                    try
+                    {
+                        section = await _sectionRepository.GetSectionByIdAsync(adminUpdateDto.SectionId.Value).ConfigureAwait(false);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex,
+                            "Admin profile update failed for target user {TargetUserId}: Section lookup failed for SectionId {SectionId}",
+                            adminUpdateDto.UserId,
+                            adminUpdateDto.SectionId.Value);
+                        throw;
+                    }
+
                     if (section == null)
                     {
                         _logger.LogWarning("Admin profile update failed: Section {SectionId} does not exist", adminUpdateDto.SectionId.Value);
@@ -266,7 +280,21 @@ internal sealed class AdminService
                 throw new EntityNotFoundException<string>("User", targetUserId, "Target user not found");
             }
 
-            var (success, message) = await _accountRepository.DeleteUserAsyncSP(targetUserId).ConfigureAwait(false);
+            (bool success, string message) deleteResult;
+            try
+            {
+                deleteResult = await _accountRepository.DeleteUserAsyncSP(targetUserId).ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex,
+                    "Admin {AdminId} encountered an unexpected error while deleting user {TargetUserId}",
+                    adminId,
+                    targetUserId);
+                throw new EntityServiceException("User", "delete", "Failed to delete user due to a database error", ex);
+            }
+
+            var (success, message) = deleteResult;
             if (!success)
             {
                 _logger.LogWarning("Admin {AdminId} failed to delete user {TargetUserId}: {Message}", adminId, targetUserId, message);
@@ -345,7 +373,21 @@ internal sealed class AdminService
         }
 
         // Perform hard delete using stored procedure
-        var (success, message) = await _accountRepository.HardDeleteUserAsyncSP(targetUserId).ConfigureAwait(false);
+        (bool success, string message) deleteResult;
+        try
+        {
+            deleteResult = await _accountRepository.HardDeleteUserAsyncSP(targetUserId).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex,
+                "Admin {AdminId} encountered an unexpected error while hard deleting user {TargetUserId}",
+                adminId,
+                targetUserId);
+            throw new EntityServiceException("User", "hard delete", "Failed to permanently delete user due to a database error", ex);
+        }
+
+        var (success, message) = deleteResult;
 
         if (!success)
         {
@@ -393,7 +435,21 @@ internal sealed class AdminService
         }
 
         // Perform restore using stored procedure
-        var (success, message) = await _accountRepository.RestoreUserAsyncSP(targetUserId).ConfigureAwait(false);
+        (bool success, string message) restoreResult;
+        try
+        {
+            restoreResult = await _accountRepository.RestoreUserAsyncSP(targetUserId).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex,
+                "Admin {AdminId} encountered an unexpected error while restoring user {TargetUserId}",
+                adminId,
+                targetUserId);
+            throw new EntityServiceException("User", "restore", "Failed to restore user due to a database error", ex);
+        }
+
+        var (success, message) = restoreResult;
 
         if (!success)
         {

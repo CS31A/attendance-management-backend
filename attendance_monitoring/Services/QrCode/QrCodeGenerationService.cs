@@ -98,7 +98,7 @@ internal sealed class QrCodeGenerationService
             catch (EntityNotFoundException<int>) { throw; }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error occurred while creating QR code");
+                _logger.LogError(ex, "Error occurred while creating QR code for session ID: {SessionId}", createQrCode.SessionId);
                 throw new EntityServiceException("QrCode", "Create", "An error occurred while creating the QR code", ex);
             }
         }
@@ -183,7 +183,7 @@ internal sealed class QrCodeGenerationService
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "An unexpected error occurred while generating QR code");
+                _logger.LogError(ex, "An unexpected error occurred while generating QR code for session ID: {SessionId}", qrCodeRequest.SessionId);
                 return new QrCodeGenerationResponseDto { Success = false, Message = "An unexpected error occurred while generating the QR code" };
             }
         }
