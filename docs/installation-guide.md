@@ -8,12 +8,12 @@ Before installing the system, ensure you have the following prerequisites instal
 
 ### Required Software
 
-#### .NET 9.0 SDK
+#### .NET 10.0 SDK
 ```bash
-# Download from: https://dotnet.microsoft.com/download/dotnet/9.0
+# Download from: https://dotnet.microsoft.com/download/dotnet/10.0
 # Verify installation
 dotnet --version
-# Should output: 9.0.x
+# Should output: 10.0.x
 ```
 
 #### SQL Server
@@ -199,7 +199,7 @@ cd attendance_monitoring
 dotnet restore
 
 # Verify packages are restored
-ls bin/Debug/net9.0/
+ls bin/Debug/net10.0/
 # Should show compiled assemblies
 ```
 
