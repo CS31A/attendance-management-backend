@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.TestHost;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using System.Net;
@@ -65,6 +66,24 @@ public sealed class GlobalExceptionHandlerIntegrationTests
         Assert.Equal(
             "An unexpected error occurred. Please contact support if this persists.",
             error.Message);
+        Assert.Equal("/throw", error.Path);
+        Assert.Null(error.Details);
+    }
+
+    [Fact]
+    public async Task UseGlobalExceptionHandler_ReturnsServiceUnavailable_ForDbUpdateException()
+    {
+        await using var testHost = await CreateTestHostAsync(
+            () => new DbUpdateException("Database write failed"));
+
+        var response = await testHost.Client.GetAsync("/throw");
+        var error = await response.Content.ReadFromJsonAsync<ErrorResponseDto>();
+
+        Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
+        Assert.NotNull(error);
+        Assert.False(error.Success);
+        Assert.Equal(StatusCodes.Status503ServiceUnavailable, error.StatusCode);
+        Assert.Equal("Database is temporarily unavailable. Please try again later.", error.Message);
         Assert.Equal("/throw", error.Path);
         Assert.Null(error.Details);
     }
