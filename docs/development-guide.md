@@ -5,7 +5,7 @@ This guide provides best practices and workflows for developing the Attendance M
 ## Development Environment Setup
 
 ### Prerequisites
-- .NET 9.0 SDK
+- .NET 10.0 SDK
 - SQL Server (LocalDB, Express, or Full)
 - Visual Studio 2022 or VS Code with C# Dev Kit
 - Git

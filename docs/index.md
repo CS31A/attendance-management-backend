@@ -32,6 +32,7 @@ Welcome to the comprehensive documentation for the Attendance Management System.
 |----------|------------|----------|
 | [Project Overview](./project-overview.md) | High-level system understanding | All stakeholders |
 | [Architecture Guide](./architecture-guide.md) | Technical architecture and patterns | Developers, Architects |
+| [User Management Persistence Strategy](./user-management-persistence-strategy.md) | EF vs stored procedure boundary for account flows | Developers, Architects |
 | [Database Schema](./database-schema.md) | Data model and relationships | Developers, DBAs |
 
 ### API Documentation
@@ -117,6 +118,7 @@ Welcome to the comprehensive documentation for the Attendance Management System.
 - **Schema Overview**: [Database Schema](./database-schema.md)
 - **Entity Relationships**: [Database Schema - Entity Relationships](./database-schema.md#entity-relationships)
 - **Performance**: [Database Schema - Performance Optimization](./database-schema.md#performance-optimization)
+- **User Persistence Decision**: [User Management Persistence Strategy](./user-management-persistence-strategy.md)
 - **Migrations**: [Installation Guide - Database Setup](./installation-guide.md#3-database-setup)
 
 ### Security
@@ -133,7 +135,7 @@ Welcome to the comprehensive documentation for the Attendance Management System.
 ## 📊 System Metrics
 
 ### Documentation Coverage
-- **Total Documents**: 10 comprehensive guides
+- **Total Documents**: 11 comprehensive guides
 - **API Endpoints**: 50+ documented endpoints
 - **Database Tables**: 15+ entity tables documented
 - **Configuration Options**: 100+ configuration parameters

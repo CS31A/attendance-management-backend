@@ -4,7 +4,7 @@ This guide covers deploying the Attendance Management System to various environm
 
 ## Prerequisites
 
-- .NET 9.0 Runtime
+- .NET 10.0 Runtime
 - SQL Server (any edition)
 - SSL Certificate (for HTTPS)
 
@@ -74,7 +74,7 @@ dotnet publish -c Release -o ./publish
 ```
 
 ### 2. Install Prerequisites
-- Install [.NET 9.0 Hosting Bundle](https://dotnet.microsoft.com/download/dotnet/9.0)
+- Install [.NET 10.0 Hosting Bundle](https://dotnet.microsoft.com/download/dotnet/10.0)
 - Ensure IIS is installed with ASP.NET Core Module
 
 ### 3. Configure IIS
@@ -114,7 +114,7 @@ az webapp create \
   --name attendance-api \
   --resource-group attendance-rg \
   --plan attendance-plan \
-  --runtime "DOTNET|9.0"
+  --runtime "DOTNET|10.0"
 ```
 
 ### 2. Configure App Settings

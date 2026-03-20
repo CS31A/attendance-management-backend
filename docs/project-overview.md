@@ -1,6 +1,6 @@
 # Project Overview
 
-The Attendance Management System is a comprehensive ASP.NET Core 9.0 Web API designed to streamline attendance tracking for educational institutions. This document provides a high-level overview of the system's purpose, features, and architecture.
+The Attendance Management System is a comprehensive ASP.NET Core 10.0 Web API designed to streamline attendance tracking for educational institutions. This document provides a high-level overview of the system's purpose, features, and architecture.
 
 ## System Purpose
 
@@ -53,7 +53,7 @@ The Attendance Management System addresses the challenges of traditional attenda
 ## Technology Stack
 
 ### Backend Framework
-- **ASP.NET Core 9.0**: Modern, cross-platform web framework
+- **ASP.NET Core 10.0**: Modern, cross-platform web framework
 - **Entity Framework Core**: Object-relational mapping with SQL Server
 - **C# 12**: Latest language features and performance improvements
 
