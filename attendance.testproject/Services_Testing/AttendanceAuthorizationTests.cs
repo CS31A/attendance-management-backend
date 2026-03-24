@@ -1,4 +1,5 @@
 using attendance_monitoring.Classes;
+using attendance_monitoring.Constants;
 using attendance_monitoring.Data;
 using attendance_monitoring.Exceptions;
 using attendance_monitoring.IRepository;
@@ -520,7 +521,7 @@ public class AttendanceAuthorizationTests
             Id = id,
             ScheduleId = 1,
             SessionDate = DateTime.Today,
-            Status = "active",
+            Status = SessionStatusConstants.Active,
             Schedule = schedule,
             ActualRoom = classroom
         };

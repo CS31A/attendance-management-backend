@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using attendance_monitoring.Classes;
+using attendance_monitoring.Constants;
 using attendance_monitoring.Data;
 using attendance_monitoring.Exceptions;
 using attendance_monitoring.IRepository;
@@ -110,7 +111,7 @@ public class QrCodeBoundaryLoggingTests
         var sessionRepository = new Mock<ISessionRepository>();
         sessionRepository
             .Setup(r => r.GetSessionByIdAsync(sessionId))
-            .ReturnsAsync(new Session { Id = sessionId, Status = "active" });
+            .ReturnsAsync(new Session { Id = sessionId, Status = SessionStatusConstants.Active });
 
         var enrollmentService = new Mock<IStudentEnrollmentService>();
 
