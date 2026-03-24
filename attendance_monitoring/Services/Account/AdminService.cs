@@ -74,7 +74,7 @@ internal sealed class AdminService
         if (!adminRoles.Contains("Admin", StringComparer.OrdinalIgnoreCase))
         {
             _logger.LogWarning("Admin profile update failed: User {AdminId} is not an admin", adminId);
-            throw new EntityUnauthorizedException("User", "update", "Admin role required");
+            throw new EntityUnauthorizedException("User", "update", adminId, "Admin role required");
         }
 
         // Validate target user exists
@@ -264,7 +264,7 @@ internal sealed class AdminService
             if (!adminRoles.Contains("Admin", StringComparer.OrdinalIgnoreCase))
             {
                 _logger.LogWarning("Admin delete failed: User {AdminId} is not an admin", adminId);
-                throw new EntityUnauthorizedException("User", "delete", "Admin role required");
+                throw new EntityUnauthorizedException("User", "delete", adminId, "Admin role required");
             }
 
             if (adminId.Equals(targetUserId, StringComparison.OrdinalIgnoreCase))
@@ -354,7 +354,7 @@ internal sealed class AdminService
         if (!adminRoles.Contains("Admin", StringComparer.OrdinalIgnoreCase))
         {
             _logger.LogWarning("Admin hard delete failed: User {AdminId} is not an admin", adminId);
-            throw new EntityUnauthorizedException("User", "hard delete", "Admin role required");
+            throw new EntityUnauthorizedException("User", "hard delete", adminId, "Admin role required");
         }
 
         // Prevent admin from deleting themselves
@@ -423,7 +423,7 @@ internal sealed class AdminService
         if (!adminRoles.Contains("Admin", StringComparer.OrdinalIgnoreCase))
         {
             _logger.LogWarning("Admin restore failed: User {AdminId} is not an admin", adminId);
-            throw new EntityUnauthorizedException("User", "restore", "Admin role required");
+            throw new EntityUnauthorizedException("User", "restore", adminId, "Admin role required");
         }
 
         // Validate target user exists

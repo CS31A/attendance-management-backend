@@ -364,7 +364,7 @@ namespace attendance_monitoring.Services
                 if (!isAuthorized)
                 {
                     _logger.LogWarning("Instructor update failed: User not authorized to update instructor with ID {Id}", id);
-                    throw new EntityUnauthorizedException("Instructor", $"Update instructor with ID {id}", "You are not authorized to update this instructor record");
+                    throw new EntityUnauthorizedException("Instructor", $"Update instructor with ID {id}", userId, "You are not authorized to update this instructor record");
                 }
 
                 if (!string.IsNullOrEmpty(updateInstructor.Firstname))
@@ -447,7 +447,7 @@ namespace attendance_monitoring.Services
                 if (!isAuthorized)
                 {
                     _logger.LogWarning("Instructor soft delete failed: User not authorized to delete instructor with ID {Id}", id);
-                    throw new EntityUnauthorizedException("Instructor", $"Soft delete instructor with ID {id}", "You are not authorized to delete this instructor record");
+                    throw new EntityUnauthorizedException("Instructor", $"Soft delete instructor with ID {id}", userId, "You are not authorized to delete this instructor record");
                 }
 
                 var result = await _instructorRepository.SoftDeleteInstructorAsync(id).ConfigureAwait(false);
@@ -523,7 +523,7 @@ namespace attendance_monitoring.Services
                 if (!isAuthorized)
                 {
                     _logger.LogWarning("Instructor hard delete failed: User not authorized to permanently delete instructor with ID {Id}", id);
-                    throw new EntityUnauthorizedException("Instructor", $"Hard delete instructor with ID {id}", "You are not authorized to permanently delete this instructor record.");
+                    throw new EntityUnauthorizedException("Instructor", $"Hard delete instructor with ID {id}", userId, "You are not authorized to permanently delete this instructor record.");
                 }
 
                 var result = await _instructorRepository.HardDeleteInstructorAsync(id).ConfigureAwait(false);
@@ -600,7 +600,7 @@ namespace attendance_monitoring.Services
                 if (!isAuthorized)
                 {
                     _logger.LogWarning("Instructor restore failed: User not authorized to restore instructor with ID {Id}", id);
-                    throw new EntityUnauthorizedException("Instructor", $"Restore instructor with ID {id}", "You are not authorized to restore this instructor record.");
+                    throw new EntityUnauthorizedException("Instructor", $"Restore instructor with ID {id}", userId, "You are not authorized to restore this instructor record.");
                 }
 
                 // Check if instructor is actually deleted before restoring
