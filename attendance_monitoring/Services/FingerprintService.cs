@@ -877,7 +877,7 @@ public class FingerprintService(
 
             foreach (var session in sessions.Where(session =>
                          session.SessionDate.Date == today &&
-                         session.Status == "active" &&
+                         session.Status == SessionStatusConstants.Active &&
                          session.ActualStartTime.HasValue &&
                          session.ActualStartTime <= now &&
                          (!session.ActualEndTime.HasValue || session.ActualEndTime > now)))
