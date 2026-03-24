@@ -1,4 +1,5 @@
 using attendance_monitoring.Controllers;
+using attendance_monitoring.Constants;
 using attendance_monitoring.Exceptions;
 using attendance_monitoring.IServices;
 using attendance_monitoring.Models.DTO.Request;
@@ -149,11 +150,11 @@ public class SessionControllerTest
     public async Task GetSessionsByStatus_ReturnsOkResult_WithSessions()
     {
         // Arrange
-        string status = "active";
+        string status = SessionStatusConstants.Active;
         var sessions = new List<SessionResponseDto>
         {
-            CreateTestSessionResponseDto(1, status: "active"),
-            CreateTestSessionResponseDto(2, status: "active")
+            CreateTestSessionResponseDto(1, status: SessionStatusConstants.Active),
+            CreateTestSessionResponseDto(2, status: SessionStatusConstants.Active)
         };
 
         _mockSessionService
@@ -167,7 +168,7 @@ public class SessionControllerTest
         var okResult = Assert.IsType<OkObjectResult>(result.Result);
         var returnedSessions = Assert.IsAssignableFrom<IEnumerable<SessionResponseDto>>(okResult.Value);
         Assert.Equal(2, returnedSessions.Count());
-        Assert.All(returnedSessions, s => Assert.Equal("active", s.Status));
+        Assert.All(returnedSessions, s => Assert.Equal(SessionStatusConstants.Active, s.Status));
     }
 
     [Fact]
@@ -185,10 +186,10 @@ public class SessionControllerTest
     }
 
     [Theory]
-    [InlineData("not_started")]
-    [InlineData("active")]
-    [InlineData("ended")]
-    [InlineData("cancelled")]
+    [InlineData(SessionStatusConstants.NotStarted)]
+    [InlineData(SessionStatusConstants.Active)]
+    [InlineData(SessionStatusConstants.Ended)]
+    [InlineData(SessionStatusConstants.Cancelled)]
     public async Task GetSessionsByStatus_AcceptsValidStatuses(string validStatus)
     {
         // Arrange
@@ -334,7 +335,7 @@ public class SessionControllerTest
             AttendanceCutoffMinutes = 15
         };
 
-        var startedSession = CreateTestSessionResponseDto(sessionId, status: "active");
+        var startedSession = CreateTestSessionResponseDto(sessionId, status: SessionStatusConstants.Active);
 
         _mockSessionService
             .Setup(s => s.StartSessionAsync(sessionId, request))
@@ -346,7 +347,7 @@ public class SessionControllerTest
         // Assert
         var okResult = Assert.IsType<OkObjectResult>(result.Result);
         var session = Assert.IsType<SessionResponseDto>(okResult.Value);
-        Assert.Equal("active", session.Status);
+        Assert.Equal(SessionStatusConstants.Active, session.Status);
 
         _mockSessionService.Verify(s => s.StartSessionAsync(sessionId, request), Times.Once);
     }
@@ -431,7 +432,7 @@ public class SessionControllerTest
             Description = "Session ended successfully"
         };
 
-        var endedSession = CreateTestSessionResponseDto(sessionId, status: "ended");
+        var endedSession = CreateTestSessionResponseDto(sessionId, status: SessionStatusConstants.Ended);
 
         _mockSessionService
             .Setup(s => s.EndSessionAsync(sessionId, request))
@@ -443,7 +444,7 @@ public class SessionControllerTest
         // Assert
         var okResult = Assert.IsType<OkObjectResult>(result.Result);
         var session = Assert.IsType<SessionResponseDto>(okResult.Value);
-        Assert.Equal("ended", session.Status);
+        Assert.Equal(SessionStatusConstants.Ended, session.Status);
 
         _mockSessionService.Verify(s => s.EndSessionAsync(sessionId, request), Times.Once);
     }
@@ -528,7 +529,7 @@ public class SessionControllerTest
             Reason = "Instructor unavailable"
         };
 
-        var cancelledSession = CreateTestSessionResponseDto(sessionId, status: "cancelled");
+        var cancelledSession = CreateTestSessionResponseDto(sessionId, status: SessionStatusConstants.Cancelled);
 
         _mockSessionService
             .Setup(s => s.CancelSessionAsync(sessionId, request))
@@ -540,7 +541,7 @@ public class SessionControllerTest
         // Assert
         var okResult = Assert.IsType<OkObjectResult>(result.Result);
         var session = Assert.IsType<SessionResponseDto>(okResult.Value);
-        Assert.Equal("cancelled", session.Status);
+        Assert.Equal(SessionStatusConstants.Cancelled, session.Status);
 
         _mockSessionService.Verify(s => s.CancelSessionAsync(sessionId, request), Times.Once);
     }
@@ -695,7 +696,7 @@ public class SessionControllerTest
     private SessionResponseDto CreateTestSessionResponseDto(
         int id,
         int scheduleId = 1,
-        string status = "not_started",
+        string status = SessionStatusConstants.NotStarted,
         DateTime? sessionDate = null,
         int? actualRoomId = null)
     {

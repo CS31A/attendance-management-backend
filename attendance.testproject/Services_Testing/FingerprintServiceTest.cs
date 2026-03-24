@@ -370,7 +370,7 @@ public class FingerprintServiceTest
             Id = 11,
             ScheduleId = 20,
             SessionDate = DateTime.Now.Date,
-            Status = "active",
+            Status = SessionStatusConstants.Active,
             ActualStartTime = DateTime.Now.AddMinutes(-5),
             Schedule = new Schedules
             {
@@ -476,7 +476,7 @@ public class FingerprintServiceTest
             Id = 11,
             ScheduleId = schedule.Id,
             SessionDate = now.Date,
-            Status = "active",
+            Status = SessionStatusConstants.Active,
             ActualStartTime = now.AddMinutes(-5),
             ActualEndTime = now.AddMinutes(55),
             Schedule = schedule

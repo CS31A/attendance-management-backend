@@ -1,4 +1,5 @@
 using attendance_monitoring.Classes;
+using attendance_monitoring.Constants;
 using attendance_monitoring.Data;
 using attendance_monitoring.Exceptions;
 using attendance_monitoring.IRepository;
@@ -70,7 +71,7 @@ public class SessionServiceTest
         _testUser = new ClaimsPrincipal(new ClaimsIdentity(new[]
         {
             new Claim(ClaimTypes.NameIdentifier, "user-123"),
-            new Claim(ClaimTypes.Role, "Instructor")
+            new Claim(ClaimTypes.Role, RoleConstants.Instructor)
         }, "TestAuthentication"));
 
         // Setup HTTP context
@@ -113,7 +114,7 @@ public class SessionServiceTest
         // Assert
         Assert.NotNull(result);
         Assert.Equal(sessionId, result.Id);
-        Assert.Equal("not_started", result.Status);
+        Assert.Equal(SessionStatusConstants.NotStarted, result.Status);
         _mockSessionRepository.Verify(r => r.GetSessionByIdAsync(sessionId), Times.Once);
     }
 
@@ -224,11 +225,11 @@ public class SessionServiceTest
     public async Task GetSessionsByStatusAsync_ReturnsSessionsWithStatus()
     {
         // Arrange
-        string status = "active";
+        string status = SessionStatusConstants.Active;
         var sessions = new List<Session>
         {
-            CreateTestSession(1, status: "active"),
-            CreateTestSession(2, status: "active")
+            CreateTestSession(1, status: SessionStatusConstants.Active),
+            CreateTestSession(2, status: SessionStatusConstants.Active)
         };
 
         _mockSessionRepository
@@ -241,7 +242,7 @@ public class SessionServiceTest
         // Assert
         Assert.NotNull(result);
         Assert.Equal(2, result.Count());
-        Assert.All(result, s => Assert.Equal("active", s.Status));
+        Assert.All(result, s => Assert.Equal(SessionStatusConstants.Active, s.Status));
     }
 
     #endregion
@@ -333,7 +334,7 @@ public class SessionServiceTest
         Assert.Equal(request.ScheduleId, result.ScheduleId);
 
         // Verify initial status
-        Assert.Equal("not_started", result.Status);
+        Assert.Equal(SessionStatusConstants.NotStarted, result.Status);
 
         // Verify session date
         Assert.Equal(request.SessionDate, result.SessionDate);
@@ -344,7 +345,7 @@ public class SessionServiceTest
         // Verify repository method was called with correct session data
         _mockSessionRepository.Verify(r => r.CreateSessionAsync(
             It.Is<Session>(s =>
-                s.Status == "not_started" &&
+                s.Status == SessionStatusConstants.NotStarted &&
                 s.ScheduleId == request.ScheduleId &&
                 s.SessionDate == request.SessionDate
             )), Times.Once);
@@ -467,7 +468,7 @@ public class SessionServiceTest
 
         var instructor = CreateTestInstructor(1, "user-123");
         var classroom = CreateTestClassroom(1);
-        var session = CreateTestSession(sessionId, status: "not_started", sessionDate: DateTime.Now.Date);
+        var session = CreateTestSession(sessionId, status: SessionStatusConstants.NotStarted, sessionDate: DateTime.Now.Date);
         session.Schedule = CreateTestSchedule(1, DateTime.Now.DayOfWeek.ToString());
         session.Schedule.InstructorId = instructor.Id;
 
@@ -513,7 +514,7 @@ public class SessionServiceTest
         Assert.NotNull(result);
 
         // Verify status change
-        Assert.Equal("active", result.Status);
+        Assert.Equal(SessionStatusConstants.Active, result.Status);
 
         // Verify timestamps
         Assert.NotNull(result.ActualStartTime);
@@ -533,7 +534,7 @@ public class SessionServiceTest
         // Verify repository method was called with correct session state
         _mockSessionRepository.Verify(r => r.UpdateSessionAsync(
             It.Is<Session>(s =>
-                s.Status == "active" &&
+                s.Status == SessionStatusConstants.Active &&
                 s.ActualStartTime != null &&
                 s.StartedBy == instructor.Id &&
                 s.ActualRoomId == request.ActualRoomId
@@ -580,7 +581,7 @@ public class SessionServiceTest
         var request = new StartSession();
 
         var instructor = CreateTestInstructor(1, "user-123");
-        var session = CreateTestSession(sessionId, status: "not_started");
+        var session = CreateTestSession(sessionId, status: SessionStatusConstants.NotStarted);
         session.Schedule = CreateTestSchedule(1, "Monday");
         session.Schedule.InstructorId = 999; // Different instructor
 
@@ -606,7 +607,7 @@ public class SessionServiceTest
         var request = new StartSession();
 
         var instructor = CreateTestInstructor(1, "user-123");
-        var session = CreateTestSession(sessionId, status: "active");
+        var session = CreateTestSession(sessionId, status: SessionStatusConstants.Active);
         session.Schedule = CreateTestSchedule(1, "Monday");
         session.Schedule.InstructorId = instructor.Id;
 
@@ -632,7 +633,7 @@ public class SessionServiceTest
         var request = new StartSession();
 
         var instructor = CreateTestInstructor(1, "user-123");
-        var session = CreateTestSession(sessionId, status: "not_started", sessionDate: DateTime.Now.Date.AddDays(1));
+        var session = CreateTestSession(sessionId, status: SessionStatusConstants.NotStarted, sessionDate: DateTime.Now.Date.AddDays(1));
         session.Schedule = CreateTestSchedule(1, DateTime.Now.AddDays(1).DayOfWeek.ToString());
         session.Schedule.InstructorId = instructor.Id;
 
@@ -665,7 +666,7 @@ public class SessionServiceTest
         };
 
         var instructor = CreateTestInstructor(1, "user-123");
-        var session = CreateTestSession(sessionId, status: "active");
+        var session = CreateTestSession(sessionId, status: SessionStatusConstants.Active);
         session.Schedule = CreateTestSchedule(1, "Monday");
         session.Schedule.InstructorId = instructor.Id;
 
@@ -706,7 +707,7 @@ public class SessionServiceTest
         Assert.NotNull(result);
 
         // Verify status change
-        Assert.Equal("ended", result.Status);
+        Assert.Equal(SessionStatusConstants.Ended, result.Status);
 
         // Verify end timestamp
         Assert.NotNull(result.ActualEndTime);
@@ -721,7 +722,7 @@ public class SessionServiceTest
         // Verify repository method was called with correct session state
         _mockSessionRepository.Verify(r => r.UpdateSessionAsync(
             It.Is<Session>(s =>
-                s.Status == "ended" &&
+                s.Status == SessionStatusConstants.Ended &&
                 s.ActualEndTime != null &&
                 s.EndedBy == instructor.Id
             )), Times.Once);
@@ -735,7 +736,7 @@ public class SessionServiceTest
         var request = new EndSession();
 
         var instructor = CreateTestInstructor(1, "user-123");
-        var session = CreateTestSession(sessionId, status: "not_started");
+        var session = CreateTestSession(sessionId, status: SessionStatusConstants.NotStarted);
         session.Schedule = CreateTestSchedule(1, "Monday");
         session.Schedule.InstructorId = instructor.Id;
 
@@ -768,7 +769,7 @@ public class SessionServiceTest
         };
 
         var instructor = CreateTestInstructor(1, "user-123");
-        var session = CreateTestSession(sessionId, status: "not_started");
+        var session = CreateTestSession(sessionId, status: SessionStatusConstants.NotStarted);
         session.Schedule = CreateTestSchedule(1, "Monday");
         session.Schedule.InstructorId = instructor.Id;
 
@@ -805,7 +806,7 @@ public class SessionServiceTest
         Assert.NotNull(result);
 
         // Verify status change
-        Assert.Equal("cancelled", result.Status);
+        Assert.Equal(SessionStatusConstants.Cancelled, result.Status);
 
         // Verify cancellation reason was recorded
         Assert.Contains(request.Reason, result.Description!);
@@ -813,7 +814,7 @@ public class SessionServiceTest
         // Verify repository method was called with correct session state
         _mockSessionRepository.Verify(r => r.UpdateSessionAsync(
             It.Is<Session>(s =>
-                s.Status == "cancelled" &&
+                s.Status == SessionStatusConstants.Cancelled &&
                 s.Description != null && s.Description.Contains(request.Reason)
             )), Times.Once);
     }
@@ -826,7 +827,7 @@ public class SessionServiceTest
         var request = new CancelSession { Reason = "Test" };
 
         var instructor = CreateTestInstructor(1, "user-123");
-        var session = CreateTestSession(sessionId, status: "active");
+        var session = CreateTestSession(sessionId, status: SessionStatusConstants.Active);
         session.Schedule = CreateTestSchedule(1, "Monday");
         session.Schedule.InstructorId = instructor.Id;
 
@@ -855,7 +856,7 @@ public class SessionServiceTest
         int sessionId = 1;
         var request = new UpdateSessionRoom { ActualRoomId = 2 };
 
-        var session = CreateTestSession(sessionId, status: "active");
+        var session = CreateTestSession(sessionId, status: SessionStatusConstants.Active);
         var classroom = CreateTestClassroom(2);
 
         _mockSessionRepository
@@ -893,7 +894,7 @@ public class SessionServiceTest
         Assert.Equal(request.ActualRoomId, result.ActualRoomId);
 
         // Verify status remained active
-        Assert.Equal("active", result.Status);
+        Assert.Equal(SessionStatusConstants.Active, result.Status);
 
         // Verify repository method was called with correct room ID
         _mockSessionRepository.Verify(r => r.UpdateSessionAsync(
@@ -908,7 +909,7 @@ public class SessionServiceTest
         int sessionId = 1;
         var request = new UpdateSessionRoom { ActualRoomId = 2 };
 
-        var session = CreateTestSession(sessionId, status: "not_started");
+        var session = CreateTestSession(sessionId, status: SessionStatusConstants.NotStarted);
 
         _mockSessionRepository
             .Setup(r => r.GetSessionByIdAsync(sessionId))
@@ -927,7 +928,7 @@ public class SessionServiceTest
         int sessionId = 1;
         var request = new UpdateSessionRoom { ActualRoomId = 999 };
 
-        var session = CreateTestSession(sessionId, status: "active");
+        var session = CreateTestSession(sessionId, status: SessionStatusConstants.Active);
 
         _mockSessionRepository
             .Setup(r => r.GetSessionByIdAsync(sessionId))
@@ -950,7 +951,7 @@ public class SessionServiceTest
     private Session CreateTestSession(
         int id,
         int scheduleId = 1,
-        string status = "not_started",
+        string status = SessionStatusConstants.NotStarted,
         DateTime? sessionDate = null)
     {
         return new Session

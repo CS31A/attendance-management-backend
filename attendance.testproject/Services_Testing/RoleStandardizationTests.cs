@@ -24,6 +24,21 @@ namespace attendance.testproject.Services_Testing;
 public class RoleStandardizationTests
 {
     [Fact]
+    public void NormalizeRole_ReturnsInstructor_ForLegacyTeacher()
+    {
+        Assert.Equal(RoleConstants.Instructor, RoleConstants.NormalizeRole(RoleConstants.LegacyTeacher));
+    }
+
+    [Theory]
+    [InlineData(RoleConstants.Instructor)]
+    [InlineData(RoleConstants.LegacyTeacher)]
+    [InlineData("instructor")]
+    public void IsInstructorRole_ReturnsTrue_ForCanonicalAndLegacyInstructorValues(string role)
+    {
+        Assert.True(RoleConstants.IsInstructorRole(role));
+    }
+
+    [Fact]
     public async Task OnTokenValidated_NormalizesLegacyTeacherClaimToInstructor()
     {
         var configuration = new ConfigurationBuilder()
