@@ -583,7 +583,7 @@ public class AttendanceService(
 
         // Verify session exists and is active
         var session = await sessionRepository.GetSessionByIdAsync(sessionId).ConfigureAwait(false);
-        if (session == null || session.Status != "active")
+        if (session == null || session.Status != SessionStatusConstants.Active)
         {
             return false;
         }

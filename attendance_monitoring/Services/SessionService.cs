@@ -1,4 +1,5 @@
 using attendance_monitoring.Classes;
+using attendance_monitoring.Constants;
 using attendance_monitoring.Exceptions;
 using attendance_monitoring.Helpers;
 using attendance_monitoring.IRepository;
@@ -259,13 +260,13 @@ public class SessionService : ISessionService
             }
 
             // Validate session status - only active sessions can have room changes
-            if (session.Status != "active")
+            if (session.Status != SessionStatusConstants.Active)
             {
                 var errorMessage = session.Status switch
                 {
-                    "not_started" => "Cannot update room for a session that has not started. Please start the session first.",
-                    "ended" => "Cannot update room for a session that has already ended.",
-                    "cancelled" => "Cannot update room for a cancelled session.",
+                    SessionStatusConstants.NotStarted => "Cannot update room for a session that has not started. Please start the session first.",
+                    SessionStatusConstants.Ended => "Cannot update room for a session that has already ended.",
+                    SessionStatusConstants.Cancelled => "Cannot update room for a cancelled session.",
                     _ => $"Cannot update room for a session with status: {session.Status}. Only active sessions can have room changes."
                 };
 
@@ -374,7 +375,7 @@ public class SessionService : ISessionService
             {
                 ScheduleId = request.ScheduleId,
                 SessionDate = effectiveSessionDate.Date,
-                Status = "not_started",
+                Status = SessionStatusConstants.NotStarted,
                 Description = request.Description
             };
 
@@ -463,13 +464,13 @@ public class SessionService : ISessionService
             }
 
             // Validate session status - only not_started sessions can be started
-            if (session.Status != "not_started")
+            if (session.Status != SessionStatusConstants.NotStarted)
             {
                 var errorMessage = session.Status switch
                 {
-                    "active" => "This session has already been started.",
-                    "ended" => "Cannot start a session that has already ended.",
-                    "cancelled" => "Cannot start a cancelled session.",
+                    SessionStatusConstants.Active => "This session has already been started.",
+                    SessionStatusConstants.Ended => "Cannot start a session that has already ended.",
+                    SessionStatusConstants.Cancelled => "Cannot start a cancelled session.",
                     _ => $"Cannot start a session with status: {session.Status}."
                 };
                 _logger.LogWarning("Session start failed: {ErrorMessage}", errorMessage);
@@ -503,7 +504,7 @@ public class SessionService : ISessionService
             var attendanceCutoff = actualStartTime.AddMinutes(attendanceCutoffMinutes);
 
             // Update the session
-            session.Status = "active";
+            session.Status = SessionStatusConstants.Active;
             session.ActualStartTime = actualStartTime;
             session.ActualRoomId = actualRoomId;
             session.AttendanceCutOff = attendanceCutoff;
@@ -598,13 +599,13 @@ public class SessionService : ISessionService
             }
 
             // Validate session status - only active sessions can be ended
-            if (session.Status != "active")
+            if (session.Status != SessionStatusConstants.Active)
             {
                 var errorMessage = session.Status switch
                 {
-                    "not_started" => "Cannot end a session that has not been started. Please start the session first.",
-                    "ended" => "This session has already been ended.",
-                    "cancelled" => "Cannot end a cancelled session.",
+                    SessionStatusConstants.NotStarted => "Cannot end a session that has not been started. Please start the session first.",
+                    SessionStatusConstants.Ended => "This session has already been ended.",
+                    SessionStatusConstants.Cancelled => "Cannot end a cancelled session.",
                     _ => $"Cannot end a session with status: {session.Status}."
                 };
                 _logger.LogWarning("Session end failed: {ErrorMessage}", errorMessage);
@@ -612,7 +613,7 @@ public class SessionService : ISessionService
             }
 
             // Update the session
-            session.Status = "ended";
+            session.Status = SessionStatusConstants.Ended;
             session.ActualEndTime = DateTime.Now;
             session.EndedBy = instructor.Id;
 
@@ -713,13 +714,13 @@ public class SessionService : ISessionService
             }
 
             // Validate session status - only not_started sessions can be cancelled
-            if (session.Status != "not_started")
+            if (session.Status != SessionStatusConstants.NotStarted)
             {
                 var errorMessage = session.Status switch
                 {
-                    "active" => "Cannot cancel an active session. Please end the session instead.",
-                    "ended" => "Cannot cancel a session that has already ended.",
-                    "cancelled" => "This session has already been cancelled.",
+                    SessionStatusConstants.Active => "Cannot cancel an active session. Please end the session instead.",
+                    SessionStatusConstants.Ended => "Cannot cancel a session that has already ended.",
+                    SessionStatusConstants.Cancelled => "This session has already been cancelled.",
                     _ => $"Cannot cancel a session with status: {session.Status}."
                 };
                 _logger.LogWarning("Session cancellation failed: {ErrorMessage}", errorMessage);
@@ -727,7 +728,7 @@ public class SessionService : ISessionService
             }
 
             // Update the session
-            session.Status = "cancelled";
+            session.Status = SessionStatusConstants.Cancelled;
             session.Description = string.IsNullOrWhiteSpace(session.Description)
                 ? $"Cancelled: {request.Reason}"
                 : $"{session.Description}\n\nCancelled: {request.Reason}";

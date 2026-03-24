@@ -39,15 +39,15 @@ internal sealed class QrCodeAuthorizationService
             return "The specified session does not exist";
         }
 
-        if (session.Status != "active")
+        if (session.Status != SessionStatusConstants.Active)
         {
             _logger.LogWarning("Session with ID {SessionId} is not active (status: {Status})", sessionId, session.Status);
 
             return session.Status switch
             {
-                "not_started" => "Session has not started yet. Please start the session before generating QR codes.",
-                "ended" => "Session has already ended. QR codes cannot be generated for completed sessions.",
-                "cancelled" => "Session has been cancelled. QR codes cannot be generated for cancelled sessions.",
+                SessionStatusConstants.NotStarted => "Session has not started yet. Please start the session before generating QR codes.",
+                SessionStatusConstants.Ended => "Session has already ended. QR codes cannot be generated for completed sessions.",
+                SessionStatusConstants.Cancelled => "Session has been cancelled. QR codes cannot be generated for cancelled sessions.",
                 _ => $"Session is not active. Current status: {session.Status}. Only active sessions can generate QR codes."
             };
         }
@@ -68,15 +68,15 @@ internal sealed class QrCodeAuthorizationService
             throw new EntityNotFoundException<int>("Session", sessionId);
         }
 
-        if (session.Status != "active")
+        if (session.Status != SessionStatusConstants.Active)
         {
             _logger.LogWarning("Session with ID {SessionId} is not active (status: {Status})", sessionId, session.Status);
 
             var message = session.Status switch
             {
-                "not_started" => "Session has not started yet. Please start the session before generating QR codes.",
-                "ended" => "Session has already ended. QR codes cannot be generated for completed sessions.",
-                "cancelled" => "Session has been cancelled. QR codes cannot be generated for cancelled sessions.",
+                SessionStatusConstants.NotStarted => "Session has not started yet. Please start the session before generating QR codes.",
+                SessionStatusConstants.Ended => "Session has already ended. QR codes cannot be generated for completed sessions.",
+                SessionStatusConstants.Cancelled => "Session has been cancelled. QR codes cannot be generated for cancelled sessions.",
                 _ => $"Session is not active. Current status: {session.Status}. Only active sessions can generate QR codes."
             };
             throw new ValidationException(message);

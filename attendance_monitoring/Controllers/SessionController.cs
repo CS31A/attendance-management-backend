@@ -2,6 +2,7 @@ using attendance_monitoring.Exceptions;
 using attendance_monitoring.IServices;
 using attendance_monitoring.Models.DTO.Request;
 using attendance_monitoring.Models.DTO.Response;
+using attendance_monitoring.Constants;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -103,7 +104,6 @@ public class SessionController(ISessionService sessionService, ILogger<SessionCo
     /// <summary>
     /// Get sessions by status.
     /// </summary>
-    /// <param name="status">The session status (not_started, active, ended, cancelled)</param>
     /// <returns>A list of sessions with the specified status</returns>
     /// <response code="200">Returns the list of sessions</response>
     /// <response code="400">Invalid status value</response>
@@ -114,20 +114,19 @@ public class SessionController(ISessionService sessionService, ILogger<SessionCo
     {
         logger.LogInformation("Getting sessions with status: {Status}", status);
 
-        // Validate status value
-        var validStatuses = new[] { "not_started", "active", "ended", "cancelled" };
-        if (!validStatuses.Contains(status.ToLowerInvariant()))
+        if (!SessionStatusConstants.IsValid(status))
         {
             logger.LogWarning("Invalid status value: {Status}", status);
             return BadRequest(new
             {
-                message = $"Invalid status value. Valid values are: {string.Join(", ", validStatuses)}"
+                message = $"Invalid status value. Valid values are: {string.Join(", ", SessionStatusConstants.All)}"
             });
         }
 
-        var sessions = await sessionService.GetSessionsByStatusAsync(status);
+        var normalizedStatus = SessionStatusConstants.Normalize(status);
+        var sessions = await sessionService.GetSessionsByStatusAsync(normalizedStatus);
         logger.LogInformation("Successfully retrieved {Count} sessions with status: {Status}",
-            sessions.Count(), status);
+            sessions.Count(), normalizedStatus);
         return Ok(sessions);
     }
 

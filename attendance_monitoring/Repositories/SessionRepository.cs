@@ -1,4 +1,5 @@
 using attendance_monitoring.Classes;
+using attendance_monitoring.Constants;
 using attendance_monitoring.Data;
 using attendance_monitoring.IRepository;
 using Microsoft.EntityFrameworkCore;
@@ -219,7 +220,7 @@ public class SessionRepository(ApplicationDbContext context) : ISessionRepositor
             .Include(s => s.ActualRoom)
             .Include(s => s.InstructorWhoStarted)
             .Include(s => s.InstructorWhoEnded)
-            .Where(s => s.Status == "active" && s.Schedule.InstructorId == instructorId)
+            .Where(s => s.Status == SessionStatusConstants.Active && s.Schedule.InstructorId == instructorId)
             .OrderBy(s => s.ActualStartTime)
             .ToListAsync()
             .ConfigureAwait(false);

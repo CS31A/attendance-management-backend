@@ -1,6 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Text.Json.Serialization;
+using attendance_monitoring.Constants;
 using Microsoft.EntityFrameworkCore;
 
 namespace attendance_monitoring.Classes;
@@ -27,11 +28,10 @@ public class Session
 
     /// <summary>
     /// Current status of the session
-    /// Values: "not_started", "active", "ended", "cancelled"
     /// </summary>
     [Required]
     [StringLength(20)]
-    public string Status { get; set; } = "not_started";
+    public string Status { get; set; } = SessionStatusConstants.NotStarted;
 
     /// <summary>
     /// The date this session occurred (without time component)
@@ -110,4 +110,3 @@ public class Session
     [JsonIgnore]
     public ICollection<AttendanceRecord> AttendanceRecords { get; set; } = new List<AttendanceRecord>();
 }
-
