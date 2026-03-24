@@ -227,7 +227,7 @@ namespace attendance_monitoring.Services
                 if (!isAuthorized)
                 {
                     _logger.LogWarning("Student update failed: User not authorized to update student with ID {Id}", id);
-                    throw new EntityUnauthorizedException("Student", $"Update student with ID {id}", "You are not authorized to update this student record");
+                    throw new EntityUnauthorizedException("Student", $"Update student with ID {id}", userId, "You are not authorized to update this student record");
                 }
 
                 if (!string.IsNullOrEmpty(updateStudent.Firstname))
@@ -316,7 +316,7 @@ namespace attendance_monitoring.Services
                 if (!isAuthorized)
                 {
                     _logger.LogWarning("Student soft delete failed: User not authorized to delete student with ID {Id}", id);
-                    throw new EntityUnauthorizedException("Student", $"Soft delete student with ID {id}", "You are not authorized to delete this student record");
+                    throw new EntityUnauthorizedException("Student", $"Soft delete student with ID {id}", userId, "You are not authorized to delete this student record");
                 }
 
                 var result = await _studentRepository.SoftDeleteStudentAsync(id).ConfigureAwait(false);

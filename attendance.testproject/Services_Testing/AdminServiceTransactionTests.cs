@@ -14,6 +14,48 @@ namespace attendance.testproject.Services_Testing;
 public class AdminServiceTransactionTests
 {
     [Fact]
+    public async Task AdminUpdateUserProfileAsync_ThrowsUnauthorizedWithAdminId_WhenCallerIsNotAdmin()
+    {
+        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString())
+            .Options;
+
+        await using var context = new ApplicationDbContext(options);
+        var accountRepository = new Mock<IAccountRepository>();
+        var sectionRepository = new Mock<ISectionRepository>();
+        var instructorRepository = new Mock<IInstructorRepository>();
+
+        var adminUser = new IdentityUser { Id = "admin-1", UserName = "admin" };
+
+        accountRepository.Setup(repository => repository.FindUserByIdAsync("admin-1"))
+            .ReturnsAsync(adminUser);
+        accountRepository.Setup(repository => repository.GetUserRolesAsync(adminUser))
+            .ReturnsAsync(new List<string> { "Instructor" });
+
+        var profileService = new ProfileService(
+            context,
+            accountRepository.Object,
+            sectionRepository.Object,
+            instructorRepository.Object,
+            NullLogger<ProfileService>.Instance);
+
+        var service = new AdminService(
+            context,
+            accountRepository.Object,
+            sectionRepository.Object,
+            profileService,
+            NullLogger<AdminService>.Instance);
+
+        var updateDto = new AdminUpdateUser { UserId = "target-1", Firstname = "Jane" };
+
+        var exception = await Assert.ThrowsAsync<EntityUnauthorizedException>(
+            () => service.AdminUpdateUserProfileAsync("admin-1", updateDto));
+
+        Assert.Equal("admin-1", exception.UserId);
+        Assert.Equal("Admin role required", exception.Message);
+    }
+
+    [Fact]
     public async Task AdminDeleteUserAsync_ThrowsWhenRefreshTokenRevocationFails()
     {
         var options = new DbContextOptionsBuilder<ApplicationDbContext>()

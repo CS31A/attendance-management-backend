@@ -496,7 +496,7 @@ public class UserControllerTest
 
         _mockAccountService
             .Setup(s => s.AdminDeleteUserAsync(adminId, targetUserId))
-            .ThrowsAsync(new EntityUnauthorizedException("User", "delete", expectedMessage));
+            .ThrowsAsync(new EntityUnauthorizedException("User", "delete", adminId, expectedMessage));
 
         // Act
         var result = await _userController.SoftDeleteUser(targetUserId);
@@ -506,6 +506,7 @@ public class UserControllerTest
         Assert.Equal(StatusCodes.Status403Forbidden, forbiddenResult.StatusCode);
         var response = Assert.IsType<DeleteUserResponseDto>(forbiddenResult.Value);
         Assert.False(response.Success);
+        Assert.Equal(expectedMessage, response.Message);
 
         // Verify service was called once
         _mockAccountService.Verify(s => s.AdminDeleteUserAsync(adminId, targetUserId), Times.Once);
@@ -755,7 +756,7 @@ public class UserControllerTest
 
         _mockAccountService
             .Setup(s => s.AdminHardDeleteUserAsync(adminId, targetUserId))
-            .ThrowsAsync(new EntityUnauthorizedException("User", "hard delete", expectedMessage));
+            .ThrowsAsync(new EntityUnauthorizedException("User", "hard delete", adminId, expectedMessage));
 
         // Act
         var result = await _userController.HardDeleteUser(targetUserId);
@@ -765,6 +766,7 @@ public class UserControllerTest
         Assert.Equal(StatusCodes.Status403Forbidden, forbiddenResult.StatusCode);
         var response = Assert.IsType<DeleteUserResponseDto>(forbiddenResult.Value);
         Assert.False(response.Success);
+        Assert.Equal(expectedMessage, response.Message);
 
         // Verify service was called once
         _mockAccountService.Verify(s => s.AdminHardDeleteUserAsync(adminId, targetUserId), Times.Once);
@@ -967,7 +969,7 @@ public class UserControllerTest
 
         _mockAccountService
             .Setup(s => s.AdminRestoreUserAsync(adminId, targetUserId))
-            .ThrowsAsync(new EntityUnauthorizedException("User", "restore", expectedMessage));
+            .ThrowsAsync(new EntityUnauthorizedException("User", "restore", adminId, expectedMessage));
 
         // Act
         var result = await _userController.RestoreUser(targetUserId);
@@ -977,6 +979,7 @@ public class UserControllerTest
         Assert.Equal(StatusCodes.Status403Forbidden, forbiddenResult.StatusCode);
         var response = Assert.IsType<DeleteUserResponseDto>(forbiddenResult.Value);
         Assert.False(response.Success);
+        Assert.Equal(expectedMessage, response.Message);
 
         // Verify service was called once
         _mockAccountService.Verify(s => s.AdminRestoreUserAsync(adminId, targetUserId), Times.Once);

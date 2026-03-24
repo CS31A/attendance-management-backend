@@ -743,7 +743,7 @@ public class AccountControllerTest
         _accountController.ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext { User = claimsPrincipal } };
 
         _mockAccountService.Setup(s => s.RevokeAsync(revokeRequest, "user123"))
-            .ThrowsAsync(new EntityUnauthorizedException("RefreshToken", "revoke", "Token does not belong to this user"));
+            .ThrowsAsync(new EntityUnauthorizedException("RefreshToken", "revoke", "user123", "Token does not belong to this user"));
 
         // Act
         var result = await _accountController.Revoke(revokeRequest);
@@ -752,6 +752,7 @@ public class AccountControllerTest
         var unauthorizedResult = Assert.IsType<UnauthorizedObjectResult>(result.Result);
         var responseDto = Assert.IsType<RevokeResponseDto>(unauthorizedResult.Value);
         Assert.False(responseDto.Success);
+        Assert.Equal("Token does not belong to this user", responseDto.Message);
     }
 
     #endregion
@@ -1047,7 +1048,7 @@ public class AccountControllerTest
         _accountController.ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext { User = claimsPrincipal } };
 
         _mockAccountService.Setup(s => s.AdminUpdateUserProfileAsync("admin123", It.IsAny<AdminUpdateUser>()))
-            .ThrowsAsync(new EntityUnauthorizedException("User", "update", "Cannot update this user"));
+            .ThrowsAsync(new EntityUnauthorizedException("User", "update", "admin123", "Cannot update this user"));
 
         // Act
         var result = await _accountController.AdminUpdateUser(targetUserId, adminUpdateDto);
@@ -1055,6 +1056,9 @@ public class AccountControllerTest
         // Assert
         var statusResult = Assert.IsType<ObjectResult>(result.Result);
         Assert.Equal(StatusCodes.Status403Forbidden, statusResult.StatusCode);
+        var response = Assert.IsType<UpdateProfileResponse>(statusResult.Value);
+        Assert.False(response.Success);
+        Assert.Equal("Cannot update this user", response.Message);
     }
 
     [Fact]
