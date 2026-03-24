@@ -185,6 +185,30 @@ public class SessionControllerTest
         Assert.NotNull(badRequestResult.Value);
     }
 
+    [Fact]
+    public async Task GetSessionsByStatus_NormalizesUppercaseStatus_BeforeCallingService()
+    {
+        // Arrange
+        const string uppercaseStatus = "ACTIVE";
+        var sessions = new List<SessionResponseDto>
+        {
+            CreateTestSessionResponseDto(1, status: SessionStatusConstants.Active)
+        };
+
+        _mockSessionService
+            .Setup(s => s.GetSessionsByStatusAsync(SessionStatusConstants.Active))
+            .ReturnsAsync(sessions);
+
+        // Act
+        var result = await _sessionController.GetSessionsByStatus(uppercaseStatus);
+
+        // Assert
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        var returnedSessions = Assert.IsAssignableFrom<IEnumerable<SessionResponseDto>>(okResult.Value);
+        Assert.Single(returnedSessions);
+        _mockSessionService.Verify(s => s.GetSessionsByStatusAsync(SessionStatusConstants.Active), Times.Once);
+    }
+
     [Theory]
     [InlineData(SessionStatusConstants.NotStarted)]
     [InlineData(SessionStatusConstants.Active)]
