@@ -13,29 +13,6 @@ public interface IFingerprintService
     #region Registration Operations
 
     /// <summary>
-    /// Registers a fingerprint for a student.
-    /// </summary>
-    /// <param name="request">The fingerprint registration request.</param>
-    /// <param name="user">The authenticated user making the request.</param>
-    /// <returns>A response with the registration result.</returns>
-    /// <exception cref="ValidationException">Thrown when validation fails.</exception>
-    /// <exception cref="EntityNotFoundException{Int32}">Thrown when student is not found.</exception>
-    /// <exception cref="EntityUnauthorizedException">Thrown when user is not authorized.</exception>
-    /// <exception cref="EntityServiceException">Thrown when a service error occurs.</exception>
-    Task<FingerprintRegistrationResponseDto> RegisterFingerprintAsync(RegisterFingerprint request, ClaimsPrincipal user);
-
-    /// <summary>
-    /// Updates an existing fingerprint registration.
-    /// </summary>
-    /// <param name="fingerprintId">The fingerprint ID to update.</param>
-    /// <param name="request">The updated fingerprint data.</param>
-    /// <param name="user">The authenticated user making the request.</param>
-    /// <returns>A response with the update result.</returns>
-    /// <exception cref="EntityNotFoundException{Int32}">Thrown when fingerprint is not found.</exception>
-    /// <exception cref="EntityUnauthorizedException">Thrown when user is not authorized.</exception>
-    Task<FingerprintRegistrationResponseDto> UpdateFingerprintAsync(int fingerprintId, RegisterFingerprint request, ClaimsPrincipal user);
-
-    /// <summary>
     /// Removes (soft deletes) a fingerprint registration.
     /// </summary>
     /// <param name="fingerprintId">The fingerprint ID to remove.</param>
@@ -78,28 +55,12 @@ public interface IFingerprintService
     #region Scan/Attendance Operations
 
     /// <summary>
-    /// Scans a fingerprint and records attendance for the identified student.
-    /// </summary>
-    /// <param name="request">The fingerprint scan request.</param>
-    /// <returns>A scan response with attendance status and context information.</returns>
-    /// <exception cref="ValidationException">Thrown when validation fails.</exception>
-    /// <exception cref="EntityServiceException">Thrown when a service error occurs.</exception>
-    Task<FingerprintScanResponseDto> ScanFingerprintAsync(ScanFingerprint request);
-
-    /// <summary>
     /// Scans a fingerprint by device identifier and sensor slot, then records attendance.
     /// </summary>
     /// <param name="request">The sensor-slot scan request.</param>
     /// <param name="apiKey">The device API key.</param>
     /// <returns>A scan response with attendance status and context information.</returns>
     Task<FingerprintScanResponseDto> ScanFingerprintBySensorAsync(ScanFingerprintBySensorRequest request, string apiKey);
-
-    /// <summary>
-    /// Validates a fingerprint without recording attendance.
-    /// </summary>
-    /// <param name="templateData">The fingerprint template data to validate.</param>
-    /// <returns>A validation response with student information if match found.</returns>
-    Task<FingerprintScanResponseDto> ValidateFingerprintAsync(string templateData);
 
     #endregion
 

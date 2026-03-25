@@ -45,114 +45,6 @@ public class FingerprintService(
 
     #region Registration Operations
 
-    public async Task<FingerprintRegistrationResponseDto> RegisterFingerprintAsync(RegisterFingerprint request, ClaimsPrincipal user)
-    {
-        logger.LogInformation("Registering fingerprint for StudentId: {StudentId}", request.StudentId);
-
-        await EnsurePrivilegedUserAsync(user, "register fingerprints").ConfigureAwait(false);
-
-        var student = await studentRepository.GetStudentByIdAsync(request.StudentId).ConfigureAwait(false);
-        if (student == null)
-        {
-            throw new EntityNotFoundException<int>("Student", request.StudentId);
-        }
-
-        if (student.IsDeleted)
-        {
-            throw new ValidationException("Cannot register fingerprint for a deleted student");
-        }
-
-        var existingFingerprint = await fingerprintRepository
-            .GetFingerprintByStudentIdIncludingDeletedAsync(request.StudentId)
-            .ConfigureAwait(false);
-
-        var encryptedTemplate = ProtectTemplate(request.TemplateData);
-
-        if (existingFingerprint != null && !existingFingerprint.IsDeleted)
-        {
-            throw new ValidationException("Student already has a registered fingerprint. Please remove the existing fingerprint first.");
-        }
-
-        if (existingFingerprint != null && existingFingerprint.IsDeleted)
-        {
-            existingFingerprint.IsDeleted = false;
-            existingFingerprint.DeletedAt = null;
-            existingFingerprint.TemplateData = encryptedTemplate;
-            existingFingerprint.DeviceId = request.DeviceId;
-            existingFingerprint.SensorFingerprintId = request.SensorFingerprintId;
-            existingFingerprint.UpdatedAt = DateTime.UtcNow;
-
-            await fingerprintRepository.UpdateFingerprintAsync(existingFingerprint).ConfigureAwait(false);
-
-            return new FingerprintRegistrationResponseDto
-            {
-                Success = true,
-                Message = "Fingerprint registration restored successfully",
-                FingerprintId = existingFingerprint.Id,
-                StudentId = request.StudentId,
-                StudentName = $"{student.Firstname} {student.Lastname}"
-            };
-        }
-
-        var fingerprint = new Fingerprint
-        {
-            UserId = student.UserId,
-            TemplateData = encryptedTemplate,
-            DeviceId = request.DeviceId,
-            SensorFingerprintId = request.SensorFingerprintId,
-            CreatedAt = DateTime.UtcNow,
-            UpdatedAt = DateTime.UtcNow,
-            IsDeleted = false
-        };
-
-        var createdFingerprint = await fingerprintRepository.CreateFingerprintAsync(fingerprint).ConfigureAwait(false);
-
-        return new FingerprintRegistrationResponseDto
-        {
-            Success = true,
-            Message = "Fingerprint registered successfully",
-            FingerprintId = createdFingerprint.Id,
-            StudentId = request.StudentId,
-            StudentName = $"{student.Firstname} {student.Lastname}"
-        };
-    }
-
-    public async Task<FingerprintRegistrationResponseDto> UpdateFingerprintAsync(int fingerprintId, RegisterFingerprint request, ClaimsPrincipal user)
-    {
-        logger.LogInformation("Updating fingerprint with ID: {FingerprintId}", fingerprintId);
-
-        await EnsurePrivilegedUserAsync(user, "update fingerprints").ConfigureAwait(false);
-
-        var fingerprint = await fingerprintRepository.GetFingerprintByIdAsync(fingerprintId).ConfigureAwait(false);
-        if (fingerprint == null)
-        {
-            throw new EntityNotFoundException<int>("Fingerprint", fingerprintId);
-        }
-
-        if (fingerprint.IsDeleted)
-        {
-            throw new ValidationException("Cannot update a deleted fingerprint");
-        }
-
-        fingerprint.TemplateData = ProtectTemplate(request.TemplateData);
-        fingerprint.DeviceId = request.DeviceId;
-        fingerprint.SensorFingerprintId = request.SensorFingerprintId;
-        fingerprint.UpdatedAt = DateTime.UtcNow;
-
-        await fingerprintRepository.UpdateFingerprintAsync(fingerprint).ConfigureAwait(false);
-
-        var student = await studentRepository.GetStudentByUserIdAsync(fingerprint.UserId).ConfigureAwait(false);
-
-        return new FingerprintRegistrationResponseDto
-        {
-            Success = true,
-            Message = "Fingerprint updated successfully",
-            FingerprintId = fingerprint.Id,
-            StudentId = student?.Id,
-            StudentName = student != null ? $"{student.Firstname} {student.Lastname}" : null
-        };
-    }
-
     public async Task<FingerprintRegistrationResponseDto> RemoveFingerprintAsync(int fingerprintId, ClaimsPrincipal user)
     {
         logger.LogInformation("Removing fingerprint with ID: {FingerprintId}", fingerprintId);
@@ -414,29 +306,6 @@ public class FingerprintService(
 
     #region Scan/Attendance Operations
 
-    public async Task<FingerprintScanResponseDto> ScanFingerprintAsync(ScanFingerprint request)
-    {
-        logger.LogInformation("Processing template-based fingerprint scan from device: {DeviceId}", request.DeviceId);
-
-        var fingerprint = await MatchFingerprintAsync(request.TemplateData).ConfigureAwait(false);
-        if (fingerprint == null)
-        {
-            return new FingerprintScanResponseDto
-            {
-                Success = false,
-                Message = "No matching fingerprint found",
-                MatchMethod = "TemplateExact"
-            };
-        }
-
-        return await HandleMatchedFingerprintAsync(
-            fingerprint,
-            request.SessionId,
-            "TemplateExact",
-            null,
-            scanEvent: null).ConfigureAwait(false);
-    }
-
     public async Task<FingerprintScanResponseDto> ScanFingerprintBySensorAsync(ScanFingerprintBySensorRequest request, string apiKey)
     {
         logger.LogInformation(
@@ -484,42 +353,6 @@ public class FingerprintService(
             "DeviceSlot",
             request.Confidence,
             scanEvent).ConfigureAwait(false);
-    }
-
-    public async Task<FingerprintScanResponseDto> ValidateFingerprintAsync(string templateData)
-    {
-        logger.LogInformation("Validating fingerprint template");
-
-        var fingerprint = await MatchFingerprintAsync(templateData).ConfigureAwait(false);
-        if (fingerprint == null)
-        {
-            return new FingerprintScanResponseDto
-            {
-                Success = false,
-                Message = "No matching fingerprint found",
-                MatchMethod = "TemplateExact"
-            };
-        }
-
-        var student = await studentRepository.GetStudentByUserIdAsync(fingerprint.UserId).ConfigureAwait(false);
-        if (student == null || student.IsDeleted)
-        {
-            return new FingerprintScanResponseDto
-            {
-                Success = false,
-                Message = "Student account not found or inactive",
-                MatchMethod = "TemplateExact"
-            };
-        }
-
-        return new FingerprintScanResponseDto
-        {
-            Success = true,
-            Message = "Fingerprint validated successfully",
-            StudentId = student.Id,
-            StudentName = $"{student.Firstname} {student.Lastname}",
-            MatchMethod = "TemplateExact"
-        };
     }
 
     #endregion
@@ -599,21 +432,6 @@ public class FingerprintService(
     #endregion
 
     #region Private Helper Methods
-
-    private async Task<Fingerprint?> MatchFingerprintAsync(string templateData)
-    {
-        var fingerprints = await fingerprintRepository.GetActiveFingerprintsAsync().ConfigureAwait(false);
-
-        foreach (var fingerprint in fingerprints)
-        {
-            if (TryReadStoredTemplate(fingerprint.TemplateData) == templateData)
-            {
-                return fingerprint;
-            }
-        }
-
-        return null;
-    }
 
     private async Task<FingerprintScanResponseDto> HandleMatchedFingerprintAsync(
         Fingerprint fingerprint,
@@ -1099,18 +917,6 @@ public class FingerprintService(
     private string ProtectTemplate(string templateData)
     {
         return _templateProtector.Protect(templateData);
-    }
-
-    private string TryReadStoredTemplate(string storedTemplate)
-    {
-        try
-        {
-            return _templateProtector.Unprotect(storedTemplate);
-        }
-        catch
-        {
-            return storedTemplate;
-        }
     }
 
     private static decimal NormalizeConfidence(int confidence)
