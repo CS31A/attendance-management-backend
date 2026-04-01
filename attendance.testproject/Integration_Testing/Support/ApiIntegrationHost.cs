@@ -1,17 +1,21 @@
 using System.Net;
-using System.Net.Http.Headers;
 using System.Net.Http.Json;
-using System.Security.Claims;
 using System.Text.Encodings.Web;
 using attendance_monitoring.Controllers;
+using attendance_monitoring.Data;
+using attendance_monitoring.Extensions;
+using attendance_monitoring.Extensions.ServiceCollectionExtensions;
 using attendance_monitoring.Extensions.WebApplicationExtensions;
 using attendance_monitoring.IServices;
 using attendance_monitoring.Services;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.ApplicationParts;
 using Microsoft.AspNetCore.TestHost;
+using Microsoft.Data.Sqlite;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -25,18 +29,26 @@ internal sealed class ApiIntegrationHost : IAsyncDisposable
     internal const string AuthenticationScheme = "IntegrationTestBearer";
 
     private readonly WebApplication _app;
+    private readonly SqliteConnection? _sqliteConnection;
     private readonly Dictionary<string, string> _cookies = new(StringComparer.Ordinal);
 
-    private ApiIntegrationHost(WebApplication app, HttpClient client, Mock<IAccountService> accountService)
+    private ApiIntegrationHost(
+        WebApplication app,
+        HttpClient client,
+        Mock<IAccountService> accountService,
+        SqliteConnection? sqliteConnection = null)
     {
         _app = app;
         Client = client;
         AccountService = accountService;
+        _sqliteConnection = sqliteConnection;
     }
 
     public HttpClient Client { get; }
 
     public Mock<IAccountService> AccountService { get; }
+
+    public AttendanceQrScenarioContext? AttendanceQrScenario { get; private set; }
 
     public static async Task<ApiIntegrationHost> CreateAsync()
     {
@@ -85,12 +97,67 @@ internal sealed class ApiIntegrationHost : IAsyncDisposable
         return new ApiIntegrationHost(app, client, accountService);
     }
 
-    public AuthenticationHeaderValue CreateBearerHeader(
-        string userId = "integration-user",
-        string username = "integration-admin",
-        string role = "Admin")
+    public static async Task<ApiIntegrationHost> CreateAttendanceQrAsync(
+        string scenarioName,
+        CancellationToken cancellationToken = default)
     {
-        return TestAuthTokenFactory.CreateBearerHeader(userId, username, role);
+        var connection = new SqliteConnection("Data Source=:memory:");
+        await connection.OpenAsync(cancellationToken);
+
+        var builder = WebApplication.CreateBuilder(new WebApplicationOptions
+        {
+            EnvironmentName = Environments.Production
+        });
+
+        builder.WebHost.UseTestServer();
+        builder.Services.AddLogging();
+        builder.Services.AddRouting();
+        builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["CookieSettings:AccessTokenExpirationMinutes"] = "15",
+            ["CookieSettings:RefreshTokenExpirationDays"] = "7",
+            ["CorsSettings:AllowedOrigins"] = "https://localhost"
+        });
+
+        builder.Services.AddDbContext<ApplicationDbContext>(options => options.UseSqlite(connection));
+        builder.Services.AddIdentity<IdentityUser, IdentityRole>()
+            .AddEntityFrameworkStores<ApplicationDbContext>()
+            .AddDefaultTokenProviders();
+        builder.Services
+            .AddAuthentication(AuthenticationScheme)
+            .AddScheme<AuthenticationSchemeOptions, TestAuthenticationHandler>(AuthenticationScheme, _ => { });
+        builder.Services.AddAuthorizationPolicies();
+        builder.Services.AddResponseHandling();
+        builder.Services.AddCorsPolicy(builder.Configuration);
+        builder.Services.AddSignalRServices();
+        builder.Services.AddRepositories();
+        builder.Services.AddApplicationServices();
+        builder.Services.AddControllers()
+            .ConfigureApplicationPartManager(manager =>
+            {
+                manager.ApplicationParts.Clear();
+                manager.ApplicationParts.Add(new AssemblyPart(typeof(AttendanceController).Assembly));
+            });
+
+        var accountService = new Mock<IAccountService>(MockBehavior.Strict);
+        builder.Services.AddSingleton(accountService);
+        builder.Services.AddSingleton<IAccountService>(sp => sp.GetRequiredService<Mock<IAccountService>>().Object);
+
+        var app = builder.Build();
+        app.UseRouting();
+        app.UseAuthentication();
+        app.UseAuthorization();
+        app.UseGlobalExceptionHandler();
+        app.MapControllers();
+
+        await app.StartAsync(cancellationToken);
+
+        var client = app.GetTestClient();
+        client.BaseAddress = new Uri("https://localhost");
+
+        var host = new ApiIntegrationHost(app, client, accountService, sqliteConnection: connection);
+        await host.LoadAttendanceQrScenarioAsync(scenarioName, cancellationToken);
+        return host;
     }
 
     public void AuthenticateAs(
@@ -98,7 +165,7 @@ internal sealed class ApiIntegrationHost : IAsyncDisposable
         string username = "integration-admin",
         string role = "Admin")
     {
-        Client.DefaultRequestHeaders.Authorization = CreateBearerHeader(userId, username, role);
+        Client.DefaultRequestHeaders.Authorization = TestAuthTokenFactory.CreateBearerHeader(userId, username, role);
     }
 
     public void ClearAuthentication()
@@ -152,11 +219,34 @@ internal sealed class ApiIntegrationHost : IAsyncDisposable
 
     public IReadOnlyDictionary<string, string> Cookies => _cookies;
 
+    public async Task<AttendanceQrScenarioContext> LoadAttendanceQrScenarioAsync(
+        string scenarioName,
+        CancellationToken cancellationToken = default)
+    {
+        await using var scope = _app.Services.CreateAsyncScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        AttendanceQrScenario = await AttendanceQrSeedData.SeedScenarioAsync(dbContext, scenarioName, cancellationToken);
+        return AttendanceQrScenario;
+    }
+
+    public async Task<TResult> ExecuteDbContextAsync<TResult>(
+        Func<ApplicationDbContext, CancellationToken, Task<TResult>> action,
+        CancellationToken cancellationToken = default)
+    {
+        await using var scope = _app.Services.CreateAsyncScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        return await action(dbContext, cancellationToken);
+    }
+
     public async ValueTask DisposeAsync()
     {
-        Client.Dispose();
         await _app.StopAsync();
+        Client.Dispose();
         await _app.DisposeAsync();
+        if (_sqliteConnection is not null)
+        {
+            await _sqliteConnection.DisposeAsync();
+        }
     }
 
     private void ApplyCookieHeader()
