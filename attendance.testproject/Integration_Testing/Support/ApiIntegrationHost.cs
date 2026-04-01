@@ -11,7 +11,9 @@ using attendance_monitoring.Services;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.ApplicationParts;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Data.Sqlite;
@@ -124,8 +126,18 @@ internal sealed class ApiIntegrationHost : IAsyncDisposable
             .AddEntityFrameworkStores<ApplicationDbContext>()
             .AddDefaultTokenProviders();
         builder.Services
-            .AddAuthentication(AuthenticationScheme)
+            .AddAuthentication(options =>
+            {
+                options.DefaultAuthenticateScheme = AuthenticationScheme;
+                options.DefaultChallengeScheme = AuthenticationScheme;
+                options.DefaultScheme = AuthenticationScheme;
+            })
             .AddScheme<AuthenticationSchemeOptions, TestAuthenticationHandler>(AuthenticationScheme, _ => { });
+        builder.Services.ConfigureApplicationCookie(options =>
+        {
+            options.LoginPath = PathString.Empty;
+            options.AccessDeniedPath = PathString.Empty;
+        });
         builder.Services.AddAuthorizationPolicies();
         builder.Services.AddResponseHandling();
         builder.Services.AddCorsPolicy(builder.Configuration);
