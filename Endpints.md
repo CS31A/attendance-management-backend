@@ -21,7 +21,7 @@ This document lists all the API endpoints for the attendance monitoring system.
 
 ## AttendanceController
 
-- `POST /api/attendance`: Create a new attendance record manually (Admin, Instructor only)
+- `POST /api/attendance`: Create a new attendance record manually (Admin, Instructor only). Returns `201 Created` for new records, `200 OK` for idempotent duplicate retries, `409 Conflict` for invalid attendance operations (for example, student not enrolled)
 - `GET /api/attendance/{id}`: Get a specific attendance record by ID
 - `GET /api/attendance`: Get all attendance records with optional filtering and pagination
 - `GET /api/attendance/student/{studentId}`: Get attendance history for a specific student
@@ -145,4 +145,3 @@ This document lists all the API endpoints for the attendance monitoring system.
 - `DELETE /api/users/{userId}`: Hard delete a user (permanent deletion) (Admin only)
 - `PATCH /api/users/{userId}/soft-delete`: Soft delete a user (reversible deletion) (Admin only)
 - `PATCH /api/users/{userId}/restore`: Restore a soft-deleted user (Admin only)
-
