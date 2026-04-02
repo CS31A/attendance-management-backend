@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Text.Json;
 using System.Text.Json.Nodes;
 using attendance.testproject.Integration_Testing.Support;
 using attendance_monitoring.Models.DTO.Request;
@@ -11,6 +12,8 @@ namespace attendance.testproject.Integration_Testing;
 
 public sealed class QrCodeFlowIntegrationTests
 {
+    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
+
     [Fact]
     public async Task GenerateQrCode_ReturnsOk_WithApprovedPayloadShape()
     {
@@ -127,6 +130,96 @@ public sealed class QrCodeFlowIntegrationTests
         Assert.Equal("You have already checked in for this session", payload.Message);
         Assert.Null(payload.AttendanceRecordId);
         Assert.Equal("Sam Student", payload.StudentName);
+    }
+
+    [Fact]
+    public async Task ScanQrCode_ConcurrentWithManualAttendance_PersistsSingleAttendanceRecord()
+    {
+        await using var host = await ApiIntegrationHost.CreateAttendanceQrAsync(AttendanceQrSeedData.ValidQrScan);
+        var scenario = host.AttendanceQrScenario!;
+
+        var manualRequest = new HttpRequestMessage(HttpMethod.Post, "/api/attendance")
+        {
+            Content = JsonContent.Create(new CreateAttendanceRequest
+            {
+                StudentId = scenario.StudentId,
+                SessionId = scenario.SessionId,
+                Status = "Present",
+                Notes = "Concurrent manual create"
+            })
+        };
+        manualRequest.Headers.Authorization = TestAuthTokenFactory.CreateBearerHeader(
+            scenario.InstructorUserId,
+            "integration-instructor",
+            "Instructor");
+
+        var qrRequest = new HttpRequestMessage(HttpMethod.Post, "/api/qrcode/scan")
+        {
+            Content = JsonContent.Create(new ValidateQrCode
+            {
+                QrHash = scenario.QrHash,
+                StudentId = scenario.StudentId
+            })
+        };
+        qrRequest.Headers.Authorization = TestAuthTokenFactory.CreateBearerHeader(
+            scenario.StudentUserId,
+            "integration-student",
+            "Student");
+
+        var responses = await Task.WhenAll(
+            host.SendAsync(manualRequest),
+            host.SendAsync(qrRequest));
+
+        var manualResponse = responses[0];
+        var qrResponse = responses[1];
+        var manualBody = await manualResponse.Content.ReadAsStringAsync();
+        var qrBody = await qrResponse.Content.ReadAsStringAsync();
+        var manualPayload = JsonSerializer.Deserialize<AttendanceRecordResponseDto>(manualBody, JsonOptions);
+        var qrPayload = JsonSerializer.Deserialize<QrCodeScanResponseDto>(qrBody, JsonOptions);
+
+        Assert.True(manualPayload is not null, $"Manual response was not a valid attendance payload. Status: {(int)manualResponse.StatusCode} {manualResponse.StatusCode}. Body: {manualBody}");
+        Assert.True(qrPayload is not null, $"QR response was not a valid scan payload. Status: {(int)qrResponse.StatusCode} {qrResponse.StatusCode}. Body: {qrBody}");
+        Assert.True(
+            manualPayload.StudentId == scenario.StudentId,
+            $"Manual response did not target the expected student. Status: {(int)manualResponse.StatusCode} {manualResponse.StatusCode}. Body: {manualBody}");
+        Assert.True(
+            manualPayload.SessionId == scenario.SessionId,
+            $"Manual response did not target the expected session. Status: {(int)manualResponse.StatusCode} {manualResponse.StatusCode}. Body: {manualBody}");
+        Assert.Equal(HttpStatusCode.OK, qrResponse.StatusCode);
+
+        var persistedRecords = await host.ExecuteDbContextAsync(async (dbContext, cancellationToken) =>
+            await dbContext.AttendanceRecords
+                .Where(record =>
+                    record.StudentId == scenario.StudentId &&
+                    record.SessionId == scenario.SessionId)
+                .ToListAsync(cancellationToken));
+
+        Assert.True(
+            persistedRecords.Count == 1,
+            $"Expected exactly one persisted attendance record but found {persistedRecords.Count}. Manual: {(int)manualResponse.StatusCode} {manualResponse.StatusCode} {manualBody} | QR: {(int)qrResponse.StatusCode} {qrResponse.StatusCode} {qrBody}");
+
+        var persisted = persistedRecords[0];
+
+        Assert.Equal(persisted.Id, manualPayload.Id);
+
+        if (persisted.IsManualEntry)
+        {
+            Assert.Equal(HttpStatusCode.Created, manualResponse.StatusCode);
+            Assert.True(qrPayload.Success);
+            Assert.False(qrPayload.AttendanceMarked);
+            Assert.True(qrPayload.IsDuplicateScan);
+            Assert.Equal("You have already checked in for this session", qrPayload.Message);
+            Assert.Null(qrPayload.AttendanceRecordId);
+        }
+        else
+        {
+            Assert.Equal(HttpStatusCode.OK, manualResponse.StatusCode);
+            Assert.True(qrPayload.Success);
+            Assert.True(qrPayload.AttendanceMarked);
+            Assert.False(qrPayload.IsDuplicateScan);
+            Assert.Equal("Attendance marked successfully", qrPayload.Message);
+            Assert.Equal(persisted.Id, qrPayload.AttendanceRecordId);
+        }
     }
 
     [Fact]

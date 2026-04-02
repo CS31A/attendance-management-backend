@@ -93,9 +93,21 @@ public class AttendanceService(
                                             ex.InnerException?.Message.Contains("duplicate key") == true ||
                                             ex.InnerException?.Message.Contains("IX_AttendanceRecords_StudentId_SessionId") == true)
         {
-            logger.LogWarning(ex, "Duplicate attendance - race condition detected for StudentId: {StudentId}, SessionId: {SessionId}",
+            logger.LogWarning(ex, "Duplicate attendance - returning existing record for StudentId: {StudentId}, SessionId: {SessionId}",
                 request.StudentId, request.SessionId);
-            throw new InvalidOperationException("Attendance record already exists for this student and session");
+
+            var existingRecord = await attendanceRepository
+                .GetBySessionAndStudentAsync(request.SessionId, request.StudentId)
+                .ConfigureAwait(false);
+
+            if (existingRecord == null)
+            {
+                logger.LogError("Duplicate attendance detected but existing record could not be loaded for StudentId: {StudentId}, SessionId: {SessionId}",
+                    request.StudentId, request.SessionId);
+                throw;
+            }
+
+            return MapToResponseDto(existingRecord, isIdempotentRetry: true);
         }
     }
 
@@ -218,7 +230,7 @@ public class AttendanceService(
 
         return new PagedResult<AttendanceRecordResponseDto>
         {
-            Items = records.Select(MapToResponseDto).ToList(),
+            Items = records.Select(record => MapToResponseDto(record)).ToList(),
             TotalCount = totalCount,
             PageNumber = filter.PageNumber,
             PageSize = filter.PageSize
@@ -283,7 +295,7 @@ public class AttendanceService(
             AbsentCount = absentCount,
             ExcusedCount = excusedCount,
             AttendancePercentage = attendancePercentage,
-            AttendanceRecords = records.Select(MapToResponseDto).ToList()
+            AttendanceRecords = records.Select(record => MapToResponseDto(record)).ToList()
         };
     }
 
@@ -700,7 +712,7 @@ public class AttendanceService(
         ).ConfigureAwait(false);
     }
 
-    private static AttendanceRecordResponseDto MapToResponseDto(AttendanceRecord record)
+    private static AttendanceRecordResponseDto MapToResponseDto(AttendanceRecord record, bool isIdempotentRetry = false)
     {
         // Validate required navigation properties
         if (record.Student == null)
@@ -738,7 +750,7 @@ public class AttendanceService(
             throw new InvalidOperationException("Session.Schedule.Instructor navigation property is not loaded");
         }
 
-        return new AttendanceRecordResponseDto
+        var response = new AttendanceRecordResponseDto
         {
             Id = record.Id,
             StudentId = record.StudentId,
@@ -761,6 +773,37 @@ public class AttendanceService(
             RoomName = record.Session.ActualRoom?.Name ?? record.Session.Schedule.Classroom.Name,
             InstructorName = $"{record.Session.Schedule.Instructor.Firstname} {record.Session.Schedule.Instructor.Lastname}"
         };
+
+        return isIdempotentRetry
+            ? new IdempotentAttendanceRetryResponseDto(response)
+            : response;
+    }
+
+    private sealed class IdempotentAttendanceRetryResponseDto : AttendanceRecordResponseDto, IIdempotentAttendanceRetryResult
+    {
+        public IdempotentAttendanceRetryResponseDto(AttendanceRecordResponseDto source)
+        {
+            Id = source.Id;
+            StudentId = source.StudentId;
+            StudentName = source.StudentName;
+            StudentNumber = source.StudentNumber;
+            SessionId = source.SessionId;
+            SessionDate = source.SessionDate;
+            QrCodeId = source.QrCodeId;
+            CheckInTime = source.CheckInTime;
+            Status = source.Status;
+            Notes = source.Notes;
+            IsManualEntry = source.IsManualEntry;
+            EnteredBy = source.EnteredBy;
+            CreatedAt = source.CreatedAt;
+            UpdatedAt = source.UpdatedAt;
+            ScheduleId = source.ScheduleId;
+            ScheduleTitle = source.ScheduleTitle;
+            SubjectName = source.SubjectName;
+            SectionName = source.SectionName;
+            RoomName = source.RoomName;
+            InstructorName = source.InstructorName;
+        }
     }
 
     #endregion

@@ -40,6 +40,12 @@ public class AttendanceController(IAttendanceService attendanceService, ILogger<
         try
         {
             var attendance = await attendanceService.CreateAttendanceAsync(request, User);
+            if (attendance is IIdempotentAttendanceRetryResult)
+            {
+                logger.LogInformation("Returning idempotent attendance retry result with ID: {Id}", attendance.Id);
+                return Ok(attendance);
+            }
+
             logger.LogInformation("Successfully created attendance record with ID: {Id}", attendance.Id);
             return CreatedAtAction(nameof(GetAttendance), new { id = attendance.Id }, attendance);
         }

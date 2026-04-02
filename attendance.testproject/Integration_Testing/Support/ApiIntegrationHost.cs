@@ -103,7 +103,8 @@ internal sealed class ApiIntegrationHost : IAsyncDisposable
         string scenarioName,
         CancellationToken cancellationToken = default)
     {
-        var connection = new SqliteConnection("Data Source=:memory:");
+        var connectionString = $"Data Source=file:attendance-integration-{Guid.NewGuid():N}?mode=memory&cache=shared";
+        var connection = new SqliteConnection(connectionString);
         await connection.OpenAsync(cancellationToken);
 
         var builder = WebApplication.CreateBuilder(new WebApplicationOptions
@@ -121,7 +122,7 @@ internal sealed class ApiIntegrationHost : IAsyncDisposable
             ["CorsSettings:AllowedOrigins"] = "https://localhost"
         });
 
-        builder.Services.AddDbContext<ApplicationDbContext>(options => options.UseSqlite(connection));
+        builder.Services.AddDbContext<ApplicationDbContext>(options => options.UseSqlite(connectionString));
         builder.Services.AddIdentity<IdentityUser, IdentityRole>()
             .AddEntityFrameworkStores<ApplicationDbContext>()
             .AddDefaultTokenProviders();

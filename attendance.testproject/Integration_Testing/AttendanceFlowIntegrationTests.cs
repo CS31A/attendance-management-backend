@@ -81,22 +81,64 @@ public sealed class AttendanceFlowIntegrationTests
     }
 
     [Fact]
-    public async Task CreateAttendance_ReturnsConflict_WhenAttendanceAlreadyExists()
+    public async Task CreateAttendance_ReturnsOk_WhenAttendanceAlreadyExistsForEquivalentRetry()
     {
-        await using var host = await ApiIntegrationHost.CreateAttendanceQrAsync(AttendanceQrSeedData.ExistingAttendanceDuplicate);
+        await using var host = await ApiIntegrationHost.CreateAttendanceQrAsync(AttendanceQrSeedData.ValidAttendanceCreate);
         host.AuthenticateAs(userId: host.AttendanceQrScenario!.InstructorUserId, username: "integration-instructor", role: "Instructor");
 
-        var response = await host.PostAsJsonAsync("/api/attendance", new CreateAttendanceRequest
+        var initialRequest = new CreateAttendanceRequest
         {
             StudentId = host.AttendanceQrScenario.StudentId,
             SessionId = host.AttendanceQrScenario.SessionId,
-            Status = "Present"
+            Status = "Present",
+            Notes = "Initial manual create"
+        };
+
+        var initialResponse = await host.PostAsJsonAsync("/api/attendance", initialRequest);
+        var initialPayload = await initialResponse.Content.ReadFromJsonAsync<AttendanceRecordResponseDto>();
+
+        Assert.Equal(HttpStatusCode.Created, initialResponse.StatusCode);
+        Assert.NotNull(initialPayload);
+
+        var equivalentRetryResponse = await host.PostAsJsonAsync("/api/attendance", new CreateAttendanceRequest
+        {
+            StudentId = initialRequest.StudentId,
+            SessionId = initialRequest.SessionId,
+            Status = initialRequest.Status,
+            Notes = initialRequest.Notes
         });
+        var equivalentRetryPayload = await equivalentRetryResponse.Content.ReadFromJsonAsync<AttendanceRecordResponseDto>();
 
-        var payload = await ReadJsonObjectAsync(response);
+        Assert.Equal(HttpStatusCode.OK, equivalentRetryResponse.StatusCode);
+        Assert.NotNull(equivalentRetryPayload);
+        Assert.Equal(initialPayload.Id, equivalentRetryPayload.Id);
+        Assert.Equal(initialPayload.StudentId, equivalentRetryPayload.StudentId);
+        Assert.Equal(initialPayload.SessionId, equivalentRetryPayload.SessionId);
 
-        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
-        Assert.Equal("Attendance record already exists for this student and session", payload["message"]?.GetValue<string>());
+        var changedPayloadRetryResponse = await host.PostAsJsonAsync("/api/attendance", new CreateAttendanceRequest
+        {
+            StudentId = initialRequest.StudentId,
+            SessionId = initialRequest.SessionId,
+            Status = "Late",
+            Notes = "Retry with changed payload fields",
+            CheckInTime = DateTime.UtcNow.AddMinutes(5)
+        });
+        var changedPayloadRetry = await changedPayloadRetryResponse.Content.ReadFromJsonAsync<AttendanceRecordResponseDto>();
+
+        Assert.Equal(HttpStatusCode.OK, changedPayloadRetryResponse.StatusCode);
+        Assert.NotNull(changedPayloadRetry);
+        Assert.Equal(initialPayload.Id, changedPayloadRetry.Id);
+        Assert.Equal(initialPayload.StudentId, changedPayloadRetry.StudentId);
+        Assert.Equal(initialPayload.SessionId, changedPayloadRetry.SessionId);
+
+        var persistedCount = await host.ExecuteDbContextAsync(async (dbContext, cancellationToken) =>
+            await dbContext.AttendanceRecords
+                .CountAsync(record =>
+                    record.StudentId == initialRequest.StudentId &&
+                    record.SessionId == initialRequest.SessionId,
+                    cancellationToken));
+
+        Assert.Equal(1, persistedCount);
     }
 
     [Fact]
