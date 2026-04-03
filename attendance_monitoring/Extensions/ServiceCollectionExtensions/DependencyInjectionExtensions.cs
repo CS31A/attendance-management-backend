@@ -4,6 +4,8 @@ using attendance_monitoring.Repositories;
 using attendance_monitoring.Services;
 using attendance_monitoring.Services.Account;
 using attendance_monitoring.Services.QrCode;
+using attendance_monitoring.Data;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 
 namespace attendance_monitoring.Extensions.ServiceCollectionExtensions;
 
@@ -44,6 +46,7 @@ public static class DependencyInjectionExtensions
     /// <returns>The service collection for chaining.</returns>
     public static IServiceCollection AddApplicationServices(this IServiceCollection services)
     {
+        services.AddSingleton<RequestReliabilityTelemetry>();
         services.AddScoped<IStudentService, StudentService>();
         services.AddScoped<IInstructorService, InstructorService>();
         services.AddScoped<IRefreshTokenService, RefreshTokenService>();
@@ -116,10 +119,53 @@ public static class DependencyInjectionExtensions
     public static IServiceCollection AddHealthCheckServices(this IServiceCollection services)
     {
         services.AddHealthChecks()
+            .AddCheck<DatabaseConnectivityHealthCheck>(
+                "database",
+                tags: ["ready"])
             .AddCheck<DataIntegrityHealthCheck>(
                 "data_integrity",
-                tags: ["database", "data-integrity"]);
+                tags: ["ready", "data-integrity"]);
 
         return services;
+    }
+}
+
+/// <summary>
+/// Health check for verifying database connectivity for readiness evaluation.
+/// </summary>
+internal sealed class DatabaseConnectivityHealthCheck(ApplicationDbContext applicationDbContext) : IHealthCheck
+{
+    /// <summary>
+    /// Verifies that the application database is reachable.
+    /// </summary>
+    public async Task<HealthCheckResult> CheckHealthAsync(
+        HealthCheckContext context,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var canConnect = await applicationDbContext.Database.CanConnectAsync(cancellationToken);
+
+            return canConnect
+                ? HealthCheckResult.Healthy("Database connectivity is healthy.", new Dictionary<string, object> { ["connected"] = true })
+                : HealthCheckResult.Unhealthy(
+                    "Database connection failed.",
+                    data: new Dictionary<string, object>
+                    {
+                        ["connected"] = false,
+                        ["error"] = "Database connection failed"
+                    });
+        }
+        catch (Exception ex)
+        {
+            return HealthCheckResult.Unhealthy(
+                "Database connection failed.",
+                ex,
+                new Dictionary<string, object>
+                {
+                    ["connected"] = false,
+                    ["error"] = ex.Message
+                });
+        }
     }
 }

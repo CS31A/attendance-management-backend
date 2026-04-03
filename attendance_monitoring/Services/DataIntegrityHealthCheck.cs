@@ -17,14 +17,14 @@ namespace attendance_monitoring.Services;
 public class DataIntegrityHealthCheck(IOrphanedUserCleanupService cleanupService) : IHealthCheck
 {
     /// <summary>
-    /// Threshold for degraded status (number of orphaned users).
+    /// Minimum orphaned user count that should be reported as degraded.
     /// </summary>
-    private const int DegradedThreshold = 5;
+    internal const int DegradedThreshold = 1;
 
     /// <summary>
     /// Threshold for unhealthy status (number of orphaned users).
     /// </summary>
-    private const int UnhealthyThreshold = 20;
+    internal const int UnhealthyThreshold = 20;
 
     /// <summary>
     /// Performs the health check.
@@ -36,50 +36,14 @@ public class DataIntegrityHealthCheck(IOrphanedUserCleanupService cleanupService
         try
         {
             var status = await cleanupService.GetDataIntegrityStatusAsync();
+            var evaluation = Evaluate(status);
 
-            var data = new Dictionary<string, object>
+            return evaluation.Status switch
             {
-                ["orphanedUserCount"] = status.OrphanedUserCount,
-                ["studentsWithInconsistentSoftDelete"] = status.StudentsWithInconsistentSoftDelete,
-                ["instructorsWithInconsistentSoftDelete"] = status.InstructorsWithInconsistentSoftDelete,
-                ["adminsWithInconsistentSoftDelete"] = status.AdminsWithInconsistentSoftDelete,
-                ["checkedAt"] = status.CheckedAt.ToString("O")
+                HealthStatus.Healthy => HealthCheckResult.Healthy(evaluation.Description, evaluation.ToDataDictionary()),
+                HealthStatus.Degraded => HealthCheckResult.Degraded(evaluation.Description, data: evaluation.ToDataDictionary()),
+                _ => HealthCheckResult.Unhealthy(evaluation.Description, data: evaluation.ToDataDictionary())
             };
-
-            // Calculate total issues
-            var totalSoftDeleteIssues = status.StudentsWithInconsistentSoftDelete +
-                                        status.InstructorsWithInconsistentSoftDelete +
-                                        status.AdminsWithInconsistentSoftDelete;
-
-            var totalIssues = status.OrphanedUserCount + totalSoftDeleteIssues;
-
-            // Determine health status
-            if (totalIssues == 0)
-            {
-                return HealthCheckResult.Healthy(
-                    "Data integrity is healthy. No orphaned users or soft delete inconsistencies detected.",
-                    data);
-            }
-
-            if (status.OrphanedUserCount >= UnhealthyThreshold || totalSoftDeleteIssues > 0)
-            {
-                return HealthCheckResult.Unhealthy(
-                    $"Data integrity issues detected: {status.OrphanedUserCount} orphaned users, " +
-                    $"{totalSoftDeleteIssues} soft delete inconsistencies.",
-                    data: data);
-            }
-
-            if (status.OrphanedUserCount >= DegradedThreshold)
-            {
-                return HealthCheckResult.Degraded(
-                    $"Minor data integrity issues detected: {status.OrphanedUserCount} orphaned users.",
-                    data: data);
-            }
-
-            // Few issues, but still report as degraded
-            return HealthCheckResult.Degraded(
-                $"Data integrity has minor issues: {totalIssues} total issues detected.",
-                data: data);
         }
         catch (Exception ex)
         {
@@ -87,5 +51,79 @@ public class DataIntegrityHealthCheck(IOrphanedUserCleanupService cleanupService
                 "Failed to check data integrity.",
                 ex);
         }
+    }
+
+    /// <summary>
+    /// Evaluates a data-integrity snapshot against the Phase 3 health contract.
+    /// </summary>
+    internal static DataIntegrityHealthEvaluation Evaluate(DataIntegrityStatus status)
+    {
+        var totalSoftDeleteIssues = status.StudentsWithInconsistentSoftDelete +
+                                    status.InstructorsWithInconsistentSoftDelete +
+                                    status.AdminsWithInconsistentSoftDelete;
+
+        if (status.OrphanedUserCount == 0 && totalSoftDeleteIssues == 0)
+        {
+            return new DataIntegrityHealthEvaluation(
+                HealthStatus.Healthy,
+                "Data integrity is healthy. No orphaned users or soft delete inconsistencies detected.",
+                status);
+        }
+
+        if (totalSoftDeleteIssues > 0 || status.OrphanedUserCount >= UnhealthyThreshold)
+        {
+            return new DataIntegrityHealthEvaluation(
+                HealthStatus.Unhealthy,
+                $"Data integrity issues detected: {status.OrphanedUserCount} orphaned users, {totalSoftDeleteIssues} soft delete inconsistencies.",
+                status,
+                totalSoftDeleteIssues);
+        }
+
+        return new DataIntegrityHealthEvaluation(
+            HealthStatus.Degraded,
+            $"Data integrity drift detected: {status.OrphanedUserCount} orphaned users.",
+            status,
+            totalSoftDeleteIssues);
+    }
+}
+
+/// <summary>
+/// Shared evaluation details for controller and health-check responses.
+/// </summary>
+internal sealed class DataIntegrityHealthEvaluation
+{
+    public DataIntegrityHealthEvaluation(
+        HealthStatus status,
+        string description,
+        DataIntegrityStatus integrityStatus,
+        int? totalSoftDeleteIssues = null)
+    {
+        Status = status;
+        Description = description;
+        IntegrityStatus = integrityStatus;
+        TotalSoftDeleteIssues = totalSoftDeleteIssues ?? integrityStatus.StudentsWithInconsistentSoftDelete +
+            integrityStatus.InstructorsWithInconsistentSoftDelete +
+            integrityStatus.AdminsWithInconsistentSoftDelete;
+    }
+
+    public HealthStatus Status { get; }
+
+    public string Description { get; }
+
+    public DataIntegrityStatus IntegrityStatus { get; }
+
+    public int TotalSoftDeleteIssues { get; }
+
+    public Dictionary<string, object> ToDataDictionary()
+    {
+        return new Dictionary<string, object>
+        {
+            ["orphanedUserCount"] = IntegrityStatus.OrphanedUserCount,
+            ["studentsWithInconsistentSoftDelete"] = IntegrityStatus.StudentsWithInconsistentSoftDelete,
+            ["instructorsWithInconsistentSoftDelete"] = IntegrityStatus.InstructorsWithInconsistentSoftDelete,
+            ["adminsWithInconsistentSoftDelete"] = IntegrityStatus.AdminsWithInconsistentSoftDelete,
+            ["totalSoftDeleteInconsistencies"] = TotalSoftDeleteIssues,
+            ["checkedAt"] = IntegrityStatus.CheckedAt.ToString("O")
+        };
     }
 }

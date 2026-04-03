@@ -1,3 +1,5 @@
+using System.Collections.Concurrent;
+using System.Diagnostics.Metrics;
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Encodings.Web;
@@ -29,21 +31,25 @@ namespace attendance.testproject.Integration_Testing.Support;
 internal sealed class ApiIntegrationHost : IAsyncDisposable
 {
     internal const string AuthenticationScheme = "IntegrationTestBearer";
+    private const string ReliabilityMeterName = "attendance_monitoring.reliability";
 
     private readonly WebApplication _app;
     private readonly SqliteConnection? _sqliteConnection;
     private readonly Dictionary<string, string> _cookies = new(StringComparer.Ordinal);
+    private readonly ReliabilityTelemetryCollector? _telemetryCollector;
 
     private ApiIntegrationHost(
         WebApplication app,
         HttpClient client,
         Mock<IAccountService> accountService,
-        SqliteConnection? sqliteConnection = null)
+        SqliteConnection? sqliteConnection = null,
+        ReliabilityTelemetryCollector? telemetryCollector = null)
     {
         _app = app;
         Client = client;
         AccountService = accountService;
         _sqliteConnection = sqliteConnection;
+        _telemetryCollector = telemetryCollector;
     }
 
     public HttpClient Client { get; }
@@ -51,6 +57,9 @@ internal sealed class ApiIntegrationHost : IAsyncDisposable
     public Mock<IAccountService> AccountService { get; }
 
     public AttendanceQrScenarioContext? AttendanceQrScenario { get; private set; }
+
+    public ReliabilityTelemetryCollector Telemetry => _telemetryCollector
+        ?? throw new InvalidOperationException("Reliability telemetry collection is not configured for this host.");
 
     public static async Task<ApiIntegrationHost> CreateAsync()
     {
@@ -173,6 +182,81 @@ internal sealed class ApiIntegrationHost : IAsyncDisposable
         return host;
     }
 
+    public static async Task<ApiIntegrationHost> CreateOperationalReliabilityAsync(
+        string scenarioName,
+        CancellationToken cancellationToken = default)
+    {
+        var connectionString = $"Data Source=file:operational-reliability-{Guid.NewGuid():N}?mode=memory&cache=shared";
+        var connection = new SqliteConnection(connectionString);
+        await connection.OpenAsync(cancellationToken);
+        var telemetryCollector = new ReliabilityTelemetryCollector(ReliabilityMeterName);
+
+        var builder = WebApplication.CreateBuilder(new WebApplicationOptions
+        {
+            EnvironmentName = Environments.Production
+        });
+
+        builder.WebHost.UseTestServer();
+        builder.Services.AddRouting();
+        builder.Services.AddLogging();
+        builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["CookieSettings:AccessTokenExpirationMinutes"] = "15",
+            ["CookieSettings:RefreshTokenExpirationDays"] = "7",
+            ["CorsSettings:AllowedOrigins"] = "https://localhost"
+        });
+
+        builder.Services.AddDbContext<ApplicationDbContext>(options => options.UseSqlite(connectionString));
+        builder.Services.AddIdentity<IdentityUser, IdentityRole>()
+            .AddEntityFrameworkStores<ApplicationDbContext>()
+            .AddDefaultTokenProviders();
+        builder.Services
+            .AddAuthentication(options =>
+            {
+                options.DefaultAuthenticateScheme = AuthenticationScheme;
+                options.DefaultChallengeScheme = AuthenticationScheme;
+                options.DefaultScheme = AuthenticationScheme;
+            })
+            .AddScheme<AuthenticationSchemeOptions, TestAuthenticationHandler>(AuthenticationScheme, _ => { });
+        builder.Services.ConfigureApplicationCookie(options =>
+        {
+            options.LoginPath = PathString.Empty;
+            options.AccessDeniedPath = PathString.Empty;
+        });
+        builder.Services.AddAuthorizationPolicies();
+        builder.Services.AddResponseHandling();
+        builder.Services.AddCorsPolicy(builder.Configuration);
+        builder.Services.AddSignalRServices();
+        builder.Services.AddRepositories();
+        builder.Services.AddApplicationServices();
+        builder.Services.AddControllers()
+            .ConfigureApplicationPartManager(manager =>
+            {
+                manager.ApplicationParts.Clear();
+                manager.ApplicationParts.Add(new AssemblyPart(typeof(AccountController).Assembly));
+            });
+
+        var accountService = new Mock<IAccountService>(MockBehavior.Strict);
+        builder.Services.AddSingleton(accountService);
+        builder.Services.AddSingleton<IAccountService>(sp => sp.GetRequiredService<Mock<IAccountService>>().Object);
+        builder.Services.AddScoped<ICookieOptionsService, CookieOptionsService>();
+
+        var app = builder.Build();
+        app.UseSelectiveResponseCompression();
+        app.UsePerformanceMonitoring();
+        app.UseCorePipeline();
+        app.UseGlobalExceptionHandler();
+
+        await app.StartAsync(cancellationToken);
+
+        var client = app.GetTestClient();
+        client.BaseAddress = new Uri("https://localhost");
+
+        var host = new ApiIntegrationHost(app, client, accountService, sqliteConnection: connection, telemetryCollector: telemetryCollector);
+        await host.LoadAttendanceQrScenarioAsync(scenarioName, cancellationToken);
+        return host;
+    }
+
     public void AuthenticateAs(
         string userId = "integration-user",
         string username = "integration-admin",
@@ -256,6 +340,7 @@ internal sealed class ApiIntegrationHost : IAsyncDisposable
         await _app.StopAsync();
         Client.Dispose();
         await _app.DisposeAsync();
+        _telemetryCollector?.Dispose();
         if (_sqliteConnection is not null)
         {
             await _sqliteConnection.DisposeAsync();
@@ -344,5 +429,58 @@ internal sealed class ApiIntegrationHost : IAsyncDisposable
             Response.StatusCode = (int)HttpStatusCode.Unauthorized;
             return Task.CompletedTask;
         }
+    }
+}
+
+internal sealed class ReliabilityTelemetryCollector : IDisposable
+{
+    private readonly MeterListener _listener = new();
+    private readonly ConcurrentQueue<TelemetryMeasurement> _measurements = new();
+    private readonly string _meterName;
+
+    public ReliabilityTelemetryCollector(string meterName)
+    {
+        _meterName = meterName;
+        _listener.InstrumentPublished = (instrument, listener) =>
+        {
+            if (string.Equals(instrument.Meter.Name, _meterName, StringComparison.Ordinal))
+            {
+                listener.EnableMeasurementEvents(instrument);
+            }
+        };
+        _listener.SetMeasurementEventCallback<double>(RecordMeasurement);
+        _listener.SetMeasurementEventCallback<long>(RecordMeasurement);
+        _listener.Start();
+    }
+
+    public IReadOnlyCollection<TelemetryMeasurement> Measurements => _measurements.ToArray();
+
+    public IReadOnlyCollection<TelemetryMeasurement> GetMeasurements(string instrumentName)
+    {
+        return _measurements
+            .Where(measurement => string.Equals(measurement.InstrumentName, instrumentName, StringComparison.Ordinal))
+            .ToArray();
+    }
+
+    public void Dispose()
+    {
+        _listener.Dispose();
+    }
+
+    private void RecordMeasurement<T>(Instrument instrument, T measurement, ReadOnlySpan<KeyValuePair<string, object?>> tags, object? state)
+        where T : struct
+    {
+        _measurements.Enqueue(new TelemetryMeasurement(instrument.Name, Convert.ToDouble(measurement), tags.ToArray()));
+    }
+}
+
+internal sealed record TelemetryMeasurement(
+    string InstrumentName,
+    double NumericValue,
+    IReadOnlyList<KeyValuePair<string, object?>> Tags)
+{
+    public string? GetTagValue(string tagName)
+    {
+        return Tags.FirstOrDefault(tag => string.Equals(tag.Key, tagName, StringComparison.Ordinal)).Value?.ToString();
     }
 }
