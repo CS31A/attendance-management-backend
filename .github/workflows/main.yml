@@ -29,13 +29,13 @@ jobs:
       run: dotnet build --configuration Release --no-restore
 
     - name: Run architecture guardrail suites
-      run: dotnet test $TEST_PROJECT --no-restore --no-build --filter "$ARCHITECTURE_GUARDRAIL_FILTER" --verbosity normal
+      run: dotnet test $TEST_PROJECT --configuration Release --no-restore --no-build --filter "$ARCHITECTURE_GUARDRAIL_FILTER" --verbosity normal
 
     - name: Run critical verification suites
-      run: dotnet test $TEST_PROJECT --no-restore --no-build --filter "$CRITICAL_VERIFICATION_FILTER" --verbosity normal
+      run: dotnet test $TEST_PROJECT --configuration Release --no-restore --no-build --filter "$CRITICAL_VERIFICATION_FILTER" --verbosity normal
     
     - name: Run full test suite
-      run: dotnet test --no-restore --verbosity normal
+      run: dotnet test --configuration Release --no-restore --verbosity normal
 
     - name: Check
       run: make check

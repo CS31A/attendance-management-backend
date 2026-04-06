@@ -25,9 +25,9 @@ public class HealthCheckController(
     {
         return Task.FromResult<IActionResult>(Ok(new HealthStatusResponseDto
         {
-            status = "healthy",
-            timestamp = DateTime.UtcNow,
-            service = ServiceName
+            Status = "healthy",
+            Timestamp = DateTime.UtcNow,
+            Service = ServiceName
         }));
     }
 
@@ -61,19 +61,19 @@ public class HealthCheckController(
             {
                 return StatusCode(503, new HealthStatusResponseDto
                 {
-                    status = "unhealthy",
-                    timestamp = timestamp,
-                    service = ServiceName,
-                    database = new HealthComponentStatusDto
+                    Status = "unhealthy",
+                    Timestamp = timestamp,
+                    Service = ServiceName,
+                    Database = new HealthComponentStatusDto
                     {
-                        status = "unhealthy",
-                        connected = false,
-                        error = "Database connection failed"
+                        Status = "unhealthy",
+                        Connected = false,
+                        Error = "Database connection failed"
                     },
-                    dataIntegrity = new DataIntegrityStatusResponseDto
+                    DataIntegrity = new DataIntegrityStatusResponseDto
                     {
-                        status = "unhealthy",
-                        error = "Data integrity check skipped because the database connection failed."
+                        Status = "unhealthy",
+                        Error = "Data integrity check skipped because the database connection failed."
                     }
                 });
             }
@@ -85,8 +85,8 @@ public class HealthCheckController(
                 timestamp,
                 new HealthComponentStatusDto
                 {
-                    status = "healthy",
-                    connected = true
+                    Status = "healthy",
+                    Connected = true
                 },
                 CreateDataIntegrityResponse(integrityEvaluation));
 
@@ -99,19 +99,19 @@ public class HealthCheckController(
             logger.LogError(ex, "Server health error");
             return StatusCode(503, new HealthStatusResponseDto
             {
-                status = "unhealthy",
-                timestamp = timestamp,
-                service = ServiceName,
-                database = new HealthComponentStatusDto
+                Status = "unhealthy",
+                Timestamp = timestamp,
+                Service = ServiceName,
+                Database = new HealthComponentStatusDto
                 {
-                    status = "unhealthy",
-                    connected = false,
-                    error = ex.Message
+                    Status = "unhealthy",
+                    Connected = false,
+                    Error = ex.Message
                 },
-                dataIntegrity = new DataIntegrityStatusResponseDto
+                DataIntegrity = new DataIntegrityStatusResponseDto
                 {
-                    status = "unhealthy",
-                    error = ex.Message
+                    Status = "unhealthy",
+                    Error = ex.Message
                 }
             });
         }
@@ -144,8 +144,8 @@ public class HealthCheckController(
                 database: null,
                 dataIntegrity: new DataIntegrityStatusResponseDto
                 {
-                    status = "unhealthy",
-                    error = ex.Message
+                    Status = "unhealthy",
+                    Error = ex.Message
                 }));
         }
     }
@@ -158,11 +158,11 @@ public class HealthCheckController(
     {
         return new HealthStatusResponseDto
         {
-            status = overallStatus,
-            timestamp = timestamp,
-            service = ServiceName,
-            database = database,
-            dataIntegrity = dataIntegrity
+            Status = overallStatus,
+            Timestamp = timestamp,
+            Service = ServiceName,
+            Database = database,
+            DataIntegrity = dataIntegrity
         };
     }
 
@@ -170,17 +170,17 @@ public class HealthCheckController(
     {
         return new DataIntegrityStatusResponseDto
         {
-            status = evaluation.Status.ToString().ToLowerInvariant(),
-            orphanedUserCount = evaluation.IntegrityStatus.OrphanedUserCount,
-            totalSoftDeleteInconsistencies = evaluation.TotalSoftDeleteIssues,
-            softDeleteInconsistencies = new SoftDeleteInconsistenciesResponseDto
+            Status = evaluation.Status.ToString().ToLowerInvariant(),
+            OrphanedUserCount = evaluation.IntegrityStatus.OrphanedUserCount,
+            TotalSoftDeleteInconsistencies = evaluation.TotalSoftDeleteIssues,
+            SoftDeleteInconsistencies = new SoftDeleteInconsistenciesResponseDto
             {
-                students = evaluation.IntegrityStatus.StudentsWithInconsistentSoftDelete,
-                instructors = evaluation.IntegrityStatus.InstructorsWithInconsistentSoftDelete,
-                admins = evaluation.IntegrityStatus.AdminsWithInconsistentSoftDelete
+                Students = evaluation.IntegrityStatus.StudentsWithInconsistentSoftDelete,
+                Instructors = evaluation.IntegrityStatus.InstructorsWithInconsistentSoftDelete,
+                Admins = evaluation.IntegrityStatus.AdminsWithInconsistentSoftDelete
             },
-            checkedAt = evaluation.IntegrityStatus.CheckedAt,
-            isHealthy = evaluation.IntegrityStatus.IsHealthy
+            CheckedAt = evaluation.IntegrityStatus.CheckedAt,
+            IsHealthy = evaluation.IntegrityStatus.IsHealthy
         };
     }
 }

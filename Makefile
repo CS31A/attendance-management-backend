@@ -34,11 +34,11 @@ test: ## Run all tests
 	$(DOTNET) test $(SOLUTION)
 
 .PHONY: test-architecture-guardrails
-test-architecture-guardrails: ## Run architecture and policy guardrail suites
+test-architecture-guardrails: build ## Run architecture and policy guardrail suites
 	$(DOTNET) test $(TEST_PROJECT) --no-restore --no-build --filter "$(ARCHITECTURE_GUARDRAIL_FILTER)"
 
 .PHONY: test-critical-verification
-test-critical-verification: ## Run explicit auth, attendance, QR, and integration verification suites
+test-critical-verification: build ## Run explicit auth, attendance, QR, and integration verification suites
 	$(DOTNET) test $(TEST_PROJECT) --no-restore --no-build --filter "$(CRITICAL_VERIFICATION_FILTER)"
 
 .PHONY: test-specific

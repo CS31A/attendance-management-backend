@@ -94,8 +94,8 @@ public class HealthCheckControllerTest
         Assert.Equal(503, readyStatusCode.StatusCode);
         Assert.Equal(readyStatusCode.StatusCode, aliasStatusCode.StatusCode);
 
-        var readyStatus = readyStatusCode.Value?.GetType().GetProperty("status")?.GetValue(readyStatusCode.Value);
-        var aliasStatus = aliasStatusCode.Value?.GetType().GetProperty("status")?.GetValue(aliasStatusCode.Value);
+        var readyStatus = readyStatusCode.Value?.GetType().GetProperty("Status")?.GetValue(readyStatusCode.Value);
+        var aliasStatus = aliasStatusCode.Value?.GetType().GetProperty("Status")?.GetValue(aliasStatusCode.Value);
 
         Assert.Equal(readyStatus, aliasStatus);
     }
@@ -111,7 +111,7 @@ public class HealthCheckControllerTest
 
         var okResult = Assert.IsType<OkObjectResult>(liveResult);
         Assert.Equal(200, okResult.StatusCode);
-        Assert.Equal("healthy", okResult.Value?.GetType().GetProperty("status")?.GetValue(okResult.Value));
+        Assert.Equal("healthy", okResult.Value?.GetType().GetProperty("Status")?.GetValue(okResult.Value));
     }
 
     [Fact]
@@ -130,8 +130,8 @@ public class HealthCheckControllerTest
         Assert.NotNull(responseValue);
 
         // Use reflection or JSON serialization to access anonymous object properties
-        var statusProperty = responseValue.GetType().GetProperty("status");
-        var databaseProperty = responseValue.GetType().GetProperty("database");
+        var statusProperty = responseValue.GetType().GetProperty("Status");
+        var databaseProperty = responseValue.GetType().GetProperty("Database");
 
         Assert.NotNull(statusProperty);
         Assert.NotNull(databaseProperty);
@@ -141,8 +141,8 @@ public class HealthCheckControllerTest
         var databaseValue = databaseProperty.GetValue(responseValue);
         Assert.NotNull(databaseValue);
 
-        var dbStatusProperty = databaseValue.GetType().GetProperty("status");
-        var dbConnectedProperty = databaseValue.GetType().GetProperty("connected");
+        var dbStatusProperty = databaseValue.GetType().GetProperty("Status");
+        var dbConnectedProperty = databaseValue.GetType().GetProperty("Connected");
 
         Assert.NotNull(dbStatusProperty);
         Assert.NotNull(dbConnectedProperty);
@@ -168,8 +168,8 @@ public class HealthCheckControllerTest
         var responseValue = statusCodeResult.Value;
         Assert.NotNull(responseValue);
 
-        var statusProperty = responseValue.GetType().GetProperty("status");
-        var databaseProperty = responseValue.GetType().GetProperty("database");
+        var statusProperty = responseValue.GetType().GetProperty("Status");
+        var databaseProperty = responseValue.GetType().GetProperty("Database");
 
         Assert.NotNull(statusProperty);
         Assert.NotNull(databaseProperty);
@@ -179,9 +179,9 @@ public class HealthCheckControllerTest
         var databaseValue = databaseProperty.GetValue(responseValue);
         Assert.NotNull(databaseValue);
 
-        var dbStatusProperty = databaseValue.GetType().GetProperty("status");
-        var dbConnectedProperty = databaseValue.GetType().GetProperty("connected");
-        var dbErrorProperty = databaseValue.GetType().GetProperty("error");
+        var dbStatusProperty = databaseValue.GetType().GetProperty("Status");
+        var dbConnectedProperty = databaseValue.GetType().GetProperty("Connected");
+        var dbErrorProperty = databaseValue.GetType().GetProperty("Error");
 
         Assert.NotNull(dbStatusProperty);
         Assert.NotNull(dbConnectedProperty);
@@ -212,8 +212,8 @@ public class HealthCheckControllerTest
         var responseValue = statusCodeResult.Value;
         Assert.NotNull(responseValue);
 
-        var statusProperty = responseValue.GetType().GetProperty("status");
-        var databaseProperty = responseValue.GetType().GetProperty("database");
+        var statusProperty = responseValue.GetType().GetProperty("Status");
+        var databaseProperty = responseValue.GetType().GetProperty("Database");
 
         Assert.NotNull(statusProperty);
         Assert.NotNull(databaseProperty);
@@ -223,9 +223,9 @@ public class HealthCheckControllerTest
         var databaseValue = databaseProperty.GetValue(responseValue);
         Assert.NotNull(databaseValue);
 
-        var dbStatusProperty = databaseValue.GetType().GetProperty("status");
-        var dbConnectedProperty = databaseValue.GetType().GetProperty("connected");
-        var dbErrorProperty = databaseValue.GetType().GetProperty("error");
+        var dbStatusProperty = databaseValue.GetType().GetProperty("Status");
+        var dbConnectedProperty = databaseValue.GetType().GetProperty("Connected");
+        var dbErrorProperty = databaseValue.GetType().GetProperty("Error");
 
         Assert.NotNull(dbStatusProperty);
         Assert.NotNull(dbConnectedProperty);

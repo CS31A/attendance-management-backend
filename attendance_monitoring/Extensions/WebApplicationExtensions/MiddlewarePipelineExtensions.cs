@@ -83,14 +83,9 @@ public static class MiddlewarePipelineExtensions
             var stopwatch = Stopwatch.StartNew();
             var endpointGroup = GetEndpointGroup(context.Request.Path);
 
-            // Set up response callback to capture timing after response is complete
+            // Set up response callback to snapshot elapsed time before headers are sent.
             context.Response.OnStarting(() =>
             {
-                if (stopwatch.IsRunning)
-                {
-                    stopwatch.Stop();
-                }
-
                 var responseTime = stopwatch.Elapsed.TotalMilliseconds;
 
                 // Add debug headers for client inspection (before response starts)

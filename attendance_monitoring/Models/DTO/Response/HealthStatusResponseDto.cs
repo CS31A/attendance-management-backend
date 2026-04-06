@@ -8,27 +8,27 @@ public class HealthStatusResponseDto
     /// <summary>
     /// Overall health status for the requested endpoint.
     /// </summary>
-    public string status { get; set; } = string.Empty;
+    public string Status { get; set; } = string.Empty;
 
     /// <summary>
     /// Timestamp when the health response was generated.
     /// </summary>
-    public DateTime timestamp { get; set; } = DateTime.UtcNow;
+    public DateTime Timestamp { get; set; } = DateTime.UtcNow;
 
     /// <summary>
     /// Service name reported by the health endpoint.
     /// </summary>
-    public string service { get; set; } = string.Empty;
+    public string Service { get; set; } = string.Empty;
 
     /// <summary>
     /// Database health details when the endpoint evaluates persistence readiness.
     /// </summary>
-    public HealthComponentStatusDto? database { get; set; }
+    public HealthComponentStatusDto? Database { get; set; }
 
     /// <summary>
     /// Data-integrity details when the endpoint evaluates orphan and soft-delete drift.
     /// </summary>
-    public DataIntegrityStatusResponseDto? dataIntegrity { get; set; }
+    public DataIntegrityStatusResponseDto? DataIntegrity { get; set; }
 }
 
 /// <summary>
@@ -39,17 +39,17 @@ public class HealthComponentStatusDto
     /// <summary>
     /// Health status for the dependency.
     /// </summary>
-    public string status { get; set; } = string.Empty;
+    public string Status { get; set; } = string.Empty;
 
     /// <summary>
     /// Indicates whether the dependency is reachable.
     /// </summary>
-    public bool? connected { get; set; }
+    public bool? Connected { get; set; }
 
     /// <summary>
     /// Error details when the dependency check fails.
     /// </summary>
-    public string? error { get; set; }
+    public string? Error { get; set; }
 }
 
 /// <summary>
@@ -60,37 +60,37 @@ public class DataIntegrityStatusResponseDto
     /// <summary>
     /// Count of orphaned users currently detected.
     /// </summary>
-    public int orphanedUserCount { get; set; }
+    public int OrphanedUserCount { get; set; }
 
     /// <summary>
     /// Total count of soft-delete inconsistencies across all user profile tables.
     /// </summary>
-    public int totalSoftDeleteInconsistencies { get; set; }
+    public int TotalSoftDeleteInconsistencies { get; set; }
 
     /// <summary>
     /// Soft-delete inconsistency counts grouped by profile type.
     /// </summary>
-    public SoftDeleteInconsistenciesResponseDto softDeleteInconsistencies { get; set; } = new();
+    public SoftDeleteInconsistenciesResponseDto SoftDeleteInconsistencies { get; set; } = new();
 
     /// <summary>
     /// Timestamp of the most recent integrity evaluation.
     /// </summary>
-    public DateTime? checkedAt { get; set; }
+    public DateTime? CheckedAt { get; set; }
 
     /// <summary>
     /// Raw integrity flag reported by the cleanup service.
     /// </summary>
-    public bool? isHealthy { get; set; }
+    public bool? IsHealthy { get; set; }
 
     /// <summary>
     /// Health status for the data-integrity dependency.
     /// </summary>
-    public string? status { get; set; }
+    public string? Status { get; set; }
 
     /// <summary>
     /// Error details when the integrity evaluation fails.
     /// </summary>
-    public string? error { get; set; }
+    public string? Error { get; set; }
 }
 
 /// <summary>
@@ -101,15 +101,15 @@ public class SoftDeleteInconsistenciesResponseDto
     /// <summary>
     /// Student profile inconsistency count.
     /// </summary>
-    public int students { get; set; }
+    public int Students { get; set; }
 
     /// <summary>
     /// Instructor profile inconsistency count.
     /// </summary>
-    public int instructors { get; set; }
+    public int Instructors { get; set; }
 
     /// <summary>
     /// Admin profile inconsistency count.
     /// </summary>
-    public int admins { get; set; }
+    public int Admins { get; set; }
 }
