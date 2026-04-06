@@ -100,6 +100,7 @@ public sealed class OperationalReliabilityIntegrationTests
             System.Globalization.CultureInfo.InvariantCulture,
             out var elapsedMilliseconds));
         Assert.True(elapsedMilliseconds >= 0d);
+        Assert.True(elapsedMilliseconds < 5000d, $"Response time {elapsedMilliseconds}ms was suspiciously high.");
     }
 
     [Fact]
