@@ -21,6 +21,7 @@ public class HealthCheckController(
     /// Reports process liveness without checking external dependencies.
     /// </summary>
     [HttpGet("live")]
+    [ProducesResponseType(typeof(HealthStatusResponseDto), StatusCodes.Status200OK)]
     public Task<IActionResult> Live()
     {
         return Task.FromResult<IActionResult>(Ok(new HealthStatusResponseDto
@@ -35,6 +36,8 @@ public class HealthCheckController(
     /// Reports readiness using database and data-integrity dependency status.
     /// </summary>
     [HttpGet("ready")]
+    [ProducesResponseType(typeof(HealthStatusResponseDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(HealthStatusResponseDto), StatusCodes.Status503ServiceUnavailable)]
     public Task<IActionResult> Ready()
     {
         return BuildReadinessResponseAsync();
@@ -44,6 +47,8 @@ public class HealthCheckController(
     /// Compatibility alias for readiness semantics.
     /// </summary>
     [HttpGet]
+    [ProducesResponseType(typeof(HealthStatusResponseDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(HealthStatusResponseDto), StatusCodes.Status503ServiceUnavailable)]
     public Task<IActionResult> HealthCheck()
     {
         return BuildReadinessResponseAsync();
@@ -121,6 +126,8 @@ public class HealthCheckController(
     /// Data integrity health check for orphaned users and soft delete consistency.
     /// </summary>
     [HttpGet("data-integrity")]
+    [ProducesResponseType(typeof(HealthStatusResponseDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(HealthStatusResponseDto), StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> DataIntegrityCheck()
     {
         try
