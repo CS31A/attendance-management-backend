@@ -3,6 +3,7 @@ using attendance_monitoring.IServices;
 using attendance_monitoring.Models.DTO.Request;
 using attendance_monitoring.Models.DTO.Response;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 namespace attendance_monitoring.Controllers;
@@ -24,14 +25,23 @@ public class AttendanceController(IAttendanceService attendanceService, ILogger<
     /// </summary>
     /// <param name="request">The create attendance request</param>
     /// <returns>The created attendance record</returns>
+    /// <response code="200">Returns the existing attendance record for an idempotent duplicate retry</response>
     /// <response code="201">Returns the created attendance record</response>
     /// <response code="400">Invalid request data</response>
     /// <response code="401">Not authorized</response>
     /// <response code="403">Forbidden - insufficient permissions</response>
     /// <response code="404">Student or session not found</response>
-    /// <response code="409">Attendance record already exists</response>
+    /// <response code="409">Invalid attendance operation (for example, student not enrolled in the session)</response>
     /// <response code="500">Internal server error</response>
     [HttpPost]
+    [ProducesResponseType(typeof(AttendanceRecordResponseDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(AttendanceRecordResponseDto), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<ActionResult<AttendanceRecordResponseDto>> CreateAttendance([FromBody] CreateAttendanceRequest request)
     {
         logger.LogInformation("Creating attendance record for StudentId: {StudentId}, SessionId: {SessionId}",
@@ -40,6 +50,12 @@ public class AttendanceController(IAttendanceService attendanceService, ILogger<
         try
         {
             var attendance = await attendanceService.CreateAttendanceAsync(request, User);
+            if (attendance is IIdempotentAttendanceRetryResult)
+            {
+                logger.LogInformation("Returning idempotent attendance retry result with ID: {Id}", attendance.Id);
+                return Ok(attendance);
+            }
+
             logger.LogInformation("Successfully created attendance record with ID: {Id}", attendance.Id);
             return CreatedAtAction(nameof(GetAttendance), new { id = attendance.Id }, attendance);
         }

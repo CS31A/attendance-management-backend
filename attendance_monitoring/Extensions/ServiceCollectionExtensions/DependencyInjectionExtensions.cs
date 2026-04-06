@@ -2,6 +2,7 @@ using attendance_monitoring.IRepository;
 using attendance_monitoring.IServices;
 using attendance_monitoring.Repositories;
 using attendance_monitoring.Services;
+using attendance_monitoring.Services.HealthChecks;
 using attendance_monitoring.Services.Account;
 using attendance_monitoring.Services.QrCode;
 
@@ -44,6 +45,7 @@ public static class DependencyInjectionExtensions
     /// <returns>The service collection for chaining.</returns>
     public static IServiceCollection AddApplicationServices(this IServiceCollection services)
     {
+        services.AddSingleton<RequestReliabilityTelemetry>();
         services.AddScoped<IStudentService, StudentService>();
         services.AddScoped<IInstructorService, InstructorService>();
         services.AddScoped<IRefreshTokenService, RefreshTokenService>();
@@ -116,9 +118,12 @@ public static class DependencyInjectionExtensions
     public static IServiceCollection AddHealthCheckServices(this IServiceCollection services)
     {
         services.AddHealthChecks()
+            .AddCheck<DatabaseConnectivityHealthCheck>(
+                "database",
+                tags: ["ready"])
             .AddCheck<DataIntegrityHealthCheck>(
                 "data_integrity",
-                tags: ["database", "data-integrity"]);
+                tags: ["ready", "data-integrity"]);
 
         return services;
     }

@@ -3,6 +3,7 @@ using attendance_monitoring.Data;
 using attendance_monitoring.IServices;
 using attendance_monitoring.Services;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Routing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.Extensions.Logging;
@@ -30,6 +31,18 @@ public class HealthCheckControllerTest
         _mockLogger = new Mock<ILogger<HealthCheckController>>();
         _mockOrphanedUserCleanupService = new Mock<IOrphanedUserCleanupService>();
 
+        _mockOrphanedUserCleanupService
+            .Setup(service => service.GetDataIntegrityStatusAsync())
+            .ReturnsAsync(new DataIntegrityStatus
+            {
+                IsHealthy = true,
+                OrphanedUserCount = 0,
+                StudentsWithInconsistentSoftDelete = 0,
+                InstructorsWithInconsistentSoftDelete = 0,
+                AdminsWithInconsistentSoftDelete = 0,
+                CheckedAt = DateTime.UtcNow
+            });
+
         var options = new DbContextOptionsBuilder<ApplicationDbContext>()
             .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
             .Options;
@@ -44,6 +57,61 @@ public class HealthCheckControllerTest
             _mockDbContext.Object,
             _mockOrphanedUserCleanupService.Object,
             _mockLogger.Object);
+    }
+
+    [Fact]
+    public void HealthController_DefinesExplicitLiveReadyAndCompatibilityRoutes()
+    {
+        var methods = typeof(HealthCheckController)
+            .GetMethods()
+            .Where(method => method.DeclaringType == typeof(HealthCheckController))
+            .ToList();
+
+        var routeTemplates = methods
+            .SelectMany(method => method.GetCustomAttributes(typeof(HttpMethodAttribute), inherit: false)
+                .Cast<HttpMethodAttribute>()
+                .Select(attribute => attribute.Template ?? string.Empty))
+            .ToList();
+
+        Assert.Contains("live", routeTemplates);
+        Assert.Contains("ready", routeTemplates);
+        Assert.Contains(string.Empty, routeTemplates);
+    }
+
+    [Fact]
+    public async Task HealthCheckAlias_UsesReadinessSemantics_WhenDatabaseIsUnavailable()
+    {
+        _mockDbFacade
+            .Setup(db => db.CanConnectAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false);
+
+        var readyResult = await InvokeHealthActionByRouteAsync("ready");
+        var aliasResult = await InvokeHealthActionByRouteAsync(string.Empty);
+
+        var readyStatusCode = Assert.IsType<ObjectResult>(readyResult);
+        var aliasStatusCode = Assert.IsType<ObjectResult>(aliasResult);
+
+        Assert.Equal(503, readyStatusCode.StatusCode);
+        Assert.Equal(readyStatusCode.StatusCode, aliasStatusCode.StatusCode);
+
+        var readyStatus = readyStatusCode.Value?.GetType().GetProperty("Status")?.GetValue(readyStatusCode.Value);
+        var aliasStatus = aliasStatusCode.Value?.GetType().GetProperty("Status")?.GetValue(aliasStatusCode.Value);
+
+        Assert.Equal(readyStatus, aliasStatus);
+    }
+
+    [Fact]
+    public async Task LiveEndpoint_ReturnsHealthyWithoutDatabaseDependency()
+    {
+        _mockDbFacade
+            .Setup(db => db.CanConnectAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false);
+
+        var liveResult = await InvokeHealthActionByRouteAsync("live");
+
+        var okResult = Assert.IsType<OkObjectResult>(liveResult);
+        Assert.Equal(200, okResult.StatusCode);
+        Assert.Equal("healthy", okResult.Value?.GetType().GetProperty("Status")?.GetValue(okResult.Value));
     }
 
     [Fact]
@@ -62,8 +130,8 @@ public class HealthCheckControllerTest
         Assert.NotNull(responseValue);
 
         // Use reflection or JSON serialization to access anonymous object properties
-        var statusProperty = responseValue.GetType().GetProperty("status");
-        var databaseProperty = responseValue.GetType().GetProperty("database");
+        var statusProperty = responseValue.GetType().GetProperty("Status");
+        var databaseProperty = responseValue.GetType().GetProperty("Database");
 
         Assert.NotNull(statusProperty);
         Assert.NotNull(databaseProperty);
@@ -73,8 +141,8 @@ public class HealthCheckControllerTest
         var databaseValue = databaseProperty.GetValue(responseValue);
         Assert.NotNull(databaseValue);
 
-        var dbStatusProperty = databaseValue.GetType().GetProperty("status");
-        var dbConnectedProperty = databaseValue.GetType().GetProperty("connected");
+        var dbStatusProperty = databaseValue.GetType().GetProperty("Status");
+        var dbConnectedProperty = databaseValue.GetType().GetProperty("Connected");
 
         Assert.NotNull(dbStatusProperty);
         Assert.NotNull(dbConnectedProperty);
@@ -100,8 +168,8 @@ public class HealthCheckControllerTest
         var responseValue = statusCodeResult.Value;
         Assert.NotNull(responseValue);
 
-        var statusProperty = responseValue.GetType().GetProperty("status");
-        var databaseProperty = responseValue.GetType().GetProperty("database");
+        var statusProperty = responseValue.GetType().GetProperty("Status");
+        var databaseProperty = responseValue.GetType().GetProperty("Database");
 
         Assert.NotNull(statusProperty);
         Assert.NotNull(databaseProperty);
@@ -111,9 +179,9 @@ public class HealthCheckControllerTest
         var databaseValue = databaseProperty.GetValue(responseValue);
         Assert.NotNull(databaseValue);
 
-        var dbStatusProperty = databaseValue.GetType().GetProperty("status");
-        var dbConnectedProperty = databaseValue.GetType().GetProperty("connected");
-        var dbErrorProperty = databaseValue.GetType().GetProperty("error");
+        var dbStatusProperty = databaseValue.GetType().GetProperty("Status");
+        var dbConnectedProperty = databaseValue.GetType().GetProperty("Connected");
+        var dbErrorProperty = databaseValue.GetType().GetProperty("Error");
 
         Assert.NotNull(dbStatusProperty);
         Assert.NotNull(dbConnectedProperty);
@@ -144,8 +212,8 @@ public class HealthCheckControllerTest
         var responseValue = statusCodeResult.Value;
         Assert.NotNull(responseValue);
 
-        var statusProperty = responseValue.GetType().GetProperty("status");
-        var databaseProperty = responseValue.GetType().GetProperty("database");
+        var statusProperty = responseValue.GetType().GetProperty("Status");
+        var databaseProperty = responseValue.GetType().GetProperty("Database");
 
         Assert.NotNull(statusProperty);
         Assert.NotNull(databaseProperty);
@@ -155,9 +223,9 @@ public class HealthCheckControllerTest
         var databaseValue = databaseProperty.GetValue(responseValue);
         Assert.NotNull(databaseValue);
 
-        var dbStatusProperty = databaseValue.GetType().GetProperty("status");
-        var dbConnectedProperty = databaseValue.GetType().GetProperty("connected");
-        var dbErrorProperty = databaseValue.GetType().GetProperty("error");
+        var dbStatusProperty = databaseValue.GetType().GetProperty("Status");
+        var dbConnectedProperty = databaseValue.GetType().GetProperty("Connected");
+        var dbErrorProperty = databaseValue.GetType().GetProperty("Error");
 
         Assert.NotNull(dbStatusProperty);
         Assert.NotNull(dbConnectedProperty);
@@ -176,5 +244,20 @@ public class HealthCheckControllerTest
                 It.Is<Func<It.IsAnyType, Exception?, string>>((v, t) => true)),
             Times.Once
         );
+    }
+
+    private async Task<IActionResult> InvokeHealthActionByRouteAsync(string routeTemplate)
+    {
+        var method = typeof(HealthCheckController)
+            .GetMethods()
+            .SingleOrDefault(candidate => candidate.GetCustomAttributes(typeof(HttpMethodAttribute), inherit: false)
+                .Cast<HttpMethodAttribute>()
+                .Any(attribute => (attribute.Template ?? string.Empty) == routeTemplate));
+
+        Assert.NotNull(method);
+
+        var result = method!.Invoke(_controller, null);
+        var task = Assert.IsAssignableFrom<Task<IActionResult>>(result);
+        return await task;
     }
 }

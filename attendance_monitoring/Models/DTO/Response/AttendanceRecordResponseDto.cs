@@ -3,6 +3,8 @@ namespace attendance_monitoring.Models.DTO.Response;
 /// <summary>
 /// Response DTO for a comprehensive attendance record.
 /// </summary>
+internal interface IIdempotentAttendanceRetryResult;
+
 public class AttendanceRecordResponseDto
 {
     public int Id { get; set; }
