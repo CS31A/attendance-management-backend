@@ -51,6 +51,23 @@ public sealed class GlobalExceptionHandlerIntegrationTests
     }
 
     [Fact]
+    public async Task UseGlobalExceptionHandler_ReturnsForbidden_ForEntityUnauthorizedException()
+    {
+        await using var testHost = await CreateTestHostAsync(
+            () => throw new EntityUnauthorizedException("RefreshToken", "Revoke", "user-42", "Refresh token does not belong to the current user"));
+
+        var response = await testHost.Client.GetAsync("/throw");
+        var error = await response.Content.ReadFromJsonAsync<ErrorResponseDto>();
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+        Assert.NotNull(error);
+        Assert.False(error.Success);
+        Assert.Equal(StatusCodes.Status403Forbidden, error.StatusCode);
+        Assert.Equal("Refresh token does not belong to the current user", error.Message);
+        Assert.Equal("/throw", error.Path);
+    }
+
+    [Fact]
     public async Task UseGlobalExceptionHandler_ReturnsInternalServerError_ForUnexpectedException()
     {
         await using var testHost = await CreateTestHostAsync(
@@ -114,8 +131,8 @@ public sealed class GlobalExceptionHandlerIntegrationTests
 
         public async ValueTask DisposeAsync()
         {
-            Client.Dispose();
             await app.StopAsync();
+            Client.Dispose();
             await app.DisposeAsync();
         }
     }

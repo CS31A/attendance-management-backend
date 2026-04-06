@@ -527,6 +527,11 @@ Create a new attendance record manually.
 }
 ```
 
+**Status behavior:**
+- `201 Created` when a new attendance record is created
+- `200 OK` when the request is an idempotent duplicate retry for the same student/session and the existing record is returned
+- `409 Conflict` for invalid attendance operations (for example, student not enrolled in the session)
+
 ### GET /api/attendance/{id}
 Get a specific attendance record.
 
@@ -627,7 +632,7 @@ Check API and database health.
 | 401 | Unauthorized - Authentication required |
 | 403 | Forbidden - Insufficient permissions |
 | 404 | Not Found - Resource not found |
-| 409 | Conflict - Resource already exists |
+| 409 | Conflict - Invalid operation for current state (for example, attendance create with unenrolled student) |
 | 422 | Unprocessable Entity - Validation failed |
 | 500 | Internal Server Error - Server error |
 

@@ -17,7 +17,7 @@ public static class LoggingServiceExtensions
         logging.ClearProviders();
 
         // Add logging providers
-        logging.AddConsole();
+        logging.AddSimpleConsole(options => options.IncludeScopes = true);
         logging.AddDebug();
         logging.AddEventSourceLogger();
 
@@ -29,4 +29,3 @@ public static class LoggingServiceExtensions
         return logging;
     }
 }
-

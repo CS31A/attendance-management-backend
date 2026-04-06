@@ -37,6 +37,19 @@ public class ServiceArchitectureGuardrailTests
     }
 
     [Fact]
+    public void Services_ShouldNotDependOnConcreteRepositoryImplementations()
+    {
+        var result = Types.InAssembly(typeof(SessionService).Assembly)
+            .That()
+            .ResideInNamespaceStartingWith("attendance_monitoring.Services")
+            .ShouldNot()
+            .HaveDependencyOn("attendance_monitoring.Repositories")
+            .GetResult();
+
+        Assert.True(result.IsSuccessful, FormatFailure(result.FailingTypeNames ?? []));
+    }
+
+    [Fact]
     public void NewTopLevelServiceSourceFiles_ShouldStayWithinLineBudget()
     {
         const int maxLines = 500;

@@ -1,4 +1,5 @@
 using attendance_monitoring.Extensions;
+using attendance_monitoring.Services;
 using Microsoft.AspNetCore.ResponseCompression;
 using Scalar.AspNetCore;
 using System.Diagnostics;
@@ -10,6 +11,9 @@ namespace attendance_monitoring.Extensions.WebApplicationExtensions;
 /// </summary>
 public static class MiddlewarePipelineExtensions
 {
+    private const string CorrelationHeaderName = "X-Correlation-ID";
+    private const string CorrelationItemKey = "CorrelationId";
+
     /// <summary>
     /// Adds selective response compression middleware.
     /// Only compresses GET requests for specific API endpoints.
@@ -53,18 +57,20 @@ public static class MiddlewarePipelineExtensions
     {
         app.Use(async (context, next) =>
         {
+            var correlationId = ResolveCorrelationId(context.Request.Headers[CorrelationHeaderName].ToString());
             var stopwatch = Stopwatch.StartNew();
+            var endpointGroup = GetEndpointGroup(context.Request.Path);
+            var logger = context.RequestServices.GetRequiredService<ILogger<Program>>();
 
-            // Set up response callback to capture timing after response is complete
+            context.TraceIdentifier = correlationId;
+            context.Items[CorrelationItemKey] = correlationId;
             context.Response.OnStarting(() =>
             {
-                stopwatch.Stop();
-                var responseTime = stopwatch.ElapsedMilliseconds;
+                context.Response.Headers[CorrelationHeaderName] = correlationId;
 
-                // Add debug headers for client inspection (before response starts)
-                context.Response.Headers["X-Response-Time"] = $"{responseTime}ms";
+                var responseTime = stopwatch.Elapsed.TotalMilliseconds;
+                context.Response.Headers["X-Response-Time"] = $"{Math.Round(responseTime, 2)}ms";
 
-                // Check compression headers (already applied by compression middleware)
                 var isCompressed = context.Response.Headers.ContainsKey("Content-Encoding");
                 if (isCompressed)
                 {
@@ -75,26 +81,116 @@ public static class MiddlewarePipelineExtensions
                 return Task.CompletedTask;
             });
 
-            await next();
-
-            // Log performance metrics for API endpoints with successful responses
-            if (context.Request.Path.StartsWithSegments("/api") && context.Response.StatusCode == 200)
+            using (logger.BeginScope(new Dictionary<string, object?>
             {
-                var responseTime = stopwatch.ElapsedMilliseconds;
+                ["CorrelationId"] = correlationId
+            }))
+            {
+                await next();
+
+                if (stopwatch.IsRunning)
+                {
+                    stopwatch.Stop();
+                }
+
+                if (!context.Request.Path.StartsWithSegments("/api"))
+                {
+                    return;
+                }
+
+                var responseTime = stopwatch.Elapsed.TotalMilliseconds;
                 var isCompressed = context.Response.Headers.ContainsKey("Content-Encoding");
                 var compressionType = isCompressed ? context.Response.Headers["Content-Encoding"].ToString() : "none";
-                var logger = context.RequestServices.GetRequiredService<ILogger<Program>>();
                 var endpoint = $"{context.Request.Method} {context.Request.Path}";
                 var contentType = context.Response.ContentType ?? "";
+                var statusCode = context.Response.StatusCode;
 
-                logger.LogInformation(
-                    "PERF: {Endpoint} | {ResponseTime}ms | Compressed: {IsCompressed} ({CompressionType}) | Content-Type: {ContentType}",
-                    endpoint, responseTime, isCompressed, compressionType, contentType
-                );
+                if (endpointGroup is not null)
+                {
+                    var telemetry = context.RequestServices.GetRequiredService<RequestReliabilityTelemetry>();
+                    telemetry.RecordRequest(responseTime, endpointGroup, context.Request.Method, statusCode);
+
+                    if (statusCode >= StatusCodes.Status400BadRequest)
+                    {
+                        telemetry.RecordError(endpointGroup, context.Request.Method, statusCode);
+                    }
+
+                    logger.LogInformation(
+                        "RequestComplete {EndpointGroup} {StatusCode} {ElapsedMilliseconds} {CorrelationId}",
+                        endpointGroup,
+                        statusCode,
+                        responseTime,
+                        correlationId);
+
+                    return;
+                }
+
+                var logLevel = statusCode >= StatusCodes.Status500InternalServerError
+                    ? LogLevel.Warning
+                    : LogLevel.Information;
+
+                logger.Log(
+                    logLevel,
+                    "PERF: {Endpoint} | {StatusCode} | {ResponseTime}ms | CorrelationId: {CorrelationId} | Compressed: {IsCompressed} ({CompressionType}) | Content-Type: {ContentType}",
+                    endpoint,
+                    statusCode,
+                    responseTime,
+                    correlationId,
+                    isCompressed,
+                    compressionType,
+                    contentType);
             }
         });
 
         return app;
+    }
+
+    private static string ResolveCorrelationId(string? inboundCorrelationId)
+    {
+        if (IsValidCorrelationId(inboundCorrelationId))
+        {
+            return inboundCorrelationId!;
+        }
+
+        return Guid.NewGuid().ToString("N");
+    }
+
+    private static bool IsValidCorrelationId(string? correlationId)
+    {
+        if (string.IsNullOrWhiteSpace(correlationId) || correlationId.Length > 64)
+        {
+            return false;
+        }
+
+        foreach (var character in correlationId)
+        {
+            if (!char.IsLetterOrDigit(character) && character is not '.' and not '_' and not '-')
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private static string? GetEndpointGroup(PathString path)
+    {
+        if (path.StartsWithSegments("/api/account", StringComparison.OrdinalIgnoreCase))
+        {
+            return "auth";
+        }
+
+        if (path.StartsWithSegments("/api/attendance", StringComparison.OrdinalIgnoreCase))
+        {
+            return "attendance";
+        }
+
+        if (path.StartsWithSegments("/api/qrcode", StringComparison.OrdinalIgnoreCase))
+        {
+            return "qr";
+        }
+
+        return null;
     }
 
     /// <summary>
@@ -155,4 +251,3 @@ public static class MiddlewarePipelineExtensions
         return app;
     }
 }
-

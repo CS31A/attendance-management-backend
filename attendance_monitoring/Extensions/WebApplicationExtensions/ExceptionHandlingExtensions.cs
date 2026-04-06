@@ -10,6 +10,8 @@ namespace attendance_monitoring.Extensions.WebApplicationExtensions;
 /// </summary>
 public static class ExceptionHandlingExtensions
 {
+    private const string CorrelationHeaderName = "X-Correlation-ID";
+
     /// <summary>
     /// Configures global exception handler middleware.
     /// Maps exceptions to appropriate HTTP status codes and standardized error responses.
@@ -25,6 +27,7 @@ public static class ExceptionHandlingExtensions
                 var exceptionHandlerFeature = context.Features.Get<IExceptionHandlerPathFeature>();
                 var exception = exceptionHandlerFeature?.Error;
                 var logger = context.RequestServices.GetRequiredService<ILogger<Program>>();
+                var correlationId = context.TraceIdentifier;
 
                 // Map exceptions to appropriate HTTP status codes and messages
                 (int statusCode, string message, bool includeDetails) = exception switch
@@ -90,14 +93,14 @@ public static class ExceptionHandlingExtensions
                 if (statusCode >= 500)
                 {
                     logger.LogError(exception,
-                        "Unhandled exception: {ExceptionType} | Status: {StatusCode} | Path: {Path} | Message: {Message}",
-                        exception?.GetType().Name, statusCode, context.Request.Path, message);
+                        "Unhandled exception: {ExceptionType} | Status: {StatusCode} | Path: {Path} | CorrelationId: {CorrelationId} | Message: {Message}",
+                        exception?.GetType().Name, statusCode, context.Request.Path, correlationId, message);
                 }
                 else
                 {
                     logger.LogWarning(exception,
-                        "Client error: {ExceptionType} | Status: {StatusCode} | Path: {Path} | Message: {Message}",
-                        exception?.GetType().Name, statusCode, context.Request.Path, message);
+                        "Client error: {ExceptionType} | Status: {StatusCode} | Path: {Path} | CorrelationId: {CorrelationId} | Message: {Message}",
+                        exception?.GetType().Name, statusCode, context.Request.Path, correlationId, message);
                 }
 
                 // Build error response
@@ -118,6 +121,7 @@ public static class ExceptionHandlingExtensions
 
                 context.Response.StatusCode = statusCode;
                 context.Response.ContentType = "application/json";
+                context.Response.Headers[CorrelationHeaderName] = correlationId;
 
                 await context.Response.WriteAsJsonAsync(errorResponse);
             });
@@ -126,4 +130,3 @@ public static class ExceptionHandlingExtensions
         return app;
     }
 }
-

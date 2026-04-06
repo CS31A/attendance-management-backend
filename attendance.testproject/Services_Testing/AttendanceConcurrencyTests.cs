@@ -73,14 +73,16 @@ public class AttendanceConcurrencyTests
     }
 
     [Fact]
-    public async Task CreateAttendanceAsync_ConcurrentDuplicate_ThrowsInvalidOperationException()
+    public async Task CreateAttendanceAsync_ConcurrentDuplicate_ReturnsExistingAttendanceForEquivalentRetry()
     {
         // Arrange
         var request = new CreateAttendanceRequest
         {
             StudentId = 1,
             SessionId = 1,
-            Status = "Present"
+            Status = "Late",
+            Notes = "Retry with changed payload fields",
+            CheckInTime = DateTime.UtcNow.AddMinutes(5)
         };
 
         var user = CreateInstructorUser("instructor-1");
@@ -96,7 +98,12 @@ public class AttendanceConcurrencyTests
             .ReturnsAsync(new Session
             {
                 Id = 1,
-                Schedule = new Schedules { InstructorId = 10, SectionId = 100 }
+                Schedule = new Schedules
+                {
+                    InstructorId = 10,
+                    SectionId = 100,
+                    SubjectId = 200
+                }
             });
 
         _mockStudentRepository.Setup(r => r.GetStudentByIdAsync(1))
@@ -108,12 +115,8 @@ public class AttendanceConcurrencyTests
                 new StudentEnrollment { StudentId = 1, SectionId = 100 }
             });
 
-        // Simulate race condition: HasAttendanceRecordAsync returns false (check passed)
-        // But CreateAsync/SaveChangesAsync throws DbUpdateException (DB constraint hit)
-        _mockAttendanceRepository.Setup(r => r.HasAttendanceRecordAsync(1, 1))
-            .ReturnsAsync(false);
-
         var dbUpdateException = new DbUpdateException("Error", new Exception("UNIQUE constraint failed: IX_AttendanceRecords_StudentId_SessionId"));
+        var existingRecord = CreateExistingAttendanceRecord(studentId: 1, sessionId: 1);
 
         _mockAttendanceRepository.Setup(r => r.CreateAsync(It.IsAny<AttendanceRecord>()))
             .ReturnsAsync(new AttendanceRecord { Id = 100 });
@@ -121,22 +124,31 @@ public class AttendanceConcurrencyTests
         _mockAttendanceRepository.Setup(r => r.SaveChangesAsync())
             .ThrowsAsync(dbUpdateException);
 
-        // Act & Assert
-        var exception = await Assert.ThrowsAsync<InvalidOperationException>(
-            () => _attendanceService.CreateAttendanceAsync(request, user)
-        );
+        _mockAttendanceRepository.Setup(r => r.GetBySessionAndStudentAsync(1, 1))
+            .ReturnsAsync(existingRecord);
 
-        Assert.Contains("Attendance record already exists", exception.Message);
+        // Act
+        var result = await _attendanceService.CreateAttendanceAsync(request, user);
+
+        // Assert
+        Assert.Equal(existingRecord.Id, result.Id);
+        Assert.Equal(existingRecord.StudentId, result.StudentId);
+        Assert.Equal(existingRecord.SessionId, result.SessionId);
+        Assert.Equal(existingRecord.Status, result.Status);
+        Assert.Equal(existingRecord.Notes, result.Notes);
+        Assert.True(result.IsManualEntry);
 
         // Verify warning log
         _mockLogger.Verify(
             x => x.Log(
                 LogLevel.Warning,
                 It.IsAny<EventId>(),
-                It.Is<It.IsAnyType>((v, t) => v != null && v.ToString()!.Contains("Duplicate attendance - race condition detected")),
+                It.Is<It.IsAnyType>((v, t) => v != null && v.ToString()!.Contains("Duplicate attendance - returning existing record")),
                 It.IsAny<Exception?>(),
                 It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
             Times.Once);
+
+        _mockAttendanceRepository.Verify(r => r.GetBySessionAndStudentAsync(1, 1), Times.Once);
     }
 
     [Fact]
@@ -195,5 +207,62 @@ public class AttendanceConcurrencyTests
             new Claim(ClaimTypes.Role, RoleConstants.Instructor)
         };
         return new ClaimsPrincipal(new ClaimsIdentity(claims, "TestAuth"));
+    }
+
+    private static AttendanceRecord CreateExistingAttendanceRecord(int studentId, int sessionId)
+    {
+        return new AttendanceRecord
+        {
+            Id = 321,
+            StudentId = studentId,
+            SessionId = sessionId,
+            CheckInTime = DateTime.UtcNow.AddMinutes(-10),
+            Status = "Present",
+            Notes = "Original attendance record",
+            IsManualEntry = true,
+            EnteredBy = "instructor-1",
+            Student = new Student
+            {
+                Id = studentId,
+                Firstname = "Sam",
+                Lastname = "Student"
+            },
+            Session = new Session
+            {
+                Id = sessionId,
+                SessionDate = DateTime.UtcNow.Date,
+                ScheduleId = 77,
+                ActualRoom = new Classroom
+                {
+                    Id = 5,
+                    Name = "Integration Room 1"
+                },
+                Schedule = new Schedules
+                {
+                    Id = 77,
+                    Subject = new Subject
+                    {
+                        Id = 200,
+                        Name = "Integration Testing"
+                    },
+                    Section = new Section
+                    {
+                        Id = 100,
+                        Name = "INT-SEC-A"
+                    },
+                    Classroom = new Classroom
+                    {
+                        Id = 5,
+                        Name = "Integration Room 1"
+                    },
+                    Instructor = new Instructor
+                    {
+                        Id = 10,
+                        Firstname = "Ivy",
+                        Lastname = "Instructor"
+                    }
+                }
+            }
+        };
     }
 }
