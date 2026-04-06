@@ -58,6 +58,9 @@ public static class MiddlewarePipelineExtensions
         app.Use(async (context, next) =>
         {
             var correlationId = ResolveCorrelationId(context.Request.Headers[CorrelationHeaderName].ToString());
+            var stopwatch = Stopwatch.StartNew();
+            var endpointGroup = GetEndpointGroup(context.Request.Path);
+            var logger = context.RequestServices.GetRequiredService<ILogger<Program>>();
 
             context.TraceIdentifier = correlationId;
             context.Items[CorrelationItemKey] = correlationId;
@@ -65,33 +68,10 @@ public static class MiddlewarePipelineExtensions
             context.Response.OnStarting(() =>
             {
                 context.Response.Headers[CorrelationHeaderName] = correlationId;
-                return Task.CompletedTask;
-            });
 
-            var logger = context.RequestServices.GetRequiredService<ILogger<Program>>();
-            using (logger.BeginScope(new Dictionary<string, object?>
-            {
-                ["CorrelationId"] = correlationId
-            }))
-            {
-                await next();
-            }
-        });
-
-        app.Use(async (context, next) =>
-        {
-            var stopwatch = Stopwatch.StartNew();
-            var endpointGroup = GetEndpointGroup(context.Request.Path);
-
-            // Set up response callback to snapshot elapsed time before headers are sent.
-            context.Response.OnStarting(() =>
-            {
                 var responseTime = stopwatch.Elapsed.TotalMilliseconds;
-
-                // Add debug headers for client inspection (before response starts)
                 context.Response.Headers["X-Response-Time"] = $"{Math.Round(responseTime, 2)}ms";
 
-                // Check compression headers (already applied by compression middleware)
                 var isCompressed = context.Response.Headers.ContainsKey("Content-Encoding");
                 if (isCompressed)
                 {
@@ -102,22 +82,28 @@ public static class MiddlewarePipelineExtensions
                 return Task.CompletedTask;
             });
 
-            await next();
-
-            if (stopwatch.IsRunning)
+            using (logger.BeginScope(new Dictionary<string, object?>
             {
-                stopwatch.Stop();
-            }
-
-            if (context.Request.Path.StartsWithSegments("/api"))
+                ["CorrelationId"] = correlationId
+            }))
             {
+                await next();
+
+                if (stopwatch.IsRunning)
+                {
+                    stopwatch.Stop();
+                }
+
+                if (!context.Request.Path.StartsWithSegments("/api"))
+                {
+                    return;
+                }
+
                 var responseTime = stopwatch.Elapsed.TotalMilliseconds;
                 var isCompressed = context.Response.Headers.ContainsKey("Content-Encoding");
                 var compressionType = isCompressed ? context.Response.Headers["Content-Encoding"].ToString() : "none";
-                var logger = context.RequestServices.GetRequiredService<ILogger<Program>>();
                 var endpoint = $"{context.Request.Method} {context.Request.Path}";
                 var contentType = context.Response.ContentType ?? "";
-                var correlationId = context.TraceIdentifier;
                 var statusCode = context.Response.StatusCode;
 
                 if (endpointGroup is not null)
@@ -136,34 +122,24 @@ public static class MiddlewarePipelineExtensions
                         statusCode,
                         responseTime,
                         correlationId);
+
+                    return;
                 }
-                else
-                {
-                    if (statusCode >= StatusCodes.Status500InternalServerError)
-                    {
-                        logger.LogWarning(
-                            "PERF: {Endpoint} | {StatusCode} | {ResponseTime}ms | CorrelationId: {CorrelationId} | Compressed: {IsCompressed} ({CompressionType}) | Content-Type: {ContentType}",
-                            endpoint,
-                            statusCode,
-                            responseTime,
-                            correlationId,
-                            isCompressed,
-                            compressionType,
-                            contentType);
-                    }
-                    else
-                    {
-                        logger.LogInformation(
-                            "PERF: {Endpoint} | {StatusCode} | {ResponseTime}ms | CorrelationId: {CorrelationId} | Compressed: {IsCompressed} ({CompressionType}) | Content-Type: {ContentType}",
-                            endpoint,
-                            statusCode,
-                            responseTime,
-                            correlationId,
-                            isCompressed,
-                            compressionType,
-                            contentType);
-                    }
-                }
+
+                var logLevel = statusCode >= StatusCodes.Status500InternalServerError
+                    ? LogLevel.Warning
+                    : LogLevel.Information;
+
+                logger.Log(
+                    logLevel,
+                    "PERF: {Endpoint} | {StatusCode} | {ResponseTime}ms | CorrelationId: {CorrelationId} | Compressed: {IsCompressed} ({CompressionType}) | Content-Type: {ContentType}",
+                    endpoint,
+                    statusCode,
+                    responseTime,
+                    correlationId,
+                    isCompressed,
+                    compressionType,
+                    contentType);
             }
         });
 

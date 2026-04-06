@@ -17,11 +17,6 @@ namespace attendance_monitoring.Services;
 public class DataIntegrityHealthCheck(IOrphanedUserCleanupService cleanupService) : IHealthCheck
 {
     /// <summary>
-    /// Minimum orphaned user count that should be reported as degraded.
-    /// </summary>
-    internal const int DegradedThreshold = 1;
-
-    /// <summary>
     /// Threshold for unhealthy status (number of orphaned users).
     /// </summary>
     internal const int UnhealthyThreshold = 20;

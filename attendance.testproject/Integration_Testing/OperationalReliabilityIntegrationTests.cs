@@ -85,6 +85,24 @@ public sealed class OperationalReliabilityIntegrationTests
     }
 
     [Fact]
+    public async Task PostApiAccountLogin_EmitsResponseTimeHeader()
+    {
+        await using var host = await ApiIntegrationHost.CreateOperationalReliabilityAsync(AttendanceQrSeedData.ValidQrScan);
+
+        var response = await SendAuthSuccessAsync(host);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var headerValue = GetSingleHeaderValue(response, "X-Response-Time");
+        Assert.EndsWith("ms", headerValue, StringComparison.Ordinal);
+        Assert.True(double.TryParse(
+            headerValue[..^2],
+            System.Globalization.NumberStyles.Float,
+            System.Globalization.CultureInfo.InvariantCulture,
+            out var elapsedMilliseconds));
+        Assert.True(elapsedMilliseconds >= 0d);
+    }
+
+    [Fact]
     public async Task PostApiAccountLogin_ErrorResponse_UsesSameEffectiveCorrelationId()
     {
         await using var host = await ApiIntegrationHost.CreateOperationalReliabilityAsync(AttendanceQrSeedData.ValidQrScan);
