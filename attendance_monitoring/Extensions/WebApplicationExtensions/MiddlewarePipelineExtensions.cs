@@ -64,7 +64,6 @@ public static class MiddlewarePipelineExtensions
 
             context.TraceIdentifier = correlationId;
             context.Items[CorrelationItemKey] = correlationId;
-            context.Response.Headers[CorrelationHeaderName] = correlationId;
             context.Response.OnStarting(() =>
             {
                 context.Response.Headers[CorrelationHeaderName] = correlationId;
