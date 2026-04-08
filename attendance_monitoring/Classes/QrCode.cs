@@ -11,7 +11,6 @@ namespace attendance_monitoring.Classes;
 /// Session contains the contextual data (schedule, room, section).
 /// </summary>
 [Index(nameof(SessionId))]
-[Index(nameof(QrHash), IsUnique = true)]
 [Index(nameof(IsActive))]
 [Index(nameof(ExpiresAt))]
 public class QrCode

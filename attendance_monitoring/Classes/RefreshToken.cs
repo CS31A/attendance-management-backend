@@ -6,7 +6,6 @@ using Microsoft.EntityFrameworkCore;
 
 namespace attendance_monitoring.Classes;
 
-[Index(nameof(TokenHash), IsUnique = true)]
 [Index(nameof(ExpiresAt))]
 [Index(nameof(UserId), nameof(IsRevoked), nameof(ExpiresAt))]
 public class RefreshToken
