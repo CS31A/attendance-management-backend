@@ -67,26 +67,27 @@ public sealed class AdminDataService : IAdminDataService
     }
 
     public Task<AdminDataPreviewResponseDto> PreviewImportAsync(string entity, IFormFile file, IReadOnlyDictionary<string, string?> filters, CancellationToken cancellationToken = default)
-        => AnalyzeImportAsync(entity, file, filters, cancellationToken);
+        => BuildPreviewResponseAsync(entity, file, filters, cancellationToken);
 
     public async Task<AdminDataImportResponseDto> ImportAsync(string entity, IFormFile file, ClaimsPrincipal user, IReadOnlyDictionary<string, string?> filters, CancellationToken cancellationToken = default)
     {
-        var preview = await AnalyzeImportAsync(entity, file, filters, cancellationToken).ConfigureAwait(false);
+        var analysis = await AnalyzeImportCoreAsync(entity, file, filters, cancellationToken).ConfigureAwait(false);
         var response = new AdminDataImportResponseDto
         {
             Success = false,
-            Entity = preview.Entity,
-            Format = preview.Format,
-            FileName = preview.FileName,
-            TotalRows = preview.TotalRows,
-            FileIssues = preview.FileIssues,
-            Rows = preview.Rows.Select(CloneRow).ToList(),
+            Entity = analysis.Entity,
+            Format = analysis.Format,
+            FileName = analysis.FileName,
+            TotalRows = analysis.TotalRows,
+            FileIssues = analysis.FileIssues.Select(CloneIssue).ToList(),
+            Rows = analysis.Rows.Select(CloneRow).ToList(),
         };
 
-        if (!preview.CanImport)
+        if (!analysis.CanImport)
         {
-            response.FailedRows = preview.InvalidRows;
-            response.SkippedDuplicateRows = preview.DuplicateRows;
+            response.FailedRows = analysis.InvalidRows;
+            response.SkippedDuplicateRows = analysis.DuplicateRows;
+            ApplyIssueLimit(response.FileIssues, response.Rows);
             return response;
         }
 
@@ -108,7 +109,7 @@ public sealed class AdminDataService : IAdminDataService
 
             try
             {
-                await ImportRowAsync(preview.Entity, row.Values, user, cancellationToken).ConfigureAwait(false);
+                await ImportRowAsync(analysis.Entity, row.Values, user, cancellationToken).ConfigureAwait(false);
                 row.Status = RowStatusImported;
                 response.CreatedRows++;
             }
@@ -127,6 +128,7 @@ public sealed class AdminDataService : IAdminDataService
         }
 
         response.Success = response.FailedRows == 0;
+        ApplyIssueLimit(response.FileIssues, response.Rows);
         return response;
     }
 
@@ -181,7 +183,30 @@ public sealed class AdminDataService : IAdminDataService
         };
     }
 
-    private async Task<AdminDataPreviewResponseDto> AnalyzeImportAsync(string entity, IFormFile file, IReadOnlyDictionary<string, string?> filters, CancellationToken cancellationToken)
+    private async Task<AdminDataPreviewResponseDto> BuildPreviewResponseAsync(string entity, IFormFile file, IReadOnlyDictionary<string, string?> filters, CancellationToken cancellationToken)
+    {
+        var analysis = await AnalyzeImportCoreAsync(entity, file, filters, cancellationToken).ConfigureAwait(false);
+        var response = new AdminDataPreviewResponseDto
+        {
+            Success = true,
+            Entity = analysis.Entity,
+            Format = analysis.Format,
+            FileName = analysis.FileName,
+            TotalRows = analysis.TotalRows,
+            Columns = analysis.Columns.ToList(),
+            Rows = analysis.Rows.Take(_options.MaxPreviewRows).Select(CloneRow).ToList(),
+            ReadyRows = analysis.ReadyRows,
+            DuplicateRows = analysis.DuplicateRows,
+            InvalidRows = analysis.InvalidRows,
+            CanImport = analysis.CanImport,
+            FileIssues = analysis.FileIssues.Select(CloneIssue).ToList(),
+        };
+
+        ApplyIssueLimit(response.FileIssues, response.Rows);
+        return response;
+    }
+
+    private async Task<ImportAnalysisResult> AnalyzeImportCoreAsync(string entity, IFormFile file, IReadOnlyDictionary<string, string?> filters, CancellationToken cancellationToken)
     {
         var normalizedEntity = NormalizeEntity(entity);
         EnsureValidFile(file);
@@ -194,20 +219,18 @@ public sealed class AdminDataService : IAdminDataService
         }
 
         var rowResults = await AnalyzeRowsAsync(normalizedEntity, parsedRows, filters, cancellationToken).ConfigureAwait(false);
-        return new AdminDataPreviewResponseDto
-        {
-            Success = true,
-            Entity = normalizedEntity,
-            Format = format,
-            FileName = file.FileName,
-            TotalRows = parsedRows.Count,
-            Columns = GetColumns(normalizedEntity).ToList(),
-            Rows = rowResults.Take(_options.MaxPreviewRows).Select(CloneRow).ToList(),
-            ReadyRows = rowResults.Count(row => string.Equals(row.Status, RowStatusReady, StringComparison.OrdinalIgnoreCase)),
-            DuplicateRows = rowResults.Count(row => string.Equals(row.Status, RowStatusDuplicate, StringComparison.OrdinalIgnoreCase)),
-            InvalidRows = rowResults.Count(row => string.Equals(row.Status, RowStatusInvalid, StringComparison.OrdinalIgnoreCase)),
-            CanImport = rowResults.All(row => !string.Equals(row.Status, RowStatusInvalid, StringComparison.OrdinalIgnoreCase)),
-        };
+        return new ImportAnalysisResult(
+            normalizedEntity,
+            format,
+            file.FileName,
+            parsedRows.Count,
+            GetColumns(normalizedEntity).ToList(),
+            [],
+            rowResults,
+            rowResults.Count(row => string.Equals(row.Status, RowStatusReady, StringComparison.OrdinalIgnoreCase)),
+            rowResults.Count(row => string.Equals(row.Status, RowStatusDuplicate, StringComparison.OrdinalIgnoreCase)),
+            rowResults.Count(row => string.Equals(row.Status, RowStatusInvalid, StringComparison.OrdinalIgnoreCase)),
+            rowResults.All(row => !string.Equals(row.Status, RowStatusInvalid, StringComparison.OrdinalIgnoreCase)));
     }
 
     private async Task<List<AdminDataRowResultDto>> AnalyzeRowsAsync(string entity, IReadOnlyList<Dictionary<string, string?>> parsedRows, IReadOnlyDictionary<string, string?> filters, CancellationToken cancellationToken)
@@ -753,7 +776,11 @@ public sealed class AdminDataService : IAdminDataService
     {
         var statusValue = filters.TryGetValue("status", out var value) ? value : null;
         var status = Enum.TryParse<UserStatus>(statusValue, true, out var parsedStatus) ? parsedStatus : UserStatus.Active;
-        var users = (await _accountService.GetAllUsersAsync(status).ConfigureAwait(false)).ToList();
+        var role = filters.TryGetValue("role", out var roleValue) ? roleValue : null;
+        var search = filters.TryGetValue("search", out var searchValue) ? searchValue : null;
+        var users = (await _accountService.GetAllUsersAsync(status).ConfigureAwait(false))
+            .Where(user => MatchesUserExportFilters(user, role, search))
+            .ToList();
 
         return users.Select(user =>
         {
@@ -877,7 +904,7 @@ public sealed class AdminDataService : IAdminDataService
             ? instructorId.ToString(CultureInfo.InvariantCulture)
             : values.GetValueOrDefault("instructoremail") ?? string.Empty;
 
-        return $"{values.GetValueOrDefault("dayofweek")}|{values.GetValueOrDefault("timein")}|{values.GetValueOrDefault("timeout")}|{subject}|{section}|{classroom}|{instructor}";
+        return $"{NormalizeScheduleDayOfWeek(values.GetValueOrDefault("dayofweek"))}|{NormalizeScheduleTime(values.GetValueOrDefault("timein"))}|{NormalizeScheduleTime(values.GetValueOrDefault("timeout"))}|{subject}|{section}|{classroom}|{instructor}";
     }
 
     private static string BuildScheduleKey(string dayOfWeek, TimeOnly timeIn, TimeOnly timeOut, int subjectId, int sectionId, int classroomId, int instructorId)
@@ -1119,14 +1146,17 @@ public sealed class AdminDataService : IAdminDataService
             RowNumber = row.RowNumber,
             Status = row.Status,
             Values = new Dictionary<string, string?>(row.Values, StringComparer.OrdinalIgnoreCase),
-            Issues = row.Issues.Select(issue => new AdminDataIssueDto
-            {
-                RowNumber = issue.RowNumber,
-                Code = issue.Code,
-                Severity = issue.Severity,
-                Message = issue.Message,
-                Field = issue.Field,
-            }).ToList(),
+            Issues = row.Issues.Select(CloneIssue).ToList(),
+        };
+
+    private static AdminDataIssueDto CloneIssue(AdminDataIssueDto issue)
+        => new()
+        {
+            RowNumber = issue.RowNumber,
+            Code = issue.Code,
+            Severity = issue.Severity,
+            Message = issue.Message,
+            Field = issue.Field,
         };
 
     private static AdminDataIssueDto CreateIssue(int? rowNumber, string code, string severity, string message, string? field = null)
@@ -1138,6 +1168,64 @@ public sealed class AdminDataService : IAdminDataService
             Message = message,
             Field = field,
         };
+
+    private void ApplyIssueLimit(List<AdminDataIssueDto> fileIssues, List<AdminDataRowResultDto> rows)
+    {
+        var remainingIssues = Math.Max(_options.MaxIssues, 0);
+        var originalFileIssues = fileIssues.Select(CloneIssue).ToList();
+        var originalRowIssues = rows.ToDictionary(
+            row => row,
+            row => row.Issues.Select(CloneIssue).ToList());
+
+        fileIssues.Clear();
+        foreach (var row in rows)
+        {
+            row.Issues.Clear();
+        }
+
+        if (remainingIssues == 0)
+        {
+            return;
+        }
+
+        foreach (var row in rows)
+        {
+            var issues = originalRowIssues[row];
+            if (issues.Count == 0 || remainingIssues == 0)
+            {
+                continue;
+            }
+
+            row.Issues.Add(issues[0]);
+            issues.RemoveAt(0);
+            remainingIssues--;
+        }
+
+        foreach (var issue in originalFileIssues)
+        {
+            if (remainingIssues == 0)
+            {
+                break;
+            }
+
+            fileIssues.Add(issue);
+            remainingIssues--;
+        }
+
+        foreach (var row in rows)
+        {
+            foreach (var issue in originalRowIssues[row])
+            {
+                if (remainingIssues == 0)
+                {
+                    return;
+                }
+
+                row.Issues.Add(issue);
+                remainingIssues--;
+            }
+        }
+    }
 
     private static int ResolveLookup(IReadOnlyDictionary<string, int> lookup, AdminDataRowResultDto row, string key, string entityName)
     {
@@ -1174,6 +1262,57 @@ public sealed class AdminDataService : IAdminDataService
         throw new AppValidationEx($"Invalid time value '{value}'. Use HH:mm or h:mm tt.");
     }
 
+    private static string NormalizeScheduleTime(string? value)
+    {
+        var normalizedValue = NullIfEmpty(value);
+        if (TimeOnly.TryParseExact(normalizedValue, ["HH:mm", "H:mm", "hh:mm tt", "h:mm tt"], CultureInfo.InvariantCulture, DateTimeStyles.None, out var time))
+        {
+            return time.ToString("HH\\:mm", CultureInfo.InvariantCulture);
+        }
+
+        return normalizedValue ?? string.Empty;
+    }
+
+    private static string NormalizeScheduleDayOfWeek(string? value)
+    {
+        var normalizedValue = NullIfEmpty(value);
+        if (normalizedValue == null)
+        {
+            return string.Empty;
+        }
+
+        return ScheduleConstants.ValidDaysOfWeek.FirstOrDefault(day => string.Equals(day, normalizedValue, StringComparison.OrdinalIgnoreCase))
+            ?? normalizedValue;
+    }
+
+    private static bool MatchesUserExportFilters(GetAllUsersDto user, string? roleFilter, string? searchFilter)
+    {
+        if (!string.IsNullOrWhiteSpace(roleFilter) && !string.Equals(roleFilter, "All Roles", StringComparison.OrdinalIgnoreCase))
+        {
+            if (!string.Equals(NormalizeRole(user.Role), NormalizeRole(roleFilter), StringComparison.OrdinalIgnoreCase))
+            {
+                return false;
+            }
+        }
+
+        var query = NullIfEmpty(searchFilter)?.ToLowerInvariant();
+        if (string.IsNullOrWhiteSpace(query))
+        {
+            return true;
+        }
+
+        var firstName = (user.StudentProfile?.Firstname ?? user.InstructorProfile?.Firstname ?? user.AdminProfile?.Firstname ?? string.Empty).ToLowerInvariant();
+        var lastName = (user.StudentProfile?.Lastname ?? user.InstructorProfile?.Lastname ?? user.AdminProfile?.Lastname ?? string.Empty).ToLowerInvariant();
+        var email = (user.Email ?? string.Empty).ToLowerInvariant();
+        var username = (user.Username ?? string.Empty).ToLowerInvariant();
+
+        return firstName.Contains(query, StringComparison.Ordinal)
+            || lastName.Contains(query, StringComparison.Ordinal)
+            || email.Contains(query, StringComparison.Ordinal)
+            || username.Contains(query, StringComparison.Ordinal)
+            || $"{firstName} {lastName}".Contains(query, StringComparison.Ordinal);
+    }
+
     private static string NormalizeRole(string? role)
         => string.IsNullOrWhiteSpace(role) ? RoleConstants.Student : RoleConstants.NormalizeRole(role);
 
@@ -1182,6 +1321,19 @@ public sealed class AdminDataService : IAdminDataService
 
     private static string? NullIfEmpty(string? value)
         => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+
+    private sealed record ImportAnalysisResult(
+        string Entity,
+        string Format,
+        string FileName,
+        int TotalRows,
+        IReadOnlyList<string> Columns,
+        IReadOnlyList<AdminDataIssueDto> FileIssues,
+        IReadOnlyList<AdminDataRowResultDto> Rows,
+        int ReadyRows,
+        int DuplicateRows,
+        int InvalidRows,
+        bool CanImport);
 
     private sealed record LookupCache(
         IReadOnlyDictionary<string, int> CourseIdsByName,
