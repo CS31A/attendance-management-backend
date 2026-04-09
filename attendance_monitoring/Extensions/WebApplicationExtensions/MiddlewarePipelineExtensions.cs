@@ -137,9 +137,7 @@ public static class MiddlewarePipelineExtensions
         this WebApplication app,
         string corsPolicy = "AllowFrontend")
     {
-        // Only use HTTPS redirection in development
-        // In production, the reverse proxy (AWS EB/nginx) handles SSL termination
-        if (app.Environment.IsDevelopment())
+        if (!app.Environment.IsDevelopment())
         {
             app.UseHttpsRedirection();
         }
