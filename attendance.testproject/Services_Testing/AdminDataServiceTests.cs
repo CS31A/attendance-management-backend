@@ -680,6 +680,57 @@ public class AdminDataServiceTests
         Assert.Contains(result.Rows[2].Issues, i => i.Code == "import_failed");
     }
 
+    [Fact]
+    public async Task ImportAsync_WhenCancellationOccursAfterRowFailure_RollbackStillReturnsResponse()
+    {
+        await using var sqlite = await CreateSqliteDatabaseAsync();
+        await using var context = new ApplicationDbContext(sqlite.Options);
+
+        var accountService = new Mock<IAccountService>();
+        accountService.Setup(s => s.GetAllUsersAsync(It.IsAny<UserStatus>()))
+            .ReturnsAsync(Array.Empty<GetAllUsersDto>());
+
+        using var cancellationTokenSource = new CancellationTokenSource();
+
+        var sectionService = new Mock<ISectionService>();
+        var callCount = 0;
+        sectionService.Setup(s => s.CreateSectionAsync(It.IsAny<Section>()))
+            .Callback<Section>(section =>
+            {
+                callCount++;
+                if (callCount > 1)
+                {
+                    cancellationTokenSource.Cancel();
+                    throw new EntityServiceException("Section", "CreateSection", "Database error");
+                }
+
+                context.Sections.Add(section);
+                context.SaveChanges();
+            })
+            .ReturnsAsync((Section section) => new SectionResponseDto
+            {
+                Id = section.Id,
+                Name = section.Name,
+                CourseId = section.CourseId,
+            });
+
+        var service = CreateService(context, accountService.Object, sectionService: sectionService.Object);
+        var file = CreateFormFile("sections.csv", "name,courseName\nSec1,CS\nSec2,CS\n");
+
+        var result = await service.ImportAsync("sections", file, CreatePrincipal(), new Dictionary<string, string?>(), cancellationTokenSource.Token);
+
+        Assert.False(result.Success);
+        Assert.Equal(0, result.CreatedRows);
+        Assert.Equal(2, result.FailedRows);
+        Assert.Empty(context.Sections.AsNoTracking().ToList());
+
+        Assert.Equal("failed", result.Rows[0].Status);
+        Assert.Contains(result.Rows[0].Issues, issue => issue.Code == "import_rollback");
+
+        Assert.Equal("failed", result.Rows[1].Status);
+        Assert.Contains(result.Rows[1].Issues, issue => issue.Code == "import_failed");
+    }
+
     private static AdminDataService CreateService(
         ApplicationDbContext context,
         IAccountService accountService,

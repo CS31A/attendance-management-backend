@@ -137,7 +137,7 @@ public sealed class AdminDataService : IAdminDataService
 
             if (response.FailedRows > 0)
             {
-                await transaction.RollbackAsync(cancellationToken).ConfigureAwait(false);
+                await RollbackWithoutCancellationAsync(transaction).ConfigureAwait(false);
 
                 foreach (var row in response.Rows)
                 {
@@ -160,7 +160,7 @@ public sealed class AdminDataService : IAdminDataService
         }
         catch
         {
-            await transaction.RollbackAsync(cancellationToken).ConfigureAwait(false);
+            await RollbackWithoutCancellationAsync(transaction).ConfigureAwait(false);
 
             foreach (var row in response.Rows)
             {
@@ -180,6 +180,9 @@ public sealed class AdminDataService : IAdminDataService
         ApplyIssueLimit(response.FileIssues, response.Rows);
         return response;
     }
+
+    private static Task RollbackWithoutCancellationAsync(IDbContextTransaction transaction)
+        => transaction.RollbackAsync(CancellationToken.None);
 
     public async Task<AdminDataFileDto> GenerateTemplateAsync(string entity, string format, CancellationToken cancellationToken = default)
     {
