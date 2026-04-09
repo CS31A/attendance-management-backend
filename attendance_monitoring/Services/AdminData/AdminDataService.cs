@@ -17,6 +17,7 @@ using CsvHelper;
 using CsvHelper.Configuration;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.Options;
 
 namespace attendance_monitoring.Services.AdminData;
@@ -30,6 +31,9 @@ public sealed class AdminDataService : IAdminDataService
     private const string RowStatusImported = "imported";
     private const string RowStatusInvalid = "invalid";
     private const string RowStatusReady = "ready";
+
+    private const string RollbackIssueCode = "import_rollback";
+    private const string RollbackIssueMessage = "Row was imported but rolled back because another row failed.";
 
     private readonly IAccountService _accountService;
     private readonly IClassroomService _classroomService;
@@ -91,43 +95,88 @@ public sealed class AdminDataService : IAdminDataService
             return response;
         }
 
-        foreach (var row in response.Rows)
+        await using var transaction = await _context.Database.BeginTransactionAsync(cancellationToken).ConfigureAwait(false);
+
+        try
         {
-            cancellationToken.ThrowIfCancellationRequested();
+            foreach (var row in response.Rows)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
 
-            if (string.Equals(row.Status, RowStatusDuplicate, StringComparison.OrdinalIgnoreCase))
-            {
-                response.SkippedDuplicateRows++;
-                continue;
+                if (string.Equals(row.Status, RowStatusDuplicate, StringComparison.OrdinalIgnoreCase))
+                {
+                    response.SkippedDuplicateRows++;
+                    continue;
+                }
+
+                if (!string.Equals(row.Status, RowStatusReady, StringComparison.OrdinalIgnoreCase))
+                {
+                    response.FailedRows++;
+                    continue;
+                }
+
+                try
+                {
+                    await ImportRowAsync(analysis.Entity, row.Values, user, analysis.Lookup, cancellationToken).ConfigureAwait(false);
+                    row.Status = RowStatusImported;
+                    response.CreatedRows++;
+                }
+                catch (Exception ex) when (ex is EntityAlreadyExistsException<string> or EntityAlreadyExistsException<int>)
+                {
+                    row.Status = RowStatusDuplicate;
+                    row.Issues.Add(CreateIssue(row.RowNumber, "duplicate", "warning", ex.Message));
+                    response.SkippedDuplicateRows++;
+                }
+                catch (Exception ex) when (ex is AppValidationEx or EntityNotFoundException<int> or EntityNotFoundException<string> or EntityServiceException)
+                {
+                    row.Status = RowStatusFailed;
+                    row.Issues.Add(CreateIssue(row.RowNumber, "import_failed", "error", ex.Message));
+                    response.FailedRows++;
+                }
             }
 
-            if (!string.Equals(row.Status, RowStatusReady, StringComparison.OrdinalIgnoreCase))
+            if (response.FailedRows > 0)
             {
-                response.FailedRows++;
-                continue;
+                await transaction.RollbackAsync(cancellationToken).ConfigureAwait(false);
+
+                foreach (var row in response.Rows)
+                {
+                    if (string.Equals(row.Status, RowStatusImported, StringComparison.OrdinalIgnoreCase))
+                    {
+                        row.Status = RowStatusFailed;
+                        row.Issues.Add(CreateIssue(row.RowNumber, RollbackIssueCode, "error", RollbackIssueMessage));
+                        response.CreatedRows--;
+                        response.FailedRows++;
+                    }
+                }
+
+                response.Success = false;
+                ApplyIssueLimit(response.FileIssues, response.Rows);
+                return response;
             }
 
-            try
+            await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
+            response.Success = response.FailedRows == 0;
+        }
+        catch
+        {
+            await transaction.RollbackAsync(cancellationToken).ConfigureAwait(false);
+
+            foreach (var row in response.Rows)
             {
-                await ImportRowAsync(analysis.Entity, row.Values, user, cancellationToken).ConfigureAwait(false);
-                row.Status = RowStatusImported;
-                response.CreatedRows++;
+                if (string.Equals(row.Status, RowStatusImported, StringComparison.OrdinalIgnoreCase))
+                {
+                    row.Status = RowStatusFailed;
+                    row.Issues.Add(CreateIssue(row.RowNumber, RollbackIssueCode, "error", RollbackIssueMessage));
+                    response.CreatedRows--;
+                    response.FailedRows++;
+                }
             }
-            catch (Exception ex) when (ex is EntityAlreadyExistsException<string> or EntityAlreadyExistsException<int>)
-            {
-                row.Status = RowStatusDuplicate;
-                row.Issues.Add(CreateIssue(row.RowNumber, "duplicate", "warning", ex.Message));
-                response.SkippedDuplicateRows++;
-            }
-            catch (Exception ex) when (ex is AppValidationEx or EntityNotFoundException<int> or EntityNotFoundException<string> or EntityServiceException)
-            {
-                row.Status = RowStatusFailed;
-                row.Issues.Add(CreateIssue(row.RowNumber, "import_failed", "error", ex.Message));
-                response.FailedRows++;
-            }
+
+            response.Success = false;
+            throw;
         }
 
-        response.Success = response.FailedRows == 0;
         ApplyIssueLimit(response.FileIssues, response.Rows);
         return response;
     }
@@ -218,7 +267,8 @@ public sealed class AdminDataService : IAdminDataService
             throw new AppValidationEx($"File contains {parsedRows.Count} rows which exceeds the limit of {_options.MaxRows}.");
         }
 
-        var rowResults = await AnalyzeRowsAsync(normalizedEntity, parsedRows, filters, cancellationToken).ConfigureAwait(false);
+        var lookup = await CreateLookupAsync(cancellationToken).ConfigureAwait(false);
+        var rowResults = await AnalyzeRowsAsync(normalizedEntity, parsedRows, filters, lookup, cancellationToken).ConfigureAwait(false);
         return new ImportAnalysisResult(
             normalizedEntity,
             format,
@@ -230,14 +280,14 @@ public sealed class AdminDataService : IAdminDataService
             rowResults.Count(row => string.Equals(row.Status, RowStatusReady, StringComparison.OrdinalIgnoreCase)),
             rowResults.Count(row => string.Equals(row.Status, RowStatusDuplicate, StringComparison.OrdinalIgnoreCase)),
             rowResults.Count(row => string.Equals(row.Status, RowStatusInvalid, StringComparison.OrdinalIgnoreCase)),
-            rowResults.All(row => !string.Equals(row.Status, RowStatusInvalid, StringComparison.OrdinalIgnoreCase)));
+            rowResults.All(row => !string.Equals(row.Status, RowStatusInvalid, StringComparison.OrdinalIgnoreCase)),
+            lookup);
     }
 
-    private async Task<List<AdminDataRowResultDto>> AnalyzeRowsAsync(string entity, IReadOnlyList<Dictionary<string, string?>> parsedRows, IReadOnlyDictionary<string, string?> filters, CancellationToken cancellationToken)
+    private async Task<List<AdminDataRowResultDto>> AnalyzeRowsAsync(string entity, IReadOnlyList<Dictionary<string, string?>> parsedRows, IReadOnlyDictionary<string, string?> filters, LookupCache lookup, CancellationToken cancellationToken)
     {
         var results = new List<AdminDataRowResultDto>(parsedRows.Count);
         var duplicateKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        var lookup = await CreateLookupAsync(cancellationToken).ConfigureAwait(false);
 
         for (var index = 0; index < parsedRows.Count; index++)
         {
@@ -495,14 +545,14 @@ public sealed class AdminDataService : IAdminDataService
         }
     }
 
-    private async Task ImportRowAsync(string entity, IReadOnlyDictionary<string, string?> values, ClaimsPrincipal user, CancellationToken cancellationToken)
+    private async Task ImportRowAsync(string entity, IReadOnlyDictionary<string, string?> values, ClaimsPrincipal user, LookupCache lookup, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
         switch (entity)
         {
             case "users":
-                await ImportUserAsync(values).ConfigureAwait(false);
+                await ImportUserAsync(values, lookup).ConfigureAwait(false);
                 break;
             case "courses":
                 await _courseService.CreateCourseAsync(new CreateCourse
@@ -511,7 +561,7 @@ public sealed class AdminDataService : IAdminDataService
                 }, user).ConfigureAwait(false);
                 break;
             case "sections":
-                await ImportSectionAsync(values, cancellationToken).ConfigureAwait(false);
+                await ImportSectionAsync(values, lookup).ConfigureAwait(false);
                 break;
             case "subjects":
                 await _subjectService.CreateSubjectAsync(new CreateSubject
@@ -527,17 +577,17 @@ public sealed class AdminDataService : IAdminDataService
                 }).ConfigureAwait(false);
                 break;
             case "schedules":
-                await ImportScheduleAsync(values, cancellationToken).ConfigureAwait(false);
+                await ImportScheduleAsync(values, lookup).ConfigureAwait(false);
                 break;
             case "enrollments":
-                await ImportEnrollmentAsync(values, cancellationToken).ConfigureAwait(false);
+                await ImportEnrollmentAsync(values, lookup).ConfigureAwait(false);
                 break;
             default:
                 throw new AppValidationEx($"Unsupported entity '{entity}'.");
         }
     }
 
-    private async Task ImportUserAsync(IReadOnlyDictionary<string, string?> values)
+    private async Task ImportUserAsync(IReadOnlyDictionary<string, string?> values, LookupCache lookup)
     {
         var role = NormalizeRole(values.GetValueOrDefault("role"));
         var sectionName = values.GetValueOrDefault("sectionname");
@@ -545,12 +595,14 @@ public sealed class AdminDataService : IAdminDataService
 
         if (role == RoleConstants.Student && !string.IsNullOrWhiteSpace(sectionName))
         {
-            sectionId = await _context.Sections
-                .AsNoTracking()
-                .Where(section => section.Name == sectionName)
-                .Select(section => (int?)section.Id)
-                .FirstOrDefaultAsync()
-                .ConfigureAwait(false);
+            if (lookup.SectionIdsByName.TryGetValue(sectionName, out var cachedSectionId))
+            {
+                sectionId = cachedSectionId;
+            }
+            else
+            {
+                throw new EntityNotFoundException<string>("Section", sectionName, $"Section '{sectionName}' was not found.");
+            }
         }
 
         await _accountService.RegisterAsync(new RegisterDto
@@ -566,17 +618,10 @@ public sealed class AdminDataService : IAdminDataService
         }).ConfigureAwait(false);
     }
 
-    private async Task ImportSectionAsync(IReadOnlyDictionary<string, string?> values, CancellationToken cancellationToken)
+    private async Task ImportSectionAsync(IReadOnlyDictionary<string, string?> values, LookupCache lookup)
     {
         var courseName = values.GetValueOrDefault("coursename") ?? string.Empty;
-        var courseId = await _context.Courses
-            .AsNoTracking()
-            .Where(course => course.Name == courseName)
-            .Select(course => course.Id)
-            .FirstOrDefaultAsync(cancellationToken)
-            .ConfigureAwait(false);
-
-        if (courseId == 0)
+        if (!lookup.CourseIdsByName.TryGetValue(courseName, out var courseId))
         {
             throw new EntityNotFoundException<string>("Course", courseName, $"Course '{courseName}' was not found.");
         }
@@ -588,48 +633,26 @@ public sealed class AdminDataService : IAdminDataService
         }).ConfigureAwait(false);
     }
 
-    private async Task ImportScheduleAsync(IReadOnlyDictionary<string, string?> values, CancellationToken cancellationToken)
+    private async Task ImportScheduleAsync(IReadOnlyDictionary<string, string?> values, LookupCache lookup)
     {
         var subjectCode = values.GetValueOrDefault("subjectcode") ?? string.Empty;
         var classroomName = values.GetValueOrDefault("classroomname") ?? string.Empty;
         var sectionName = values.GetValueOrDefault("sectionname") ?? string.Empty;
         var instructorEmail = values.GetValueOrDefault("instructoremail") ?? string.Empty;
 
-        var subjectId = await _context.Subjects.AsNoTracking()
-            .Where(subject => subject.Code == subjectCode)
-            .Select(subject => subject.Id)
-            .FirstOrDefaultAsync(cancellationToken)
-            .ConfigureAwait(false);
-        var classroomId = await _context.Classrooms.AsNoTracking()
-            .Where(classroom => classroom.Name == classroomName)
-            .Select(classroom => classroom.Id)
-            .FirstOrDefaultAsync(cancellationToken)
-            .ConfigureAwait(false);
-        var sectionId = await _context.Sections.AsNoTracking()
-            .Where(section => section.Name == sectionName)
-            .Select(section => section.Id)
-            .FirstOrDefaultAsync(cancellationToken)
-            .ConfigureAwait(false);
-        var instructorId = await _context.Instructors.AsNoTracking()
-            .Include(instructor => instructor.User)
-            .Where(instructor => !instructor.IsDeleted && instructor.User.Email == instructorEmail)
-            .Select(instructor => instructor.Id)
-            .FirstOrDefaultAsync(cancellationToken)
-            .ConfigureAwait(false);
-
-        if (subjectId == 0)
+        if (!lookup.SubjectIdsByCode.TryGetValue(subjectCode, out var subjectId))
         {
             throw new EntityNotFoundException<string>("Subject", subjectCode, $"Subject '{subjectCode}' was not found.");
         }
-        if (classroomId == 0)
+        if (!lookup.ClassroomIdsByName.TryGetValue(classroomName, out var classroomId))
         {
             throw new EntityNotFoundException<string>("Classroom", classroomName, $"Classroom '{classroomName}' was not found.");
         }
-        if (sectionId == 0)
+        if (!lookup.SectionIdsByName.TryGetValue(sectionName, out var sectionId))
         {
             throw new EntityNotFoundException<string>("Section", sectionName, $"Section '{sectionName}' was not found.");
         }
-        if (instructorId == 0)
+        if (!lookup.InstructorIdsByEmail.TryGetValue(instructorEmail, out var instructorId))
         {
             throw new EntityNotFoundException<string>("Instructor", instructorEmail, $"Instructor '{instructorEmail}' was not found.");
         }
@@ -646,38 +669,21 @@ public sealed class AdminDataService : IAdminDataService
         }).ConfigureAwait(false);
     }
 
-    private async Task ImportEnrollmentAsync(IReadOnlyDictionary<string, string?> values, CancellationToken cancellationToken)
+    private async Task ImportEnrollmentAsync(IReadOnlyDictionary<string, string?> values, LookupCache lookup)
     {
         var studentEmail = values.GetValueOrDefault("studentemail") ?? string.Empty;
         var sectionName = values.GetValueOrDefault("sectionname") ?? string.Empty;
         var subjectCode = values.GetValueOrDefault("subjectcode") ?? string.Empty;
 
-        var studentId = await _context.Students.AsNoTracking()
-            .Include(student => student.User)
-            .Where(student => !student.IsDeleted && student.User.Email == studentEmail)
-            .Select(student => student.Id)
-            .FirstOrDefaultAsync(cancellationToken)
-            .ConfigureAwait(false);
-        var sectionId = await _context.Sections.AsNoTracking()
-            .Where(section => section.Name == sectionName)
-            .Select(section => section.Id)
-            .FirstOrDefaultAsync(cancellationToken)
-            .ConfigureAwait(false);
-        var subjectId = await _context.Subjects.AsNoTracking()
-            .Where(subject => subject.Code == subjectCode)
-            .Select(subject => subject.Id)
-            .FirstOrDefaultAsync(cancellationToken)
-            .ConfigureAwait(false);
-
-        if (studentId == 0)
+        if (!lookup.StudentIdsByEmail.TryGetValue(studentEmail, out var studentId))
         {
             throw new EntityNotFoundException<string>("Student", studentEmail, $"Student '{studentEmail}' was not found.");
         }
-        if (sectionId == 0)
+        if (!lookup.SectionIdsByName.TryGetValue(sectionName, out var sectionId))
         {
             throw new EntityNotFoundException<string>("Section", sectionName, $"Section '{sectionName}' was not found.");
         }
-        if (subjectId == 0)
+        if (!lookup.SubjectIdsByCode.TryGetValue(subjectCode, out var subjectId))
         {
             throw new EntityNotFoundException<string>("Subject", subjectCode, $"Subject '{subjectCode}' was not found.");
         }
@@ -1333,7 +1339,8 @@ public sealed class AdminDataService : IAdminDataService
         int ReadyRows,
         int DuplicateRows,
         int InvalidRows,
-        bool CanImport);
+        bool CanImport,
+        LookupCache Lookup);
 
     private sealed record LookupCache(
         IReadOnlyDictionary<string, int> CourseIdsByName,

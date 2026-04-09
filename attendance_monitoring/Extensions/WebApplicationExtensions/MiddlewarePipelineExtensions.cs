@@ -137,7 +137,8 @@ public static class MiddlewarePipelineExtensions
         this WebApplication app,
         string corsPolicy = "AllowFrontend")
     {
-        if (!app.Environment.IsDevelopment())
+        // HTTPS redirection only in Development; production TLS is terminated by the reverse proxy
+        if (app.Environment.IsDevelopment())
         {
             app.UseHttpsRedirection();
         }
