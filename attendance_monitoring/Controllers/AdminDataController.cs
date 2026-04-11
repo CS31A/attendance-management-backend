@@ -1,4 +1,5 @@
 using attendance_monitoring.IServices;
+using attendance_monitoring.Models.DTO.Request;
 using attendance_monitoring.Models.DTO.Response.AdminData;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -26,9 +27,9 @@ public class AdminDataController(IAdminDataService adminDataService, ILogger<Adm
     [Consumes("multipart/form-data")]
     [ProducesResponseType(typeof(AdminDataPreviewResponseDto), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(AdminDataPreviewResponseDto), StatusCodes.Status400BadRequest)]
-    public async Task<ActionResult<AdminDataPreviewResponseDto>> ImportPreview(string entity, [FromForm] IFormFile? file, CancellationToken cancellationToken)
+    public async Task<ActionResult<AdminDataPreviewResponseDto>> ImportPreview(string entity, [FromForm] FileUploadRequest request, CancellationToken cancellationToken)
     {
-        if (file == null || file.Length == 0)
+        if (request.File == null || request.File.Length == 0)
         {
             return BadRequest(new AdminDataPreviewResponseDto
             {
@@ -41,7 +42,7 @@ public class AdminDataController(IAdminDataService adminDataService, ILogger<Adm
 
         logger.LogInformation("Previewing bulk import for entity {Entity}", entity);
         var filters = GetImportFilters();
-        var response = await adminDataService.PreviewImportAsync(entity, file, filters, cancellationToken).ConfigureAwait(false);
+        var response = await adminDataService.PreviewImportAsync(entity, request.File, filters, cancellationToken).ConfigureAwait(false);
         return Ok(response);
     }
 
@@ -49,9 +50,9 @@ public class AdminDataController(IAdminDataService adminDataService, ILogger<Adm
     [Consumes("multipart/form-data")]
     [ProducesResponseType(typeof(AdminDataImportResponseDto), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(AdminDataImportResponseDto), StatusCodes.Status400BadRequest)]
-    public async Task<ActionResult<AdminDataImportResponseDto>> Import(string entity, [FromForm] IFormFile? file, CancellationToken cancellationToken)
+    public async Task<ActionResult<AdminDataImportResponseDto>> Import(string entity, [FromForm] FileUploadRequest request, CancellationToken cancellationToken)
     {
-        if (file == null || file.Length == 0)
+        if (request.File == null || request.File.Length == 0)
         {
             return BadRequest(new AdminDataImportResponseDto
             {
@@ -64,7 +65,7 @@ public class AdminDataController(IAdminDataService adminDataService, ILogger<Adm
 
         logger.LogInformation("Committing bulk import for entity {Entity}", entity);
         var filters = GetImportFilters();
-        var response = await adminDataService.ImportAsync(entity, file, User, filters, cancellationToken).ConfigureAwait(false);
+        var response = await adminDataService.ImportAsync(entity, request.File, User, filters, cancellationToken).ConfigureAwait(false);
         return response.Success ? Ok(response) : BadRequest(response);
     }
 

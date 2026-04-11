@@ -14,9 +14,6 @@ public static class ApiDocumentationExtensions
     /// <returns>The service collection for chaining.</returns>
     public static IServiceCollection AddApiDocumentation(this IServiceCollection services)
     {
-        // Add OpenAPI support
-        services.AddOpenApi();
-
         // Configure Swagger with JWT Bearer authentication
         services.AddSwaggerGen(c =>
         {
@@ -48,4 +45,5 @@ public static class ApiDocumentationExtensions
         return services;
     }
 }
+
 

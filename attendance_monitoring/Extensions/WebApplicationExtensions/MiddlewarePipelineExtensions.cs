@@ -112,7 +112,6 @@ public static class MiddlewarePipelineExtensions
             {
                 c.SwaggerEndpoint("/swagger/v1/swagger.json", "Attendance Monitoring API");
             });
-            app.MapOpenApi();
 
             // Configure Scalar to use the Swagger-generated OpenAPI document (includes MVC controller endpoints)
             app.MapScalarApiReference(options =>
