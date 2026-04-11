@@ -1,5 +1,6 @@
 using attendance_monitoring.Controllers;
 using attendance_monitoring.IServices;
+using attendance_monitoring.Models.DTO.Request;
 using attendance_monitoring.Models.DTO.Response.AdminData;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -19,7 +20,7 @@ public class AdminDataControllerTest
     {
         var controller = CreateController();
 
-        var result = await controller.ImportPreview("users", null!, CancellationToken.None);
+        var result = await controller.ImportPreview("users", new FileUploadRequest { File = null! }, CancellationToken.None);
 
         var badRequest = Assert.IsType<BadRequestObjectResult>(result.Result);
         var payload = Assert.IsType<AdminDataPreviewResponseDto>(badRequest.Value);
@@ -33,6 +34,7 @@ public class AdminDataControllerTest
     {
         var controller = CreateController();
         var file = CreateFormFile("users.csv", "username,email\nalpha,alpha@example.com\n");
+        var request = new FileUploadRequest { File = file };
         var preview = new AdminDataPreviewResponseDto
         {
             Success = true,
@@ -47,7 +49,7 @@ public class AdminDataControllerTest
         _service.Setup(s => s.PreviewImportAsync("users", file, It.IsAny<IReadOnlyDictionary<string, string?>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(preview);
 
-        var result = await controller.ImportPreview("users", file, CancellationToken.None);
+        var result = await controller.ImportPreview("users", request, CancellationToken.None);
 
         var ok = Assert.IsType<OkObjectResult>(result.Result);
         var payload = Assert.IsType<AdminDataPreviewResponseDto>(ok.Value);
@@ -60,6 +62,7 @@ public class AdminDataControllerTest
     {
         var controller = CreateController();
         var file = CreateFormFile("courses.csv", "name\nCourse Name\n");
+        var request = new FileUploadRequest { File = file };
         var response = new AdminDataImportResponseDto
         {
             Success = false,
@@ -73,7 +76,7 @@ public class AdminDataControllerTest
         _service.Setup(s => s.ImportAsync("courses", file, It.IsAny<System.Security.Claims.ClaimsPrincipal>(), It.IsAny<IReadOnlyDictionary<string, string?>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(response);
 
-        var result = await controller.Import("courses", file, CancellationToken.None);
+        var result = await controller.Import("courses", request, CancellationToken.None);
 
         var badRequest = Assert.IsType<BadRequestObjectResult>(result.Result);
         var payload = Assert.IsType<AdminDataImportResponseDto>(badRequest.Value);

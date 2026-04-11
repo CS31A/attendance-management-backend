@@ -6,12 +6,15 @@ using attendance_monitoring.Models.DTO;
 using attendance_monitoring.Models.DTO.Request;
 using attendance_monitoring.Models.DTO.Response;
 using attendance_monitoring.Options;
+using attendance_monitoring.Repositories;
+using attendance_monitoring.Services;
 using attendance_monitoring.Services.AdminData;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
+using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using System.Security.Claims;
@@ -731,6 +734,83 @@ public class AdminDataServiceTests
         Assert.Contains(result.Rows[1].Issues, issue => issue.Code == "import_failed");
     }
 
+    [Fact]
+    public async Task ImportAsync_ClassroomsCsv_WithRetryingExecutionStrategy_DoesNotThrowTransactionError()
+    {
+        await using var sqlite = await CreateSqliteDatabaseAsync(useRetryingExecutionStrategy: true);
+        await using var context = new ApplicationDbContext(sqlite.Options);
+
+        var accountService = new Mock<IAccountService>();
+        accountService.Setup(s => s.GetAllUsersAsync(It.IsAny<UserStatus>()))
+            .ReturnsAsync(Array.Empty<GetAllUsersDto>());
+
+        var classroomRepository = new ClassroomRepository(context);
+        var classroomService = new ClassroomService(classroomRepository, Mock.Of<ILogger<ClassroomService>>());
+        var service = new AdminDataService(
+            context,
+            accountService.Object,
+            Mock.Of<ICourseService>(),
+            classroomService,
+            Mock.Of<ISectionService>(),
+            Mock.Of<IScheduleService>(),
+            Mock.Of<IStudentEnrollmentService>(),
+            Mock.Of<ISubjectService>(),
+            Options.Create(new BulkDataOptions()),
+            Mock.Of<ILogger<AdminDataService>>());
+
+        var file = CreateFormFile("classrooms.csv", "name\nNetwork Laboratory\n");
+        var result = await service.ImportAsync("classrooms", file, CreatePrincipal(), new Dictionary<string, string?>());
+
+        Assert.True(result.Success);
+        Assert.Equal(1, result.CreatedRows);
+        Assert.Equal(0, result.FailedRows);
+        Assert.Equal(0, result.SkippedDuplicateRows);
+        Assert.Single(context.Classrooms.AsNoTracking().ToList());
+    }
+
+    [Fact]
+    public async Task ImportAsync_ClassroomsCsv_WithAmbientTransaction_UsesExistingTransactionWithoutCommittingIt()
+    {
+        await using var sqlite = await CreateSqliteDatabaseAsync();
+        await using var context = new ApplicationDbContext(sqlite.Options);
+
+        var accountService = new Mock<IAccountService>();
+        accountService.Setup(s => s.GetAllUsersAsync(It.IsAny<UserStatus>()))
+            .ReturnsAsync(Array.Empty<GetAllUsersDto>());
+
+        var classroomRepository = new ClassroomRepository(context);
+        var classroomService = new ClassroomService(classroomRepository, Mock.Of<ILogger<ClassroomService>>());
+        var service = new AdminDataService(
+            context,
+            accountService.Object,
+            Mock.Of<ICourseService>(),
+            classroomService,
+            Mock.Of<ISectionService>(),
+            Mock.Of<IScheduleService>(),
+            Mock.Of<IStudentEnrollmentService>(),
+            Mock.Of<ISubjectService>(),
+            Options.Create(new BulkDataOptions()),
+            Mock.Of<ILogger<AdminDataService>>());
+
+        await using var transaction = await context.Database.BeginTransactionAsync();
+        var currentTransaction = context.Database.CurrentTransaction;
+
+        var file = CreateFormFile("classrooms.csv", "name\nNetwork Laboratory\n");
+        var result = await service.ImportAsync("classrooms", file, CreatePrincipal(), new Dictionary<string, string?>());
+
+        Assert.True(result.Success);
+        Assert.Equal(1, result.CreatedRows);
+        Assert.Equal(0, result.FailedRows);
+        Assert.Equal(0, result.SkippedDuplicateRows);
+        Assert.Same(currentTransaction, context.Database.CurrentTransaction);
+        Assert.Single(context.Classrooms.AsNoTracking().ToList());
+
+        await transaction.RollbackAsync();
+
+        await using var verificationContext = new ApplicationDbContext(sqlite.Options);
+        Assert.Empty(verificationContext.Classrooms.AsNoTracking().ToList());
+    }
+
     private static AdminDataService CreateService(
         ApplicationDbContext context,
         IAccountService accountService,
@@ -765,14 +845,20 @@ public class AdminDataServiceTests
         return new ApplicationDbContext(options);
     }
 
-    private static async Task<SqliteTestDatabase> CreateSqliteDatabaseAsync()
+    private static async Task<SqliteTestDatabase> CreateSqliteDatabaseAsync(bool useRetryingExecutionStrategy = false)
     {
         var connection = new SqliteConnection("Data Source=:memory:");
         await connection.OpenAsync();
 
-        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
-            .UseSqlite(connection)
-            .Options;
+        var optionsBuilder = new DbContextOptionsBuilder<ApplicationDbContext>()
+            .UseSqlite(connection);
+
+        if (useRetryingExecutionStrategy)
+        {
+            optionsBuilder.ReplaceService<IExecutionStrategyFactory, TestRetryingExecutionStrategyFactory>();
+        }
+
+        var options = optionsBuilder.Options;
 
         await using var setupContext = new ApplicationDbContext(options);
         await setupContext.Database.EnsureCreatedAsync();
@@ -800,6 +886,29 @@ public class AdminDataServiceTests
             await Connection.CloseAsync();
             await Connection.DisposeAsync();
         }
+    }
+
+    private sealed class TestRetryingExecutionStrategyFactory : IExecutionStrategyFactory
+    {
+        private readonly ExecutionStrategyDependencies _dependencies;
+
+        public TestRetryingExecutionStrategyFactory(ExecutionStrategyDependencies dependencies)
+        {
+            _dependencies = dependencies;
+        }
+
+        public IExecutionStrategy Create()
+            => new TestRetryingExecutionStrategy(_dependencies);
+    }
+
+    private sealed class TestRetryingExecutionStrategy : ExecutionStrategy
+    {
+        public TestRetryingExecutionStrategy(ExecutionStrategyDependencies dependencies)
+            : base(dependencies, 1, TimeSpan.FromMilliseconds(1))
+        {
+        }
+
+        protected override bool ShouldRetryOn(Exception exception) => false;
     }
 
     private static FormFile CreateFormFile(string fileName, string content)

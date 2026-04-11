@@ -76,7 +76,32 @@ public sealed class AdminDataService : IAdminDataService
     public async Task<AdminDataImportResponseDto> ImportAsync(string entity, IFormFile file, ClaimsPrincipal user, IReadOnlyDictionary<string, string?> filters, CancellationToken cancellationToken = default)
     {
         var analysis = await AnalyzeImportCoreAsync(entity, file, filters, cancellationToken).ConfigureAwait(false);
-        var response = new AdminDataImportResponseDto
+        var response = CreateImportResponse(analysis);
+
+        if (!analysis.CanImport)
+        {
+            response.FailedRows = analysis.InvalidRows;
+            response.SkippedDuplicateRows = analysis.DuplicateRows;
+            ApplyIssueLimit(response.FileIssues, response.Rows);
+            return response;
+        }
+
+        if (_context.Database.IsInMemory() || _context.Database.CurrentTransaction != null)
+        {
+            return await ImportAnalyzedRowsAsync(
+                analysis,
+                user,
+                useTransaction: _context.Database.CurrentTransaction == null,
+                cancellationToken).ConfigureAwait(false);
+        }
+
+        var strategy = _context.Database.CreateExecutionStrategy();
+        return await strategy.ExecuteAsync(() => ImportAnalyzedRowsAsync(analysis, user, useTransaction: true, cancellationToken))
+            .ConfigureAwait(false);
+    }
+
+    private static AdminDataImportResponseDto CreateImportResponse(ImportAnalysisResult analysis)
+        => new()
         {
             Success = false,
             Entity = analysis.Entity,
@@ -87,15 +112,38 @@ public sealed class AdminDataService : IAdminDataService
             Rows = analysis.Rows.Select(CloneRow).ToList(),
         };
 
-        if (!analysis.CanImport)
+    private static void ConvertImportedRowsToRollbackFailures(AdminDataImportResponseDto response)
+    {
+        foreach (var row in response.Rows)
         {
-            response.FailedRows = analysis.InvalidRows;
-            response.SkippedDuplicateRows = analysis.DuplicateRows;
-            ApplyIssueLimit(response.FileIssues, response.Rows);
-            return response;
+            if (string.Equals(row.Status, RowStatusImported, StringComparison.OrdinalIgnoreCase))
+            {
+                row.Status = RowStatusFailed;
+                row.Issues.Add(CreateIssue(row.RowNumber, RollbackIssueCode, "error", RollbackIssueMessage));
+                response.CreatedRows--;
+                response.FailedRows++;
+            }
+        }
+    }
+
+    private async Task<AdminDataImportResponseDto> ImportAnalyzedRowsAsync(ImportAnalysisResult analysis, ClaimsPrincipal user, bool useTransaction, CancellationToken cancellationToken)
+    {
+        if (useTransaction)
+        {
+            await using var transaction = await _context.Database.BeginTransactionAsync(cancellationToken).ConfigureAwait(false);
+            return await ImportAnalyzedRowsCoreAsync(analysis, user, transaction, cancellationToken).ConfigureAwait(false);
         }
 
-        await using var transaction = await _context.Database.BeginTransactionAsync(cancellationToken).ConfigureAwait(false);
+        return await ImportAnalyzedRowsCoreAsync(analysis, user, transaction: null, cancellationToken).ConfigureAwait(false);
+    }
+
+    private async Task<AdminDataImportResponseDto> ImportAnalyzedRowsCoreAsync(
+        ImportAnalysisResult analysis,
+        ClaimsPrincipal user,
+        IDbContextTransaction? transaction,
+        CancellationToken cancellationToken)
+    {
+        var response = CreateImportResponse(analysis);
 
         try
         {
@@ -137,17 +185,10 @@ public sealed class AdminDataService : IAdminDataService
 
             if (response.FailedRows > 0)
             {
-                await RollbackWithoutCancellationAsync(transaction).ConfigureAwait(false);
-
-                foreach (var row in response.Rows)
+                if (transaction != null)
                 {
-                    if (string.Equals(row.Status, RowStatusImported, StringComparison.OrdinalIgnoreCase))
-                    {
-                        row.Status = RowStatusFailed;
-                        row.Issues.Add(CreateIssue(row.RowNumber, RollbackIssueCode, "error", RollbackIssueMessage));
-                        response.CreatedRows--;
-                        response.FailedRows++;
-                    }
+                    await RollbackWithoutCancellationAsync(transaction).ConfigureAwait(false);
+                    ConvertImportedRowsToRollbackFailures(response);
                 }
 
                 response.Success = false;
@@ -155,30 +196,26 @@ public sealed class AdminDataService : IAdminDataService
                 return response;
             }
 
-            await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
+            if (transaction != null)
+            {
+                await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
+            }
+
             response.Success = response.FailedRows == 0;
+            ApplyIssueLimit(response.FileIssues, response.Rows);
+            return response;
         }
         catch
         {
-            await RollbackWithoutCancellationAsync(transaction).ConfigureAwait(false);
-
-            foreach (var row in response.Rows)
+            if (transaction != null)
             {
-                if (string.Equals(row.Status, RowStatusImported, StringComparison.OrdinalIgnoreCase))
-                {
-                    row.Status = RowStatusFailed;
-                    row.Issues.Add(CreateIssue(row.RowNumber, RollbackIssueCode, "error", RollbackIssueMessage));
-                    response.CreatedRows--;
-                    response.FailedRows++;
-                }
+                await RollbackWithoutCancellationAsync(transaction).ConfigureAwait(false);
+                ConvertImportedRowsToRollbackFailures(response);
             }
 
             response.Success = false;
             throw;
         }
-
-        ApplyIssueLimit(response.FileIssues, response.Rows);
-        return response;
     }
 
     private static Task RollbackWithoutCancellationAsync(IDbContextTransaction transaction)
