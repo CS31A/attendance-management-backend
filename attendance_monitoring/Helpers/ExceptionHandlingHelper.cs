@@ -49,7 +49,7 @@ public static class ExceptionHandlingHelper
 
     /// <summary>
     /// Determines if the exception is caused by a foreign key constraint violation.
-    /// Supports both SQL Server and SQLite database providers.
+    /// Supports SQL Server, SQLite, and PostgreSQL database providers.
     /// </summary>
     /// <param name="ex">The DbUpdateException to analyze.</param>
     /// <returns>True if the exception is due to a foreign key constraint violation; otherwise, false.</returns>
@@ -68,6 +68,13 @@ public static class ExceptionHandlingHelper
 
         // SQLite foreign key violation
         if (innerException.Contains("FOREIGN KEY constraint failed"))
+        {
+            return true;
+        }
+
+        // PostgreSQL foreign key violation (SQLSTATE 23503)
+        if (innerException.Contains("violates foreign key constraint") ||
+            innerException.Contains("23503"))
         {
             return true;
         }

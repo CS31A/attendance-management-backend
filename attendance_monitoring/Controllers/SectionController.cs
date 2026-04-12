@@ -13,6 +13,18 @@ namespace attendance_monitoring.Controllers
     [Route("api/sections")]
     public class SectionController(ISectionService sectionService, ILogger<SectionController> logger) : ControllerBase
     {
+        private ErrorResponseDto CreateErrorResponse(string message, int statusCode)
+        {
+            return new ErrorResponseDto
+            {
+                Success = false,
+                Message = message,
+                StatusCode = statusCode,
+                Path = Request?.Path,
+                Timestamp = DateTime.UtcNow
+            };
+        }
+
         [HttpGet("{id:int}")]
         public async Task<ActionResult<SectionResponseDto>> GetSection(int id)
         {
@@ -124,6 +136,11 @@ namespace attendance_monitoring.Controllers
             {
                 logger.LogWarning(ex, "Section with ID {SectionId} not found for deletion", id);
                 return NotFound($"Section with ID {id} not found");
+            }
+            catch (EntityConflictException ex)
+            {
+                logger.LogWarning(ex, "Cannot delete section {SectionId}: {ConflictReason}", id, ex.Message);
+                return Conflict(CreateErrorResponse(ex.Message, StatusCodes.Status409Conflict));
             }
             catch (EntityServiceException ex)
             {
