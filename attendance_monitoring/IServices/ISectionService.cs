@@ -25,5 +25,7 @@ namespace attendance_monitoring.IServices
         Task<SectionResponseDto> CreateSectionAsync(Section section);
         Task<SectionResponseDto> UpdateSectionAsync(int id, Section section);
         Task DeleteSectionAsync(int id);
+        Task<bool> HasStudentsInSectionAsync(int sectionId);
+        Task<bool> HasStudentEnrollmentsInSectionAsync(int sectionId);
     }
 }

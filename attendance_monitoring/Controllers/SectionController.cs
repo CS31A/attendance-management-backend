@@ -175,5 +175,49 @@ namespace attendance_monitoring.Controllers
                 return StatusCode(500, "An error occurred while retrieving students");
             }
         }
+
+        [Authorize(Policy = "PrivilegedPolicy")]
+        [HttpGet("{sectionId:int}/has-students")]
+        public async Task<ActionResult<bool>> HasStudentsInSection(int sectionId)
+        {
+            try
+            {
+                if (sectionId <= 0)
+                {
+                    logger.LogWarning("Invalid section ID {SectionId} provided for dependency check.", sectionId);
+                    return BadRequest("Section ID must be greater than 0.");
+                }
+
+                var hasStudents = await sectionService.HasStudentsInSectionAsync(sectionId);
+                return Ok(hasStudents);
+            }
+            catch (EntityServiceException ex)
+            {
+                logger.LogError(ex, "Service error occurred while checking students for section with ID {SectionId}", sectionId);
+                return StatusCode(500, "An error occurred while checking section dependencies");
+            }
+        }
+
+        [Authorize(Policy = "PrivilegedPolicy")]
+        [HttpGet("{sectionId:int}/has-enrollments")]
+        public async Task<ActionResult<bool>> HasStudentEnrollmentsInSection(int sectionId)
+        {
+            try
+            {
+                if (sectionId <= 0)
+                {
+                    logger.LogWarning("Invalid section ID {SectionId} provided for dependency check.", sectionId);
+                    return BadRequest("Section ID must be greater than 0.");
+                }
+
+                var hasEnrollments = await sectionService.HasStudentEnrollmentsInSectionAsync(sectionId);
+                return Ok(hasEnrollments);
+            }
+            catch (EntityServiceException ex)
+            {
+                logger.LogError(ex, "Service error occurred while checking enrollments for section with ID {SectionId}", sectionId);
+                return StatusCode(500, "An error occurred while checking section dependencies");
+            }
+        }
     }
 }

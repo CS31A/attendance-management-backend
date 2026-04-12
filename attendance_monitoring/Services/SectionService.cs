@@ -244,5 +244,39 @@ namespace attendance_monitoring.Services
             }
         }
         #endregion
+
+        #region Dependency Check Operations
+        public async Task<bool> HasStudentsInSectionAsync(int sectionId)
+        {
+            try
+            {
+                logger.LogInformation("Checking if section {SectionId} has students", sectionId);
+                var hasStudents = await sectionRepository.HasStudentsInSectionAsync(sectionId).ConfigureAwait(false);
+                logger.LogInformation("Section {SectionId} has students: {HasStudents}", sectionId, hasStudents);
+                return hasStudents;
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Error checking if section {SectionId} has students", sectionId);
+                throw new EntityServiceException("Section", $"HasStudentsInSection: {sectionId}", "Error checking section dependencies", ex);
+            }
+        }
+
+        public async Task<bool> HasStudentEnrollmentsInSectionAsync(int sectionId)
+        {
+            try
+            {
+                logger.LogInformation("Checking if section {SectionId} has student enrollments", sectionId);
+                var hasEnrollments = await sectionRepository.HasStudentEnrollmentsInSectionAsync(sectionId).ConfigureAwait(false);
+                logger.LogInformation("Section {SectionId} has student enrollments: {HasEnrollments}", sectionId, hasEnrollments);
+                return hasEnrollments;
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Error checking if section {SectionId} has student enrollments", sectionId);
+                throw new EntityServiceException("Section", $"HasStudentEnrollmentsInSection: {sectionId}", "Error checking section dependencies", ex);
+            }
+        }
+        #endregion
     }
 }
