@@ -219,5 +219,27 @@ namespace attendance_monitoring.Controllers
                 return StatusCode(500, "An error occurred while checking section dependencies");
             }
         }
+
+        [Authorize(Policy = "PrivilegedPolicy")]
+        [HttpGet("{sectionId:int}/has-schedules")]
+        public async Task<ActionResult<bool>> HasSchedulesInSection(int sectionId)
+        {
+            try
+            {
+                if (sectionId <= 0)
+                {
+                    logger.LogWarning("Invalid section ID {SectionId} provided for dependency check.", sectionId);
+                    return BadRequest("Section ID must be greater than 0.");
+                }
+
+                var hasSchedules = await sectionService.HasSchedulesInSectionAsync(sectionId);
+                return Ok(hasSchedules);
+            }
+            catch (EntityServiceException ex)
+            {
+                logger.LogError(ex, "Service error occurred while checking schedules for section with ID {SectionId}", sectionId);
+                return StatusCode(500, "An error occurred while checking section dependencies");
+            }
+        }
     }
 }
