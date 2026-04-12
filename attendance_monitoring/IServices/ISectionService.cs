@@ -27,5 +27,6 @@ namespace attendance_monitoring.IServices
         Task DeleteSectionAsync(int id);
         Task<bool> HasStudentsInSectionAsync(int sectionId);
         Task<bool> HasStudentEnrollmentsInSectionAsync(int sectionId);
+        Task<bool> HasSchedulesInSectionAsync(int sectionId);
     }
 }

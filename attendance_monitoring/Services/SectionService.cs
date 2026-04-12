@@ -277,6 +277,22 @@ namespace attendance_monitoring.Services
                 throw new EntityServiceException("Section", $"HasStudentEnrollmentsInSection: {sectionId}", "Error checking section dependencies", ex);
             }
         }
+
+        public async Task<bool> HasSchedulesInSectionAsync(int sectionId)
+        {
+            try
+            {
+                logger.LogInformation("Checking if section {SectionId} has schedules", sectionId);
+                var hasSchedules = await sectionRepository.HasSchedulesInSectionAsync(sectionId).ConfigureAwait(false);
+                logger.LogInformation("Section {SectionId} has schedules: {HasSchedules}", sectionId, hasSchedules);
+                return hasSchedules;
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Error checking if section {SectionId} has schedules", sectionId);
+                throw new EntityServiceException("Section", $"HasSchedulesInSection: {sectionId}", "Error checking section dependencies", ex);
+            }
+        }
         #endregion
     }
 }

@@ -110,6 +110,16 @@ namespace attendance_monitoring.Repositories
         }
         #endregion
 
+        #region HasSchedulesInSectionAsync
+        public async Task<bool> HasSchedulesInSectionAsync(int sectionId)
+        {
+            return await context.Schedules
+                .AsNoTracking()
+                .AnyAsync(s => s.SectionId == sectionId)
+                .ConfigureAwait(false);
+        }
+        #endregion
+
         #endregion
 
         #region Utility Operations

@@ -70,5 +70,12 @@ namespace attendance_monitoring.IRepository
         /// <returns>True if student enrollments exist for this section; otherwise, false.</returns>
         Task<bool> HasStudentEnrollmentsInSectionAsync(int sectionId);
 
+        /// <summary>
+        /// Checks if there are any schedules assigned to this section.
+        /// </summary>
+        /// <param name="sectionId">The section ID.</param>
+        /// <returns>True if schedules exist for this section; otherwise, false.</returns>
+        Task<bool> HasSchedulesInSectionAsync(int sectionId);
+
     }
 }
