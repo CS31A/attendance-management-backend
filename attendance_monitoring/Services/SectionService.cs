@@ -1,8 +1,10 @@
 using attendance_monitoring.Classes;
 using attendance_monitoring.Exceptions;
+using attendance_monitoring.Helpers;
 using attendance_monitoring.IRepository;
 using attendance_monitoring.IServices;
 using attendance_monitoring.Models.DTO.Response;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
 namespace attendance_monitoring.Services
@@ -167,7 +169,8 @@ namespace attendance_monitoring.Services
         /// </summary>
         /// <param name="id">The ID of the section to delete</param>
         /// <exception cref="T:attendance_monitoring.Exceptions.EntityNotFoundException{System.Int32}">Thrown when the section is not found</exception>
-        /// <exception cref="EntityServiceException">Thrown when section deletion fails</exception>
+        /// <exception cref="EntityConflictException">Thrown when section deletion is blocked by existing dependencies</exception>
+        /// <exception cref="EntityServiceException">Thrown when section deletion fails unexpectedly</exception>
         public async Task DeleteSectionAsync(int id)
         {
             try
@@ -188,11 +191,52 @@ namespace attendance_monitoring.Services
                 // Re-throw EntityNotFoundException as-is
                 throw;
             }
+            catch (DbUpdateException ex) when (ExceptionHandlingHelper.IsForeignKeyViolation(ex))
+            {
+                // Translate FK constraint violations into EntityConflictException
+                var conflictMessage = ResolveConflictMessage(ex);
+                logger.LogWarning(ex, "Cannot delete section {SectionId}: {ConflictMessage}", id, conflictMessage);
+                throw new EntityConflictException("Section", ResolveConflictType(ex), conflictMessage, ex);
+            }
             catch (Exception ex)
             {
                 logger.LogError(ex, "An error occurred while deleting section with ID {SectionId} from repository.", id);
                 throw new EntityServiceException("Section", $"DeleteSection: {id}", "An error occurred while deleting the section", ex);
             }
+        }
+
+        /// <summary>
+        /// Resolves the type of conflict based on the exception details.
+        /// </summary>
+        private static string ResolveConflictType(DbUpdateException ex)
+        {
+            var message = ex.InnerException?.Message?.ToLowerInvariant() ?? string.Empty;
+
+            if (message.Contains("schedule"))
+                return "schedules";
+            if (message.Contains("enrollment"))
+                return "enrollments";
+            if (message.Contains("student"))
+                return "students";
+
+            return "dependencies";
+        }
+
+        /// <summary>
+        /// Generates a user-friendly conflict message based on the exception details.
+        /// </summary>
+        private static string ResolveConflictMessage(DbUpdateException ex)
+        {
+            var message = ex.InnerException?.Message?.ToLowerInvariant() ?? string.Empty;
+
+            if (message.Contains("schedule"))
+                return "Cannot delete: Section has schedules assigned. Remove schedules first.";
+            if (message.Contains("enrollment"))
+                return "Cannot delete: Section has student enrollments. Remove enrollments first.";
+            if (message.Contains("student"))
+                return "Cannot delete: Section has assigned students. Reassign students first.";
+
+            return "Cannot delete: Section has dependencies that prevent deletion.";
         }
 
         #endregion
