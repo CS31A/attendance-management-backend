@@ -1,5 +1,6 @@
 using attendance_monitoring.Classes;
 using attendance_monitoring.Exceptions;
+using attendance_monitoring.Helpers;
 using attendance_monitoring.IRepository;
 using attendance_monitoring.IServices;
 using attendance_monitoring.Models.DTO.Response;
@@ -190,7 +191,7 @@ namespace attendance_monitoring.Services
                 // Re-throw EntityNotFoundException as-is
                 throw;
             }
-            catch (DbUpdateException ex) when (IsForeignKeyViolation(ex))
+            catch (DbUpdateException ex) when (ExceptionHandlingHelper.IsForeignKeyViolation(ex))
             {
                 // Translate FK constraint violations into EntityConflictException
                 var conflictMessage = ResolveConflictMessage(ex);
@@ -202,20 +203,6 @@ namespace attendance_monitoring.Services
                 logger.LogError(ex, "An error occurred while deleting section with ID {SectionId} from repository.", id);
                 throw new EntityServiceException("Section", $"DeleteSection: {id}", "An error occurred while deleting the section", ex);
             }
-        }
-
-        /// <summary>
-        /// Determines if a DbUpdateException represents a foreign key constraint violation.
-        /// </summary>
-        private static bool IsForeignKeyViolation(DbUpdateException ex)
-        {
-            // Check for SQL Server FK constraint violation (error number 547)
-            // or PostgreSQL FK violation (SQLSTATE 23503)
-            var innerMessage = ex.InnerException?.Message?.ToLowerInvariant() ?? string.Empty;
-            return innerMessage.Contains("foreign key") ||
-                   innerMessage.Contains("constraint") ||
-                   innerMessage.Contains("23503") ||
-                   innerMessage.Contains("547");
         }
 
         /// <summary>
