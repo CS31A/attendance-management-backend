@@ -202,4 +202,29 @@ public class SectionServiceTest
         Assert.Equal("Section", exception.EntityName);
         Assert.Equal("schedules", exception.ConflictType);
     }
+
+    [Fact]
+    public async Task DeleteSectionAsync_GenericConstraintViolation_ThrowsEntityServiceException()
+    {
+        // Arrange
+        const int sectionId = 1;
+        _mockSectionRepository
+            .Setup(repository => repository.DeleteSectionAsync(sectionId))
+            .ReturnsAsync(true);
+
+        // A constraint violation that is NOT a foreign key violation
+        // This should NOT be matched as a dependency conflict
+        var innerException = new Exception("constraint violation: value violates check constraint \"CK_Sections_NameNotEmpty\"");
+        var dbUpdateException = new DbUpdateException("Update exception", innerException);
+
+        _mockSectionRepository
+            .Setup(repository => repository.SaveChangesAsync())
+            .ThrowsAsync(dbUpdateException);
+
+        // Act & Assert
+        var exception = await Assert.ThrowsAsync<EntityServiceException>(() => _service.DeleteSectionAsync(sectionId));
+        Assert.Equal("Section", exception.EntityName);
+        Assert.Equal($"DeleteSection: {sectionId}", exception.Operation);
+        Assert.Same(dbUpdateException, exception.InnerException);
+    }
 }
