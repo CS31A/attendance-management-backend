@@ -10,6 +10,7 @@ namespace attendance_monitoring.IServices
         Task<IEnumerable<ScheduleResponseDto>> GetAllSchedulesAsync();
         Task<ScheduleResponseDto> GetScheduleByIdAsync(int id);
         Task<IEnumerable<ScheduleResponseDto>> GetSchedulesByInstructorIdAsync(int instructorId);
+        Task<IEnumerable<ScheduleResponseDto>> GetSchedulesBySectionIdAsync(int sectionId);
         Task<Schedules> CreateScheduleAsync(CreateSchedule createSchedule);
         Task<Schedules> UpdateScheduleAsync(int id, UpdateSchedule updateSchedule);
         Task DeleteScheduleAsync(int id, ClaimsPrincipal user);

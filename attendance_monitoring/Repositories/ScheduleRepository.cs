@@ -70,6 +70,21 @@ namespace attendance_monitoring.Repositories
         }
         #endregion
 
+        #region GetSchedulesBySectionIdAsync
+        public async Task<IEnumerable<Schedules>> GetSchedulesBySectionIdAsync(int sectionId)
+        {
+            return await context.Schedules
+                .AsNoTracking()
+                .Include(s => s.Subject)
+                .Include(s => s.Classroom)
+                .Include(s => s.Section)
+                .Include(s => s.Instructor)
+                    .ThenInclude(i => i.User)
+                .Where(s => s.SectionId == sectionId)
+                .ToListAsync();
+        }
+        #endregion
+
         #region GetSubjectsByInstructorIdAsync
         public async Task<IEnumerable<Subject>> GetSubjectsByInstructorIdAsync(int instructorId)
         {
