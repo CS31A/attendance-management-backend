@@ -84,6 +84,25 @@ namespace attendance_monitoring.Services
             }
         }
 
+        public async Task<IEnumerable<ScheduleResponseDto>> GetSchedulesBySectionIdAsync(int sectionId)
+        {
+            logger.LogInformation("Retrieving schedules for section ID: {SectionId}", sectionId);
+            try
+            {
+                var schedules = await scheduleRepository.GetSchedulesBySectionIdAsync(sectionId);
+                var sectionSchedules = schedules.Select(MapToResponseDto).ToList();
+                logger.LogInformation("Successfully retrieved {Count} schedules for section ID: {SectionId}",
+                    sectionSchedules.Count, sectionId);
+                return sectionSchedules;
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Error occurred while retrieving schedules for section ID {SectionId}", sectionId);
+                throw new EntityServiceException("Schedule", $"GetSchedulesBySectionId: {sectionId}",
+                    "An error occurred while retrieving schedules for the section", ex);
+            }
+        }
+
         public async Task<IEnumerable<ScheduleResponseDto>> GetMySchedulesAsync()
         {
             logger.LogInformation("Retrieving schedules for the current instructor");

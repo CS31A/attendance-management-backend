@@ -88,6 +88,30 @@ namespace attendance_monitoring.Repositories
 
         #endregion
 
+        #region Dependency Check Operations
+
+        #region HasStudentsInSectionAsync
+        public async Task<bool> HasStudentsInSectionAsync(int sectionId)
+        {
+            return await context.Students
+                .AsNoTracking()
+                .AnyAsync(s => s.SectionId == sectionId)
+                .ConfigureAwait(false);
+        }
+        #endregion
+
+        #region HasStudentEnrollmentsInSectionAsync
+        public async Task<bool> HasStudentEnrollmentsInSectionAsync(int sectionId)
+        {
+            return await context.StudentEnrollments
+                .AsNoTracking()
+                .AnyAsync(se => se.SectionId == sectionId)
+                .ConfigureAwait(false);
+        }
+        #endregion
+
+        #endregion
+
         #region Utility Operations
 
         #region SaveChangesAsync

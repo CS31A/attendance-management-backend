@@ -1,6 +1,7 @@
 using attendance_monitoring.Extensions;
 using attendance_monitoring.Extensions.ServiceCollectionExtensions;
 using attendance_monitoring.Extensions.WebApplicationExtensions;
+using attendance_monitoring.Options;
 
 // Load environment variables from .env file
 DotNetEnv.Env.Load();
@@ -15,6 +16,9 @@ builder.Services.AddDatabaseServices(builder.Configuration);
 // Authentication & Authorization
 builder.Services.AddAuthenticationServices(builder.Configuration);
 builder.Services.AddAuthorizationPolicies();
+
+// Bulk data
+builder.Services.Configure<BulkDataOptions>(builder.Configuration.GetSection(BulkDataOptions.SectionName));
 
 // API Documentation
 builder.Services.AddApiDocumentation();

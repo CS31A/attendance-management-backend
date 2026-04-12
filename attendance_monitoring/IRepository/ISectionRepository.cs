@@ -56,5 +56,19 @@ namespace attendance_monitoring.IRepository
         /// <returns>True if the section was deleted; otherwise, false.</returns>
         Task<bool> DeleteSectionAsync(int id);
 
+        /// <summary>
+        /// Checks if there are any students assigned to this section.
+        /// </summary>
+        /// <param name="sectionId">The section ID.</param>
+        /// <returns>True if students exist in this section; otherwise, false.</returns>
+        Task<bool> HasStudentsInSectionAsync(int sectionId);
+
+        /// <summary>
+        /// Checks if there are any student enrollments for this section.
+        /// </summary>
+        /// <param name="sectionId">The section ID.</param>
+        /// <returns>True if student enrollments exist for this section; otherwise, false.</returns>
+        Task<bool> HasStudentEnrollmentsInSectionAsync(int sectionId);
+
     }
 }

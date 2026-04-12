@@ -208,7 +208,6 @@ public static class MiddlewarePipelineExtensions
             {
                 c.SwaggerEndpoint("/swagger/v1/swagger.json", "Attendance Monitoring API");
             });
-            app.MapOpenApi();
 
             // Configure Scalar to use the Swagger-generated OpenAPI document (includes MVC controller endpoints)
             app.MapScalarApiReference(options =>
@@ -233,8 +232,7 @@ public static class MiddlewarePipelineExtensions
         this WebApplication app,
         string corsPolicy = "AllowFrontend")
     {
-        // Only use HTTPS redirection in development
-        // In production, the reverse proxy (AWS EB/nginx) handles SSL termination
+        // HTTPS redirection only in Development; production TLS is terminated by the reverse proxy
         if (app.Environment.IsDevelopment())
         {
             app.UseHttpsRedirection();
