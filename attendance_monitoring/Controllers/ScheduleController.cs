@@ -102,6 +102,25 @@ namespace attendance_monitoring.Controllers
             // No try-catch - global handler will catch any unexpected errors
         }
 
+        /// <summary>
+        /// Get all schedules for a specific section
+        /// </summary>
+        /// <param name="sectionId">The ID of the section</param>
+        /// <returns>A list of schedules for the section</returns>
+        /// <response code="200">Returns the list of schedules for the section</response>
+        /// <response code="500">Internal server error</response>
+        [HttpGet("by-section/{sectionId:int}")]
+        public async Task<ActionResult<IEnumerable<ScheduleResponseDto>>> GetSchedulesBySection(int sectionId)
+        {
+            logger.LogInformation("Getting schedules for section ID: {SectionId}", sectionId);
+
+            var schedules = await scheduleService.GetSchedulesBySectionIdAsync(sectionId);
+            logger.LogInformation("Successfully retrieved {Count} schedules for section ID: {SectionId}",
+                schedules.Count(), sectionId);
+            return Ok(schedules);
+            // No try-catch - global handler will catch any unexpected errors
+        }
+
         #endregion
 
         #region Create Operations

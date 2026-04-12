@@ -8,6 +8,7 @@ namespace attendance_monitoring.IRepository
         Task<Schedules?> GetScheduleByIdAsync(int id);
         Task<Schedules?> GetScheduleByIdTrackedAsync(int id);
         Task<IEnumerable<Schedules>> GetSchedulesByInstructorIdAsync(int instructorId);
+        Task<IEnumerable<Schedules>> GetSchedulesBySectionIdAsync(int sectionId);
         Task<IEnumerable<Subject>> GetSubjectsByInstructorIdAsync(int instructorId);
         Task<Schedules> AddScheduleAsync(Schedules schedule);
         Task<Schedules?> UpdateScheduleAsync(Schedules schedule);

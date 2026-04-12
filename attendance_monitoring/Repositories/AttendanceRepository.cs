@@ -547,7 +547,6 @@ public class AttendanceRepository(ApplicationDbContext context) : IAttendanceRep
                 Late = g.Count(a => a.Status == "Late"),
                 Absent = g.Count(a => a.Status == "Absent"),
                 Excused = g.Count(a => a.Status == "Excused"),
-                AvgCheckInTicks = g.Any() ? (long)g.Average(a => a.CheckInTime.TimeOfDay.Ticks) : 0L
             })
             .FirstOrDefaultAsync()
             .ConfigureAwait(false);
@@ -557,7 +556,16 @@ public class AttendanceRepository(ApplicationDbContext context) : IAttendanceRep
             return (0, 0, 0, 0, 0, 0L);
         }
 
-        return (stats.Total, stats.Present, stats.Late, stats.Absent, stats.Excused, stats.AvgCheckInTicks);
+        var checkInTimes = await query
+            .Select(a => a.CheckInTime)
+            .ToListAsync()
+            .ConfigureAwait(false);
+
+        var avgCheckInTicks = checkInTimes.Count == 0
+            ? 0L
+            : (long)checkInTimes.Average(checkIn => checkIn.TimeOfDay.Ticks);
+
+        return (stats.Total, stats.Present, stats.Late, stats.Absent, stats.Excused, avgCheckInTicks);
     }
 
     #endregion

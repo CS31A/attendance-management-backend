@@ -2,6 +2,8 @@ using attendance_monitoring.Data;
 using attendance_monitoring.Repositories;
 using attendance_monitoring.Classes;
 using attendance_monitoring.Models.DTO.Response;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 
 namespace attendance.testproject.Repositories_Testing;
@@ -276,6 +278,348 @@ public class AttendanceRepositoryTest : IDisposable
             Assert.NotNull(item.SubjectName);
             Assert.NotNull(item.Status);
         });
+    }
+
+    [Fact]
+    public async Task GetFilteredAsync_WithRelationalProvider_AppliesFiltersWithoutTranslationErrors()
+    {
+        await using var connection = new SqliteConnection("Data Source=:memory:");
+        await connection.OpenAsync();
+
+        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
+            .UseSqlite(connection)
+            .Options;
+
+        await using var context = new ApplicationDbContext(options);
+        await context.Database.EnsureCreatedAsync();
+        var repository = new AttendanceRepository(context);
+
+        var now = DateTime.UtcNow.Date;
+        var checkIn1 = now.AddHours(8);
+        var checkIn2 = now.AddHours(9);
+        var checkIn3 = now.AddDays(1).AddHours(8).AddMinutes(30);
+
+        var course = new Course { Name = "Computer Science", CreatedAt = now, UpdatedAt = now };
+        var sectionA = new Section { Name = "BSCS-1A", Course = course, CreatedAt = now, UpdatedAt = now };
+        var sectionB = new Section { Name = "BSCS-1B", Course = course, CreatedAt = now, UpdatedAt = now };
+        var classroomA = new Classroom { Name = "Room 101", CreatedAt = now, UpdatedAt = now };
+        var classroomB = new Classroom { Name = "Room 102", CreatedAt = now, UpdatedAt = now };
+        var subjectA = new Subject { Name = "Algorithms", Code = "ALGO1", CreatedAt = now, UpdatedAt = now };
+        var subjectB = new Subject { Name = "Databases", Code = "DBASE", CreatedAt = now, UpdatedAt = now };
+
+        var instructorUser = new IdentityUser
+        {
+            Id = "instructor-user",
+            UserName = "instructor@example.com",
+            NormalizedUserName = "INSTRUCTOR@EXAMPLE.COM",
+            Email = "instructor@example.com",
+            NormalizedEmail = "INSTRUCTOR@EXAMPLE.COM",
+        };
+
+        var studentUser1 = new IdentityUser
+        {
+            Id = "student-user-1",
+            UserName = "student1@example.com",
+            NormalizedUserName = "STUDENT1@EXAMPLE.COM",
+            Email = "student1@example.com",
+            NormalizedEmail = "STUDENT1@EXAMPLE.COM",
+        };
+
+        var studentUser2 = new IdentityUser
+        {
+            Id = "student-user-2",
+            UserName = "student2@example.com",
+            NormalizedUserName = "STUDENT2@EXAMPLE.COM",
+            Email = "student2@example.com",
+            NormalizedEmail = "STUDENT2@EXAMPLE.COM",
+        };
+
+        var studentUser3 = new IdentityUser
+        {
+            Id = "student-user-3",
+            UserName = "student3@example.com",
+            NormalizedUserName = "STUDENT3@EXAMPLE.COM",
+            Email = "student3@example.com",
+            NormalizedEmail = "STUDENT3@EXAMPLE.COM",
+        };
+
+        var instructor = new Instructor
+        {
+            Firstname = "Ada",
+            Lastname = "Lovelace",
+            User = instructorUser,
+            UserId = instructorUser.Id,
+            CreatedAt = now,
+            UpdatedAt = now,
+        };
+
+        var student1 = new Student
+        {
+            Firstname = "Alice",
+            Lastname = "Anderson",
+            User = studentUser1,
+            UserId = studentUser1.Id,
+            Section = sectionA,
+            CreatedAt = now,
+            UpdatedAt = now,
+        };
+
+        var student2 = new Student
+        {
+            Firstname = "Bob",
+            Lastname = "Brown",
+            User = studentUser2,
+            UserId = studentUser2.Id,
+            Section = sectionA,
+            CreatedAt = now,
+            UpdatedAt = now,
+        };
+
+        var student3 = new Student
+        {
+            Firstname = "Carol",
+            Lastname = "Clark",
+            User = studentUser3,
+            UserId = studentUser3.Id,
+            Section = sectionB,
+            CreatedAt = now,
+            UpdatedAt = now,
+        };
+
+        var scheduleA = new Schedules
+        {
+            TimeIn = new TimeOnly(8, 0),
+            TimeOut = new TimeOnly(10, 0),
+            DayOfWeek = "Monday",
+            Subject = subjectA,
+            Classroom = classroomA,
+            Section = sectionA,
+            Instructor = instructor,
+            CreatedAt = now,
+            UpdatedAt = now,
+        };
+
+        var scheduleB = new Schedules
+        {
+            TimeIn = new TimeOnly(10, 0),
+            TimeOut = new TimeOnly(12, 0),
+            DayOfWeek = "Tuesday",
+            Subject = subjectB,
+            Classroom = classroomB,
+            Section = sectionB,
+            Instructor = instructor,
+            CreatedAt = now,
+            UpdatedAt = now,
+        };
+
+        var sessionA = new Session
+        {
+            Schedule = scheduleA,
+            SessionDate = now,
+            CreatedAt = now,
+            UpdatedAt = now,
+        };
+
+        var sessionB = new Session
+        {
+            Schedule = scheduleB,
+            SessionDate = now.AddDays(1),
+            CreatedAt = now,
+            UpdatedAt = now,
+        };
+
+        context.AttendanceRecords.AddRange(
+            new AttendanceRecord
+            {
+                Student = student1,
+                Session = sessionA,
+                CheckInTime = checkIn1,
+                Status = "Present",
+                IsManualEntry = false,
+                CreatedAt = now,
+                UpdatedAt = now,
+            },
+            new AttendanceRecord
+            {
+                Student = student2,
+                Session = sessionA,
+                CheckInTime = checkIn2,
+                Status = "Late",
+                IsManualEntry = true,
+                CreatedAt = now,
+                UpdatedAt = now,
+            },
+            new AttendanceRecord
+            {
+                Student = student3,
+                Session = sessionB,
+                CheckInTime = checkIn3,
+                Status = "Present",
+                IsManualEntry = false,
+                CreatedAt = now,
+                UpdatedAt = now,
+            });
+        await context.SaveChangesAsync();
+
+        var (records, totalCount) = await repository.GetFilteredAsync(
+            scheduleId: scheduleA.Id,
+            sectionId: sectionA.Id,
+            subjectId: subjectA.Id,
+            status: "Late",
+            startDate: now,
+            endDate: now.AddHours(23).AddMinutes(59),
+            isManualEntry: true,
+            pageNumber: 1,
+            pageSize: 10);
+
+        var record = Assert.Single(records);
+        Assert.Equal(1, totalCount);
+        Assert.Equal(student2.Id, record.StudentId);
+        Assert.Equal(sessionA.Id, record.SessionId);
+        Assert.Equal("Late", record.Status);
+        Assert.True(record.IsManualEntry);
+        Assert.NotNull(record.Session);
+        Assert.NotNull(record.Session.Schedule);
+        Assert.Equal(scheduleA.Id, record.Session.ScheduleId);
+        Assert.Equal(sectionA.Id, record.Session.Schedule.SectionId);
+        Assert.Equal(subjectA.Id, record.Session.Schedule.SubjectId);
+    }
+
+    [Fact]
+    public async Task GetStatisticsAsync_WithRelationalProvider_ReturnsCountsAndAverageCheckInTicks()
+    {
+        await using var connection = new SqliteConnection("Data Source=:memory:");
+        await connection.OpenAsync();
+
+        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
+            .UseSqlite(connection)
+            .Options;
+
+        await using var context = new ApplicationDbContext(options);
+        await context.Database.EnsureCreatedAsync();
+        var repository = new AttendanceRepository(context);
+
+        var now = DateTime.UtcNow.Date;
+        var checkIn1 = now.AddHours(8);
+        var checkIn2 = now.AddHours(9).AddMinutes(30);
+
+        var course = new Course { Name = "Computer Science", CreatedAt = now, UpdatedAt = now };
+        var section = new Section { Name = "BSCS-1A", Course = course, CreatedAt = now, UpdatedAt = now };
+        var classroom = new Classroom { Name = "Room 101", CreatedAt = now, UpdatedAt = now };
+        var subject = new Subject { Name = "Mathematics", Code = "MATH1", CreatedAt = now, UpdatedAt = now };
+
+        var instructorUser = new IdentityUser
+        {
+            Id = "instructor-user",
+            UserName = "instructor@example.com",
+            NormalizedUserName = "INSTRUCTOR@EXAMPLE.COM",
+            Email = "instructor@example.com",
+            NormalizedEmail = "INSTRUCTOR@EXAMPLE.COM",
+        };
+
+        var studentUser1 = new IdentityUser
+        {
+            Id = "student-user-1",
+            UserName = "student1@example.com",
+            NormalizedUserName = "STUDENT1@EXAMPLE.COM",
+            Email = "student1@example.com",
+            NormalizedEmail = "STUDENT1@EXAMPLE.COM",
+        };
+
+        var studentUser2 = new IdentityUser
+        {
+            Id = "student-user-2",
+            UserName = "student2@example.com",
+            NormalizedUserName = "STUDENT2@EXAMPLE.COM",
+            Email = "student2@example.com",
+            NormalizedEmail = "STUDENT2@EXAMPLE.COM",
+        };
+
+        var instructor = new Instructor
+        {
+            Firstname = "Ada",
+            Lastname = "Lovelace",
+            User = instructorUser,
+            UserId = instructorUser.Id,
+            CreatedAt = now,
+            UpdatedAt = now,
+        };
+
+        var student1 = new Student
+        {
+            Firstname = "Alice",
+            Lastname = "Anderson",
+            User = studentUser1,
+            UserId = studentUser1.Id,
+            Section = section,
+            CreatedAt = now,
+            UpdatedAt = now,
+        };
+
+        var student2 = new Student
+        {
+            Firstname = "Bob",
+            Lastname = "Brown",
+            User = studentUser2,
+            UserId = studentUser2.Id,
+            Section = section,
+            CreatedAt = now,
+            UpdatedAt = now,
+        };
+
+        var schedule = new Schedules
+        {
+            TimeIn = new TimeOnly(8, 0),
+            TimeOut = new TimeOnly(10, 0),
+            DayOfWeek = "Monday",
+            Subject = subject,
+            Classroom = classroom,
+            Section = section,
+            Instructor = instructor,
+            CreatedAt = now,
+            UpdatedAt = now,
+        };
+
+        var session = new Session
+        {
+            Schedule = schedule,
+            SessionDate = now,
+            CreatedAt = now,
+            UpdatedAt = now,
+        };
+
+        var attendance1 = new AttendanceRecord
+        {
+            Student = student1,
+            Session = session,
+            CheckInTime = checkIn1,
+            Status = "Present",
+            CreatedAt = now,
+            UpdatedAt = now,
+        };
+
+        var attendance2 = new AttendanceRecord
+        {
+            Student = student2,
+            Session = session,
+            CheckInTime = checkIn2,
+            Status = "Late",
+            CreatedAt = now,
+            UpdatedAt = now,
+        };
+
+        context.AttendanceRecords.AddRange(attendance1, attendance2);
+        await context.SaveChangesAsync();
+
+        var stats = await repository.GetStatisticsAsync();
+        var expectedAverageTicks = (checkIn1.TimeOfDay.Ticks + checkIn2.TimeOfDay.Ticks) / 2;
+
+        Assert.Equal(2, stats.Total);
+        Assert.Equal(1, stats.Present);
+        Assert.Equal(1, stats.Late);
+        Assert.Equal(0, stats.Absent);
+        Assert.Equal(0, stats.Excused);
+        Assert.Equal(expectedAverageTicks, stats.AvgCheckInTicks);
     }
 
     public void Dispose()

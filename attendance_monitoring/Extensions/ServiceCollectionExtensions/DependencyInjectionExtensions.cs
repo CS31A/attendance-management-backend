@@ -4,6 +4,7 @@ using attendance_monitoring.Repositories;
 using attendance_monitoring.Services;
 using attendance_monitoring.Services.HealthChecks;
 using attendance_monitoring.Services.Account;
+using attendance_monitoring.Services.AdminData;
 using attendance_monitoring.Services.QrCode;
 
 namespace attendance_monitoring.Extensions.ServiceCollectionExtensions;
@@ -83,6 +84,7 @@ public static class DependencyInjectionExtensions
         services.AddScoped<IAttendanceService, AttendanceService>();
         services.AddScoped<IDataSeederService, DataSeederService>();
         services.AddScoped<IFingerprintService, FingerprintService>();
+        services.AddScoped<IAdminDataService, AdminDataService>();
 
         // SignalR and Notification services
         services.AddSingleton<IUserConnectionManager, UserConnectionManager>();
