@@ -10,4 +10,6 @@ public interface ISubjectService
     Task<Subject> CreateSubjectAsync(CreateSubject createSubject);
     Task<Subject> UpdateSubjectAsync(int id, UpdateSubject updateSubject);
     Task DeleteSubjectAsync(int id);
+    Task<bool> HasSchedulesInSubjectAsync(int id);
+    Task<bool> HasEnrollmentsInSubjectAsync(int id);
 }

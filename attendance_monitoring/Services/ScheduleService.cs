@@ -106,10 +106,8 @@ namespace attendance_monitoring.Services
         public async Task<IEnumerable<ScheduleResponseDto>> GetMySchedulesAsync()
         {
             logger.LogInformation("Retrieving schedules for the current instructor");
-
             try
             {
-                // Get current user context
                 var httpContext = httpContextAccessor.HttpContext;
                 if (httpContext?.User == null)
                 {
@@ -134,8 +132,6 @@ namespace attendance_monitoring.Services
                     logger.LogWarning("GetMySchedules failed: {ErrorMessage}", errorMessage);
                     throw new EntityUnauthorizedException("Schedule", "GetMySchedules", userId, errorMessage);
                 }
-
-                // Use existing method to get schedules for this instructor
                 return await GetSchedulesByInstructorIdAsync(instructor.Id).ConfigureAwait(false);
             }
             catch (EntityUnauthorizedException)
@@ -152,6 +148,23 @@ namespace attendance_monitoring.Services
 
         #endregion
 
+        #region Dependency Check Operations
+        public async Task<bool> HasSessionsInScheduleAsync(int id)
+        {
+            logger.LogInformation("Checking if schedule {ScheduleId} has sessions", id);
+            try
+            {
+                var hasSessions = await scheduleRepository.HasSessionsInScheduleAsync(id).ConfigureAwait(false);
+                logger.LogInformation("Schedule {ScheduleId} has sessions: {HasSessions}", id, hasSessions);
+                return hasSessions;
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Error checking if schedule {ScheduleId} has sessions", id);
+                throw new EntityServiceException("Schedule", $"HasSessionsInSchedule: {id}", "Error checking schedule dependencies", ex);
+            }
+        }
+        #endregion
         #region Create Operations
         public async Task<Schedules> CreateScheduleAsync(CreateSchedule createSchedule)
         {
@@ -237,12 +250,10 @@ namespace attendance_monitoring.Services
         }
 
         #endregion
-
         #region Update Operations
         public async Task<Schedules> UpdateScheduleAsync(int id, UpdateSchedule updateSchedule)
         {
             logger.LogInformation("Updating schedule with ID: {Id}", id);
-
             try
             {
                 var existingSchedule = await scheduleRepository.GetScheduleByIdAsync(id);
@@ -372,7 +383,6 @@ namespace attendance_monitoring.Services
         public async Task DeleteScheduleAsync(int id, ClaimsPrincipal user)
         {
             logger.LogInformation("Deleting schedule with ID: {Id}", id);
-
             try
             {
                 var existingSchedule = await scheduleRepository.GetScheduleByIdAsync(id).ConfigureAwait(false);
@@ -406,28 +416,12 @@ namespace attendance_monitoring.Services
             {
                 throw;
             }
-            catch (DbUpdateException ex) when (ex.InnerException?.Message.Contains("REFERENCE constraint") == true
-                                               || ex.InnerException?.Message.Contains("FK_") == true)
+            catch (DbUpdateException ex) when (ExceptionHandlingHelper.IsForeignKeyViolation(ex))
             {
-                // Handle foreign key constraint violations with user-friendly messages
-                var innerMessage = ex.InnerException?.Message ?? ex.Message;
-
-                string userFriendlyMessage;
-                if (innerMessage.Contains("FK_QrCodes_Schedules") || innerMessage.Contains("QrCodes"))
-                {
-                    userFriendlyMessage = "Cannot delete schedule because it has associated QR codes. Please delete or revoke the QR codes first.";
-                }
-                else if (innerMessage.Contains("FK_Attendance") || innerMessage.Contains("Attendance"))
-                {
-                    userFriendlyMessage = "Cannot delete schedule because it has associated attendance records. Schedules with attendance history cannot be deleted.";
-                }
-                else
-                {
-                    userFriendlyMessage = "Cannot delete schedule because it has associated records. Please remove all dependencies first.";
-                }
-
-                logger.LogWarning(ex, "Schedule deletion failed due to foreign key constraint: {Message}", userFriendlyMessage);
-                throw new EntityServiceException("Schedule", $"DeleteSchedule: {id}", userFriendlyMessage, ex);
+                var conflictType = ResolveDeleteConflictType(ex);
+                var conflictMessage = ResolveDeleteConflictMessage(ex);
+                logger.LogWarning(ex, "Schedule deletion failed due to foreign key constraint: {Message}", conflictMessage);
+                throw new EntityConflictException("Schedule", conflictType, conflictMessage, ex);
             }
             catch (Exception ex)
             {
@@ -435,11 +429,29 @@ namespace attendance_monitoring.Services
                 throw ExceptionHandlingHelper.CreateServiceException("Schedule", $"DeleteSchedule: {id}", ex);
             }
         }
-
         #endregion
 
-        #region Helper Methods
+        private static string ResolveDeleteConflictType(DbUpdateException ex)
+        {
+            var message = ex.InnerException?.Message ?? ex.Message;
+            if (message.Contains("FK_Sessions_Schedules_ScheduleId", StringComparison.OrdinalIgnoreCase) || message.Contains("Sessions", StringComparison.OrdinalIgnoreCase))
+            {
+                return "sessions";
+            }
 
+            return "dependencies";
+        }
+
+        private static string ResolveDeleteConflictMessage(DbUpdateException ex)
+        {
+            return ResolveDeleteConflictType(ex) switch
+            {
+                "sessions" => "Cannot delete: Schedule has sessions assigned. Remove sessions first.",
+                _ => "Cannot delete: Schedule has dependencies that prevent deletion.",
+            };
+        }
+
+        #region Helper Methods
         public static ScheduleResponseDto MapToResponseDto(Schedules schedule)
         {
             return new ScheduleResponseDto

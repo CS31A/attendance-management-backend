@@ -66,6 +66,49 @@ public class ScheduleControllerTest
 
     #endregion
 
+    #region Dependency Check Tests
+
+    [Fact]
+    public async Task HasSessionsInSchedule_ReturnsOk_WithBooleanResult()
+    {
+        const int scheduleId = 6;
+        _mockScheduleService
+            .Setup(service => service.HasSessionsInScheduleAsync(scheduleId))
+            .ReturnsAsync(true);
+
+        var result = await _scheduleController.HasSessionsInSchedule(scheduleId);
+
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        Assert.True(Assert.IsType<bool>(okResult.Value));
+    }
+
+    [Fact]
+    public async Task HasSessionsInSchedule_ReturnsBadRequest_ForInvalidId()
+    {
+        var result = await _scheduleController.HasSessionsInSchedule(0);
+
+        var badRequestResult = Assert.IsType<BadRequestObjectResult>(result.Result);
+        Assert.Equal("Schedule ID must be greater than 0.", badRequestResult.Value);
+        _mockScheduleService.Verify(service => service.HasSessionsInScheduleAsync(It.IsAny<int>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task HasSessionsInSchedule_ReturnsServerError_WhenServiceThrowsEntityServiceException()
+    {
+        const int scheduleId = 14;
+        _mockScheduleService
+            .Setup(service => service.HasSessionsInScheduleAsync(scheduleId))
+            .ThrowsAsync(new EntityServiceException("Schedule", $"HasSessionsInSchedule: {scheduleId}", "Error checking schedule dependencies"));
+
+        var result = await _scheduleController.HasSessionsInSchedule(scheduleId);
+
+        var objectResult = Assert.IsType<ObjectResult>(result.Result);
+        Assert.Equal(500, objectResult.StatusCode);
+        Assert.Equal("An error occurred while checking schedule dependencies", objectResult.Value);
+    }
+
+    #endregion
+
     #region PostSchedule Tests
 
     [Fact]

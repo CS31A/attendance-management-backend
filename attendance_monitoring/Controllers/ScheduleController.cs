@@ -122,6 +122,28 @@ namespace attendance_monitoring.Controllers
             // No try-catch - global handler will catch any unexpected errors
         }
 
+        [Authorize(Policy = "PrivilegedPolicy")]
+        [HttpGet("{id:int}/has-sessions")]
+        public async Task<ActionResult<bool>> HasSessionsInSchedule(int id)
+        {
+            try
+            {
+                if (id <= 0)
+                {
+                    logger.LogWarning("Invalid schedule ID {ScheduleId} provided for dependency check.", id);
+                    return BadRequest("Schedule ID must be greater than 0.");
+                }
+
+                var hasSessions = await scheduleService.HasSessionsInScheduleAsync(id);
+                return Ok(hasSessions);
+            }
+            catch (EntityServiceException ex)
+            {
+                logger.LogError(ex, "Service error occurred while checking sessions for schedule with ID {ScheduleId}", id);
+                return StatusCode(500, "An error occurred while checking schedule dependencies");
+            }
+        }
+
         #endregion
 
         #region Create Operations

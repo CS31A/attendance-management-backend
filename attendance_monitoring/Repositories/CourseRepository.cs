@@ -54,6 +54,16 @@ public class CourseRepository(ApplicationDbContext context) : ICourseRepository
     }
     #endregion
 
+    #region HasSectionsInCourseAsync
+    public async Task<bool> HasSectionsInCourseAsync(int id)
+    {
+        return await context.Sections
+            .AsNoTracking()
+            .AnyAsync(section => section.CourseId == id)
+            .ConfigureAwait(false);
+    }
+    #endregion
+
     #endregion
 
     #region Utility Operations

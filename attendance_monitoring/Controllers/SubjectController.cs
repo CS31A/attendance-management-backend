@@ -156,5 +156,49 @@ public class SubjectController(ISubjectService subjectService, ILogger<SubjectCo
         // Exceptions are handled by global exception handler
     }
 
+    [Authorize(Policy = "PrivilegedPolicy")]
+    [HttpGet("{id:int}/has-schedules")]
+    public async Task<ActionResult<bool>> HasSchedulesInSubject(int id)
+    {
+        try
+        {
+            if (id <= 0)
+            {
+                logger.LogWarning("Invalid subject ID {SubjectId} provided for dependency check.", id);
+                return BadRequest("Subject ID must be greater than 0.");
+            }
+
+            var hasSchedules = await subjectService.HasSchedulesInSubjectAsync(id);
+            return Ok(hasSchedules);
+        }
+        catch (EntityServiceException ex)
+        {
+            logger.LogError(ex, "Service error occurred while checking schedules for subject with ID {SubjectId}", id);
+            return StatusCode(500, "An error occurred while checking subject dependencies");
+        }
+    }
+
+    [Authorize(Policy = "PrivilegedPolicy")]
+    [HttpGet("{id:int}/has-enrollments")]
+    public async Task<ActionResult<bool>> HasEnrollmentsInSubject(int id)
+    {
+        try
+        {
+            if (id <= 0)
+            {
+                logger.LogWarning("Invalid subject ID {SubjectId} provided for dependency check.", id);
+                return BadRequest("Subject ID must be greater than 0.");
+            }
+
+            var hasEnrollments = await subjectService.HasEnrollmentsInSubjectAsync(id);
+            return Ok(hasEnrollments);
+        }
+        catch (EntityServiceException ex)
+        {
+            logger.LogError(ex, "Service error occurred while checking enrollments for subject with ID {SubjectId}", id);
+            return StatusCode(500, "An error occurred while checking subject dependencies");
+        }
+    }
+
     #endregion
 }
