@@ -331,7 +331,7 @@ public class SubjectService : ISubjectService
         catch (DbUpdateException ex) when (ExceptionHandlingHelper.IsForeignKeyViolation(ex))
         {
             var conflictType = ResolveDeleteConflictType(ex);
-            var conflictMessage = ResolveDeleteConflictMessage(ex);
+            var conflictMessage = ResolveDeleteConflictMessage(conflictType);
             _logger.LogWarning(ex, "Subject deletion failed due to foreign key constraint: {Message}", conflictMessage);
             throw new EntityConflictException("Subject", conflictType, conflictMessage, ex);
         }
@@ -360,9 +360,9 @@ public class SubjectService : ISubjectService
         return "dependencies";
     }
 
-    private static string ResolveDeleteConflictMessage(DbUpdateException ex)
+    private static string ResolveDeleteConflictMessage(string conflictType)
     {
-        return ResolveDeleteConflictType(ex) switch
+        return conflictType switch
         {
             "schedules" => "Cannot delete: Subject has schedules assigned. Remove schedules first.",
             "enrollments" => "Cannot delete: Subject has student enrollments. Remove enrollments first.",

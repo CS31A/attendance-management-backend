@@ -419,7 +419,7 @@ namespace attendance_monitoring.Services
             catch (DbUpdateException ex) when (ExceptionHandlingHelper.IsForeignKeyViolation(ex))
             {
                 var conflictType = ResolveDeleteConflictType(ex);
-                var conflictMessage = ResolveDeleteConflictMessage(ex);
+                var conflictMessage = ResolveDeleteConflictMessage(conflictType);
                 logger.LogWarning(ex, "Schedule deletion failed due to foreign key constraint: {Message}", conflictMessage);
                 throw new EntityConflictException("Schedule", conflictType, conflictMessage, ex);
             }
@@ -442,9 +442,9 @@ namespace attendance_monitoring.Services
             return "dependencies";
         }
 
-        private static string ResolveDeleteConflictMessage(DbUpdateException ex)
+        private static string ResolveDeleteConflictMessage(string conflictType)
         {
-            return ResolveDeleteConflictType(ex) switch
+            return conflictType switch
             {
                 "sessions" => "Cannot delete: Schedule has sessions assigned. Remove sessions first.",
                 _ => "Cannot delete: Schedule has dependencies that prevent deletion.",

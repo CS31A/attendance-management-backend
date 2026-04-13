@@ -313,7 +313,7 @@ public class ClassroomService : IClassroomService
         catch (DbUpdateException ex) when (ExceptionHandlingHelper.IsForeignKeyViolation(ex))
         {
             var conflictType = ResolveDeleteConflictType(ex);
-            var conflictMessage = ResolveDeleteConflictMessage(ex);
+            var conflictMessage = ResolveDeleteConflictMessage(conflictType);
             _logger.LogWarning(ex, "Classroom deletion failed due to foreign key constraint: {Message}", conflictMessage);
             throw new EntityConflictException("Classroom", conflictType, conflictMessage, ex);
         }
@@ -341,9 +341,9 @@ public class ClassroomService : IClassroomService
         return "dependencies";
     }
 
-    private static string ResolveDeleteConflictMessage(DbUpdateException ex)
+    private static string ResolveDeleteConflictMessage(string conflictType)
     {
-        return ResolveDeleteConflictType(ex) switch
+        return conflictType switch
         {
             "sessions" => "Cannot delete: Classroom has sessions assigned. Remove sessions first.",
             "schedules" => "Cannot delete: Classroom has schedules assigned. Remove schedules first.",
