@@ -232,6 +232,40 @@ public class ClassroomService : IClassroomService
     }
     #endregion
 
+    #region Dependency Check Operations
+    public async Task<bool> HasSchedulesInClassroomAsync(int id)
+    {
+        try
+        {
+            _logger.LogInformation("Checking if classroom {ClassroomId} has schedules", id);
+            var hasSchedules = await _classroomRepository.HasSchedulesInClassroomAsync(id).ConfigureAwait(false);
+            _logger.LogInformation("Classroom {ClassroomId} has schedules: {HasSchedules}", id, hasSchedules);
+            return hasSchedules;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error checking if classroom {ClassroomId} has schedules", id);
+            throw new EntityServiceException("Classroom", $"HasSchedulesInClassroom: {id}", "Error checking classroom dependencies", ex);
+        }
+    }
+
+    public async Task<bool> HasSessionsInClassroomAsync(int id)
+    {
+        try
+        {
+            _logger.LogInformation("Checking if classroom {ClassroomId} has sessions", id);
+            var hasSessions = await _classroomRepository.HasSessionsInClassroomAsync(id).ConfigureAwait(false);
+            _logger.LogInformation("Classroom {ClassroomId} has sessions: {HasSessions}", id, hasSessions);
+            return hasSessions;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error checking if classroom {ClassroomId} has sessions", id);
+            throw new EntityServiceException("Classroom", $"HasSessionsInClassroom: {id}", "Error checking classroom dependencies", ex);
+        }
+    }
+    #endregion
+
     #region DeleteClassroomAsync
     /// <summary>
     /// Deletes a classroom by ID
@@ -276,24 +310,12 @@ public class ClassroomService : IClassroomService
         {
             throw;
         }
-        catch (DbUpdateException ex) when (ex.InnerException?.Message.Contains("REFERENCE constraint") == true
-                                           || ex.InnerException?.Message.Contains("FK_") == true)
+        catch (DbUpdateException ex) when (ExceptionHandlingHelper.IsForeignKeyViolation(ex))
         {
-            // Handle foreign key constraint violations with user-friendly messages
-            var innerMessage = ex.InnerException?.Message ?? ex.Message;
-
-            string userFriendlyMessage;
-            if (innerMessage.Contains("FK_Schedules_Classrooms") || innerMessage.Contains("Schedules"))
-            {
-                userFriendlyMessage = "Cannot delete classroom because it is assigned to one or more schedules. Please remove the classroom from all schedules first.";
-            }
-            else
-            {
-                userFriendlyMessage = "Cannot delete classroom because it has associated records. Please remove all dependencies first.";
-            }
-
-            _logger.LogWarning(ex, "Classroom deletion failed due to foreign key constraint: {Message}", userFriendlyMessage);
-            throw new EntityServiceException("Classroom", $"DeleteClassroom: {id}", userFriendlyMessage, ex);
+            var conflictType = ResolveDeleteConflictType(ex);
+            var conflictMessage = ResolveDeleteConflictMessage(ex);
+            _logger.LogWarning(ex, "Classroom deletion failed due to foreign key constraint: {Message}", conflictMessage);
+            throw new EntityConflictException("Classroom", conflictType, conflictMessage, ex);
         }
         catch (Exception ex)
         {
@@ -302,4 +324,30 @@ public class ClassroomService : IClassroomService
         }
     }
     #endregion
+
+    private static string ResolveDeleteConflictType(DbUpdateException ex)
+    {
+        var message = ex.InnerException?.Message ?? ex.Message;
+        if (message.Contains("FK_Sessions_Classrooms_ActualRoomId", StringComparison.OrdinalIgnoreCase) || message.Contains("ActualRoomId", StringComparison.OrdinalIgnoreCase))
+        {
+            return "sessions";
+        }
+
+        if (message.Contains("FK_Schedules_Classrooms", StringComparison.OrdinalIgnoreCase) || message.Contains("Schedules", StringComparison.OrdinalIgnoreCase))
+        {
+            return "schedules";
+        }
+
+        return "dependencies";
+    }
+
+    private static string ResolveDeleteConflictMessage(DbUpdateException ex)
+    {
+        return ResolveDeleteConflictType(ex) switch
+        {
+            "sessions" => "Cannot delete: Classroom has sessions assigned. Remove sessions first.",
+            "schedules" => "Cannot delete: Classroom has schedules assigned. Remove schedules first.",
+            _ => "Cannot delete: Classroom has dependencies that prevent deletion.",
+        };
+    }
 }

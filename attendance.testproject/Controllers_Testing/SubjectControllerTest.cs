@@ -60,4 +60,45 @@ public class SubjectControllerTest
     }
 
     #endregion
+
+    #region Dependency Check Tests
+
+    [Fact]
+    public async Task HasSchedulesInSubject_ReturnsOk_WithBooleanResult()
+    {
+        const int subjectId = 9;
+        _mockSubjectService
+            .Setup(service => service.HasSchedulesInSubjectAsync(subjectId))
+            .ReturnsAsync(true);
+
+        var result = await _controller.HasSchedulesInSubject(subjectId);
+
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        Assert.True(Assert.IsType<bool>(okResult.Value));
+    }
+
+    [Fact]
+    public async Task HasEnrollmentsInSubject_ReturnsOk_WithBooleanResult()
+    {
+        const int subjectId = 4;
+        _mockSubjectService
+            .Setup(service => service.HasEnrollmentsInSubjectAsync(subjectId))
+            .ReturnsAsync(true);
+
+        var result = await _controller.HasEnrollmentsInSubject(subjectId);
+
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        Assert.True(Assert.IsType<bool>(okResult.Value));
+    }
+
+    [Fact]
+    public async Task HasSchedulesInSubject_ReturnsBadRequest_ForInvalidId()
+    {
+        var result = await _controller.HasSchedulesInSubject(0);
+
+        var badRequestResult = Assert.IsType<BadRequestObjectResult>(result.Result);
+        Assert.Equal("Subject ID must be greater than 0.", badRequestResult.Value);
+    }
+
+    #endregion
 }

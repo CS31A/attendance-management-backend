@@ -13,6 +13,7 @@ namespace attendance_monitoring.IRepository
         Task<Schedules> AddScheduleAsync(Schedules schedule);
         Task<Schedules?> UpdateScheduleAsync(Schedules schedule);
         Task<bool> DeleteScheduleAsync(int id);
+        Task<bool> HasSessionsInScheduleAsync(int id);
 
         // New methods for fingerprint attendance
         /// <summary>

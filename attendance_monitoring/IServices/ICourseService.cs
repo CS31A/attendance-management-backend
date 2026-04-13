@@ -11,4 +11,5 @@ public interface ICourseService
     Task<Course> CreateCourseAsync(CreateCourse createCourse, ClaimsPrincipal user);
     Task<Course> UpdateCourseAsync(int id, UpdateCourse updateCourse, ClaimsPrincipal user);
     Task DeleteCourseAsync(int id, ClaimsPrincipal user);
+    Task<bool> HasSectionsInCourseAsync(int id);
 }

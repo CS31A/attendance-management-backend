@@ -62,6 +62,26 @@ public class ClassroomRepository(ApplicationDbContext context) : IClassroomRepos
     }
     #endregion
 
+    #region HasSchedulesInClassroomAsync
+    public async Task<bool> HasSchedulesInClassroomAsync(int id)
+    {
+        return await context.Schedules
+            .AsNoTracking()
+            .AnyAsync(schedule => schedule.ClassroomId == id)
+            .ConfigureAwait(false);
+    }
+    #endregion
+
+    #region HasSessionsInClassroomAsync
+    public async Task<bool> HasSessionsInClassroomAsync(int id)
+    {
+        return await context.Sessions
+            .AsNoTracking()
+            .AnyAsync(session => session.ActualRoomId == id)
+            .ConfigureAwait(false);
+    }
+    #endregion
+
     #endregion
 
     #region Utility Operations

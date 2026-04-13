@@ -156,5 +156,49 @@ public class ClassroomController(IClassroomService classroomService, ILogger<Cla
         // Exceptions are handled by global exception handler
     }
 
+    [Authorize(Policy = "PrivilegedPolicy")]
+    [HttpGet("{id:int}/has-schedules")]
+    public async Task<ActionResult<bool>> HasSchedulesInClassroom(int id)
+    {
+        try
+        {
+            if (id <= 0)
+            {
+                logger.LogWarning("Invalid classroom ID {ClassroomId} provided for dependency check.", id);
+                return BadRequest("Classroom ID must be greater than 0.");
+            }
+
+            var hasSchedules = await classroomService.HasSchedulesInClassroomAsync(id);
+            return Ok(hasSchedules);
+        }
+        catch (EntityServiceException ex)
+        {
+            logger.LogError(ex, "Service error occurred while checking schedules for classroom with ID {ClassroomId}", id);
+            return StatusCode(500, "An error occurred while checking classroom dependencies");
+        }
+    }
+
+    [Authorize(Policy = "PrivilegedPolicy")]
+    [HttpGet("{id:int}/has-sessions")]
+    public async Task<ActionResult<bool>> HasSessionsInClassroom(int id)
+    {
+        try
+        {
+            if (id <= 0)
+            {
+                logger.LogWarning("Invalid classroom ID {ClassroomId} provided for dependency check.", id);
+                return BadRequest("Classroom ID must be greater than 0.");
+            }
+
+            var hasSessions = await classroomService.HasSessionsInClassroomAsync(id);
+            return Ok(hasSessions);
+        }
+        catch (EntityServiceException ex)
+        {
+            logger.LogError(ex, "Service error occurred while checking sessions for classroom with ID {ClassroomId}", id);
+            return StatusCode(500, "An error occurred while checking classroom dependencies");
+        }
+    }
+
     #endregion
 }

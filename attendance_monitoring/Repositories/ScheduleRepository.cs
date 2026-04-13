@@ -160,6 +160,16 @@ namespace attendance_monitoring.Repositories
         }
         #endregion
 
+        #region HasSessionsInScheduleAsync
+        public async Task<bool> HasSessionsInScheduleAsync(int id)
+        {
+            return await context.Sessions
+                .AsNoTracking()
+                .AnyAsync(session => session.ScheduleId == id)
+                .ConfigureAwait(false);
+        }
+        #endregion
+
         #endregion
 
         #region Utility Operations

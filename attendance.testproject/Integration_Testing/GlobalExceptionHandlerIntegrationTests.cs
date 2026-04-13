@@ -68,6 +68,23 @@ public sealed class GlobalExceptionHandlerIntegrationTests
     }
 
     [Fact]
+    public async Task UseGlobalExceptionHandler_ReturnsConflict_ForEntityConflictException()
+    {
+        await using var testHost = await CreateTestHostAsync(
+            () => new EntityConflictException("Schedule", "sessions", "Cannot delete: Schedule has sessions assigned. Remove sessions first."));
+
+        var response = await testHost.Client.GetAsync("/throw");
+        var error = await response.Content.ReadFromJsonAsync<ErrorResponseDto>();
+
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+        Assert.NotNull(error);
+        Assert.False(error.Success);
+        Assert.Equal(StatusCodes.Status409Conflict, error.StatusCode);
+        Assert.Equal("Cannot delete: Schedule has sessions assigned. Remove sessions first.", error.Message);
+        Assert.Equal("/throw", error.Path);
+    }
+
+    [Fact]
     public async Task UseGlobalExceptionHandler_ReturnsInternalServerError_ForUnexpectedException()
     {
         await using var testHost = await CreateTestHostAsync(

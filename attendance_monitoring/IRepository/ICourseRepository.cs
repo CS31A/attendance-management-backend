@@ -41,4 +41,11 @@ public interface ICourseRepository : ISaveableRepository
     /// <returns>True if the course was deleted; otherwise, false.</returns>
     Task<bool> DeleteCourseAsync(int id);
 
+    /// <summary>
+    /// Checks if the course has sections assigned.
+    /// </summary>
+    /// <param name="id">The course ID.</param>
+    /// <returns>True if sections exist for the course; otherwise, false.</returns>
+    Task<bool> HasSectionsInCourseAsync(int id);
+
 }

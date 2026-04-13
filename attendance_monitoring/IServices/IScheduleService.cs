@@ -14,6 +14,7 @@ namespace attendance_monitoring.IServices
         Task<Schedules> CreateScheduleAsync(CreateSchedule createSchedule);
         Task<Schedules> UpdateScheduleAsync(int id, UpdateSchedule updateSchedule);
         Task DeleteScheduleAsync(int id, ClaimsPrincipal user);
+        Task<bool> HasSessionsInScheduleAsync(int id);
         Task<IEnumerable<ScheduleResponseDto>> GetMySchedulesAsync();
     }
 }
