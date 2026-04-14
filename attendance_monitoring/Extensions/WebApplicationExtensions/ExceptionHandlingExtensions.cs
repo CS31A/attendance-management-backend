@@ -48,6 +48,9 @@ public static class ExceptionHandlingExtensions
                     EntityAlreadyExistsException<string> ex =>
                         (StatusCodes.Status409Conflict, ex.Message, false),
 
+                    EntityConflictException ex =>
+                        (StatusCodes.Status409Conflict, ex.Message, false),
+
                     // Database exceptions
                     DbUpdateConcurrencyException ex =>
                         (StatusCodes.Status409Conflict,

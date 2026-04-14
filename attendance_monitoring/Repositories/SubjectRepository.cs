@@ -69,6 +69,26 @@ public class SubjectRepository(ApplicationDbContext context) : ISubjectRepositor
     }
     #endregion
 
+    #region HasSchedulesInSubjectAsync
+    public async Task<bool> HasSchedulesInSubjectAsync(int id)
+    {
+        return await context.Schedules
+            .AsNoTracking()
+            .AnyAsync(schedule => schedule.SubjectId == id)
+            .ConfigureAwait(false);
+    }
+    #endregion
+
+    #region HasEnrollmentsInSubjectAsync
+    public async Task<bool> HasEnrollmentsInSubjectAsync(int id)
+    {
+        return await context.StudentEnrollments
+            .AsNoTracking()
+            .AnyAsync(enrollment => enrollment.SubjectId == id)
+            .ConfigureAwait(false);
+    }
+    #endregion
+
     #endregion
 
     #region Utility Operations

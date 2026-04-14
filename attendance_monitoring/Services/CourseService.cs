@@ -1,9 +1,11 @@
 using System.Security.Claims;
 using attendance_monitoring.Classes;
 using attendance_monitoring.Exceptions;
+using attendance_monitoring.Helpers;
 using attendance_monitoring.IRepository;
 using attendance_monitoring.IServices;
 using attendance_monitoring.Models.DTO.Request;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
 namespace attendance_monitoring.Services;
@@ -268,6 +270,12 @@ public class CourseService : ICourseService
             // Re-throw EntityServiceException as-is
             throw;
         }
+        catch (DbUpdateException ex) when (ExceptionHandlingHelper.IsForeignKeyViolation(ex))
+        {
+            var conflictMessage = ResolveDeleteConflictMessage(ex);
+            _logger.LogWarning(ex, "Course deletion failed due to foreign key constraint: {Message}", conflictMessage);
+            throw new EntityConflictException("Course", "sections", conflictMessage, ex);
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error occurred while deleting course with ID: {Id}", id);
@@ -275,6 +283,35 @@ public class CourseService : ICourseService
         }
     }
     #endregion
+
+    #region Dependency Check Operations
+    public async Task<bool> HasSectionsInCourseAsync(int id)
+    {
+        try
+        {
+            _logger.LogInformation("Checking if course {CourseId} has sections", id);
+            var hasSections = await _courseRepository.HasSectionsInCourseAsync(id).ConfigureAwait(false);
+            _logger.LogInformation("Course {CourseId} has sections: {HasSections}", id, hasSections);
+            return hasSections;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error checking if course {CourseId} has sections", id);
+            throw new EntityServiceException("Course", $"HasSectionsInCourse: {id}", "Error checking course dependencies", ex);
+        }
+    }
+    #endregion
+
+    private static string ResolveDeleteConflictMessage(DbUpdateException ex)
+    {
+        var message = ex.InnerException?.Message ?? ex.Message;
+        if (message.Contains("FK_Sections_Courses", StringComparison.OrdinalIgnoreCase) || message.Contains("Sections", StringComparison.OrdinalIgnoreCase))
+        {
+            return "Cannot delete: Course has sections assigned. Remove sections first.";
+        }
+
+        return "Cannot delete: Course has dependencies that prevent deletion.";
+    }
 
     #endregion
 }

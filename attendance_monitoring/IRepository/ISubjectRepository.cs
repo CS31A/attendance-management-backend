@@ -49,6 +49,20 @@ public interface ISubjectRepository : ISaveableRepository
     Task<bool> DeleteSubjectAsync(int id);
 
     /// <summary>
+    /// Checks if schedules reference the subject.
+    /// </summary>
+    /// <param name="id">The subject ID.</param>
+    /// <returns>True if schedules exist for the subject; otherwise, false.</returns>
+    Task<bool> HasSchedulesInSubjectAsync(int id);
+
+    /// <summary>
+    /// Checks if student enrollments reference the subject.
+    /// </summary>
+    /// <param name="id">The subject ID.</param>
+    /// <returns>True if enrollments exist for the subject; otherwise, false.</returns>
+    Task<bool> HasEnrollmentsInSubjectAsync(int id);
+
+    /// <summary>
     /// Gets a subject by its code.
     /// </summary>
     /// <param name="code">The subject code.</param>
