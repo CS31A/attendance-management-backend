@@ -42,6 +42,20 @@ public interface IClassroomRepository : ISaveableRepository
     Task<bool> DeleteClassroomAsync(int id);
 
     /// <summary>
+    /// Checks if schedules reference the classroom.
+    /// </summary>
+    /// <param name="id">The classroom ID.</param>
+    /// <returns>True if schedules exist for the classroom; otherwise, false.</returns>
+    Task<bool> HasSchedulesInClassroomAsync(int id);
+
+    /// <summary>
+    /// Checks if sessions reference the classroom as an actual room.
+    /// </summary>
+    /// <param name="id">The classroom ID.</param>
+    /// <returns>True if sessions exist for the classroom; otherwise, false.</returns>
+    Task<bool> HasSessionsInClassroomAsync(int id);
+
+    /// <summary>
     /// Gets a classroom by its name.
     /// </summary>
     /// <param name="name">The classroom name.</param>

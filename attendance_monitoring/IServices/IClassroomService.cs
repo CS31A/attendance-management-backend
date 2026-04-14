@@ -10,4 +10,6 @@ public interface IClassroomService
     Task<Classroom> CreateClassroomAsync(CreateClassroom createClassroom);
     Task<Classroom> UpdateClassroomAsync(int id, UpdateClassroom updateClassroom);
     Task DeleteClassroomAsync(int id);
+    Task<bool> HasSchedulesInClassroomAsync(int id);
+    Task<bool> HasSessionsInClassroomAsync(int id);
 }

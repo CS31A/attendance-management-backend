@@ -177,4 +177,26 @@ public class CourseController(ICourseService courseService, ILogger<CourseContro
             return BadRequest(ex.Message);
         }
     }
+
+    [Authorize(Policy = "PrivilegedPolicy")]
+    [HttpGet("{id:int}/has-sections")]
+    public async Task<ActionResult<bool>> HasSectionsInCourse(int id)
+    {
+        try
+        {
+            if (id <= 0)
+            {
+                logger.LogWarning("Invalid course ID {CourseId} provided for dependency check.", id);
+                return BadRequest("Course ID must be greater than 0.");
+            }
+
+            var hasSections = await courseService.HasSectionsInCourseAsync(id);
+            return Ok(hasSections);
+        }
+        catch (EntityServiceException ex)
+        {
+            logger.LogError(ex, "Service error occurred while checking sections for course with ID {CourseId}", id);
+            return StatusCode(500, "An error occurred while checking course dependencies");
+        }
+    }
 }

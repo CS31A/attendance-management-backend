@@ -249,6 +249,40 @@ public class SubjectService : ISubjectService
 
     #endregion
 
+    #region Dependency Check Operations
+    public async Task<bool> HasSchedulesInSubjectAsync(int id)
+    {
+        try
+        {
+            _logger.LogInformation("Checking if subject {SubjectId} has schedules", id);
+            var hasSchedules = await _subjectRepository.HasSchedulesInSubjectAsync(id).ConfigureAwait(false);
+            _logger.LogInformation("Subject {SubjectId} has schedules: {HasSchedules}", id, hasSchedules);
+            return hasSchedules;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error checking if subject {SubjectId} has schedules", id);
+            throw new EntityServiceException("Subject", $"HasSchedulesInSubject: {id}", "Error checking subject dependencies", ex);
+        }
+    }
+
+    public async Task<bool> HasEnrollmentsInSubjectAsync(int id)
+    {
+        try
+        {
+            _logger.LogInformation("Checking if subject {SubjectId} has enrollments", id);
+            var hasEnrollments = await _subjectRepository.HasEnrollmentsInSubjectAsync(id).ConfigureAwait(false);
+            _logger.LogInformation("Subject {SubjectId} has enrollments: {HasEnrollments}", id, hasEnrollments);
+            return hasEnrollments;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error checking if subject {SubjectId} has enrollments", id);
+            throw new EntityServiceException("Subject", $"HasEnrollmentsInSubject: {id}", "Error checking subject dependencies", ex);
+        }
+    }
+    #endregion
+
     #region Delete Operations
 
     /// <summary>
@@ -294,28 +328,12 @@ public class SubjectService : ISubjectService
         {
             throw;
         }
-        catch (DbUpdateException ex) when (ex.InnerException?.Message.Contains("REFERENCE constraint") == true
-                                           || ex.InnerException?.Message.Contains("FK_") == true)
+        catch (DbUpdateException ex) when (ExceptionHandlingHelper.IsForeignKeyViolation(ex))
         {
-            // Handle foreign key constraint violations with user-friendly messages
-            var innerMessage = ex.InnerException?.Message ?? ex.Message;
-
-            string userFriendlyMessage;
-            if (innerMessage.Contains("FK_Schedules_Subjects") || innerMessage.Contains("Schedules"))
-            {
-                userFriendlyMessage = "Cannot delete subject because it is assigned to one or more schedules. Please remove the subject from all schedules first.";
-            }
-            else if (innerMessage.Contains("FK_StudentEnrollments") || innerMessage.Contains("StudentEnrollments"))
-            {
-                userFriendlyMessage = "Cannot delete subject because students are enrolled in it. Please remove all student enrollments first.";
-            }
-            else
-            {
-                userFriendlyMessage = "Cannot delete subject because it has associated records. Please remove all dependencies first.";
-            }
-
-            _logger.LogWarning(ex, "Subject deletion failed due to foreign key constraint: {Message}", userFriendlyMessage);
-            throw new EntityServiceException("Subject", $"DeleteSubject: {id}", userFriendlyMessage, ex);
+            var conflictType = ResolveDeleteConflictType(ex);
+            var conflictMessage = ResolveDeleteConflictMessage(conflictType);
+            _logger.LogWarning(ex, "Subject deletion failed due to foreign key constraint: {Message}", conflictMessage);
+            throw new EntityConflictException("Subject", conflictType, conflictMessage, ex);
         }
         catch (Exception ex)
         {
@@ -325,4 +343,30 @@ public class SubjectService : ISubjectService
     }
 
     #endregion
+
+    private static string ResolveDeleteConflictType(DbUpdateException ex)
+    {
+        var message = ex.InnerException?.Message ?? ex.Message;
+        if (message.Contains("FK_StudentEnrollments", StringComparison.OrdinalIgnoreCase) || message.Contains("StudentEnrollments", StringComparison.OrdinalIgnoreCase))
+        {
+            return "enrollments";
+        }
+
+        if (message.Contains("FK_Schedules_Subjects", StringComparison.OrdinalIgnoreCase) || message.Contains("Schedules", StringComparison.OrdinalIgnoreCase))
+        {
+            return "schedules";
+        }
+
+        return "dependencies";
+    }
+
+    private static string ResolveDeleteConflictMessage(string conflictType)
+    {
+        return conflictType switch
+        {
+            "schedules" => "Cannot delete: Subject has schedules assigned. Remove schedules first.",
+            "enrollments" => "Cannot delete: Subject has student enrollments. Remove enrollments first.",
+            _ => "Cannot delete: Subject has dependencies that prevent deletion.",
+        };
+    }
 }
