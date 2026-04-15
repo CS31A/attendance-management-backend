@@ -82,6 +82,7 @@ public static class DependencyInjectionExtensions
         services.AddScoped<IStudentEnrollmentService, StudentEnrollmentService>();
         services.AddScoped<ISessionService, SessionService>();
         services.AddScoped<IAttendanceService, AttendanceService>();
+        services.AddScoped<IReportsService, ReportsService>();
         services.AddScoped<IDataSeederService, DataSeederService>();
         services.AddScoped<IFingerprintService, FingerprintService>();
         services.AddScoped<IAdminDataService, AdminDataService>();
