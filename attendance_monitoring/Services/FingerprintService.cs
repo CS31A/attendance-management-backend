@@ -28,7 +28,7 @@ public class FingerprintService(
     IAttendanceService attendanceService,
     INotificationService notificationService,
     ApplicationDbContext context,
-    UserContextService userContextService,
+    IUserContextService userContextService,
     IConfiguration configuration,
     IDataProtectionProvider dataProtectionProvider,
     ILogger<FingerprintService> logger) : IFingerprintService

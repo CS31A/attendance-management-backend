@@ -16,7 +16,7 @@ namespace attendance_monitoring.Controllers;
 public class QrCodeController(
     IQrCodeService qrCodeService,
     ISessionRepository sessionRepository,
-    UserContextService userContextService,
+    IUserContextService userContextService,
     ILogger<QrCodeController> logger) : ControllerBase
 {
     /// <summary>

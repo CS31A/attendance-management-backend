@@ -16,7 +16,7 @@ namespace attendance_monitoring.Services;
 public class CourseService : ICourseService
 {
     private readonly ICourseRepository _courseRepository;
-    private readonly UserContextService _userContextService;
+    private readonly IUserContextService _userContextService;
     private readonly ILogger<CourseService> _logger;
 
     /// <summary>
@@ -25,7 +25,7 @@ public class CourseService : ICourseService
     /// <param name="courseRepository">Repository for course data operations</param>
     /// <param name="userContextService">Service for managing user context and authorization</param>
     /// <param name="logger">Logger for logging operations</param>
-    public CourseService(ICourseRepository courseRepository, UserContextService userContextService, ILogger<CourseService> logger)
+    public CourseService(ICourseRepository courseRepository, IUserContextService userContextService, ILogger<CourseService> logger)
     {
         _courseRepository = courseRepository ?? throw new ArgumentNullException(nameof(courseRepository));
         _userContextService = userContextService ?? throw new ArgumentNullException(nameof(userContextService));
