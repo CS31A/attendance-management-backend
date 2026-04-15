@@ -1,4 +1,5 @@
 using attendance_monitoring.Classes;
+using attendance_monitoring.Models.DTO.Response;
 
 namespace attendance_monitoring.IRepository;
 
@@ -76,6 +77,24 @@ public interface ISessionRepository : ISaveableRepository
     /// <param name="instructorId">The instructor ID</param>
     /// <returns>Collection of all sessions for the instructor</returns>
     Task<IEnumerable<Session>> GetSessionsByInstructorIdAsync(int instructorId);
+
+    /// <summary>
+    /// Retrieves projected report rows for all sessions in a section with aggregated attendance counts.
+    /// </summary>
+    /// <param name="sectionId">The section ID</param>
+    /// <param name="startDate">Optional inclusive start date</param>
+    /// <param name="endDate">Optional inclusive end date</param>
+    /// <returns>Projected session report rows</returns>
+    Task<List<SessionReportRowDto>> GetSectionSessionReportRowsAsync(int sectionId, DateTime? startDate, DateTime? endDate);
+
+    /// <summary>
+    /// Retrieves projected report rows for all sessions owned by an instructor with aggregated attendance counts.
+    /// </summary>
+    /// <param name="instructorId">The instructor ID</param>
+    /// <param name="startDate">Optional inclusive start date</param>
+    /// <param name="endDate">Optional inclusive end date</param>
+    /// <returns>Projected session report rows</returns>
+    Task<List<SessionReportRowDto>> GetInstructorSessionReportRowsAsync(int instructorId, DateTime? startDate, DateTime? endDate);
 
     /// <summary>
     /// Retrieves a session by its ID without tracking (for read-only operations).

@@ -1,5 +1,4 @@
 using System.Security.Claims;
-using attendance_monitoring.Classes;
 using attendance_monitoring.Exceptions;
 using attendance_monitoring.IRepository;
 using attendance_monitoring.IServices;
@@ -15,9 +14,7 @@ namespace attendance_monitoring.Services;
 /// </summary>
 public class ReportsService(
     IAttendanceService attendanceService,
-    IAttendanceRepository attendanceRepository,
     ISessionRepository sessionRepository,
-    IScheduleRepository scheduleRepository,
     ISectionRepository sectionRepository,
     IInstructorRepository instructorRepository,
     ILogger<ReportsService> logger) : IReportsService
@@ -40,62 +37,28 @@ public class ReportsService(
         if (section == null)
             throw new EntityNotFoundException<int>("Section", sectionId);
 
-        var schedules = (await scheduleRepository.GetSchedulesBySectionIdAsync(sectionId).ConfigureAwait(false)).ToList();
+        var sessionRows = await sessionRepository
+            .GetSectionSessionReportRowsAsync(sectionId, filter.StartDate, filter.EndDate)
+            .ConfigureAwait(false);
 
-        var allSessions = new List<Session>();
-        foreach (var schedule in schedules)
-        {
-            var sessions = await sessionRepository.GetSessionsByScheduleIdAsync(schedule.Id).ConfigureAwait(false);
-            allSessions.AddRange(sessions);
-        }
-
-        if (filter.StartDate.HasValue)
-            allSessions = allSessions.Where(s => s.SessionDate >= filter.StartDate.Value).ToList();
-        if (filter.EndDate.HasValue)
-            allSessions = allSessions.Where(s => s.SessionDate <= filter.EndDate.Value).ToList();
-
-        var sessionIds = allSessions.Select(s => s.Id).ToList();
-
-        var attendanceRecords = sessionIds.Count > 0
-            ? await attendanceRepository.GetBySessionIdsAsync(sessionIds).ConfigureAwait(false)
-            : new List<AttendanceRecord>();
-
-        var bySession = attendanceRecords
-            .GroupBy(r => r.SessionId)
-            .ToDictionary(g => g.Key, g => g.ToList());
-
-        var scheduleMap = schedules.ToDictionary(sc => sc.Id);
-
-        var sessionStats = allSessions
-            .OrderByDescending(s => s.SessionDate)
-            .Select(s =>
+        var sessionStats = sessionRows
+            .Select(row =>
             {
-                var records = bySession.GetValueOrDefault(s.Id) ?? new List<AttendanceRecord>();
-                var present = records.Count(r => r.Status == "Present");
-                var late = records.Count(r => r.Status == "Late");
-                var absent = records.Count(r => r.Status == "Absent");
-                var excused = records.Count(r => r.Status == "Excused");
-                var total = records.Count;
-                var rate = total > 0 ? Math.Round((decimal)(present + late) / total * 100, 2) : 0;
-
-                scheduleMap.TryGetValue(s.ScheduleId, out var schedule);
-                var subjectName = schedule?.Subject?.Name ?? string.Empty;
-
                 return new SessionAttendanceStatsDto
                 {
-                    SessionId = s.Id,
-                    SessionDate = s.SessionDate,
-                    SubjectName = subjectName,
-                    ScheduleTitle = schedule != null
-                        ? $"{subjectName} ({schedule.DayOfWeek})"
-                        : string.Empty,
-                    Status = s.Status,
-                    PresentCount = present,
-                    LateCount = late,
-                    AbsentCount = absent,
-                    ExcusedCount = excused,
-                    TotalRecords = total,
-                    AttendanceRate = rate,
+                    SessionId = row.SessionId,
+                    SessionDate = row.SessionDate,
+                    SubjectName = row.SubjectName,
+                    ScheduleTitle = $"{row.SubjectName} ({row.DayOfWeek})",
+                    Status = row.Status,
+                    PresentCount = row.PresentCount,
+                    LateCount = row.LateCount,
+                    AbsentCount = row.AbsentCount,
+                    ExcusedCount = row.ExcusedCount,
+                    TotalRecords = row.TotalRecords,
+                    AttendanceRate = row.TotalRecords > 0
+                        ? Math.Round((decimal)(row.PresentCount + row.LateCount) / row.TotalRecords * 100, 2)
+                        : 0,
                 };
             }).ToList();
 
@@ -112,7 +75,7 @@ public class ReportsService(
         {
             SectionId = sectionId,
             SectionName = section.Name,
-            TotalSessions = allSessions.Count,
+            TotalSessions = sessionRows.Count,
             TotalPresent = totalPresent,
             TotalLate = totalLate,
             TotalAbsent = totalAbsent,
@@ -131,54 +94,31 @@ public class ReportsService(
         if (instructor == null)
             throw new EntityNotFoundException<int>("Instructor", instructorId);
 
-        var sessions = (await sessionRepository.GetSessionsByInstructorIdAsync(instructorId).ConfigureAwait(false)).ToList();
+        var sessionRows = await sessionRepository
+            .GetInstructorSessionReportRowsAsync(instructorId, filter.StartDate, filter.EndDate)
+            .ConfigureAwait(false);
 
-        if (filter.StartDate.HasValue)
-            sessions = sessions.Where(s => s.SessionDate >= filter.StartDate.Value).ToList();
-        if (filter.EndDate.HasValue)
-            sessions = sessions.Where(s => s.SessionDate <= filter.EndDate.Value).ToList();
-
-        var sessionIds = sessions.Select(s => s.Id).ToList();
-
-        var attendanceRecords = sessionIds.Count > 0
-            ? await attendanceRepository.GetBySessionIdsAsync(sessionIds).ConfigureAwait(false)
-            : new List<AttendanceRecord>();
-
-        var bySession = attendanceRecords
-            .GroupBy(r => r.SessionId)
-            .ToDictionary(g => g.Key, g => g.ToList());
-
-        var sessionItems = sessions
-            .OrderByDescending(s => s.SessionDate)
-            .Select(s =>
+        var sessionItems = sessionRows
+            .Select(row =>
             {
-                var records = bySession.GetValueOrDefault(s.Id) ?? new List<AttendanceRecord>();
-                var present = records.Count(r => r.Status == "Present");
-                var late = records.Count(r => r.Status == "Late");
-                var absent = records.Count(r => r.Status == "Absent");
-                var excused = records.Count(r => r.Status == "Excused");
-                var total = records.Count;
-                var rate = total > 0 ? Math.Round((decimal)(present + late) / total * 100, 2) : 0;
-
-                var subjectName = s.Schedule?.Subject?.Name ?? string.Empty;
-                var sectionName = s.Schedule?.Section?.Name ?? string.Empty;
-
                 return new InstructorSessionItemDto
                 {
-                    SessionId = s.Id,
-                    SessionDate = s.SessionDate,
-                    SubjectName = subjectName,
-                    SectionName = sectionName,
-                    ScheduleTitle = !string.IsNullOrEmpty(subjectName) && !string.IsNullOrEmpty(sectionName)
-                        ? $"{subjectName} - {sectionName}"
-                        : subjectName,
-                    Status = s.Status,
-                    PresentCount = present,
-                    LateCount = late,
-                    AbsentCount = absent,
-                    ExcusedCount = excused,
-                    TotalRecords = total,
-                    AttendanceRate = rate,
+                    SessionId = row.SessionId,
+                    SessionDate = row.SessionDate,
+                    SubjectName = row.SubjectName,
+                    SectionName = row.SectionName,
+                    ScheduleTitle = !string.IsNullOrEmpty(row.SubjectName) && !string.IsNullOrEmpty(row.SectionName)
+                        ? $"{row.SubjectName} - {row.SectionName}"
+                        : row.SubjectName,
+                    Status = row.Status,
+                    PresentCount = row.PresentCount,
+                    LateCount = row.LateCount,
+                    AbsentCount = row.AbsentCount,
+                    ExcusedCount = row.ExcusedCount,
+                    TotalRecords = row.TotalRecords,
+                    AttendanceRate = row.TotalRecords > 0
+                        ? Math.Round((decimal)(row.PresentCount + row.LateCount) / row.TotalRecords * 100, 2)
+                        : 0,
                 };
             }).ToList();
 
@@ -188,7 +128,7 @@ public class ReportsService(
         {
             InstructorId = instructorId,
             InstructorName = instructorName,
-            TotalSessions = sessions.Count,
+            TotalSessions = sessionRows.Count,
             Sessions = sessionItems,
         };
     }
