@@ -50,6 +50,7 @@ public class ReportsServiceTest
                     AbsentCount = 2,
                     ExcusedCount = 1,
                     TotalRecords = 12,
+                    TotalEnrolled = 12,
                 },
                 new SessionReportRowDto
                 {
@@ -63,6 +64,7 @@ public class ReportsServiceTest
                     AbsentCount = 0,
                     ExcusedCount = 0,
                     TotalRecords = 0,
+                    TotalEnrolled = 0,
                 },
             ]);
 
@@ -130,6 +132,7 @@ public class ReportsServiceTest
                     AbsentCount = 1,
                     ExcusedCount = 0,
                     TotalRecords = 9,
+                    TotalEnrolled = 9,
                 },
                 new SessionReportRowDto
                 {
@@ -143,6 +146,7 @@ public class ReportsServiceTest
                     AbsentCount = 0,
                     ExcusedCount = 0,
                     TotalRecords = 0,
+                    TotalEnrolled = 0,
                 },
             ]);
 
@@ -224,5 +228,24 @@ public class ReportsServiceTest
             service.GetInstructorSessionsReportAsync(requestedInstructorId, filter, instructorUser));
 
         _sessionRepository.Verify(repository => repository.GetInstructorSessionReportRowsAsync(It.IsAny<int>(), It.IsAny<DateTime?>(), It.IsAny<DateTime?>()), Times.Never);
+    }
+
+    [Fact]
+    public void InstructorSessionItemDto_InheritsFrom_SessionAttendanceStatsDto()
+    {
+        // Assert
+        Assert.True(typeof(InstructorSessionItemDto).IsSubclassOf(typeof(SessionAttendanceStatsDto)),
+            "InstructorSessionItemDto should inherit from SessionAttendanceStatsDto");
+    }
+
+    [Fact]
+    public void InstructorSessionItemDto_HasSectionName_AsOwnProperty()
+    {
+        // Arrange
+        var sectionNameProperty = typeof(InstructorSessionItemDto).GetProperty("SectionName");
+
+        // Assert
+        Assert.NotNull(sectionNameProperty);
+        Assert.Equal(typeof(InstructorSessionItemDto), sectionNameProperty.DeclaringType);
     }
 }

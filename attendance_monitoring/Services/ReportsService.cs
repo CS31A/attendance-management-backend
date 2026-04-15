@@ -76,6 +76,9 @@ public class ReportsService(
         var sessionStats = sessionRows
             .Select(row =>
             {
+                var enrolledCount = row.TotalEnrolled;
+                var calculatedAbsentCount = Math.Max(0, enrolledCount - row.PresentCount - row.LateCount - row.ExcusedCount);
+
                 return new SessionAttendanceStatsDto
                 {
                     SessionId = row.SessionId,
@@ -85,11 +88,12 @@ public class ReportsService(
                     Status = row.Status,
                     PresentCount = row.PresentCount,
                     LateCount = row.LateCount,
-                    AbsentCount = row.AbsentCount,
+                    AbsentCount = calculatedAbsentCount,
                     ExcusedCount = row.ExcusedCount,
                     TotalRecords = row.TotalRecords,
-                    AttendanceRate = row.TotalRecords > 0
-                        ? Math.Round((decimal)(row.PresentCount + row.LateCount) / row.TotalRecords * 100, 2)
+                    TotalEnrolled = enrolledCount,
+                    AttendanceRate = enrolledCount > 0
+                        ? Math.Round((decimal)(row.PresentCount + row.LateCount) / enrolledCount * 100, 2)
                         : 0,
                 };
             }).ToList();
@@ -98,9 +102,9 @@ public class ReportsService(
         var totalLate = sessionStats.Sum(s => s.LateCount);
         var totalAbsent = sessionStats.Sum(s => s.AbsentCount);
         var totalExcused = sessionStats.Sum(s => s.ExcusedCount);
-        var totalRecords = sessionStats.Sum(s => s.TotalRecords);
-        var overallRate = totalRecords > 0
-            ? Math.Round((decimal)(totalPresent + totalLate) / totalRecords * 100, 2)
+        var totalEnrolled = sessionStats.Sum(s => s.TotalEnrolled);
+        var overallRate = totalEnrolled > 0
+            ? Math.Round((decimal)(totalPresent + totalLate) / totalEnrolled * 100, 2)
             : 0;
 
         return new ClassAttendanceSummaryDto
@@ -160,6 +164,9 @@ public class ReportsService(
         var sessionItems = sessionRows
             .Select(row =>
             {
+                var enrolledCount = row.TotalEnrolled;
+                var calculatedAbsentCount = Math.Max(0, enrolledCount - row.PresentCount - row.LateCount - row.ExcusedCount);
+
                 return new InstructorSessionItemDto
                 {
                     SessionId = row.SessionId,
@@ -172,11 +179,12 @@ public class ReportsService(
                     Status = row.Status,
                     PresentCount = row.PresentCount,
                     LateCount = row.LateCount,
-                    AbsentCount = row.AbsentCount,
+                    AbsentCount = calculatedAbsentCount,
                     ExcusedCount = row.ExcusedCount,
                     TotalRecords = row.TotalRecords,
-                    AttendanceRate = row.TotalRecords > 0
-                        ? Math.Round((decimal)(row.PresentCount + row.LateCount) / row.TotalRecords * 100, 2)
+                    TotalEnrolled = enrolledCount,
+                    AttendanceRate = enrolledCount > 0
+                        ? Math.Round((decimal)(row.PresentCount + row.LateCount) / enrolledCount * 100, 2)
                         : 0,
                 };
             }).ToList();

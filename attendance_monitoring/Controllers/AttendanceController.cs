@@ -12,7 +12,7 @@ namespace attendance_monitoring.Controllers;
 /// Controller for managing attendance record operations.
 /// Handles CRUD operations for attendance tracking and reporting.
 /// </summary>
-[Authorize(Policy = "PrivilegedPolicy")]
+[Authorize(Policy = "UserPolicy")]
 [ApiController]
 [Route("api/attendance")]
 public class AttendanceController(IAttendanceService attendanceService, ILogger<AttendanceController> logger) : ControllerBase
@@ -34,6 +34,7 @@ public class AttendanceController(IAttendanceService attendanceService, ILogger<
     /// <response code="409">Invalid attendance operation (for example, student not enrolled in the session)</response>
     /// <response code="500">Internal server error</response>
     [HttpPost]
+    [Authorize(Policy = "PrivilegedPolicy")]
     [ProducesResponseType(typeof(AttendanceRecordResponseDto), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(AttendanceRecordResponseDto), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
@@ -235,6 +236,7 @@ public class AttendanceController(IAttendanceService attendanceService, ILogger<
     /// <response code="404">Attendance record not found</response>
     /// <response code="500">Internal server error</response>
     [HttpPut("{id:int}")]
+    [Authorize(Policy = "PrivilegedPolicy")]
     public async Task<ActionResult<AttendanceRecordResponseDto>> UpdateAttendance(int id, [FromBody] UpdateAttendanceRequest request)
     {
         logger.LogInformation("Updating attendance record with ID: {Id}", id);
@@ -273,6 +275,7 @@ public class AttendanceController(IAttendanceService attendanceService, ILogger<
     /// <response code="404">Attendance record not found</response>
     /// <response code="500">Internal server error</response>
     [HttpDelete("{id:int}")]
+    [Authorize(Policy = "PrivilegedPolicy")]
     public async Task<IActionResult> DeleteAttendance(int id)
     {
         logger.LogInformation("Deleting attendance record with ID: {Id}", id);

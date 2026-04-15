@@ -278,6 +278,7 @@ public class SessionRepository(ApplicationDbContext context) : ISessionRepositor
                 AbsentCount = attendanceGroup.Count(record => record.Status == "Absent"),
                 ExcusedCount = attendanceGroup.Count(record => record.Status == "Excused"),
                 TotalRecords = attendanceGroup.Count(),
+                TotalEnrolled = context.StudentEnrollments.Count(se => se.SectionId == section.Id && se.IsActive),
             };
 
         if (startDate.HasValue)
@@ -318,6 +319,7 @@ public class SessionRepository(ApplicationDbContext context) : ISessionRepositor
                 AbsentCount = attendanceGroup.Count(record => record.Status == "Absent"),
                 ExcusedCount = attendanceGroup.Count(record => record.Status == "Excused"),
                 TotalRecords = attendanceGroup.Count(),
+                TotalEnrolled = context.StudentEnrollments.Count(se => se.SectionId == section.Id && se.IsActive),
             };
 
         if (startDate.HasValue)
