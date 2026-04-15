@@ -130,6 +130,11 @@ public class ReportsController(IReportsService reportsService, ILogger<ReportsCo
             logger.LogWarning(ex, "Section {SectionId} not found", sectionId);
             return NotFound(new { message = ex.Message });
         }
+        catch (UnauthorizedAccessException ex)
+        {
+            logger.LogWarning(ex, "Unauthorized access to section {SectionId} attendance report", sectionId);
+            return Forbid();
+        }
     }
 
     /// <summary>

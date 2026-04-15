@@ -12,11 +12,10 @@ namespace attendance.testproject.Services_Testing;
 public class ReportsServiceTest
 {
     private readonly Mock<IAttendanceService> _attendanceService = new(MockBehavior.Strict);
-    private readonly Mock<IAttendanceRepository> _attendanceRepository = new(MockBehavior.Strict);
     private readonly Mock<ISessionRepository> _sessionRepository = new(MockBehavior.Strict);
-    private readonly Mock<IScheduleRepository> _scheduleRepository = new(MockBehavior.Strict);
     private readonly Mock<ISectionRepository> _sectionRepository = new(MockBehavior.Strict);
     private readonly Mock<IInstructorRepository> _instructorRepository = new(MockBehavior.Strict);
+    private readonly Mock<IScheduleRepository> _scheduleRepository = new(MockBehavior.Strict);
     private readonly Mock<IUserContextService> _userContextService = new(MockBehavior.Strict);
     private readonly Mock<ILogger<ReportsService>> _logger = new();
     private readonly ClaimsPrincipal _user = new(new ClaimsIdentity());
@@ -93,8 +92,6 @@ public class ReportsServiceTest
         Assert.Equal(0m, result.Sessions[1].AttendanceRate);
 
         _sessionRepository.Verify(repository => repository.GetSectionSessionReportRowsAsync(sectionId, filter.StartDate, filter.EndDate), Times.Once);
-        _scheduleRepository.Verify(repository => repository.GetSchedulesBySectionIdAsync(It.IsAny<int>()), Times.Never);
-        _attendanceRepository.Verify(repository => repository.GetBySessionIdsAsync(It.IsAny<List<int>>()), Times.Never);
     }
 
     [Fact]
@@ -172,6 +169,5 @@ public class ReportsServiceTest
         Assert.Equal(0m, result.Sessions[1].AttendanceRate);
 
         _sessionRepository.Verify(repository => repository.GetInstructorSessionReportRowsAsync(instructorId, filter.StartDate, filter.EndDate), Times.Once);
-        _attendanceRepository.Verify(repository => repository.GetBySessionIdsAsync(It.IsAny<List<int>>()), Times.Never);
     }
 }
