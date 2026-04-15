@@ -24,12 +24,27 @@ public class ReportsController(IReportsService reportsService, ILogger<ReportsCo
     [HttpGet("attendance-summary")]
     [ProducesResponseType(typeof(AttendanceSummaryDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<ActionResult<AttendanceSummaryDto>> GetAttendanceSummary([FromQuery] AttendanceFilterRequest filter)
     {
         logger.LogInformation("Getting attendance summary report");
-        var result = await reportsService.GetAttendanceSummaryAsync(filter, User);
-        return Ok(result);
+        try
+        {
+            var result = await reportsService.GetAttendanceSummaryAsync(filter, User);
+            return Ok(result);
+        }
+        catch (EntityNotFoundException<string> ex)
+        {
+            logger.LogWarning(ex, "Entity not found while getting attendance summary");
+            return NotFound(new { message = ex.Message });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            logger.LogWarning(ex, "Unauthorized access to attendance summary");
+            return Forbid();
+        }
     }
 
     /// <summary>
@@ -139,6 +154,11 @@ public class ReportsController(IReportsService reportsService, ILogger<ReportsCo
         {
             logger.LogWarning(ex, "Instructor {InstructorId} not found", instructorId);
             return NotFound(new { message = ex.Message });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            logger.LogWarning(ex, "Unauthorized access to instructor {InstructorId} sessions report", instructorId);
+            return Forbid();
         }
     }
 }

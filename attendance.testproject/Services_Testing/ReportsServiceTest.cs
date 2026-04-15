@@ -17,6 +17,7 @@ public class ReportsServiceTest
     private readonly Mock<IScheduleRepository> _scheduleRepository = new(MockBehavior.Strict);
     private readonly Mock<ISectionRepository> _sectionRepository = new(MockBehavior.Strict);
     private readonly Mock<IInstructorRepository> _instructorRepository = new(MockBehavior.Strict);
+    private readonly Mock<IUserContextService> _userContextService = new(MockBehavior.Strict);
     private readonly Mock<ILogger<ReportsService>> _logger = new();
     private readonly ClaimsPrincipal _user = new(new ClaimsIdentity());
 
@@ -71,6 +72,8 @@ public class ReportsServiceTest
             _sessionRepository.Object,
             _sectionRepository.Object,
             _instructorRepository.Object,
+            _scheduleRepository.Object,
+            _userContextService.Object,
             _logger.Object);
 
         // Act
@@ -151,6 +154,8 @@ public class ReportsServiceTest
             _sessionRepository.Object,
             _sectionRepository.Object,
             _instructorRepository.Object,
+            _scheduleRepository.Object,
+            _userContextService.Object,
             _logger.Object);
 
         // Act

@@ -20,7 +20,7 @@ namespace attendance_monitoring.Services
     {
         private readonly IInstructorRepository _instructorRepository;
         private readonly IScheduleRepository _scheduleRepository;
-        private readonly UserContextService _userContextService;
+        private readonly IUserContextService _userContextService;
         private readonly ILogger<InstructorService> _logger;
 
         /// <summary>
@@ -30,7 +30,7 @@ namespace attendance_monitoring.Services
         /// <param name="scheduleRepository">Repository for schedule data operations</param>
         /// <param name="userContextService">Service for managing user context and authorization</param>
         /// <param name="logger">Logger for logging operations</param>
-        public InstructorService(IInstructorRepository instructorRepository, IScheduleRepository scheduleRepository, UserContextService userContextService, ILogger<InstructorService> logger)
+        public InstructorService(IInstructorRepository instructorRepository, IScheduleRepository scheduleRepository, IUserContextService userContextService, ILogger<InstructorService> logger)
         {
             _instructorRepository = instructorRepository ?? throw new ArgumentNullException(nameof(instructorRepository));
             _scheduleRepository = scheduleRepository ?? throw new ArgumentNullException(nameof(scheduleRepository));

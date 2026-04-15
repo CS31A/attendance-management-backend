@@ -19,7 +19,7 @@ public class AttendanceService(
     IInstructorRepository instructorRepository,
     ISessionRepository sessionRepository,
     IStudentEnrollmentRepository studentEnrollmentRepository,
-    UserContextService userContextService,
+    IUserContextService userContextService,
     ILogger<AttendanceService> logger) : IAttendanceService
 {
     #region Create Operations

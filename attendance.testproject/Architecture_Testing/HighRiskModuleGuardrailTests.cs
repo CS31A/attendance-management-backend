@@ -62,7 +62,7 @@ public class HighRiskModuleGuardrailTests
         Assert.Contains(typeof(IInstructorRepository).FullName!, nonLoggerDependencyNames);
         Assert.Contains(typeof(ISessionRepository).FullName!, nonLoggerDependencyNames);
         Assert.Contains(typeof(IStudentEnrollmentRepository).FullName!, nonLoggerDependencyNames);
-        Assert.Contains(typeof(UserContextService).FullName!, nonLoggerDependencyNames);
+        Assert.Contains(typeof(IUserContextService).FullName!, nonLoggerDependencyNames);
         Assert.DoesNotContain(nonLoggerDependencyNames, name => name.StartsWith("attendance_monitoring.Controllers", StringComparison.Ordinal));
     }
 

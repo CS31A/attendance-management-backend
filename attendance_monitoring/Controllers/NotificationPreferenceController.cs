@@ -1,5 +1,6 @@
 using attendance_monitoring.Classes;
 using attendance_monitoring.Constants;
+using attendance_monitoring.IServices;
 using attendance_monitoring.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -16,12 +17,12 @@ namespace attendance_monitoring.Controllers;
 public class NotificationPreferenceController : ControllerBase
 {
     private readonly INotificationPreferenceService _preferenceService;
-    private readonly UserContextService _userContextService;
+    private readonly IUserContextService _userContextService;
     private readonly ILogger<NotificationPreferenceController> _logger;
 
     public NotificationPreferenceController(
         INotificationPreferenceService preferenceService,
-        UserContextService userContextService,
+        IUserContextService userContextService,
         ILogger<NotificationPreferenceController> logger)
     {
         _preferenceService = preferenceService ?? throw new ArgumentNullException(nameof(preferenceService));
