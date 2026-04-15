@@ -16,4 +16,5 @@ public sealed class SessionReportRowDto
     public int AbsentCount { get; set; }
     public int ExcusedCount { get; set; }
     public int TotalRecords { get; set; }
+    public int TotalEnrolled { get; set; }
 }

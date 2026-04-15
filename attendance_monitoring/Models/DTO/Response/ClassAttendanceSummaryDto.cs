@@ -15,6 +15,7 @@ public class SessionAttendanceStatsDto
     public int AbsentCount { get; set; }
     public int ExcusedCount { get; set; }
     public int TotalRecords { get; set; }
+    public int TotalEnrolled { get; set; }
     public decimal AttendanceRate { get; set; }
 }
 
