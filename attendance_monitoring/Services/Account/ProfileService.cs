@@ -121,7 +121,27 @@ internal sealed class ProfileService
                 profile.UpdatedAt = instructor.UpdatedAt;
             }
         }
-        // Admin role: only base Identity information (already populated)
+        else if (role.Equals("Admin", StringComparison.OrdinalIgnoreCase))
+        {
+            var admin = await _context.Admins
+                .AsNoTracking()
+                .FirstOrDefaultAsync(a => a.UserId == userId && !a.IsDeleted)
+                .ConfigureAwait(false);
+
+            if (admin != null)
+            {
+                profile.AdminProfile = new AdminProfileInfo
+                {
+                    Id = admin.Id,
+                    Firstname = admin.Firstname,
+                    Lastname = admin.Lastname,
+                    CreatedAt = admin.CreatedAt,
+                    UpdatedAt = admin.UpdatedAt
+                };
+                profile.CreatedAt = admin.CreatedAt;
+                profile.UpdatedAt = admin.UpdatedAt;
+            }
+        }
 
         _logger.LogInformation("User profile fetched successfully for user ID: {UserId}", userId);
         return profile;
