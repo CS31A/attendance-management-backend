@@ -1,0 +1,205 @@
+@baseUrl = http://localhost:8080
+
+# Authentication tokens (replace with actual tokens after login)
+@adminToken = {{loginAdmin.response.body.accessToken}}
+@instructorToken = {{loginInstructor.response.body.accessToken}}
+@studentToken = {{loginStudent.response.body.accessToken}}
+
+###
+
+# ===== LOGIN OPERATIONS =====
+# NOTE: Run these first to get authentication tokens
+
+### Admin Login
+# @name loginAdmin
+POST {{baseUrl}}/api/account/login
+Content-Type: application/json
+
+{
+  "username": "admin@attendance.com",
+  "password": "Admin@123!"
+}
+
+###
+
+### Instructor Login
+# @name loginInstructor
+POST {{baseUrl}}/api/account/login
+Content-Type: application/json
+
+{
+  "username": "annalyn.gelicame@instructor.com",
+  "password": "DefaultPassword123!"
+}
+
+###
+
+### Student Login
+# @name loginStudent
+POST {{baseUrl}}/api/account/login
+Content-Type: application/json
+
+{
+  "username": "christian.dave.alicaba@student.com",
+  "password": "DefaultPassword123!"
+}
+
+###
+
+# ===== REGRESSION CHECKS FOR REPORTS AUTHORIZATION CHANGES =====
+# These tests verify the authorization changes in ReportsController:
+# - Class-level changed from PrivilegedPolicy to UserPolicy
+# - Method-level PrivilegedPolicy added to session-attendance, class-attendance, instructor-sessions
+
+### Test 1: Student Access to attendance-summary (SUCCESS - UserPolicy)
+# Expected: 200 OK (students can now access summary)
+# Policy: UserPolicy (Admin, Instructor, Student)
+GET {{baseUrl}}/api/reports/attendance-summary
+Authorization: Bearer {{studentToken}}
+
+###
+
+### Test 2: Student Access to student-attendance with own ID (SUCCESS - UserPolicy)
+# Expected: 200 OK (students can view their own data)
+# Policy: UserPolicy (Admin, Instructor, Student)
+# Note: Replace 2060 with actual student ID from login response
+GET {{baseUrl}}/api/reports/student-attendance/2060
+Authorization: Bearer {{studentToken}}
+
+###
+
+### Test 3: Student Access to student-attendance with other ID (FORBIDDEN - Service Layer)
+# Expected: 403 Forbidden (service layer prevents viewing other students' data)
+# Policy: UserPolicy (allows access, but service layer enforces data scoping)
+GET {{baseUrl}}/api/reports/student-attendance/1
+Authorization: Bearer {{studentToken}}
+
+###
+
+### Test 4: Student Access to session-attendance (FORBIDDEN - PrivilegedPolicy)
+# Expected: 403 Forbidden (method-level PrivilegedPolicy)
+# Policy: PrivilegedPolicy (Admin, Instructor only)
+GET {{baseUrl}}/api/reports/session-attendance/1
+Authorization: Bearer {{studentToken}}
+
+###
+
+### Test 5: Student Access to class-attendance (FORBIDDEN - PrivilegedPolicy)
+# Expected: 403 Forbidden (method-level PrivilegedPolicy)
+# Policy: PrivilegedPolicy (Admin, Instructor only)
+GET {{baseUrl}}/api/reports/class-attendance/1
+Authorization: Bearer {{studentToken}}
+
+###
+
+### Test 6: Student Access to instructor-sessions (FORBIDDEN - PrivilegedPolicy)
+# Expected: 403 Forbidden (method-level PrivilegedPolicy)
+# Policy: PrivilegedPolicy (Admin, Instructor only)
+GET {{baseUrl}}/api/reports/instructor-sessions/1
+Authorization: Bearer {{studentToken}}
+
+###
+
+# ===== INSTRUCTOR ACCESS TESTS (Should all succeed) =====
+
+### Test 7: Instructor Access to attendance-summary (SUCCESS)
+# Expected: 200 OK
+# Policy: UserPolicy (Admin, Instructor, Student)
+GET {{baseUrl}}/api/reports/attendance-summary
+Authorization: Bearer {{instructorToken}}
+
+###
+
+### Test 8: Instructor Access to student-attendance (SUCCESS)
+# Expected: 200 OK
+# Policy: UserPolicy (Admin, Instructor, Student)
+GET {{baseUrl}}/api/reports/student-attendance/2060
+Authorization: Bearer {{instructorToken}}
+
+###
+
+### Test 9: Instructor Access to session-attendance (SUCCESS)
+# Expected: 200 OK
+# Policy: PrivilegedPolicy (Admin, Instructor only)
+GET {{baseUrl}}/api/reports/session-attendance/1
+Authorization: Bearer {{instructorToken}}
+
+###
+
+### Test 10: Instructor Access to class-attendance (SUCCESS)
+# Expected: 200 OK
+# Policy: PrivilegedPolicy (Admin, Instructor only)
+GET {{baseUrl}}/api/reports/class-attendance/1
+Authorization: Bearer {{instructorToken}}
+
+###
+
+### Test 11: Instructor Access to instructor-sessions (SUCCESS)
+# Expected: 200 OK
+# Policy: PrivilegedPolicy (Admin, Instructor only)
+GET {{baseUrl}}/api/reports/instructor-sessions/1
+Authorization: Bearer {{instructorToken}}
+
+###
+
+# ===== ADMIN ACCESS TESTS (Should all succeed) =====
+
+### Test 12: Admin Access to attendance-summary (SUCCESS)
+# Expected: 200 OK
+# Policy: UserPolicy (Admin, Instructor, Student)
+GET {{baseUrl}}/api/reports/attendance-summary
+Authorization: Bearer {{adminToken}}
+
+###
+
+### Test 13: Admin Access to student-attendance (SUCCESS)
+# Expected: 200 OK
+# Policy: UserPolicy (Admin, Instructor, Student)
+GET {{baseUrl}}/api/reports/student-attendance/2060
+Authorization: Bearer {{adminToken}}
+
+###
+
+### Test 14: Admin Access to session-attendance (SUCCESS)
+# Expected: 200 OK
+# Policy: PrivilegedPolicy (Admin, Instructor only)
+GET {{baseUrl}}/api/reports/session-attendance/1
+Authorization: Bearer {{adminToken}}
+
+###
+
+### Test 15: Admin Access to class-attendance (SUCCESS)
+# Expected: 200 OK
+# Policy: PrivilegedPolicy (Admin, Instructor only)
+GET {{baseUrl}}/api/reports/class-attendance/1
+Authorization: Bearer {{adminToken}}
+
+###
+
+### Test 16: Admin Access to instructor-sessions (SUCCESS)
+# Expected: 200 OK
+# Policy: PrivilegedPolicy (Admin, Instructor only)
+GET {{baseUrl}}/api/reports/instructor-sessions/1
+Authorization: Bearer {{adminToken}}
+
+###
+
+# ===== UNAUTHORIZED ACCESS TESTS (No token) =====
+
+### Test 17: attendance-summary without token (UNAUTHORIZED)
+# Expected: 401 Unauthorized
+GET {{baseUrl}}/api/reports/attendance-summary
+
+###
+
+### Test 18: student-attendance without token (UNAUTHORIZED)
+# Expected: 401 Unauthorized
+GET {{baseUrl}}/api/reports/student-attendance/2060
+
+###
+
+### Test 19: session-attendance without token (UNAUTHORIZED)
+# Expected: 401 Unauthorized
+GET {{baseUrl}}/api/reports/session-attendance/1
+
+###

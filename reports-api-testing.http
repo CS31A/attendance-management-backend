@@ -1,0 +1,290 @@
+@baseUrl = http://localhost:8080
+
+# Authentication tokens (replace with actual tokens after login)
+@adminToken = {{loginAdmin.response.body.accessToken}}
+@instructorToken = {{loginInstructor.response.body.accessToken}}
+@studentToken = {{loginStudent.response.body.accessToken}}
+
+###
+
+# ===== LOGIN OPERATIONS =====
+# NOTE: Run these first to get authentication tokens
+
+### Admin Login
+# @name loginAdmin
+POST {{baseUrl}}/api/account/login
+Content-Type: application/json
+
+{
+  "username": "admin@attendance.com",
+  "password": "Admin@123!"
+}
+
+###
+
+### Instructor Login
+# @name loginInstructor
+POST {{baseUrl}}/api/account/login
+Content-Type: application/json
+
+{
+  "username": "annalyn.gelicame@instructor.com",
+  "password": "DefaultPassword123!"
+}
+
+###
+
+### Student Login
+# @name loginStudent
+POST {{baseUrl}}/api/account/login
+Content-Type: application/json
+
+{
+  "username": "christian.dave.alicaba@student.com",
+  "password": "DefaultPassword123!"
+}
+
+###
+
+# ===== ATTENDANCE SUMMARY =====
+# Policy: UserPolicy (Admin, Instructor, Student)
+
+### Test 1: Get Attendance Summary as Admin (Success)
+GET {{baseUrl}}/api/reports/attendance-summary?startDate=2024-01-01&endDate=2024-12-31
+Authorization: Bearer {{adminToken}}
+
+###
+
+### Test 2: Get Attendance Summary as Instructor (Success)
+GET {{baseUrl}}/api/reports/attendance-summary?startDate=2024-01-01&endDate=2024-12-31
+Authorization: Bearer {{instructorToken}}
+
+###
+
+### Test 3: Get Attendance Summary as Student (Success)
+GET {{baseUrl}}/api/reports/attendance-summary?startDate=2024-01-01&endDate=2024-12-31
+Authorization: Bearer {{studentToken}}
+
+###
+
+### Test 4: Get Attendance Summary - Unauthorized (No token)
+# Expected: 401 Unauthorized
+GET {{baseUrl}}/api/reports/attendance-summary?startDate=2024-01-01&endDate=2024-12-31
+
+###
+
+# ===== STUDENT ATTENDANCE REPORT =====
+# Policy: UserPolicy (Admin, Instructor, Student)
+# Resource-level: Students can only view their own reports
+
+### Test 5: Get Student Attendance Report as Admin (Success)
+# Replace studentId with actual student ID
+GET {{baseUrl}}/api/reports/student-attendance/1
+Authorization: Bearer {{adminToken}}
+
+###
+
+### Test 6: Get Student Attendance Report as Instructor (Success)
+GET {{baseUrl}}/api/reports/student-attendance/1
+Authorization: Bearer {{instructorToken}}
+
+###
+
+### Test 7: Get Student Attendance Report as Student (Success - Own Report)
+# Replace studentId with the logged-in student's ID
+GET {{baseUrl}}/api/reports/student-attendance/2060
+Authorization: Bearer {{studentToken}}
+
+###
+
+### Test 8: Get Student Attendance Report - Non-existent Student
+# Expected: 404 Not Found
+GET {{baseUrl}}/api/reports/student-attendance/999999
+Authorization: Bearer {{adminToken}}
+
+###
+
+### Test 9: Get Student Attendance Report - Unauthorized (No token)
+# Expected: 401 Unauthorized
+GET {{baseUrl}}/api/reports/student-attendance/2060
+
+###
+
+# ===== SESSION ATTENDANCE REPORT =====
+# Policy: PrivilegedPolicy (Admin, Instructor)
+# Resource-level: Instructors can only view sessions they teach (via AttendanceService)
+
+### Test 10: Get Session Attendance Report as Admin (Success)
+# Replace sessionId with actual session ID
+GET {{baseUrl}}/api/reports/session-attendance/1
+Authorization: Bearer {{adminToken}}
+
+###
+
+### Test 11: Get Session Attendance Report as Instructor (Success - Own Session)
+GET {{baseUrl}}/api/reports/session-attendance/1
+Authorization: Bearer {{instructorToken}}
+
+###
+
+### Test 12: Get Session Attendance Report - Forbidden (Student)
+# Expected: 403 Forbidden
+GET {{baseUrl}}/api/reports/session-attendance/1
+Authorization: Bearer {{studentToken}}
+
+###
+
+### Test 13: Get Session Attendance Report - Non-existent Session
+# Expected: 404 Not Found
+GET {{baseUrl}}/api/reports/session-attendance/999999
+Authorization: Bearer {{adminToken}}
+
+###
+
+### Test 14: Get Session Attendance Report - Unauthorized (No token)
+# Expected: 401 Unauthorized
+GET {{baseUrl}}/api/reports/session-attendance/1
+
+###
+
+# ===== CLASS ATTENDANCE REPORT =====
+# Policy: PrivilegedPolicy (Admin, Instructor)
+# Resource-level: Instructors can only view sections they teach
+
+### Test 15: Get Class Attendance Report as Admin (Success)
+# Replace sectionId with actual section ID
+GET {{baseUrl}}/api/reports/class-attendance/1?startDate=2024-01-01&endDate=2024-12-31
+Authorization: Bearer {{adminToken}}
+
+###
+
+### Test 16: Get Class Attendance Report as Instructor (Success - Own Section)
+GET {{baseUrl}}/api/reports/class-attendance/1?startDate=2024-01-01&endDate=2024-12-31
+Authorization: Bearer {{instructorToken}}
+
+###
+
+### Test 17: Get Class Attendance Report - Forbidden (Student)
+# Expected: 403 Forbidden
+GET {{baseUrl}}/api/reports/class-attendance/1?startDate=2024-01-01&endDate=2024-12-31
+Authorization: Bearer {{studentToken}}
+
+###
+
+### Test 18: Get Class Attendance Report - Forbidden (Instructor viewing section they don't teach)
+# Expected: 403 Forbidden
+# Replace sectionId with a section the instructor doesn't teach
+GET {{baseUrl}}/api/reports/class-attendance/2?startDate=2024-01-01&endDate=2024-12-31
+Authorization: Bearer {{instructorToken}}
+
+###
+
+### Test 19: Get Class Attendance Report - Non-existent Section
+# Expected: 404 Not Found
+GET {{baseUrl}}/api/reports/class-attendance/999999?startDate=2024-01-01&endDate=2024-12-31
+Authorization: Bearer {{adminToken}}
+
+###
+
+### Test 20: Get Class Attendance Report - Unauthorized (No token)
+# Expected: 401 Unauthorized
+GET {{baseUrl}}/api/reports/class-attendance/1?startDate=2024-01-01&endDate=2024-12-31
+
+###
+
+# ===== INSTRUCTOR SESSIONS REPORT =====
+# Policy: PrivilegedPolicy (Admin, Instructor)
+# Resource-level: Instructors can only view their own session reports
+
+### Test 21: Get Instructor Sessions Report as Admin (Success)
+# Replace instructorId with actual instructor ID
+GET {{baseUrl}}/api/reports/instructor-sessions/1?startDate=2024-01-01&endDate=2024-12-31
+Authorization: Bearer {{adminToken}}
+
+###
+
+### Test 22: Get Instructor Sessions Report as Instructor (Success - Own Report)
+GET {{baseUrl}}/api/reports/instructor-sessions/1?startDate=2024-01-01&endDate=2024-12-31
+Authorization: Bearer {{instructorToken}}
+
+###
+
+### Test 23: Get Instructor Sessions Report - Forbidden (Student)
+# Expected: 403 Forbidden
+GET {{baseUrl}}/api/reports/instructor-sessions/1?startDate=2024-01-01&endDate=2024-12-31
+Authorization: Bearer {{studentToken}}
+
+###
+
+### Test 24: Get Instructor Sessions Report - Forbidden (Instructor viewing another instructor's report)
+# Expected: 403 Forbidden
+# Replace instructorId with a different instructor's ID
+GET {{baseUrl}}/api/reports/instructor-sessions/2?startDate=2024-01-01&endDate=2024-12-31
+Authorization: Bearer {{instructorToken}}
+
+###
+
+### Test 25: Get Instructor Sessions Report - Non-existent Instructor
+# Expected: 404 Not Found
+GET {{baseUrl}}/api/reports/instructor-sessions/999999?startDate=2024-01-01&endDate=2024-12-31
+Authorization: Bearer {{adminToken}}
+
+###
+
+### Test 26: Get Instructor Sessions Report - Unauthorized (No token)
+# Expected: 401 Unauthorized
+GET {{baseUrl}}/api/reports/instructor-sessions/1?startDate=2024-01-01&endDate=2024-12-31
+
+###
+
+# ===== DATE FILTER TESTS =====
+
+### Test 27: Class Attendance Report - Date Range Filter
+GET {{baseUrl}}/api/reports/class-attendance/1?startDate=2024-01-01&endDate=2024-06-30
+Authorization: Bearer {{adminToken}}
+
+###
+
+### Test 28: Instructor Sessions Report - Date Range Filter
+GET {{baseUrl}}/api/reports/instructor-sessions/1?startDate=2024-01-01&endDate=2024-06-30
+Authorization: Bearer {{adminToken}}
+
+###
+
+### Test 29: Attendance Summary - Invalid Date Range (Bad Request)
+# Expected: 400 Bad Request
+GET {{baseUrl}}/api/reports/attendance-summary?startDate=2024-12-31&endDate=2024-01-01
+Authorization: Bearer {{adminToken}}
+
+###
+
+# ===== AUTHORIZATION WORKFLOW TESTS =====
+# These tests verify the resource-level authorization we implemented
+
+### Test 30: Cross-Instructor Access Test - Class Attendance
+# Instructor A tries to view Instructor B's section
+# Expected: 403 Forbidden
+GET {{baseUrl}}/api/reports/class-attendance/2?startDate=2024-01-01&endDate=2024-12-31
+Authorization: Bearer {{instructorToken}}
+
+###
+
+### Test 31: Cross-Instructor Access Test - Instructor Sessions
+# Instructor A tries to view Instructor B's session report
+# Expected: 403 Forbidden
+GET {{baseUrl}}/api/reports/instructor-sessions/2?startDate=2024-01-01&endDate=2024-12-31
+Authorization: Bearer {{instructorToken}}
+
+###
+
+### Test 32: Admin Can Access Everything
+# Admin should be able to access any report regardless of ownership
+GET {{baseUrl}}/api/reports/class-attendance/2?startDate=2024-01-01&endDate=2024-12-31
+Authorization: Bearer {{adminToken}}
+
+###
+
+GET {{baseUrl}}/api/reports/instructor-sessions/2?startDate=2024-01-01&endDate=2024-12-31
+Authorization: Bearer {{adminToken}}
+
+###
