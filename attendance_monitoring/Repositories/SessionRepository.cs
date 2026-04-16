@@ -2,6 +2,7 @@ using attendance_monitoring.Classes;
 using attendance_monitoring.Constants;
 using attendance_monitoring.Data;
 using attendance_monitoring.IRepository;
+using attendance_monitoring.Models.DTO.Response;
 using Microsoft.EntityFrameworkCore;
 
 namespace attendance_monitoring.Repositories;
@@ -248,6 +249,88 @@ public class SessionRepository(ApplicationDbContext context) : ISessionRepositor
             .Where(s => s.Schedule.InstructorId == instructorId)
             .OrderByDescending(s => s.SessionDate)
             .ThenByDescending(s => s.CreatedAt)
+            .ToListAsync()
+            .ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Retrieves projected report rows for all sessions in a section with aggregated attendance counts.
+    /// </summary>
+    public async Task<List<SessionReportRowDto>> GetSectionSessionReportRowsAsync(int sectionId, DateTime? startDate, DateTime? endDate)
+    {
+        var query =
+            from session in context.Sessions.AsNoTracking()
+            join schedule in context.Schedules.AsNoTracking() on session.ScheduleId equals schedule.Id
+            join subject in context.Subjects.AsNoTracking() on schedule.SubjectId equals subject.Id
+            join section in context.Sections.AsNoTracking() on schedule.SectionId equals section.Id
+            join attendance in context.AttendanceRecords.AsNoTracking() on session.Id equals attendance.SessionId into attendanceGroup
+            where schedule.SectionId == sectionId
+            select new SessionReportRowDto
+            {
+                SessionId = session.Id,
+                SessionDate = session.SessionDate,
+                Status = session.Status,
+                SubjectName = subject.Name ?? string.Empty,
+                SectionName = section.Name ?? string.Empty,
+                DayOfWeek = schedule.DayOfWeek ?? string.Empty,
+                PresentCount = attendanceGroup.Count(record => record.Status == "Present"),
+                LateCount = attendanceGroup.Count(record => record.Status == "Late"),
+                AbsentCount = attendanceGroup.Count(record => record.Status == "Absent"),
+                ExcusedCount = attendanceGroup.Count(record => record.Status == "Excused"),
+                TotalRecords = attendanceGroup.Count(),
+                TotalEnrolled = context.StudentEnrollments.Count(se => se.SectionId == section.Id && se.IsActive),
+            };
+
+        if (startDate.HasValue)
+            query = query.Where(row => row.SessionDate >= startDate.Value);
+
+        if (endDate.HasValue)
+            query = query.Where(row => row.SessionDate <= endDate.Value);
+
+        return await query
+            .OrderByDescending(row => row.SessionDate)
+            .ThenByDescending(row => row.SessionId)
+            .ToListAsync()
+            .ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Retrieves projected report rows for all sessions owned by an instructor with aggregated attendance counts.
+    /// </summary>
+    public async Task<List<SessionReportRowDto>> GetInstructorSessionReportRowsAsync(int instructorId, DateTime? startDate, DateTime? endDate)
+    {
+        var query =
+            from session in context.Sessions.AsNoTracking()
+            join schedule in context.Schedules.AsNoTracking() on session.ScheduleId equals schedule.Id
+            join subject in context.Subjects.AsNoTracking() on schedule.SubjectId equals subject.Id
+            join section in context.Sections.AsNoTracking() on schedule.SectionId equals section.Id
+            join attendance in context.AttendanceRecords.AsNoTracking() on session.Id equals attendance.SessionId into attendanceGroup
+            where schedule.InstructorId == instructorId
+            select new SessionReportRowDto
+            {
+                SessionId = session.Id,
+                SessionDate = session.SessionDate,
+                Status = session.Status,
+                SubjectName = subject.Name ?? string.Empty,
+                SectionName = section.Name ?? string.Empty,
+                DayOfWeek = schedule.DayOfWeek ?? string.Empty,
+                PresentCount = attendanceGroup.Count(record => record.Status == "Present"),
+                LateCount = attendanceGroup.Count(record => record.Status == "Late"),
+                AbsentCount = attendanceGroup.Count(record => record.Status == "Absent"),
+                ExcusedCount = attendanceGroup.Count(record => record.Status == "Excused"),
+                TotalRecords = attendanceGroup.Count(),
+                TotalEnrolled = context.StudentEnrollments.Count(se => se.SectionId == section.Id && se.IsActive),
+            };
+
+        if (startDate.HasValue)
+            query = query.Where(row => row.SessionDate >= startDate.Value);
+
+        if (endDate.HasValue)
+            query = query.Where(row => row.SessionDate <= endDate.Value);
+
+        return await query
+            .OrderByDescending(row => row.SessionDate)
+            .ThenByDescending(row => row.SessionId)
             .ToListAsync()
             .ConfigureAwait(false);
     }

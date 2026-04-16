@@ -19,7 +19,7 @@ public class AttendanceService(
     IInstructorRepository instructorRepository,
     ISessionRepository sessionRepository,
     IStudentEnrollmentRepository studentEnrollmentRepository,
-    UserContextService userContextService,
+    IUserContextService userContextService,
     ILogger<AttendanceService> logger) : IAttendanceService
 {
     #region Create Operations
@@ -263,9 +263,16 @@ public class AttendanceService(
                 throw new UnauthorizedAccessException("Unable to verify user identity");
             }
 
+            if (student.UserId == null)
+            {
+                logger.LogWarning("Student profile has no UserId assigned for StudentId: {StudentId}", studentId);
+                throw new UnauthorizedAccessException("Student profile is not properly configured");
+            }
+
             if (student.UserId != userId)
             {
-                logger.LogWarning("Student user not authorized to view other student's attendance");
+                logger.LogWarning("Student user {UserId} not authorized to view student {StudentId} attendance (owned by {StudentUserId})",
+                    userId, studentId, student.UserId);
                 throw new UnauthorizedAccessException("You can only view your own attendance history");
             }
         }
@@ -326,14 +333,20 @@ public class AttendanceService(
             }
 
             var instructor = await instructorRepository.GetInstructorByUserIdAsync(userId).ConfigureAwait(false);
+            if (instructor == null)
+            {
+                logger.LogWarning("Instructor profile not found for user ID: {UserId}", userId);
+                throw new EntityNotFoundException<string>("Instructor", userId, "Instructor profile not found for authenticated user");
+            }
+
             if (session.Schedule == null)
             {
                 throw new InvalidOperationException("Session schedule information is not available");
             }
 
-            if (instructor != null && session.Schedule.InstructorId != instructor.Id)
+            if (session.Schedule.InstructorId != instructor.Id)
             {
-                logger.LogWarning("Instructor not authorized to view session {SessionId}", sessionId);
+                logger.LogWarning("Instructor {InstructorId} not authorized to view session {SessionId}", instructor.Id, sessionId);
                 throw new UnauthorizedAccessException("You can only view attendance for your own sessions");
             }
         }

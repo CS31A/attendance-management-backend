@@ -15,7 +15,7 @@ namespace attendance_monitoring.Services
     public class StudentService : IStudentService
     {
         private readonly IStudentRepository _studentRepository;
-        private readonly UserContextService _userContextService;
+        private readonly IUserContextService _userContextService;
         private readonly ISectionRepository _sectionRepository;
         private readonly ILogger<StudentService> _logger;
 
@@ -26,7 +26,7 @@ namespace attendance_monitoring.Services
         /// <param name="userContextService">Service for managing user context and authorization</param>
         /// <param name="sectionRepository">Repository for section data operations</param>
         /// <param name="logger">Logger for logging operations</param>
-        public StudentService(IStudentRepository studentRepository, UserContextService userContextService, ISectionRepository sectionRepository, ILogger<StudentService> logger)
+        public StudentService(IStudentRepository studentRepository, IUserContextService userContextService, ISectionRepository sectionRepository, ILogger<StudentService> logger)
         {
             _studentRepository = studentRepository ?? throw new ArgumentNullException(nameof(studentRepository));
             _userContextService = userContextService ?? throw new ArgumentNullException(nameof(userContextService));

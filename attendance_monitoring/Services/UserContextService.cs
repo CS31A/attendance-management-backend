@@ -1,16 +1,17 @@
 using attendance_monitoring.Constants;
+using attendance_monitoring.Data;
+using attendance_monitoring.IServices;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using attendance_monitoring.Data;
 
 namespace attendance_monitoring.Services;
 
 /// <summary>
 /// Service to handle user context operations and extract user information from claims
 /// </summary>
-public class UserContextService(UserManager<IdentityUser> userManager, ApplicationDbContext context)
+public class UserContextService(UserManager<IdentityUser> userManager, ApplicationDbContext context) : IUserContextService
 {
     private readonly UserManager<IdentityUser> _userManager = userManager ?? throw new ArgumentNullException(nameof(userManager));
     private readonly ApplicationDbContext _context = context ?? throw new ArgumentNullException(nameof(context));
