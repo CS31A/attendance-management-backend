@@ -40,6 +40,35 @@ public class ReportsService(
         if (section == null)
             throw new EntityNotFoundException<int>("Section", sectionId);
 
+        // Authorization: Instructors can only view reports for sections they teach
+        var userRole = user.FindFirst(ClaimTypes.Role)?.Value;
+        if (userRole == RoleConstants.Instructor)
+        {
+            var userId = await userContextService.GetUserIdAsync(user).ConfigureAwait(false);
+            if (userId == null)
+            {
+                logger.LogWarning("Unable to retrieve user ID for instructor");
+                throw new UnauthorizedAccessException("Unable to verify instructor identity");
+            }
+
+            var instructor = await instructorRepository.GetInstructorByUserIdAsync(userId).ConfigureAwait(false);
+            if (instructor == null)
+            {
+                logger.LogWarning("Instructor profile not found for user ID: {UserId}", userId);
+                throw new EntityNotFoundException<string>("Instructor", userId,
+                    "Instructor profile not found for authenticated user");
+            }
+
+            // Verify instructor teaches at least one schedule in this section
+            var sectionSchedules = await scheduleRepository.GetSchedulesBySectionIdAsync(sectionId).ConfigureAwait(false);
+            if (!sectionSchedules.Any(s => s.InstructorId == instructor.Id))
+            {
+                logger.LogWarning("Instructor {InstructorId} not authorized to view section {SectionId} attendance report",
+                    instructor.Id, sectionId);
+                throw new UnauthorizedAccessException("You can only view attendance reports for sections you teach");
+            }
+        }
+
         var sessionRows = await sessionRepository
             .GetSectionSessionReportRowsAsync(sectionId, filter.StartDate, filter.EndDate)
             .ConfigureAwait(false);
@@ -100,6 +129,33 @@ public class ReportsService(
         var instructor = await instructorRepository.GetInstructorByIdAsync(instructorId).ConfigureAwait(false);
         if (instructor == null)
             throw new EntityNotFoundException<int>("Instructor", instructorId);
+
+        // Authorization: Instructors can only view their own session reports
+        var userRole = user.FindFirst(ClaimTypes.Role)?.Value;
+        if (userRole == RoleConstants.Instructor)
+        {
+            var userId = await userContextService.GetUserIdAsync(user).ConfigureAwait(false);
+            if (userId == null)
+            {
+                logger.LogWarning("Unable to retrieve user ID for instructor");
+                throw new UnauthorizedAccessException("Unable to verify instructor identity");
+            }
+
+            var currentInstructor = await instructorRepository.GetInstructorByUserIdAsync(userId).ConfigureAwait(false);
+            if (currentInstructor == null)
+            {
+                logger.LogWarning("Instructor profile not found for user ID: {UserId}", userId);
+                throw new EntityNotFoundException<string>("Instructor", userId,
+                    "Instructor profile not found for authenticated user");
+            }
+
+            if (currentInstructor.Id != instructorId)
+            {
+                logger.LogWarning("Instructor {CurrentInstructorId} not authorized to view instructor {TargetInstructorId} session report",
+                    currentInstructor.Id, instructorId);
+                throw new UnauthorizedAccessException("You can only view your own session reports");
+            }
+        }
 
         var sessionRows = await sessionRepository
             .GetInstructorSessionReportRowsAsync(instructorId, filter.StartDate, filter.EndDate)

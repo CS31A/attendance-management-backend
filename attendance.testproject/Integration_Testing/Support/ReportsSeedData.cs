@@ -13,9 +13,11 @@ internal sealed class ReportsScenarioContext
 {
     public required string AdminUserId { get; init; }
     public required string InstructorUserId { get; init; }
+    public required string OtherInstructorUserId { get; init; }
     public required string StudentUserId { get; init; }
     public required string OutsiderStudentUserId { get; init; }
     public required int InstructorId { get; init; }
+    public required int OtherInstructorId { get; init; }
     public required int StudentId { get; init; }
     public required int OutsiderStudentId { get; init; }
     public required int SectionId { get; init; }
@@ -40,10 +42,11 @@ internal static class ReportsSeedData
         // Create Identity users
         var adminUser = CreateIdentityUser("integration-admin", "integration-admin@example.test");
         var instructorUser = CreateIdentityUser("integration-instructor", "integration-instructor@example.test");
+        var otherInstructorUser = CreateIdentityUser("other-instructor", "other-instructor@example.test");
         var studentUser = CreateIdentityUser("integration-student", "integration-student@example.test");
         var outsiderUser = CreateIdentityUser("integration-outsider", "integration-outsider@example.test");
 
-        dbContext.Users.AddRange(adminUser, instructorUser, studentUser, outsiderUser);
+        dbContext.Users.AddRange(adminUser, instructorUser, otherInstructorUser, studentUser, outsiderUser);
 
         // Create course and sections
         var course = new Course
@@ -90,6 +93,15 @@ internal static class ReportsSeedData
         {
             UserId = instructorUser.Id,
             Firstname = "Ivy",
+            Lastname = "Instructor",
+            CreatedAt = now,
+            UpdatedAt = now
+        };
+
+        var otherInstructor = new Instructor
+        {
+            UserId = otherInstructorUser.Id,
+            Firstname = "Other",
             Lastname = "Instructor",
             CreatedAt = now,
             UpdatedAt = now
@@ -145,7 +157,7 @@ internal static class ReportsSeedData
             UpdatedAt = now
         };
 
-        dbContext.AddRange(course, section, outsiderSection, subject, classroom, instructor, student, outsiderStudent, schedule, session);
+        dbContext.AddRange(course, section, outsiderSection, subject, classroom, instructor, otherInstructor, student, outsiderStudent, schedule, session);
         await dbContext.SaveChangesAsync(cancellationToken);
 
         // Create enrollment
@@ -170,9 +182,11 @@ internal static class ReportsSeedData
         {
             AdminUserId = adminUser.Id,
             InstructorUserId = instructorUser.Id,
+            OtherInstructorUserId = otherInstructorUser.Id,
             StudentUserId = studentUser.Id,
             OutsiderStudentUserId = outsiderUser.Id,
             InstructorId = instructor.Id,
+            OtherInstructorId = otherInstructor.Id,
             StudentId = student.Id,
             OutsiderStudentId = outsiderStudent.Id,
             SectionId = section.Id,
