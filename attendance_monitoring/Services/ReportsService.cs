@@ -175,7 +175,9 @@ public class ReportsService(
                     SectionName = row.SectionName,
                     ScheduleTitle = !string.IsNullOrEmpty(row.SubjectName) && !string.IsNullOrEmpty(row.SectionName)
                         ? $"{row.SubjectName} - {row.SectionName}"
-                        : row.SubjectName,
+                        : !string.IsNullOrEmpty(row.SubjectName)
+                            ? row.SubjectName
+                            : row.SectionName,
                     Status = row.Status,
                     PresentCount = row.PresentCount,
                     LateCount = row.LateCount,

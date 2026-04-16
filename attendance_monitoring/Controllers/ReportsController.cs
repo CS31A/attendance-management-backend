@@ -133,6 +133,11 @@ public class ReportsController(IReportsService reportsService, ILogger<ReportsCo
             logger.LogWarning(ex, "Section {SectionId} not found", sectionId);
             return NotFound(new { message = ex.Message });
         }
+        catch (EntityNotFoundException<string> ex)
+        {
+            logger.LogWarning(ex, "Entity not found while getting class attendance report");
+            return NotFound(new { message = ex.Message });
+        }
         catch (UnauthorizedAccessException ex)
         {
             logger.LogWarning(ex, "Unauthorized access to section {SectionId} attendance report", sectionId);
@@ -162,6 +167,11 @@ public class ReportsController(IReportsService reportsService, ILogger<ReportsCo
         catch (EntityNotFoundException<int> ex)
         {
             logger.LogWarning(ex, "Instructor {InstructorId} not found", instructorId);
+            return NotFound(new { message = ex.Message });
+        }
+        catch (EntityNotFoundException<string> ex)
+        {
+            logger.LogWarning(ex, "Entity not found while getting instructor sessions report");
             return NotFound(new { message = ex.Message });
         }
         catch (UnauthorizedAccessException ex)
