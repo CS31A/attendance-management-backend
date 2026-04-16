@@ -12,7 +12,7 @@ namespace attendance_monitoring.Controllers;
 /// Controller exposing aggregated report endpoints for attendance analytics.
 /// All endpoints respect role-based data scoping enforced in the service layer.
 /// </summary>
-[Authorize(Policy = "PrivilegedPolicy")]
+[Authorize(Policy = "UserPolicy")]
 [ApiController]
 [Route("api/reports")]
 public class ReportsController(IReportsService reportsService, ILogger<ReportsController> logger) : ControllerBase
@@ -20,6 +20,7 @@ public class ReportsController(IReportsService reportsService, ILogger<ReportsCo
     /// <summary>
     /// Returns aggregate attendance summary statistics.
     /// Accepts optional filters: startDate, endDate, sectionId, studentId, sessionId.
+    /// Accessible to Admin, Instructors, and Students (students can only view their own data).
     /// </summary>
     [HttpGet("attendance-summary")]
     [ProducesResponseType(typeof(AttendanceSummaryDto), StatusCodes.Status200OK)]
@@ -49,7 +50,7 @@ public class ReportsController(IReportsService reportsService, ILogger<ReportsCo
 
     /// <summary>
     /// Returns attendance history and statistics for a specific student.
-    /// Students can only view their own data.
+    /// Accessible to Admin, Instructors, and Students (students can only view their own data).
     /// </summary>
     [HttpGet("student-attendance/{studentId:int}")]
     [ProducesResponseType(typeof(StudentAttendanceHistoryDto), StatusCodes.Status200OK)]
@@ -82,6 +83,7 @@ public class ReportsController(IReportsService reportsService, ILogger<ReportsCo
     /// Instructors can only view their own sessions.
     /// </summary>
     [HttpGet("session-attendance/{sessionId:int}")]
+    [Authorize(Policy = "PrivilegedPolicy")]
     [ProducesResponseType(typeof(SessionAttendanceDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
@@ -112,6 +114,7 @@ public class ReportsController(IReportsService reportsService, ILogger<ReportsCo
     /// Accepts optional filters: startDate, endDate.
     /// </summary>
     [HttpGet("class-attendance/{sectionId:int}")]
+    [Authorize(Policy = "PrivilegedPolicy")]
     [ProducesResponseType(typeof(ClassAttendanceSummaryDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -142,6 +145,7 @@ public class ReportsController(IReportsService reportsService, ILogger<ReportsCo
     /// Accepts optional filters: startDate, endDate.
     /// </summary>
     [HttpGet("instructor-sessions/{instructorId:int}")]
+    [Authorize(Policy = "PrivilegedPolicy")]
     [ProducesResponseType(typeof(InstructorSessionsReportDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
