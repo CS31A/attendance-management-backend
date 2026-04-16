@@ -156,14 +156,14 @@ public sealed class ReportsAuthorizationIntegrationTests
 
     #endregion
 
-    #region Cross-Instructor Access (Policy-Based Authorization)
+    #region Cross-Instructor Access (Resource-Level Authorization)
 
     /// <summary>
-    /// Verifies PrivilegedPolicy allows any instructor to access instructor session reports.
-    /// Service-layer cross-instructor authorization was removed in favor of policy-based authorization.
+    /// Verifies instructors cannot view other instructors' session reports.
+    /// Resource-level authorization is enforced in ReportsService.
     /// </summary>
     [Fact]
-    public async Task GetInstructorSessionsReport_ReturnsOk_WhenInstructorViewsAnotherInstructorsReport()
+    public async Task GetInstructorSessionsReport_ReturnsForbidden_WhenInstructorViewsAnotherInstructorsReport()
     {
         await using var host = await ApiIntegrationHost.CreateReportsAsync();
         var targetInstructorId = host.ReportsScenario!.InstructorId;
@@ -171,23 +171,23 @@ public sealed class ReportsAuthorizationIntegrationTests
 
         var response = await host.Client.GetAsync($"/api/reports/instructor-sessions/{targetInstructorId}");
 
-        Assert.NotEqual(HttpStatusCode.Forbidden, response.StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }
 
     /// <summary>
-    /// Verifies PrivilegedPolicy allows any instructor to access session attendance reports.
-    /// Session ownership authorization is enforced by AttendanceService for GetSessionAttendanceReportAsync.
+    /// Verifies instructors cannot view sections they don't teach.
+    /// Resource-level authorization is enforced in ReportsService.
     /// </summary>
     [Fact]
-    public async Task GetSessionAttendanceReport_ReturnsOk_WhenInstructorViewsAnySession()
+    public async Task GetClassAttendanceReport_ReturnsForbidden_WhenInstructorViewsSectionTheyDontTeach()
     {
         await using var host = await ApiIntegrationHost.CreateReportsAsync();
-        var sessionId = host.ReportsScenario!.SessionId;
-        host.AuthenticateAs(userId: "any-instructor", username: "any-instructor", role: "Instructor");
+        var sectionId = host.ReportsScenario!.SectionId;
+        host.AuthenticateAs(userId: "other-instructor", username: "other-instructor", role: "Instructor");
 
-        var response = await host.Client.GetAsync($"/api/reports/session-attendance/{sessionId}");
+        var response = await host.Client.GetAsync($"/api/reports/class-attendance/{sectionId}");
 
-        Assert.NotEqual(HttpStatusCode.Forbidden, response.StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }
 
     #endregion
