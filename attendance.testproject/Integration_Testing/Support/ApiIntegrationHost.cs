@@ -58,6 +58,10 @@ internal sealed class ApiIntegrationHost : IAsyncDisposable
 
     public AttendanceQrScenarioContext? AttendanceQrScenario { get; private set; }
 
+    public ReportsScenarioContext? ReportsScenario { get; private set; }
+
+    public IServiceProvider Services => _app.Services;
+
     public ReliabilityTelemetryCollector Telemetry => _telemetryCollector
         ?? throw new InvalidOperationException("Reliability telemetry collection is not configured for this host.");
 
@@ -257,6 +261,82 @@ internal sealed class ApiIntegrationHost : IAsyncDisposable
         return host;
     }
 
+    public static async Task<ApiIntegrationHost> CreateReportsAsync(
+        CancellationToken cancellationToken = default)
+    {
+        var connectionString = $"Data Source=file:reports-integration-{Guid.NewGuid():N}?mode=memory&cache=shared";
+        var connection = new SqliteConnection(connectionString);
+        await connection.OpenAsync(cancellationToken);
+
+        var builder = WebApplication.CreateBuilder(new WebApplicationOptions
+        {
+            EnvironmentName = Environments.Production
+        });
+
+        builder.WebHost.UseTestServer();
+        builder.Services.AddLogging();
+        builder.Services.AddRouting();
+        builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["CookieSettings:AccessTokenExpirationMinutes"] = "15",
+            ["CookieSettings:RefreshTokenExpirationDays"] = "7",
+            ["CorsSettings:AllowedOrigins"] = "https://localhost",
+            ["Jwt:Token"] = "test-secret-key-for-integration-testing-minimum-32-characters",
+            ["Jwt:Issuer"] = "test-issuer",
+            ["Jwt:Audience"] = "test-audience"
+        });
+
+        builder.Services.AddDbContext<ApplicationDbContext>(options => options.UseSqlite(connectionString));
+        builder.Services.AddIdentity<IdentityUser, IdentityRole>()
+            .AddEntityFrameworkStores<ApplicationDbContext>()
+            .AddDefaultTokenProviders();
+        builder.Services
+            .AddAuthentication(options =>
+            {
+                options.DefaultAuthenticateScheme = AuthenticationScheme;
+                options.DefaultChallengeScheme = AuthenticationScheme;
+                options.DefaultScheme = AuthenticationScheme;
+            })
+            .AddScheme<AuthenticationSchemeOptions, TestAuthenticationHandler>(AuthenticationScheme, _ => { });
+        builder.Services.ConfigureApplicationCookie(options =>
+        {
+            options.LoginPath = PathString.Empty;
+            options.AccessDeniedPath = PathString.Empty;
+        });
+        builder.Services.AddAuthorizationPolicies();
+        builder.Services.AddResponseHandling();
+        builder.Services.AddCorsPolicy(builder.Configuration);
+        builder.Services.AddSignalRServices();
+        builder.Services.AddRepositories();
+        builder.Services.AddApplicationServices();
+        builder.Services.AddControllers()
+            .ConfigureApplicationPartManager(manager =>
+            {
+                manager.ApplicationParts.Clear();
+                manager.ApplicationParts.Add(new AssemblyPart(typeof(ReportsController).Assembly));
+            });
+
+        var accountService = new Mock<IAccountService>(MockBehavior.Strict);
+        builder.Services.AddSingleton(accountService);
+        builder.Services.AddSingleton<IAccountService>(sp => sp.GetRequiredService<Mock<IAccountService>>().Object);
+
+        var app = builder.Build();
+        app.UseRouting();
+        app.UseAuthentication();
+        app.UseAuthorization();
+        app.UseGlobalExceptionHandler();
+        app.MapControllers();
+
+        await app.StartAsync(cancellationToken);
+
+        var client = app.GetTestClient();
+        client.BaseAddress = new Uri("https://localhost");
+
+        var host = new ApiIntegrationHost(app, client, accountService, sqliteConnection: connection);
+        await host.LoadReportsScenarioAsync(cancellationToken);
+        return host;
+    }
+
     public void AuthenticateAs(
         string userId = "integration-user",
         string username = "integration-admin",
@@ -324,6 +404,15 @@ internal sealed class ApiIntegrationHost : IAsyncDisposable
         var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
         AttendanceQrScenario = await AttendanceQrSeedData.SeedScenarioAsync(dbContext, scenarioName, cancellationToken);
         return AttendanceQrScenario;
+    }
+
+    public async Task<ReportsScenarioContext> LoadReportsScenarioAsync(
+        CancellationToken cancellationToken = default)
+    {
+        await using var scope = _app.Services.CreateAsyncScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        ReportsScenario = await ReportsSeedData.SeedScenarioAsync(dbContext, cancellationToken);
+        return ReportsScenario;
     }
 
     public async Task<TResult> ExecuteDbContextAsync<TResult>(

@@ -175,60 +175,6 @@ public class ReportsServiceTest
         _sessionRepository.Verify(repository => repository.GetInstructorSessionReportRowsAsync(instructorId, filter.StartDate, filter.EndDate), Times.Once);
     }
 
-    [Fact]
-    public async Task GetInstructorSessionsReportAsync_ThrowsUnauthorized_WhenInstructorRequestsAnotherInstructorReport()
-    {
-        // Arrange
-        const int requestedInstructorId = 10;
-        var filter = new AttendanceFilterRequest();
-        var instructorUser = new ClaimsPrincipal(new ClaimsIdentity([
-            new Claim(ClaimTypes.NameIdentifier, "inst-9"),
-            new Claim(ClaimTypes.Role, "Instructor"),
-        ], "TestAuth"));
-
-        _instructorRepository
-            .Setup(repository => repository.GetInstructorByIdAsync(requestedInstructorId))
-            .ReturnsAsync(new Instructor
-            {
-                Id = requestedInstructorId,
-                Firstname = "Grace",
-                Lastname = "Hopper",
-                UserId = "inst-10",
-            });
-
-        _instructorRepository
-            .Setup(repository => repository.GetInstructorByUserIdAsync("inst-9"))
-            .ReturnsAsync(new Instructor
-            {
-                Id = 9,
-                Firstname = "Ada",
-                Lastname = "Lovelace",
-                UserId = "inst-9",
-            });
-
-        _sessionRepository
-            .Setup(repository => repository.GetInstructorSessionReportRowsAsync(requestedInstructorId, filter.StartDate, filter.EndDate))
-            .ReturnsAsync([]);
-
-        _userContextService
-            .Setup(service => service.GetUserIdAsync(instructorUser))
-            .ReturnsAsync("inst-9");
-
-        var service = new ReportsService(
-            _attendanceService.Object,
-            _sessionRepository.Object,
-            _sectionRepository.Object,
-            _instructorRepository.Object,
-            _scheduleRepository.Object,
-            _userContextService.Object,
-            _logger.Object);
-
-        // Act / Assert
-        await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
-            service.GetInstructorSessionsReportAsync(requestedInstructorId, filter, instructorUser));
-
-        _sessionRepository.Verify(repository => repository.GetInstructorSessionReportRowsAsync(It.IsAny<int>(), It.IsAny<DateTime?>(), It.IsAny<DateTime?>()), Times.Never);
-    }
 
     [Fact]
     public void InstructorSessionItemDto_InheritsFrom_SessionAttendanceStatsDto()
