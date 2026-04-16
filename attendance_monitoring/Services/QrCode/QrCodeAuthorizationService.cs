@@ -9,13 +9,13 @@ internal sealed class QrCodeAuthorizationService
 {
     private readonly ISessionRepository _sessionRepository;
     private readonly IStudentEnrollmentService _studentEnrollmentService;
-    private readonly UserContextService _userContextService;
+    private readonly IUserContextService _userContextService;
     private readonly ILogger<QrCodeAuthorizationService> _logger;
 
     public QrCodeAuthorizationService(
         ISessionRepository sessionRepository,
         IStudentEnrollmentService studentEnrollmentService,
-        UserContextService userContextService,
+        IUserContextService userContextService,
         ILogger<QrCodeAuthorizationService> logger)
     {
         _sessionRepository = sessionRepository ?? throw new ArgumentNullException(nameof(sessionRepository));
@@ -24,7 +24,7 @@ internal sealed class QrCodeAuthorizationService
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
-    public UserContextService UserContext => _userContextService;
+    public IUserContextService UserContext => _userContextService;
 
     /// <summary>
     /// Validates that the session exists and is active. Returns an error message string on failure, null on success.

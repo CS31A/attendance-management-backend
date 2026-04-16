@@ -15,7 +15,7 @@ namespace attendance_monitoring.Services
     public class ScheduleService(
         IScheduleRepository scheduleRepository,
         IInstructorRepository instructorRepository,
-        UserContextService userContextService,
+        IUserContextService userContextService,
         IHttpContextAccessor httpContextAccessor,
         ApplicationDbContext context,
         ILogger<ScheduleService> logger)

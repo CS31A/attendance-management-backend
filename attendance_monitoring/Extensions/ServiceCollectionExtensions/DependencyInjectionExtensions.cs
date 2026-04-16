@@ -76,12 +76,13 @@ public static class DependencyInjectionExtensions
         services.AddScoped<QrCodeGenerationService>();
         services.AddScoped<QrCodeScanService>();
         services.AddScoped<IRoleInitializationService, RoleInitializationService>();
-        services.AddScoped<UserContextService>();
+        services.AddScoped<IUserContextService, UserContextService>();
         services.AddScoped<ITokenValidationService, TokenValidationService>();
         services.AddScoped<ICookieOptionsService, CookieOptionsService>();
         services.AddScoped<IStudentEnrollmentService, StudentEnrollmentService>();
         services.AddScoped<ISessionService, SessionService>();
         services.AddScoped<IAttendanceService, AttendanceService>();
+        services.AddScoped<IReportsService, ReportsService>();
         services.AddScoped<IDataSeederService, DataSeederService>();
         services.AddScoped<IFingerprintService, FingerprintService>();
         services.AddScoped<IAdminDataService, AdminDataService>();

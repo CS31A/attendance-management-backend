@@ -21,7 +21,7 @@ public class SessionService : ISessionService
     private readonly IClassroomRepository _classroomRepository;
     private readonly IStudentEnrollmentRepository _enrollmentRepository;
     private readonly INotificationService _notificationService;
-    private readonly UserContextService _userContextService;
+    private readonly IUserContextService _userContextService;
     private readonly IHttpContextAccessor _httpContextAccessor;
     private readonly ILogger<SessionService> _logger;
 
@@ -35,7 +35,7 @@ public class SessionService : ISessionService
         IClassroomRepository classroomRepository,
         IStudentEnrollmentRepository enrollmentRepository,
         INotificationService notificationService,
-        UserContextService userContextService,
+        IUserContextService userContextService,
         IHttpContextAccessor httpContextAccessor,
         ILogger<SessionService> logger)
     {
