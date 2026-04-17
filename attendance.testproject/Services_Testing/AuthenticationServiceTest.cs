@@ -723,6 +723,11 @@ public class AuthenticationServiceTest : IDisposable
         var userId = "user-1";
         var accessToken = GenerateTestJwt(userId);
 
+        // Extract JTI from the generated token for verification
+        var tokenHandler = new JwtSecurityTokenHandler();
+        var jwtToken = tokenHandler.ReadJwtToken(accessToken);
+        var jti = jwtToken.Claims.First(c => c.Type == "jti").Value;
+
         // Add active refresh tokens to the database with unique IDs
         var token1 = CreateTestRefreshToken(userId, isRevoked: false);
         token1.Id = 1;
@@ -734,6 +739,7 @@ public class AuthenticationServiceTest : IDisposable
 
         _mockAccountRepository
             .Setup(r => r.SaveChangesAsync())
+            .Callback(async () => await _context.SaveChangesAsync())
             .ReturnsAsync(1);
 
         // Act
@@ -750,8 +756,12 @@ public class AuthenticationServiceTest : IDisposable
             .ToListAsync();
         Assert.All(revokedTokens, t => Assert.True(t.IsRevoked));
 
-        // Verify access token was blacklisted
-        _mockAccountRepository.Verify(r => r.SaveChangesAsync(), Times.AtLeastOnce);
+        // Verify access token was blacklisted by querying the database
+        var blacklistedToken = await _context.BlacklistedTokens
+            .FirstOrDefaultAsync(bt => bt.Jti == jti);
+        Assert.NotNull(blacklistedToken);
+        Assert.Equal(jti, blacklistedToken.Jti);
+        Assert.True(blacklistedToken.ExpiresAt > DateTime.UtcNow);
     }
 
     [Fact]
@@ -822,6 +832,11 @@ public class AuthenticationServiceTest : IDisposable
         var userId = "user-1";
         var accessToken = GenerateTestJwt(userId);
 
+        // Extract JTI from the generated token for verification
+        var tokenHandler = new JwtSecurityTokenHandler();
+        var jwtToken = tokenHandler.ReadJwtToken(accessToken);
+        var jti = jwtToken.Claims.First(c => c.Type == "jti").Value;
+
         // Add active refresh tokens to the database with unique ID
         var token1 = CreateTestRefreshToken(userId, isRevoked: false);
         token1.Id = 5;
@@ -830,6 +845,7 @@ public class AuthenticationServiceTest : IDisposable
 
         _mockAccountRepository
             .Setup(r => r.SaveChangesAsync())
+            .Callback(async () => await _context.SaveChangesAsync())
             .ReturnsAsync(1);
 
         // Act
@@ -838,7 +854,19 @@ public class AuthenticationServiceTest : IDisposable
         // Assert
         Assert.NotNull(result);
         Assert.True(result.Success);
-        _mockAccountRepository.Verify(r => r.SaveChangesAsync(), Times.AtLeastOnce);
+
+        // Verify refresh tokens were revoked
+        var revokedTokens = await _context.RefreshTokens
+            .Where(rt => rt.UserId == userId)
+            .ToListAsync();
+        Assert.All(revokedTokens, t => Assert.True(t.IsRevoked));
+
+        // Verify access token was blacklisted by querying the database
+        var blacklistedToken = await _context.BlacklistedTokens
+            .FirstOrDefaultAsync(bt => bt.Jti == jti);
+        Assert.NotNull(blacklistedToken);
+        Assert.Equal(jti, blacklistedToken.Jti);
+        Assert.True(blacklistedToken.ExpiresAt > DateTime.UtcNow);
     }
 
     [Fact]
