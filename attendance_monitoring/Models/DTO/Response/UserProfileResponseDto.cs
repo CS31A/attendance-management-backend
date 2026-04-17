@@ -44,6 +44,11 @@ public class UserProfileResponseDto
     /// Instructor profile information (populated only for Instructor role)
     /// </summary>
     public InstructorProfileInfo? InstructorProfile { get; set; }
+
+    /// <summary>
+    /// Admin profile information (populated only for Admin role)
+    /// </summary>
+    public AdminProfileInfo? AdminProfile { get; set; }
 }
 
 /// <summary>
@@ -67,6 +72,18 @@ public class StudentProfileInfo
 /// Instructor-specific profile information
 /// </summary>
 public class InstructorProfileInfo
+{
+    public int Id { get; set; }
+    public string? Firstname { get; set; }
+    public string? Lastname { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public DateTime UpdatedAt { get; set; }
+}
+
+/// <summary>
+/// Admin-specific profile information
+/// </summary>
+public class AdminProfileInfo
 {
     public int Id { get; set; }
     public string? Firstname { get; set; }

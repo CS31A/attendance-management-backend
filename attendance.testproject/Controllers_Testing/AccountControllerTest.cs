@@ -950,6 +950,183 @@ public class AccountControllerTest
 
     #endregion
 
+    #region UpdateProfile Password Change Tests
+
+    [Fact]
+    public async Task UpdateProfile_PasswordChange_ReturnsOk_WhenPasswordChangeSuccessful()
+    {
+        // Arrange
+        var updateProfileDto = new UpdateProfile
+        {
+            CurrentPassword = "OldPassword123!",
+            NewPassword = "NewPassword123!",
+            ConfirmNewPassword = "NewPassword123!"
+        };
+        var claims = new List<Claim> { new(ClaimTypes.NameIdentifier, "user123") };
+        var identity = new ClaimsIdentity(claims, "TestAuthType");
+        var claimsPrincipal = new ClaimsPrincipal(identity);
+        _accountController.ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext { User = claimsPrincipal } };
+
+        var profileResponse = new UserProfileResponseDto
+        {
+            UserId = "user123",
+            Username = "testuser",
+            Email = "test@test.com",
+            Role = "Student"
+        };
+        _mockAccountService.Setup(s => s.UpdateUserProfileAsync("user123", updateProfileDto)).ReturnsAsync(profileResponse);
+
+        // Act
+        var result = await _accountController.UpdateProfile(updateProfileDto);
+
+        // Assert
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        var responseDto = Assert.IsType<UpdateProfileResponse>(okResult.Value);
+        Assert.True(responseDto.Success);
+        _mockAccountService.Verify(s => s.UpdateUserProfileAsync("user123", updateProfileDto), Times.Once);
+    }
+
+    [Fact]
+    public async Task UpdateProfile_PasswordChange_ReturnsBadRequest_WhenCurrentPasswordIncorrect()
+    {
+        // Arrange
+        var updateProfileDto = new UpdateProfile
+        {
+            CurrentPassword = "WrongPassword123!",
+            NewPassword = "NewPassword123!",
+            ConfirmNewPassword = "NewPassword123!"
+        };
+        var claims = new List<Claim> { new(ClaimTypes.NameIdentifier, "user123") };
+        var identity = new ClaimsIdentity(claims, "TestAuthType");
+        var claimsPrincipal = new ClaimsPrincipal(identity);
+        _accountController.ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext { User = claimsPrincipal } };
+
+        _mockAccountService.Setup(s => s.UpdateUserProfileAsync("user123", updateProfileDto))
+            .ThrowsAsync(new ValidationException("Current password is incorrect"));
+
+        // Act
+        var result = await _accountController.UpdateProfile(updateProfileDto);
+
+        // Assert
+        var badRequestResult = Assert.IsType<BadRequestObjectResult>(result.Result);
+        var responseDto = Assert.IsType<UpdateProfileResponse>(badRequestResult.Value);
+        Assert.False(responseDto.Success);
+        Assert.Contains("Current password is incorrect", responseDto.Message);
+    }
+
+    [Fact]
+    public async Task UpdateProfile_PasswordChange_ReturnsUnauthorized_WhenUserClaimMissing()
+    {
+        // Arrange
+        var updateProfileDto = new UpdateProfile
+        {
+            CurrentPassword = "OldPassword123!",
+            NewPassword = "NewPassword123!",
+            ConfirmNewPassword = "NewPassword123!"
+        };
+        _accountController.ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() };
+
+        // Act
+        var result = await _accountController.UpdateProfile(updateProfileDto);
+
+        // Assert
+        var unauthorizedResult = Assert.IsType<UnauthorizedObjectResult>(result.Result);
+        var responseDto = Assert.IsType<UpdateProfileResponse>(unauthorizedResult.Value);
+        Assert.False(responseDto.Success);
+    }
+
+    [Fact]
+    public async Task UpdateProfile_PasswordChange_ReturnsBadRequest_WhenPasswordTooShort()
+    {
+        // Arrange
+        var updateProfileDto = new UpdateProfile
+        {
+            CurrentPassword = "OldPassword123!",
+            NewPassword = "Short1!", // Less than 8 characters
+            ConfirmNewPassword = "Short1!"
+        };
+
+        // Manually trigger validation context to simulate ModelState validation
+        var validationContext = new System.ComponentModel.DataAnnotations.ValidationContext(updateProfileDto);
+        var validationResults = new List<System.ComponentModel.DataAnnotations.ValidationResult>();
+        System.ComponentModel.DataAnnotations.Validator.TryValidateObject(updateProfileDto, validationContext, validationResults, true);
+
+        foreach (var validationResult in validationResults)
+        {
+            _accountController.ModelState.AddModelError(validationResult.MemberNames.First(), validationResult.ErrorMessage ?? "Validation error");
+        }
+
+        // Act
+        var result = await _accountController.UpdateProfile(updateProfileDto);
+
+        // Assert
+        var badRequestResult = Assert.IsType<BadRequestObjectResult>(result.Result);
+        var responseDto = Assert.IsType<UpdateProfileResponse>(badRequestResult.Value);
+        Assert.False(responseDto.Success);
+        Assert.Equal("Invalid request data", responseDto.Message);
+    }
+
+    [Fact]
+    public async Task UpdateProfile_PasswordChange_ReturnsBadRequest_WhenPasswordMismatch()
+    {
+        // Arrange
+        var updateProfileDto = new UpdateProfile
+        {
+            CurrentPassword = "OldPassword123!",
+            NewPassword = "NewPassword123!",
+            ConfirmNewPassword = "DifferentPassword123!"
+        };
+
+        // Manually trigger validation context to simulate ModelState validation
+        var validationContext = new System.ComponentModel.DataAnnotations.ValidationContext(updateProfileDto);
+        var validationResults = new List<System.ComponentModel.DataAnnotations.ValidationResult>();
+        System.ComponentModel.DataAnnotations.Validator.TryValidateObject(updateProfileDto, validationContext, validationResults, true);
+
+        foreach (var validationResult in validationResults)
+        {
+            _accountController.ModelState.AddModelError(validationResult.MemberNames.First(), validationResult.ErrorMessage ?? "Validation error");
+        }
+
+        // Act
+        var result = await _accountController.UpdateProfile(updateProfileDto);
+
+        // Assert
+        var badRequestResult = Assert.IsType<BadRequestObjectResult>(result.Result);
+        var responseDto = Assert.IsType<UpdateProfileResponse>(badRequestResult.Value);
+        Assert.False(responseDto.Success);
+        Assert.Equal("Invalid request data", responseDto.Message);
+    }
+
+    [Fact]
+    public async Task UpdateProfile_PasswordChange_ReturnsBadRequest_WhenCurrentPasswordMissing()
+    {
+        // Arrange
+        var updateProfileDto = new UpdateProfile
+        {
+            // CurrentPassword is intentionally missing
+            NewPassword = "NewPassword123!",
+            ConfirmNewPassword = "NewPassword123!"
+        };
+        var claims = new List<Claim> { new(ClaimTypes.NameIdentifier, "user123") };
+        var identity = new ClaimsIdentity(claims, "TestAuthType");
+        var claimsPrincipal = new ClaimsPrincipal(identity);
+        _accountController.ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext { User = claimsPrincipal } };
+
+        _mockAccountService.Setup(s => s.UpdateUserProfileAsync("user123", updateProfileDto))
+            .ThrowsAsync(new ValidationException("Current password is required to change password"));
+
+        // Act
+        var result = await _accountController.UpdateProfile(updateProfileDto);
+
+        // Assert
+        var badRequestResult = Assert.IsType<BadRequestObjectResult>(result.Result);
+        var responseDto = Assert.IsType<UpdateProfileResponse>(badRequestResult.Value);
+        Assert.False(responseDto.Success);
+        Assert.Contains("Current password is required", responseDto.Message);
+    }
+
+    #endregion
+
     #region AdminUpdateUser Tests
 
     [Fact]
