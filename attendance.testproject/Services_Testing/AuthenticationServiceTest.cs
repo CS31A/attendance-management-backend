@@ -14,6 +14,8 @@ using Microsoft.Extensions.Logging;
 using Microsoft.IdentityModel.Tokens;
 using Moq;
 using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using System.Text;
 
 namespace attendance.testproject.Services_Testing;
 
@@ -84,6 +86,32 @@ public class AuthenticationServiceTest : IDisposable
 
     private static SignInResult CreateSuccessResult() => SignInResult.Success;
     private static SignInResult CreateFailedResult() => SignInResult.Failed;
+
+    private string GenerateTestJwt(string userId, string? jti = null, DateTime? expiresAt = null)
+    {
+        var tokenHandler = new JwtSecurityTokenHandler();
+        var key = Encoding.UTF8.GetBytes("supersecretkey12345678901234567890");
+        var tokenJti = jti ?? Guid.NewGuid().ToString();
+        var tokenExpires = expiresAt ?? DateTime.UtcNow.AddHours(1);
+
+        var tokenDescriptor = new SecurityTokenDescriptor
+        {
+            Subject = new ClaimsIdentity(new[]
+            {
+                new Claim(ClaimTypes.NameIdentifier, userId),
+                new Claim("jti", tokenJti)
+            }),
+            Expires = tokenExpires,
+            Issuer = "test-issuer",
+            Audience = "test-audience",
+            SigningCredentials = new SigningCredentials(
+                new SymmetricSecurityKey(key),
+                SecurityAlgorithms.HmacSha256Signature)
+        };
+
+        var token = tokenHandler.CreateToken(tokenDescriptor);
+        return tokenHandler.WriteToken(token);
+    }
 
     #endregion
 
@@ -689,10 +717,11 @@ public class AuthenticationServiceTest : IDisposable
     #region LogoutAsync Tests
 
     [Fact]
-    public async Task LogoutAsync_RevokesAllRefreshTokens()
+    public async Task LogoutAsync_WithAccessToken_BlacklistsAndRevokesAll()
     {
         // Arrange
         var userId = "user-1";
+        var accessToken = GenerateTestJwt(userId);
 
         // Add active refresh tokens to the database with unique IDs
         var token1 = CreateTestRefreshToken(userId, isRevoked: false);
@@ -703,8 +732,12 @@ public class AuthenticationServiceTest : IDisposable
         _context.RefreshTokens.Add(token2);
         await _context.SaveChangesAsync();
 
+        _mockAccountRepository
+            .Setup(r => r.SaveChangesAsync())
+            .ReturnsAsync(1);
+
         // Act
-        var result = await _authService.LogoutAsync(userId, null);
+        var result = await _authService.LogoutAsync(userId, accessToken);
 
         // Assert
         Assert.NotNull(result);
@@ -716,6 +749,9 @@ public class AuthenticationServiceTest : IDisposable
             .Where(rt => rt.UserId == userId)
             .ToListAsync();
         Assert.All(revokedTokens, t => Assert.True(t.IsRevoked));
+
+        // Verify access token was blacklisted
+        _mockAccountRepository.Verify(r => r.SaveChangesAsync(), Times.AtLeastOnce);
     }
 
     [Fact]
@@ -784,7 +820,7 @@ public class AuthenticationServiceTest : IDisposable
     {
         // Arrange
         var userId = "user-1";
-        string? accessToken = null; // Simplified test without valid JWT
+        var accessToken = GenerateTestJwt(userId);
 
         // Add active refresh tokens to the database with unique ID
         var token1 = CreateTestRefreshToken(userId, isRevoked: false);
@@ -792,12 +828,17 @@ public class AuthenticationServiceTest : IDisposable
         _context.RefreshTokens.Add(token1);
         await _context.SaveChangesAsync();
 
+        _mockAccountRepository
+            .Setup(r => r.SaveChangesAsync())
+            .ReturnsAsync(1);
+
         // Act
         var result = await _authService.WebLogoutAsync(userId, accessToken);
 
         // Assert
         Assert.NotNull(result);
         Assert.True(result.Success);
+        _mockAccountRepository.Verify(r => r.SaveChangesAsync(), Times.AtLeastOnce);
     }
 
     [Fact]
