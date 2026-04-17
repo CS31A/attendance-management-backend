@@ -34,7 +34,7 @@ public class RegisterDto : IValidatableObject
     /// Password for the new account
     /// </summary>
     [Required(ErrorMessage = "Password is required")]
-    [StringLength(100, ErrorMessage = "Password must be between 6 and 100 characters", MinimumLength = 6)]
+    [StringLength(100, ErrorMessage = "Password must be between 8 and 100 characters", MinimumLength = 8)]
     public string Password { get; set; } = string.Empty;
 
     /// <summary>
