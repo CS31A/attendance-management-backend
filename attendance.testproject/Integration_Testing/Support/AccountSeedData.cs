@@ -96,7 +96,17 @@ internal static class AccountSeedData
                 break;
 
             case "Admin":
-                // Admin has no additional entity
+                var admin = new Admin
+                {
+                    UserId = user.Id,
+                    Firstname = "Test",
+                    Lastname = role,
+                    CreatedAt = now,
+                    UpdatedAt = now
+                };
+                dbContext.Admins.Add(admin);
+                await dbContext.SaveChangesAsync(cancellationToken);
+                roleSpecificId = admin.Id;
                 break;
         }
 
