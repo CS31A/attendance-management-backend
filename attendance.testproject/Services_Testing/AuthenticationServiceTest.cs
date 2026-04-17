@@ -20,7 +20,7 @@ namespace attendance.testproject.Services_Testing;
 /// <summary>
 /// Unit tests for AuthenticationService
 /// </summary>
-public class AuthenticationServiceTest
+public class AuthenticationServiceTest : IDisposable
 {
     private readonly Mock<IConfiguration> _mockConfiguration;
     private readonly Mock<IRefreshTokenService> _mockRefreshTokenService;
@@ -355,7 +355,7 @@ public class AuthenticationServiceTest
     }
 
     [Fact]
-    public async Task RefreshAsync_WithOldAccessToken_BlacklistsOldToken()
+    public async Task RefreshAsync_WithOldAccessToken_ReturnsNewTokens()
     {
         // Arrange
         var refreshTokenRequest = new RefreshTokenRequestDto
@@ -389,10 +389,8 @@ public class AuthenticationServiceTest
 
         // Assert
         Assert.NotNull(result);
-        // Verify that the old token was blacklisted by checking the BlacklistedTokens table
-        var blacklistedTokens = await _context.BlacklistedTokens.ToListAsync();
-        // Note: The actual blacklisting depends on token validation, which requires a valid JWT
-        // This test verifies the flow reaches the blacklisting step
+        Assert.NotEmpty(result.AccessToken);
+        Assert.NotEmpty(result.RefreshToken);
     }
 
     [Fact]
@@ -691,11 +689,10 @@ public class AuthenticationServiceTest
     #region LogoutAsync Tests
 
     [Fact]
-    public async Task LogoutAsync_WithAccessToken_BlacklistsAndRevokesAll()
+    public async Task LogoutAsync_RevokesAllRefreshTokens()
     {
         // Arrange
         var userId = "user-1";
-        string? accessToken = null; // Will test without valid JWT for now
 
         // Add active refresh tokens to the database with unique IDs
         var token1 = CreateTestRefreshToken(userId, isRevoked: false);
@@ -707,7 +704,7 @@ public class AuthenticationServiceTest
         await _context.SaveChangesAsync();
 
         // Act
-        var result = await _authService.LogoutAsync(userId, accessToken);
+        var result = await _authService.LogoutAsync(userId, null);
 
         // Assert
         Assert.NotNull(result);
@@ -765,19 +762,17 @@ public class AuthenticationServiceTest
     }
 
     [Fact]
-    public async Task LogoutAsync_WithExpiredAccessToken_DoesNotBlacklist()
+    public async Task LogoutAsync_WithNullAccessToken_CompletesSuccessfully()
     {
         // Arrange
         var userId = "user-1";
-        string? expiredToken = null; // Simplified test without actual JWT generation
 
         // Act
-        var result = await _authService.LogoutAsync(userId, expiredToken);
+        var result = await _authService.LogoutAsync(userId, null);
 
         // Assert
         Assert.NotNull(result);
         Assert.True(result.Success);
-        // Expired token should not be blacklisted (defensive design)
     }
 
     #endregion
@@ -841,14 +836,14 @@ public class AuthenticationServiceTest
 
         // Act
         await _authService.BlacklistTokenAsync(jti, expiresAt);
-        await _context.SaveChangesAsync(); // Manually save to persist for assertion
 
         // Assert
-        var blacklistedToken = await _context.BlacklistedTokens
-            .FirstOrDefaultAsync(bt => bt.Jti == jti);
+        var blacklistedToken = _context.BlacklistedTokens.Local
+            .FirstOrDefault(bt => bt.Jti == jti);
         Assert.NotNull(blacklistedToken);
         Assert.Equal(jti, blacklistedToken.Jti);
         Assert.Equal(expiresAt, blacklistedToken.ExpiresAt);
+        _mockAccountRepository.Verify(r => r.SaveChangesAsync(), Times.Once);
     }
 
     [Fact]
@@ -858,27 +853,23 @@ public class AuthenticationServiceTest
         var jti = Guid.NewGuid().ToString();
         var expiresAt = DateTime.UtcNow.AddHours(1);
 
+        // First call succeeds
         _mockAccountRepository
             .Setup(r => r.SaveChangesAsync())
             .ReturnsAsync(1);
 
-        // Add token to blacklist
         await _authService.BlacklistTokenAsync(jti, expiresAt);
-        await _context.SaveChangesAsync();
 
-        // Setup to throw DbUpdateException on second call (simulating duplicate)
+        // Setup to throw DbUpdateException on second call (simulating DB duplicate constraint)
         _mockAccountRepository
-            .SetupSequence(r => r.SaveChangesAsync())
-            .ReturnsAsync(1)
+            .Setup(r => r.SaveChangesAsync())
             .ThrowsAsync(new DbUpdateException());
 
-        // Act - try to add again (should not throw)
+        // Act - try to add again (should not throw due to idempotent handling)
         await _authService.BlacklistTokenAsync(jti, expiresAt);
 
-        // Assert - should still have only one entry (idempotent)
-        var count = await _context.BlacklistedTokens
-            .CountAsync(bt => bt.Jti == jti);
-        Assert.Equal(1, count);
+        // Assert - service handled the duplicate gracefully
+        _mockAccountRepository.Verify(r => r.SaveChangesAsync(), Times.Exactly(2));
     }
 
     [Fact]
@@ -901,4 +892,9 @@ public class AuthenticationServiceTest
     }
 
     #endregion
+
+    public void Dispose()
+    {
+        _context.Dispose();
+    }
 }
