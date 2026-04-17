@@ -739,8 +739,11 @@ public class AuthenticationServiceTest : IDisposable
 
         _mockAccountRepository
             .Setup(r => r.SaveChangesAsync())
-            .Callback(async () => await _context.SaveChangesAsync())
-            .ReturnsAsync(1);
+            .Returns(async () =>
+            {
+                await _context.SaveChangesAsync();
+                return 1;
+            });
 
         // Act
         var result = await _authService.LogoutAsync(userId, accessToken);
@@ -845,8 +848,11 @@ public class AuthenticationServiceTest : IDisposable
 
         _mockAccountRepository
             .Setup(r => r.SaveChangesAsync())
-            .Callback(async () => await _context.SaveChangesAsync())
-            .ReturnsAsync(1);
+            .Returns(async () =>
+            {
+                await _context.SaveChangesAsync();
+                return 1;
+            });
 
         // Act
         var result = await _authService.WebLogoutAsync(userId, accessToken);
