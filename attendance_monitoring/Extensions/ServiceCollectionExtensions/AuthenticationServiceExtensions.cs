@@ -120,7 +120,7 @@ public static class AuthenticationServiceExtensions
 
     /// <summary>
     /// Adds authorization policies to the service collection.
-    /// Defines AdminPolicy, PrivilegedPolicy, and UserPolicy based on roles.
+    /// Defines AdminPolicy, InstructorPolicy, PrivilegedPolicy, StudentPolicy, and UserPolicy based on roles.
     /// </summary>
     /// <param name="services">The service collection to add services to.</param>
     /// <returns>The service collection for chaining.</returns>
@@ -131,6 +131,7 @@ public static class AuthenticationServiceExtensions
             options.AddPolicy("AdminPolicy", policy => policy.RequireRole(RoleConstants.Admin));
             options.AddPolicy("InstructorPolicy", policy => policy.RequireRole(RoleConstants.Admin, RoleConstants.Instructor));
             options.AddPolicy("PrivilegedPolicy", policy => policy.RequireRole(RoleConstants.Admin, RoleConstants.Instructor));
+            options.AddPolicy("StudentPolicy", policy => policy.RequireRole(RoleConstants.Student));
             options.AddPolicy("UserPolicy", policy => policy.RequireRole(RoleConstants.Admin, RoleConstants.Instructor, RoleConstants.Student));
         });
 

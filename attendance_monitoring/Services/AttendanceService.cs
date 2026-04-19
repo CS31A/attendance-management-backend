@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using attendance_monitoring.Classes;
 using attendance_monitoring.Exceptions;
+using attendance_monitoring.Extensions;
 using attendance_monitoring.IRepository;
 using attendance_monitoring.IServices;
 using attendance_monitoring.Models.DTO.Request;
@@ -20,7 +21,8 @@ public class AttendanceService(
     ISessionRepository sessionRepository,
     IStudentEnrollmentRepository studentEnrollmentRepository,
     IUserContextService userContextService,
-    ILogger<AttendanceService> logger) : IAttendanceService
+    ILogger<AttendanceService> logger,
+    ConfiguredTimeZoneProvider clock) : IAttendanceService
 {
     #region Create Operations
 
@@ -61,7 +63,7 @@ public class AttendanceService(
         var currentUserId = await userContextService.GetUserIdAsync(user).ConfigureAwait(false);
 
         // Create attendance record
-        var checkInTime = request.CheckInTime ?? DateTime.UtcNow;
+        var checkInTime = request.CheckInTime ?? clock.GetLocalNow();
         var attendanceRecord = new AttendanceRecord
         {
             StudentId = request.StudentId,

@@ -88,23 +88,28 @@ Authorization: Bearer {token}
 Content-Type: application/json
 
 {
-  "qrHash": "unique-hash-string",
-  "studentId": 1
+  "qrHash": "unique-hash-string"
 }
 ```
+
+The scan endpoint derives the student from the authenticated token. A legacy `studentId` may still be sent by older clients, but if it does not match the authenticated student, the request is rejected.
 
 **Response:**
 ```json
 {
   "success": true,
-  "message": "Attendance recorded successfully",
-  "attendanceRecord": {
-    "id": 1,
-    "studentId": 1,
-    "sessionId": 1,
-    "status": "Present",
-    "checkInTime": "2024-01-01T10:05:00Z"
-  }
+  "message": "Attendance marked successfully",
+  "attendanceMarked": true,
+  "attendanceRecordId": 1,
+  "studentName": "Sam Student",
+  "className": "CS101 - A",
+  "subjectName": "Introduction to Computer Science",
+  "roomName": "Room 204",
+  "instructorName": "Dr. Jane Smith",
+  "attendanceTime": "2024-01-01T10:05:00Z",
+  "remainingScans": 2,
+  "attendanceStatus": "Present",
+  "isDuplicateScan": false
 }
 ```
 
