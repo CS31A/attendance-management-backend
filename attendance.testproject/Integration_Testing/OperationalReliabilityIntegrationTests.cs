@@ -76,8 +76,7 @@ public sealed class OperationalReliabilityIntegrationTests
 
         var response = await host.PostAsJsonAsync("/api/qrcode/scan", new ValidateQrCode
         {
-            QrHash = host.AttendanceQrScenario.QrHash,
-            StudentId = host.AttendanceQrScenario.StudentId
+            QrHash = host.AttendanceQrScenario.QrHash
         });
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
@@ -290,8 +289,7 @@ public sealed class OperationalReliabilityIntegrationTests
 
         return host.SendAsync(CreateJsonPostRequest("/api/qrcode/scan", new ValidateQrCode
         {
-            QrHash = host.AttendanceQrScenario.QrHash,
-            StudentId = host.AttendanceQrScenario.StudentId
+            QrHash = host.AttendanceQrScenario.QrHash
         }));
     }
 
@@ -301,8 +299,7 @@ public sealed class OperationalReliabilityIntegrationTests
 
         return host.SendAsync(CreateJsonPostRequest("/api/qrcode/scan", new ValidateQrCode
         {
-            QrHash = host.AttendanceQrScenario!.QrHash,
-            StudentId = host.AttendanceQrScenario.StudentId
+            QrHash = host.AttendanceQrScenario!.QrHash
         }));
     }
 }
