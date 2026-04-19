@@ -683,6 +683,15 @@ public class SessionService : ISessionService
                 : throw new EntityServiceException("Session", $"EndSession: {sessionId}",
                     "Failed to retrieve updated session");
         }
+        catch (DbUpdateConcurrencyException ex)
+        {
+            _logger.LogWarning(ex, "Concurrency conflict for session ID {SessionId}", sessionId);
+            throw new EntityConflictException(
+                "Session",
+                "concurrent-update",
+                "Session could not be updated because it was modified by another request.",
+                ex);
+        }
         catch (EntityNotFoundException<int>)
         {
             throw;
@@ -786,6 +795,15 @@ public class SessionService : ISessionService
             return updatedSession != null ? MapToResponseDto(updatedSession)
                 : throw new EntityServiceException("Session", $"CancelSession: {sessionId}",
                     "Failed to retrieve updated session");
+        }
+        catch (DbUpdateConcurrencyException ex)
+        {
+            _logger.LogWarning(ex, "Concurrency conflict for session ID {SessionId}", sessionId);
+            throw new EntityConflictException(
+                "Session",
+                "concurrent-update",
+                "Session could not be updated because it was modified by another request.",
+                ex);
         }
         catch (EntityNotFoundException<int>)
         {

@@ -862,6 +862,37 @@ public class SessionServiceTest
         Assert.Contains("not been started", exception.Message);
     }
 
+    [Fact]
+    public async Task EndSessionAsync_ThrowsEntityConflictException_WhenConcurrentUpdateDetected()
+    {
+        // Arrange
+        int sessionId = 1;
+        var request = new EndSession();
+
+        var instructor = CreateTestInstructor(1, "user-123");
+        var session = CreateTestSession(sessionId, status: SessionStatusConstants.Active);
+        session.Schedule = CreateTestSchedule(1, "Monday");
+        session.Schedule.InstructorId = instructor.Id;
+
+        _mockInstructorRepository
+            .Setup(r => r.GetInstructorByUserIdAsync("user-123"))
+            .ReturnsAsync(instructor);
+
+        _mockSessionRepository
+            .Setup(r => r.GetSessionByIdAsync(sessionId))
+            .ReturnsAsync(session);
+
+        _mockSessionRepository
+            .Setup(r => r.UpdateSessionAsync(It.IsAny<Session>()))
+            .ThrowsAsync(new DbUpdateConcurrencyException("Session row was modified by another request."));
+
+        // Act & Assert
+        await Assert.ThrowsAsync<EntityConflictException>(
+            () => _sessionService.EndSessionAsync(sessionId, request));
+
+        _mockSessionRepository.Verify(r => r.SaveChangesAsync(), Times.Never);
+    }
+
     #endregion
 
     #region CancelSessionAsync Tests
@@ -951,6 +982,37 @@ public class SessionServiceTest
         var exception = await Assert.ThrowsAsync<ValidationException>(
             () => _sessionService.CancelSessionAsync(sessionId, request));
         Assert.Contains("active session", exception.Message);
+    }
+
+    [Fact]
+    public async Task CancelSessionAsync_ThrowsEntityConflictException_WhenConcurrentUpdateDetected()
+    {
+        // Arrange
+        int sessionId = 1;
+        var request = new CancelSession { Reason = "Scheduling conflict" };
+
+        var instructor = CreateTestInstructor(1, "user-123");
+        var session = CreateTestSession(sessionId, status: SessionStatusConstants.NotStarted);
+        session.Schedule = CreateTestSchedule(1, "Monday");
+        session.Schedule.InstructorId = instructor.Id;
+
+        _mockInstructorRepository
+            .Setup(r => r.GetInstructorByUserIdAsync("user-123"))
+            .ReturnsAsync(instructor);
+
+        _mockSessionRepository
+            .Setup(r => r.GetSessionByIdAsync(sessionId))
+            .ReturnsAsync(session);
+
+        _mockSessionRepository
+            .Setup(r => r.UpdateSessionAsync(It.IsAny<Session>()))
+            .ThrowsAsync(new DbUpdateConcurrencyException("Session row was modified by another request."));
+
+        // Act & Assert
+        await Assert.ThrowsAsync<EntityConflictException>(
+            () => _sessionService.CancelSessionAsync(sessionId, request));
+
+        _mockSessionRepository.Verify(r => r.SaveChangesAsync(), Times.Never);
     }
 
     #endregion
