@@ -314,6 +314,15 @@ public class SessionService : ISessionService
         {
             throw;
         }
+        catch (DbUpdateConcurrencyException ex)
+        {
+            _logger.LogWarning(ex, "Concurrency conflict while updating room for session ID {SessionId}", sessionId);
+            throw new EntityConflictException(
+                "Session",
+                "concurrent-update",
+                "Session room could not be updated because the session was modified by another request.",
+                ex);
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error occurred while updating room for session ID {SessionId}", sessionId);

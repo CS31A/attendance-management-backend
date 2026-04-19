@@ -1114,6 +1114,35 @@ public class SessionServiceTest
         Assert.Contains("not found", exception.Message);
     }
 
+    [Fact]
+    public async Task UpdateSessionRoomAsync_ThrowsEntityConflictException_WhenConcurrentUpdateDetected()
+    {
+        // Arrange
+        int sessionId = 1;
+        var request = new UpdateSessionRoom { ActualRoomId = 2 };
+
+        var session = CreateTestSession(sessionId, status: SessionStatusConstants.Active);
+        var classroom = CreateTestClassroom(2);
+
+        _mockSessionRepository
+            .Setup(r => r.GetSessionByIdAsync(sessionId))
+            .ReturnsAsync(session);
+
+        _mockClassroomRepository
+            .Setup(r => r.GetClassroomByIdAsync(request.ActualRoomId))
+            .ReturnsAsync(classroom);
+
+        _mockSessionRepository
+            .Setup(r => r.UpdateSessionAsync(It.IsAny<Session>()))
+            .ThrowsAsync(new DbUpdateConcurrencyException("Session row was modified by another request."));
+
+        // Act & Assert
+        await Assert.ThrowsAsync<EntityConflictException>(
+            () => _sessionService.UpdateSessionRoomAsync(sessionId, request));
+
+        _mockSessionRepository.Verify(r => r.SaveChangesAsync(), Times.Never);
+    }
+
     #endregion
 
     #region Helper Methods
