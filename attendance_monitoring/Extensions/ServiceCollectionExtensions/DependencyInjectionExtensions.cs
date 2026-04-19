@@ -52,6 +52,7 @@ public static class DependencyInjectionExtensions
         {
             var configuration = sp.GetService<IConfiguration>();
             var settings = configuration?.GetSection(TimeZoneSettings.SectionName).Get<TimeZoneSettings>();
+            var timeProvider = sp.GetService<TimeProvider>() ?? TimeProvider.System;
             
             if (settings == null || string.IsNullOrWhiteSpace(settings.TimeZoneId))
             {
@@ -59,7 +60,7 @@ public static class DependencyInjectionExtensions
                 settings = new TimeZoneSettings { TimeZoneId = TimeZoneInfo.Local.Id };
             }
             
-            return new ConfiguredTimeZoneProvider(settings);
+            return new ConfiguredTimeZoneProvider(settings, timeProvider);
         });
 
         services.AddSingleton<RequestReliabilityTelemetry>();
