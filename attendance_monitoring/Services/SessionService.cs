@@ -361,11 +361,36 @@ public class SessionService : ISessionService
 
             // Validate that the session date matches the schedule's day of week
             var sessionDayOfWeek = effectiveSessionDate.DayOfWeek.ToString();
-            if (!schedule.DayOfWeek.Equals(sessionDayOfWeek, StringComparison.OrdinalIgnoreCase))
+            var scheduleMatchesDay = schedule.DayOfWeek.Equals(sessionDayOfWeek, StringComparison.OrdinalIgnoreCase);
+            if (!scheduleMatchesDay)
             {
-                var errorMessage = $"Session date {effectiveSessionDate:yyyy-MM-dd} ({sessionDayOfWeek}) does not match the schedule's day of week ({schedule.DayOfWeek}).";
-                _logger.LogWarning("Session creation failed: {ErrorMessage}", errorMessage);
-                throw new ValidationException(errorMessage);
+                if (!request.AllowOffScheduleDate)
+                {
+                    var errorMessage = $"Session date {effectiveSessionDate:yyyy-MM-dd} ({sessionDayOfWeek}) does not match the schedule's day of week ({schedule.DayOfWeek}).";
+                    _logger.LogWarning("Session creation failed: {ErrorMessage}", errorMessage);
+                    throw new ValidationException(errorMessage);
+                }
+
+                var trimmedReason = request.OffScheduleReason?.Trim();
+                if (string.IsNullOrWhiteSpace(trimmedReason))
+                {
+                    const string errorMessage = "Off-schedule reason is required when the session date does not match the schedule day.";
+                    _logger.LogWarning("Session creation failed: {ErrorMessage}", errorMessage);
+                    throw new ValidationException(errorMessage);
+                }
+
+                if (trimmedReason.Length < 5)
+                {
+                    const string errorMessage = "Off-schedule reason must be at least 5 characters.";
+                    _logger.LogWarning("Session creation failed: {ErrorMessage}", errorMessage);
+                    throw new ValidationException(errorMessage);
+                }
+
+                _logger.LogInformation(
+                    "Allowing off-schedule session creation for schedule ID {ScheduleId} on {SessionDate:yyyy-MM-dd}. Reason: {OffScheduleReason}",
+                    request.ScheduleId,
+                    effectiveSessionDate,
+                    trimmedReason);
             }
 
             // Validate that the session date is not in the past (using local time)
@@ -533,6 +558,15 @@ public class SessionService : ISessionService
             return updatedSession != null ? MapToResponseDto(updatedSession)
                 : throw new EntityServiceException("Session", $"StartSession: {sessionId}",
                     "Failed to retrieve updated session");
+        }
+        catch (DbUpdateConcurrencyException ex)
+        {
+            _logger.LogWarning(ex, "Session start conflict for session ID {SessionId}", sessionId);
+            throw new EntityConflictException(
+                "Session",
+                "concurrent-start",
+                "Session start could not be completed because the session was updated by another request.",
+                ex);
         }
         catch (EntityNotFoundException<int>)
         {
