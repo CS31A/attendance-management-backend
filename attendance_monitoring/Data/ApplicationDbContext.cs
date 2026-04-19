@@ -123,6 +123,10 @@ namespace attendance_monitoring.Data
                 .HasForeignKey(s => s.EndedBy)
                 .OnDelete(DeleteBehavior.Restrict);
 
+            builder.Entity<Session>()
+                .Property(s => s.RowVersion)
+                .IsRowVersion();
+
             // Configure QrCode relationships
             builder.Entity<QrCode>()
                 .HasOne(q => q.Session)

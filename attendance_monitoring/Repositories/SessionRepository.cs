@@ -171,6 +171,13 @@ public class SessionRepository(ApplicationDbContext context) : ISessionRepositor
             throw new InvalidOperationException($"Session with ID {session.Id} not found.");
         }
 
+        if (session.RowVersion is { Length: > 0 })
+        {
+            context.Entry(trackedSession)
+                .Property(s => s.RowVersion)
+                .OriginalValue = session.RowVersion;
+        }
+
         // Update only the scalar properties
         trackedSession.Status = session.Status;
         trackedSession.ActualStartTime = session.ActualStartTime;
