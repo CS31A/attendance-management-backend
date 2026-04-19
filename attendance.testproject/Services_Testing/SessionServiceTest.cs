@@ -2,6 +2,7 @@ using attendance_monitoring.Classes;
 using attendance_monitoring.Constants;
 using attendance_monitoring.Data;
 using attendance_monitoring.Exceptions;
+using attendance_monitoring.Extensions;
 using attendance_monitoring.IRepository;
 using attendance_monitoring.IServices;
 using attendance_monitoring.Models.DTO.Request;
@@ -12,6 +13,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using attendance_monitoring.Options;
 using System.Security.Claims;
 
 namespace attendance.testproject.Services_Testing;
@@ -29,6 +31,7 @@ public class SessionServiceTest
     private readonly Mock<INotificationService> _mockNotificationService;
     private readonly Mock<IHttpContextAccessor> _mockHttpContextAccessor;
     private readonly Mock<ILogger<SessionService>> _mockLogger;
+    private readonly ConfiguredTimeZoneProvider _timeZoneProvider;
     private readonly Mock<UserManager<IdentityUser>> _mockUserManager;
     private readonly UserContextService _userContextService;
     private readonly SessionService _sessionService;
@@ -82,6 +85,9 @@ public class SessionServiceTest
 
         _mockHttpContextAccessor.Setup(x => x.HttpContext).Returns(_httpContext);
 
+        _timeZoneProvider = new ConfiguredTimeZoneProvider(
+            new TimeZoneSettings { TimeZoneId = TimeZoneInfo.Local.Id });
+
         _sessionService = new SessionService(
             _mockSessionRepository.Object,
             _mockScheduleRepository.Object,
@@ -91,6 +97,7 @@ public class SessionServiceTest
             _mockNotificationService.Object,
             _userContextService,
             _mockHttpContextAccessor.Object,
+            _timeZoneProvider,
             _mockLogger.Object
         );
     }
@@ -425,6 +432,70 @@ public class SessionServiceTest
     }
 
     [Fact]
+    public async Task CreateSessionAsync_CreatesSession_WhenDateDoesNotMatchButOffScheduleOverrideProvided()
+    {
+        // Arrange
+        var today = DateTime.UtcNow.Date;
+        var daysUntilTuesday = ((int)DayOfWeek.Tuesday - (int)today.DayOfWeek + 7) % 7;
+        if (daysUntilTuesday == 0) daysUntilTuesday = 7;
+        var nextTuesday = today.AddDays(daysUntilTuesday);
+
+        var request = new CreateSession
+        {
+            ScheduleId = 1,
+            SessionDate = nextTuesday,
+            AllowOffScheduleDate = true,
+            OffScheduleReason = "Campus activity moved this class"
+        };
+
+        var schedule = CreateTestSchedule(1, "Monday");
+        var createdSession = CreateTestSession(1, request.ScheduleId, sessionDate: request.SessionDate);
+
+        _mockScheduleRepository
+            .Setup(r => r.GetScheduleByIdAsync(request.ScheduleId))
+            .ReturnsAsync(schedule);
+
+        _mockSessionRepository
+            .Setup(r => r.SessionExistsForScheduleAndDateAsync(request.ScheduleId, request.SessionDate!.Value))
+            .ReturnsAsync(false);
+
+        _mockSessionRepository
+            .Setup(r => r.CreateSessionAsync(It.IsAny<Session>()))
+            .Callback<Session>(s =>
+            {
+                createdSession.Status = s.Status;
+                createdSession.ScheduleId = s.ScheduleId;
+                createdSession.SessionDate = s.SessionDate;
+                createdSession.Description = s.Description;
+            })
+            .ReturnsAsync(createdSession);
+
+        _mockSessionRepository
+            .Setup(r => r.SaveChangesAsync())
+            .ReturnsAsync(1);
+
+        _mockSessionRepository
+            .Setup(r => r.GetSessionByIdAsync(It.IsAny<int>()))
+            .ReturnsAsync(createdSession);
+
+        // Act
+        var result = await _sessionService.CreateSessionAsync(request);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Equal(request.ScheduleId, result.ScheduleId);
+        Assert.Equal(request.SessionDate, result.SessionDate);
+        Assert.Equal(SessionStatusConstants.NotStarted, result.Status);
+
+        _mockSessionRepository.Verify(r => r.CreateSessionAsync(
+            It.Is<Session>(s =>
+                s.Status == SessionStatusConstants.NotStarted &&
+                s.ScheduleId == request.ScheduleId &&
+                s.SessionDate == request.SessionDate
+            )), Times.Once);
+    }
+
+    [Fact]
     public async Task CreateSessionAsync_ThrowsValidationException_WhenDateIsInPast()
     {
         // Arrange
@@ -649,6 +720,43 @@ public class SessionServiceTest
         var exception = await Assert.ThrowsAsync<ValidationException>(
             () => _sessionService.StartSessionAsync(sessionId, request));
         Assert.Contains("scheduled for", exception.Message);
+    }
+
+    [Fact]
+    public async Task StartSessionAsync_ThrowsEntityConflictException_WhenConcurrentUpdateDetected()
+    {
+        // Arrange
+        int sessionId = 1;
+        var request = new StartSession
+        {
+            AttendanceCutoffMinutes = 15
+        };
+
+        var instructor = CreateTestInstructor(1, "user-123");
+        var classroom = CreateTestClassroom(1);
+        var session = CreateTestSession(sessionId, status: SessionStatusConstants.NotStarted, sessionDate: DateTime.Now.Date);
+        session.Schedule = CreateTestSchedule(1, DateTime.Now.DayOfWeek.ToString());
+        session.Schedule.InstructorId = instructor.Id;
+
+        _mockClassroomRepository
+            .Setup(r => r.GetClassroomByIdAsync(1))
+            .ReturnsAsync(classroom);
+
+        _mockInstructorRepository
+            .Setup(r => r.GetInstructorByUserIdAsync("user-123"))
+            .ReturnsAsync(instructor);
+
+        _mockSessionRepository
+            .Setup(r => r.GetSessionByIdAsync(sessionId))
+            .ReturnsAsync(session);
+
+        _mockSessionRepository
+            .Setup(r => r.UpdateSessionAsync(It.IsAny<Session>()))
+            .ThrowsAsync(new DbUpdateConcurrencyException("Session row was modified by another request."));
+
+        // Act & Assert
+        await Assert.ThrowsAsync<EntityConflictException>(
+            () => _sessionService.StartSessionAsync(sessionId, request));
     }
 
     #endregion
