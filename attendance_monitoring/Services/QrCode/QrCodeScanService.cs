@@ -63,14 +63,24 @@ internal sealed class QrCodeScanService
         var utcNow = DateTime.UtcNow;
         int? resolvedStudentId = null;
 
-        using var transaction = await _qrCodeRepository.BeginTransactionAsync().ConfigureAwait(false);
-
         try
         {
-            var normalizedRole = RoleConstants.NormalizeRole(user.FindFirst(ClaimTypes.Role)?.Value);
-            if (!string.Equals(normalizedRole, RoleConstants.Student, StringComparison.OrdinalIgnoreCase))
+            var normalizedRoles = user
+                .FindAll(ClaimTypes.Role)
+                .Select(claim => RoleConstants.NormalizeRole(claim.Value))
+                .Where(role => !string.IsNullOrWhiteSpace(role))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToArray();
+
+            var isStudent = normalizedRoles.Any(role =>
+                string.Equals(role, RoleConstants.Student, StringComparison.OrdinalIgnoreCase));
+
+            if (!isStudent)
             {
-                _logger.LogWarning("QR code scan rejected for non-student role: {Role}", normalizedRole);
+                var roleSummary = normalizedRoles.Length == 0
+                    ? "Unknown"
+                    : string.Join(", ", normalizedRoles);
+                _logger.LogWarning("QR code scan rejected for non-student role set: {Roles}", roleSummary);
                 return new QrCodeScanResponseDto
                 {
                     Success = false,
@@ -195,6 +205,8 @@ internal sealed class QrCodeScanService
                 return CreateDuplicateScanResponse(qrCode, student, utcNow, remainingScansForDuplicate);
             }
 
+            await using var transaction = await _qrCodeRepository.BeginTransactionAsync().ConfigureAwait(false);
+
             _logger.LogInformation("No duplicate found, incrementing usage counter for QR hash: {QrHash}", validateQrCode.QrHash);
             var incrementResult = await _qrCodeRepository.AtomicIncrementUsageAsync(validateQrCode.QrHash, utcNow).ConfigureAwait(false);
 
@@ -269,7 +281,6 @@ internal sealed class QrCodeScanService
         }
         catch (Exception ex)
         {
-            await transaction.RollbackAsync().ConfigureAwait(false);
             _logger.LogError(ex, "Failed to scan QR code {QrHash} for student {StudentId}",
                 validateQrCode.QrHash, resolvedStudentId ?? validateQrCode.StudentId);
             return new QrCodeScanResponseDto
