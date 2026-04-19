@@ -3,6 +3,7 @@ using attendance_monitoring.Classes;
 using attendance_monitoring.Constants;
 using attendance_monitoring.Data;
 using attendance_monitoring.Exceptions;
+using attendance_monitoring.Extensions;
 using attendance_monitoring.IRepository;
 using attendance_monitoring.IServices;
 using attendance_monitoring.Models.DTO.Request;
@@ -31,9 +32,11 @@ public class FingerprintService(
     IUserContextService userContextService,
     IConfiguration configuration,
     IDataProtectionProvider dataProtectionProvider,
+    ConfiguredTimeZoneProvider clock,
     ILogger<FingerprintService> logger) : IFingerprintService
 {
     private readonly IAttendanceService _attendanceService = attendanceService;
+    private readonly ConfiguredTimeZoneProvider _clock = clock;
     private const string PendingStatus = "Pending";
     private const string InProgressStatus = "InProgress";
     private const string CompletedStatus = "Completed";
@@ -577,7 +580,7 @@ public class FingerprintService(
 
         try
         {
-            var checkInTime = DateTime.Now;
+            var checkInTime = _clock.GetLocalNow();
             var attendanceRecord = new AttendanceRecord
             {
                 StudentId = student.Id,
@@ -664,7 +667,7 @@ public class FingerprintService(
 
     private async Task<Session?> FindActiveSessionForStudentAsync(int studentId)
     {
-        var now = DateTime.Now;
+        var now = _clock.GetLocalNow();
         var today = now.Date;
 
         var enrollments = await studentEnrollmentRepository
@@ -730,7 +733,7 @@ public class FingerprintService(
     private string DetermineAttendanceStatus(DateTime checkInTime, Session session)
     {
         var sessionStartTime = session.ActualStartTime ??
-                               DateTime.Today.Add(session.Schedule.TimeIn.ToTimeSpan());
+                               _clock.GetLocalNow().Date.Add(session.Schedule.TimeIn.ToTimeSpan());
         var lateCutoffMinutes = 15;
 
         if (session.AttendanceCutOff.HasValue)

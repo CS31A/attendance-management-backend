@@ -1,12 +1,14 @@
 using attendance_monitoring.Classes;
 using attendance_monitoring.Constants;
 using attendance_monitoring.Exceptions;
+using attendance_monitoring.Extensions;
 using attendance_monitoring.Helpers;
 using attendance_monitoring.IRepository;
 using attendance_monitoring.IServices;
 using attendance_monitoring.Models.DTO.Request;
 using attendance_monitoring.Models.DTO.Response;
 using Microsoft.AspNetCore.Http;
+using Microsoft.EntityFrameworkCore;
 
 namespace attendance_monitoring.Services;
 
@@ -23,6 +25,7 @@ public class SessionService : ISessionService
     private readonly INotificationService _notificationService;
     private readonly IUserContextService _userContextService;
     private readonly IHttpContextAccessor _httpContextAccessor;
+    private readonly ConfiguredTimeZoneProvider _clock;
     private readonly ILogger<SessionService> _logger;
 
     /// <summary>
@@ -37,6 +40,7 @@ public class SessionService : ISessionService
         INotificationService notificationService,
         IUserContextService userContextService,
         IHttpContextAccessor httpContextAccessor,
+        ConfiguredTimeZoneProvider clock,
         ILogger<SessionService> logger)
     {
         _sessionRepository = sessionRepository ?? throw new ArgumentNullException(nameof(sessionRepository));
@@ -47,6 +51,7 @@ public class SessionService : ISessionService
         _notificationService = notificationService ?? throw new ArgumentNullException(nameof(notificationService));
         _userContextService = userContextService ?? throw new ArgumentNullException(nameof(userContextService));
         _httpContextAccessor = httpContextAccessor ?? throw new ArgumentNullException(nameof(httpContextAccessor));
+        _clock = clock ?? throw new ArgumentNullException(nameof(clock));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
@@ -326,7 +331,7 @@ public class SessionService : ISessionService
     public async Task<SessionResponseDto> CreateSessionAsync(CreateSession request)
     {
         // Use provided date or default to current date (using local time for session scheduling)
-        var today = DateTime.Today;
+        var today = _clock.GetLocalNow().Date;
         var effectiveSessionDate = request.SessionDate ?? today;
 
         _logger.LogInformation("Creating session for schedule ID: {ScheduleId} on date: {SessionDate:yyyy-MM-dd}",
@@ -479,7 +484,7 @@ public class SessionService : ISessionService
             }
 
             // Validate that the session date is today (using local time)
-            var today = DateTime.Today;
+            var today = _clock.GetLocalNow().Date;
             if (session.SessionDate.Date != today)
             {
                 var errorMessage = $"Cannot start session. The session is scheduled for {session.SessionDate:yyyy-MM-dd}, but today is {today:yyyy-MM-dd}.";
@@ -502,7 +507,7 @@ public class SessionService : ISessionService
 
             // Calculate attendance cutoff time (using local time)
             var attendanceCutoffMinutes = request.AttendanceCutoffMinutes ?? 15;
-            var actualStartTime = DateTime.Now;
+            var actualStartTime = _clock.GetLocalNow();
             var attendanceCutoff = actualStartTime.AddMinutes(attendanceCutoffMinutes);
 
             // Update the session
@@ -616,7 +621,7 @@ public class SessionService : ISessionService
 
             // Update the session
             session.Status = SessionStatusConstants.Ended;
-            session.ActualEndTime = DateTime.Now;
+            session.ActualEndTime = _clock.GetLocalNow();
             session.EndedBy = instructor.Id;
 
             // Update description if provided
