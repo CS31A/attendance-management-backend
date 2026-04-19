@@ -1,10 +1,12 @@
 using System.Security.Claims;
 using attendance_monitoring.Classes;
 using attendance_monitoring.Constants;
+using attendance_monitoring.Data;
 using attendance_monitoring.IRepository;
 using attendance_monitoring.IServices;
 using attendance_monitoring.Models.DTO.Request;
 using attendance_monitoring.Models.DTO.Response;
+using Microsoft.EntityFrameworkCore;
 using QrCodeEntity = attendance_monitoring.Classes.QrCode;
 
 namespace attendance_monitoring.Services.QrCode;
@@ -16,6 +18,7 @@ namespace attendance_monitoring.Services.QrCode;
 /// </summary>
 internal sealed class QrCodeScanService
 {
+    private readonly ApplicationDbContext _dbContext;
     private readonly IQrCodeRepository _qrCodeRepository;
     private readonly IStudentRepository _studentRepository;
     private readonly IAttendanceService _attendanceService;
@@ -25,6 +28,7 @@ internal sealed class QrCodeScanService
     private readonly ILogger<QrCodeScanService> _logger;
 
     public QrCodeScanService(
+        ApplicationDbContext dbContext,
         IQrCodeRepository qrCodeRepository,
         IStudentRepository studentRepository,
         IAttendanceService attendanceService,
@@ -33,6 +37,7 @@ internal sealed class QrCodeScanService
         QrCodeAuthorizationService authorizationService,
         ILogger<QrCodeScanService> logger)
     {
+        _dbContext = dbContext ?? throw new ArgumentNullException(nameof(dbContext));
         _qrCodeRepository = qrCodeRepository ?? throw new ArgumentNullException(nameof(qrCodeRepository));
         _studentRepository = studentRepository ?? throw new ArgumentNullException(nameof(studentRepository));
         _attendanceService = attendanceService ?? throw new ArgumentNullException(nameof(attendanceService));
@@ -43,6 +48,17 @@ internal sealed class QrCodeScanService
     }
 
     public async Task<QrCodeScanResponseDto> ScanQrCodeAsync(ValidateQrCode validateQrCode, ClaimsPrincipal user)
+    {
+        if (_dbContext.Database.IsInMemory() || _dbContext.Database.CurrentTransaction != null)
+        {
+            return await ScanQrCodeWithinTransactionAsync(validateQrCode, user).ConfigureAwait(false);
+        }
+
+        var strategy = _dbContext.Database.CreateExecutionStrategy();
+        return await strategy.ExecuteAsync(() => ScanQrCodeWithinTransactionAsync(validateQrCode, user)).ConfigureAwait(false);
+    }
+
+    private async Task<QrCodeScanResponseDto> ScanQrCodeWithinTransactionAsync(ValidateQrCode validateQrCode, ClaimsPrincipal user)
     {
         var utcNow = DateTime.UtcNow;
         int? resolvedStudentId = null;
