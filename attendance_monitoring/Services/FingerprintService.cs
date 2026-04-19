@@ -647,6 +647,55 @@ public class FingerprintService(
                 MatchScore = matchScore
             };
         }
+        catch (DbUpdateException ex) when (IsAttendanceDuplicateConstraintViolation(ex))
+        {
+            await transaction.RollbackAsync().ConfigureAwait(false);
+
+            DetachPendingAttendanceInsert(student.Id, session.Id);
+
+            var duplicateAttendance = await attendanceRepository
+                .GetAttendanceByStudentAndSessionAsync(student.Id, session.Id)
+                .ConfigureAwait(false);
+
+            if (duplicateAttendance != null)
+            {
+                if (scanEvent != null)
+                {
+                    scanEvent.Status = "Duplicate";
+                    scanEvent.MatchedStudentId = student.Id;
+                    scanEvent.SessionId = session.Id;
+                    scanEvent.AttendanceRecordId = duplicateAttendance.Id;
+                    context.FingerprintScanEvents.Add(scanEvent);
+                    await context.SaveChangesAsync().ConfigureAwait(false);
+                }
+
+                return new FingerprintScanResponseDto
+                {
+                    Success = true,
+                    Message = "Already checked in",
+                    AttendanceMarked = false,
+                    AttendanceTime = duplicateAttendance.CheckInTime,
+                    StudentId = student.Id,
+                    StudentName = $"{student.Firstname} {student.Lastname}",
+                    ClassName = session.Schedule.Section.Name,
+                    SubjectName = session.Schedule.Subject.Name,
+                    RoomName = session.ActualRoom?.Name ?? "TBD",
+                    InstructorName = $"{session.Schedule.Instructor.Firstname} {session.Schedule.Instructor.Lastname}",
+                    AttendanceRecordId = duplicateAttendance.Id,
+                    AttendanceStatus = duplicateAttendance.Status,
+                    IsDuplicateScan = true,
+                    SessionId = session.Id,
+                    MatchMethod = matchMethod,
+                    MatchScore = matchScore
+                };
+            }
+
+            throw new EntityServiceException(
+                "FingerprintScan",
+                $"StudentId:{student.Id}",
+                "Attendance duplicate detected but existing record could not be loaded",
+                ex);
+        }
         catch (Exception ex)
         {
             await transaction.RollbackAsync().ConfigureAwait(false);
@@ -746,6 +795,30 @@ public class FingerprintService(
         }
 
         return _attendanceService.DetermineAttendanceStatus(checkInTime, sessionStartTime, lateCutoffMinutes);
+    }
+
+    private void DetachPendingAttendanceInsert(int studentId, int sessionId)
+    {
+        var pendingEntries = context.ChangeTracker
+            .Entries<AttendanceRecord>()
+            .Where(entry =>
+                entry.State == EntityState.Added
+                && entry.Entity.StudentId == studentId
+                && entry.Entity.SessionId == sessionId)
+            .ToList();
+
+        foreach (var pendingEntry in pendingEntries)
+        {
+            pendingEntry.State = EntityState.Detached;
+        }
+    }
+
+    private static bool IsAttendanceDuplicateConstraintViolation(DbUpdateException ex)
+    {
+        var message = ex.InnerException?.Message ?? ex.Message;
+        return message.Contains("UNIQUE constraint", StringComparison.OrdinalIgnoreCase)
+               || message.Contains("duplicate key", StringComparison.OrdinalIgnoreCase)
+               || message.Contains("IX_AttendanceRecords_StudentId_SessionId", StringComparison.OrdinalIgnoreCase);
     }
 
     private FingerprintResponseDto MapToResponseDto(Fingerprint fingerprint, int? studentId)
