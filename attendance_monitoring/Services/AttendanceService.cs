@@ -61,7 +61,7 @@ public class AttendanceService(
         var currentUserId = await userContextService.GetUserIdAsync(user).ConfigureAwait(false);
 
         // Create attendance record
-        var checkInTime = request.CheckInTime ?? DateTime.UtcNow;
+        var checkInTime = request.CheckInTime ?? DateTime.Now;
         var attendanceRecord = new AttendanceRecord
         {
             StudentId = request.StudentId,
