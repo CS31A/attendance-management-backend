@@ -2,6 +2,7 @@ using System.Security.Claims;
 using attendance_monitoring.Classes;
 using attendance_monitoring.Constants;
 using attendance_monitoring.Data;
+using attendance_monitoring.Extensions;
 using attendance_monitoring.IRepository;
 using attendance_monitoring.IServices;
 using attendance_monitoring.Models.DTO.Request;
@@ -26,6 +27,7 @@ internal sealed class QrCodeScanService
     private readonly INotificationService _notificationService;
     private readonly QrCodeAuthorizationService _authorizationService;
     private readonly ILogger<QrCodeScanService> _logger;
+    private readonly ConfiguredTimeZoneProvider _clock;
 
     public QrCodeScanService(
         ApplicationDbContext dbContext,
@@ -35,7 +37,8 @@ internal sealed class QrCodeScanService
         IAttendanceRepository attendanceRepository,
         INotificationService notificationService,
         QrCodeAuthorizationService authorizationService,
-        ILogger<QrCodeScanService> logger)
+        ILogger<QrCodeScanService> logger,
+        ConfiguredTimeZoneProvider clock)
     {
         _dbContext = dbContext ?? throw new ArgumentNullException(nameof(dbContext));
         _qrCodeRepository = qrCodeRepository ?? throw new ArgumentNullException(nameof(qrCodeRepository));
@@ -45,6 +48,7 @@ internal sealed class QrCodeScanService
         _notificationService = notificationService ?? throw new ArgumentNullException(nameof(notificationService));
         _authorizationService = authorizationService ?? throw new ArgumentNullException(nameof(authorizationService));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _clock = clock ?? throw new ArgumentNullException(nameof(clock));
     }
 
     public async Task<QrCodeScanResponseDto> ScanQrCodeAsync(ValidateQrCode validateQrCode, ClaimsPrincipal user)
@@ -60,8 +64,8 @@ internal sealed class QrCodeScanService
 
     private async Task<QrCodeScanResponseDto> ScanQrCodeWithinTransactionAsync(ValidateQrCode validateQrCode, ClaimsPrincipal user)
     {
-        var utcNow = DateTime.UtcNow;
-        var localNow = DateTime.Now;
+        var utcNow = _clock.GetUtcNow().UtcDateTime;
+        var localNow = _clock.GetLocalNow();
         int? resolvedStudentId = null;
 
         try

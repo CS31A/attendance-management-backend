@@ -2,10 +2,12 @@ using attendance_monitoring.Classes;
 using attendance_monitoring.Constants;
 using attendance_monitoring.Data;
 using attendance_monitoring.Exceptions;
+using attendance_monitoring.Extensions;
 using attendance_monitoring.IRepository;
 using attendance_monitoring.IServices;
 using attendance_monitoring.Models.DTO.Request;
 using attendance_monitoring.Models.DTO.Response;
+using attendance_monitoring.Options;
 using attendance_monitoring.Services;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -30,6 +32,7 @@ public class AttendanceAuthorizationTests
     private readonly Mock<UserManager<IdentityUser>> _mockUserManager;
     private readonly UserContextService _userContextService;
     private readonly AttendanceService _attendanceService;
+    private readonly ConfiguredTimeZoneProvider _timeZoneProvider;
 
     public AttendanceAuthorizationTests()
     {
@@ -61,6 +64,11 @@ public class AttendanceAuthorizationTests
         // Create real UserContextService with mocked UserManager and context
         _userContextService = new UserContextService(_mockUserManager.Object, mockContext.Object);
 
+        // Use system local timezone for tests
+        var systemTimeZoneId = TimeZoneInfo.Local.Id;
+        var settings = new TimeZoneSettings { TimeZoneId = systemTimeZoneId };
+        _timeZoneProvider = new ConfiguredTimeZoneProvider(settings);
+
         _attendanceService = new AttendanceService(
             _mockAttendanceRepository.Object,
             _mockStudentRepository.Object,
@@ -68,7 +76,8 @@ public class AttendanceAuthorizationTests
             _mockSessionRepository.Object,
             _mockStudentEnrollmentRepository.Object,
             _userContextService,
-            _mockLogger.Object
+            _mockLogger.Object,
+            _timeZoneProvider
         );
     }
 

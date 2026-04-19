@@ -91,7 +91,8 @@ internal sealed class ApiIntegrationHost : IAsyncDisposable
         builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
         {
             ["CookieSettings:AccessTokenExpirationMinutes"] = "15",
-            ["CookieSettings:RefreshTokenExpirationDays"] = "7"
+            ["CookieSettings:RefreshTokenExpirationDays"] = "7",
+            ["TimeZoneSettings:TimeZoneId"] = TimeZoneInfo.Local.Id
         });
 
         var accountService = new Mock<IAccountService>(MockBehavior.Strict);
@@ -134,7 +135,8 @@ internal sealed class ApiIntegrationHost : IAsyncDisposable
         {
             ["CookieSettings:AccessTokenExpirationMinutes"] = "15",
             ["CookieSettings:RefreshTokenExpirationDays"] = "7",
-            ["CorsSettings:AllowedOrigins"] = "https://localhost"
+            ["CorsSettings:AllowedOrigins"] = "https://localhost",
+            ["TimeZoneSettings:TimeZoneId"] = TimeZoneInfo.Local.Id
         });
 
         builder.Services.AddDbContext<ApplicationDbContext>(options => options.UseSqlite(connectionString));
@@ -209,7 +211,8 @@ internal sealed class ApiIntegrationHost : IAsyncDisposable
         {
             ["CookieSettings:AccessTokenExpirationMinutes"] = "15",
             ["CookieSettings:RefreshTokenExpirationDays"] = "7",
-            ["CorsSettings:AllowedOrigins"] = "https://localhost"
+            ["CorsSettings:AllowedOrigins"] = "https://localhost",
+            ["TimeZoneSettings:TimeZoneId"] = TimeZoneInfo.Local.Id
         });
 
         builder.Services.AddDbContext<ApplicationDbContext>(options => options.UseSqlite(connectionString));
@@ -285,7 +288,8 @@ internal sealed class ApiIntegrationHost : IAsyncDisposable
             ["CorsSettings:AllowedOrigins"] = "https://localhost",
             ["Jwt:Token"] = "test-secret-key-for-integration-testing-minimum-32-characters",
             ["Jwt:Issuer"] = "test-issuer",
-            ["Jwt:Audience"] = "test-audience"
+            ["Jwt:Audience"] = "test-audience",
+            ["TimeZoneSettings:TimeZoneId"] = TimeZoneInfo.Local.Id
         });
 
         builder.Services.AddDbContext<ApplicationDbContext>(options => options.UseSqlite(connectionString));

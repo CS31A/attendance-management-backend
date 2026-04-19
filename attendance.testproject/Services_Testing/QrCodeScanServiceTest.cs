@@ -2,10 +2,12 @@ using System.Security.Claims;
 using attendance_monitoring.Classes;
 using attendance_monitoring.Constants;
 using attendance_monitoring.Data;
+using attendance_monitoring.Extensions;
 using attendance_monitoring.IRepository;
 using attendance_monitoring.IServices;
 using attendance_monitoring.Models.DTO.Request;
 using attendance_monitoring.Models.DTO.Response;
+using attendance_monitoring.Options;
 using attendance_monitoring.Services.QrCode;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
@@ -184,6 +186,9 @@ public class QrCodeScanServiceTest
             userContextService.Object,
             NullLogger<QrCodeAuthorizationService>.Instance);
 
+        var timeZoneProvider = new ConfiguredTimeZoneProvider(
+            new TimeZoneSettings { TimeZoneId = TimeZoneInfo.Local.Id });
+
         var service = new QrCodeScanService(
             context,
             qrCodeRepository.Object,
@@ -192,7 +197,8 @@ public class QrCodeScanServiceTest
             attendanceRepository.Object,
             notificationService.Object,
             authorizationService,
-            NullLogger<QrCodeScanService>.Instance);
+            NullLogger<QrCodeScanService>.Instance,
+            timeZoneProvider);
 
         var principal = CreatePrincipal(student.UserId, RoleConstants.Student);
 
@@ -202,20 +208,26 @@ public class QrCodeScanServiceTest
 
         Assert.True(result.Success);
         Assert.True(result.AttendanceMarked);
-        Assert.Equal(DateTimeKind.Local, capturedCheckInTime.Kind);
+        // CheckInTime should be set (not default)
+        Assert.NotEqual(default, capturedCheckInTime);
     }
 
     private static QrCodeScanService CreateService(
         ApplicationDbContext dbContext,
         IQrCodeRepository qrCodeRepository,
         IStudentRepository studentRepository,
-        IUserContextService userContextService)
+        IUserContextService userContextService,
+        ConfiguredTimeZoneProvider? timeZoneProvider = null)
     {
         var authorizationService = new QrCodeAuthorizationService(
             Mock.Of<ISessionRepository>(),
             Mock.Of<IStudentEnrollmentService>(),
             userContextService,
             NullLogger<QrCodeAuthorizationService>.Instance);
+
+        // Use system local timezone if not provided
+        timeZoneProvider ??= new ConfiguredTimeZoneProvider(
+            new TimeZoneSettings { TimeZoneId = TimeZoneInfo.Local.Id });
 
         return new QrCodeScanService(
             dbContext,
@@ -225,7 +237,8 @@ public class QrCodeScanServiceTest
             Mock.Of<IAttendanceRepository>(),
             Mock.Of<INotificationService>(),
             authorizationService,
-            NullLogger<QrCodeScanService>.Instance);
+            NullLogger<QrCodeScanService>.Instance,
+            timeZoneProvider);
     }
 
     private static ApplicationDbContext CreateDbContext()
