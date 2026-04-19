@@ -16,17 +16,39 @@ public sealed class ConfiguredTimeZoneProvider
     }
 
     public ConfiguredTimeZoneProvider(TimeZoneSettings settings, TimeProvider innerProvider)
+        : this(settings, innerProvider, TimeZoneInfo.FindSystemTimeZoneById)
     {
+    }
+
+    public ConfiguredTimeZoneProvider(
+        TimeZoneSettings settings,
+        TimeProvider innerProvider,
+        Func<string, TimeZoneInfo> timeZoneResolver)
+    {
+        ArgumentNullException.ThrowIfNull(settings);
+        ArgumentNullException.ThrowIfNull(innerProvider);
+        ArgumentNullException.ThrowIfNull(timeZoneResolver);
+
+        _innerProvider = innerProvider;
+
+        var configuredTimeZoneId = string.IsNullOrWhiteSpace(settings.TimeZoneId)
+            ? TimeZoneInfo.Local.Id
+            : settings.TimeZoneId;
+
         try
         {
-            _timeZone = TimeZoneInfo.FindSystemTimeZoneById(settings.TimeZoneId);
+            _timeZone = timeZoneResolver(configuredTimeZoneId);
         }
         catch (TimeZoneNotFoundException)
         {
             // Fallback to system local time if the configured timezone doesn't exist
             _timeZone = TimeZoneInfo.Local;
         }
-        _innerProvider = innerProvider;
+        catch (InvalidTimeZoneException)
+        {
+            // Fallback to system local time if timezone data is corrupt/invalid
+            _timeZone = TimeZoneInfo.Local;
+        }
     }
 
     /// <summary>
