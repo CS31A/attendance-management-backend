@@ -98,11 +98,18 @@ The scan endpoint derives the student from the authenticated token. A legacy `st
 ```json
 {
   "success": true,
-  "message": "Attendance recorded successfully",
+  "message": "Attendance marked successfully",
   "attendanceMarked": true,
   "attendanceRecordId": 1,
   "studentName": "Sam Student",
-  "attendanceTime": "2024-01-01T10:05:00Z"
+  "className": "CS101 - A",
+  "subjectName": "Introduction to Computer Science",
+  "roomName": "Room 204",
+  "instructorName": "Dr. Jane Smith",
+  "attendanceTime": "2024-01-01T10:05:00Z",
+  "remainingScans": 2,
+  "attendanceStatus": "Present",
+  "isDuplicateScan": false
 }
 ```
 
