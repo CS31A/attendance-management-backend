@@ -326,7 +326,8 @@ public class SessionService : ISessionService
     public async Task<SessionResponseDto> CreateSessionAsync(CreateSession request)
     {
         // Use provided date or default to current date (using local time for session scheduling)
-        var effectiveSessionDate = request.SessionDate ?? DateTime.Now.Date;
+        var today = DateTime.Today;
+        var effectiveSessionDate = request.SessionDate ?? today;
 
         _logger.LogInformation("Creating session for schedule ID: {ScheduleId} on date: {SessionDate:yyyy-MM-dd}",
             request.ScheduleId, effectiveSessionDate);
@@ -363,7 +364,7 @@ public class SessionService : ISessionService
             }
 
             // Validate that the session date is not in the past (using local time)
-            if (effectiveSessionDate.Date < DateTime.Now.Date)
+            if (effectiveSessionDate.Date < today)
             {
                 var errorMessage = "Cannot create a session for a past date.";
                 _logger.LogWarning("Session creation failed: {ErrorMessage}", errorMessage);
@@ -478,9 +479,10 @@ public class SessionService : ISessionService
             }
 
             // Validate that the session date is today (using local time)
-            if (session.SessionDate.Date != DateTime.Now.Date)
+            var today = DateTime.Today;
+            if (session.SessionDate.Date != today)
             {
-                var errorMessage = $"Cannot start session. The session is scheduled for {session.SessionDate:yyyy-MM-dd}, but today is {DateTime.Now:yyyy-MM-dd}.";
+                var errorMessage = $"Cannot start session. The session is scheduled for {session.SessionDate:yyyy-MM-dd}, but today is {today:yyyy-MM-dd}.";
                 _logger.LogWarning("Session start failed: {ErrorMessage}", errorMessage);
                 throw new ValidationException(errorMessage);
             }

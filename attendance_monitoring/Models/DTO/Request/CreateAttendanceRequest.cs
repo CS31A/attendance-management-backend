@@ -36,7 +36,7 @@ public class CreateAttendanceRequest
     public string? Notes { get; set; }
 
     /// <summary>
-    /// Optional check-in time. Defaults to current UTC time if not provided.
+    /// Optional check-in time. Defaults to current local time if not provided.
     /// </summary>
     public DateTime? CheckInTime { get; set; }
 }

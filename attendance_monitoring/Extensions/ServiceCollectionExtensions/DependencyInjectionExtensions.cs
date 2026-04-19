@@ -1,5 +1,6 @@
 using attendance_monitoring.IRepository;
 using attendance_monitoring.IServices;
+using attendance_monitoring.Options;
 using attendance_monitoring.Repositories;
 using attendance_monitoring.Services;
 using attendance_monitoring.Services.HealthChecks;
@@ -46,6 +47,22 @@ public static class DependencyInjectionExtensions
     /// <returns>The service collection for chaining.</returns>
     public static IServiceCollection AddApplicationServices(this IServiceCollection services)
     {
+        // Register ConfiguredTimeZoneProvider with fallback to system local time
+        services.AddSingleton<ConfiguredTimeZoneProvider>(sp =>
+        {
+            var configuration = sp.GetService<IConfiguration>();
+            var settings = configuration?.GetSection(TimeZoneSettings.SectionName).Get<TimeZoneSettings>();
+            var timeProvider = sp.GetService<TimeProvider>() ?? TimeProvider.System;
+            
+            if (settings == null || string.IsNullOrWhiteSpace(settings.TimeZoneId))
+            {
+                // Fallback to system local time if not configured
+                settings = new TimeZoneSettings { TimeZoneId = TimeZoneInfo.Local.Id };
+            }
+            
+            return new ConfiguredTimeZoneProvider(settings, timeProvider);
+        });
+
         services.AddSingleton<RequestReliabilityTelemetry>();
         services.AddScoped<IStudentService, StudentService>();
         services.AddScoped<IInstructorService, InstructorService>();

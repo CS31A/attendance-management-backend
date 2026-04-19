@@ -400,6 +400,37 @@ Generate a new QR code for attendance.
 }
 ```
 
+### POST /api/QrCode/scan
+Scan a QR code and record attendance for the authenticated student.
+
+**Request Body:**
+```json
+{
+  "qrHash": "unique_hash"
+}
+```
+
+Legacy clients may still include `studentId`. If provided and it does not match the authenticated student, the scan request is rejected.
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Attendance marked successfully",
+  "attendanceMarked": true,
+  "attendanceRecordId": 1,
+  "studentName": "Sam Student",
+  "className": "CS101 - A",
+  "subjectName": "Introduction to Computer Science",
+  "roomName": "Room 204",
+  "instructorName": "Dr. Jane Smith",
+  "attendanceTime": "2024-01-01T10:05:00Z",
+  "remainingScans": 2,
+  "attendanceStatus": "Present",
+  "isDuplicateScan": false
+}
+```
+
 ### PATCH /api/QrCode/{id}/revoke
 Revoke a QR code by ID.
 

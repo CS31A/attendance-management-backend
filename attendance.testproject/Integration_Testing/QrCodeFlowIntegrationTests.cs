@@ -75,8 +75,7 @@ public sealed class QrCodeFlowIntegrationTests
 
         var response = await host.PostAsJsonAsync("/api/qrcode/scan", new ValidateQrCode
         {
-            QrHash = host.AttendanceQrScenario.QrHash,
-            StudentId = host.AttendanceQrScenario.StudentId
+            QrHash = host.AttendanceQrScenario.QrHash
         });
 
         var payload = await response.Content.ReadFromJsonAsync<QrCodeScanResponseDto>();
@@ -109,6 +108,41 @@ public sealed class QrCodeFlowIntegrationTests
     }
 
     [Fact]
+    public async Task ScanQrCode_ReturnsOkWithFailure_WhenStudentIdDoesNotMatchAuthenticatedStudent()
+    {
+        await using var host = await ApiIntegrationHost.CreateAttendanceQrAsync(AttendanceQrSeedData.ValidQrScan);
+        host.AuthenticateAs(userId: host.AttendanceQrScenario!.StudentUserId, username: "integration-student", role: "Student");
+
+        var response = await host.PostAsJsonAsync("/api/qrcode/scan", new ValidateQrCode
+        {
+            QrHash = host.AttendanceQrScenario.QrHash,
+            StudentId = host.AttendanceQrScenario.StudentId + 1000
+        });
+
+        var payload = await response.Content.ReadFromJsonAsync<QrCodeScanResponseDto>();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.NotNull(payload);
+        Assert.False(payload.Success);
+        Assert.False(payload.AttendanceMarked);
+        Assert.Equal("Student ID does not match authenticated user", payload.Message);
+    }
+
+    [Fact]
+    public async Task ScanQrCode_ReturnsForbidden_WhenUserIsNotAStudent()
+    {
+        await using var host = await ApiIntegrationHost.CreateAttendanceQrAsync(AttendanceQrSeedData.ValidQrScan);
+        host.AuthenticateAs(userId: host.AttendanceQrScenario!.InstructorUserId, username: "integration-instructor", role: "Instructor");
+
+        var response = await host.PostAsJsonAsync("/api/qrcode/scan", new ValidateQrCode
+        {
+            QrHash = host.AttendanceQrScenario.QrHash
+        });
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    [Fact]
     public async Task ScanQrCode_ReturnsOk_WithDuplicateFlag_WhenAttendanceAlreadyExists()
     {
         await using var host = await ApiIntegrationHost.CreateAttendanceQrAsync(AttendanceQrSeedData.DuplicateQrScan);
@@ -116,8 +150,7 @@ public sealed class QrCodeFlowIntegrationTests
 
         var response = await host.PostAsJsonAsync("/api/qrcode/scan", new ValidateQrCode
         {
-            QrHash = host.AttendanceQrScenario.QrHash,
-            StudentId = host.AttendanceQrScenario.StudentId
+            QrHash = host.AttendanceQrScenario.QrHash
         });
 
         var payload = await response.Content.ReadFromJsonAsync<QrCodeScanResponseDto>();
@@ -157,8 +190,7 @@ public sealed class QrCodeFlowIntegrationTests
         {
             Content = JsonContent.Create(new ValidateQrCode
             {
-                QrHash = scenario.QrHash,
-                StudentId = scenario.StudentId
+                QrHash = scenario.QrHash
             })
         };
         qrRequest.Headers.Authorization = TestAuthTokenFactory.CreateBearerHeader(

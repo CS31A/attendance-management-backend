@@ -2,10 +2,12 @@ using attendance_monitoring.Classes;
 using attendance_monitoring.Constants;
 using attendance_monitoring.Data;
 using attendance_monitoring.Exceptions;
+using attendance_monitoring.Extensions;
 using attendance_monitoring.IRepository;
 using attendance_monitoring.IServices;
 using attendance_monitoring.Models;
 using attendance_monitoring.Models.DTO.Request;
+using attendance_monitoring.Options;
 using attendance_monitoring.Services;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -30,6 +32,7 @@ public class AttendanceConcurrencyTests
     private readonly Mock<UserManager<IdentityUser>> _mockUserManager;
     private readonly UserContextService _userContextService;
     private readonly AttendanceService _attendanceService;
+    private readonly ConfiguredTimeZoneProvider _timeZoneProvider;
 
     public AttendanceConcurrencyTests()
     {
@@ -61,6 +64,11 @@ public class AttendanceConcurrencyTests
         // Create real UserContextService with mocked UserManager and context
         _userContextService = new UserContextService(_mockUserManager.Object, mockContext.Object);
 
+        // Use system local timezone for tests
+        var systemTimeZoneId = TimeZoneInfo.Local.Id;
+        var settings = new TimeZoneSettings { TimeZoneId = systemTimeZoneId };
+        _timeZoneProvider = new ConfiguredTimeZoneProvider(settings);
+
         _attendanceService = new AttendanceService(
             _mockAttendanceRepository.Object,
             _mockStudentRepository.Object,
@@ -68,7 +76,8 @@ public class AttendanceConcurrencyTests
             _mockSessionRepository.Object,
             _mockStudentEnrollmentRepository.Object,
             _userContextService,
-            _mockLogger.Object
+            _mockLogger.Object,
+            _timeZoneProvider
         );
     }
 
@@ -197,6 +206,76 @@ public class AttendanceConcurrencyTests
                 It.IsAny<Exception?>(),
                 It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
             Times.Once);
+    }
+
+    [Fact]
+    public async Task CreateAttendanceAsync_WithoutCheckInTime_DefaultsToLocalTime()
+    {
+        // Arrange
+        var request = new CreateAttendanceRequest
+        {
+            StudentId = 1,
+            SessionId = 1,
+            Status = "Present",
+            Notes = "Manual check-in without explicit timestamp"
+        };
+
+        var user = CreateInstructorUser("instructor-1");
+        DateTime capturedCheckInTime = default;
+        const int createdId = 100;
+
+        _mockUserManager.Setup(um => um.FindByIdAsync("instructor-1"))
+            .ReturnsAsync(new IdentityUser { Id = "instructor-1" });
+
+        _mockSessionRepository.Setup(r => r.GetSessionByIdAsync(request.SessionId))
+            .ReturnsAsync(new Session
+            {
+                Id = request.SessionId,
+                Schedule = new Schedules
+                {
+                    InstructorId = 10,
+                    SectionId = 100,
+                    SubjectId = 200
+                }
+            });
+
+        _mockStudentRepository.Setup(r => r.GetStudentByIdAsync(request.StudentId))
+            .ReturnsAsync(new Student { Id = request.StudentId, SectionId = 100 });
+
+        _mockStudentEnrollmentRepository.Setup(r => r.GetStudentEnrollmentsAsync(request.StudentId))
+            .ReturnsAsync(new List<StudentEnrollment>
+            {
+                new StudentEnrollment { StudentId = request.StudentId, SectionId = 100 }
+            });
+
+        _mockAttendanceRepository.Setup(r => r.CreateAsync(It.IsAny<AttendanceRecord>()))
+            .Callback<AttendanceRecord>(record => capturedCheckInTime = record.CheckInTime)
+            .ReturnsAsync(new AttendanceRecord { Id = createdId });
+
+        _mockAttendanceRepository.Setup(r => r.SaveChangesAsync())
+            .ReturnsAsync(1);
+
+        _mockAttendanceRepository.Setup(r => r.GetByIdAsync(createdId))
+            .ReturnsAsync(() =>
+            {
+                var record = CreateExistingAttendanceRecord(request.StudentId, request.SessionId);
+                record.Id = createdId;
+                record.CheckInTime = capturedCheckInTime;
+                record.Status = request.Status;
+                record.Notes = request.Notes;
+                record.EnteredBy = "instructor-1";
+                return record;
+            });
+
+        // Act
+        var result = await _attendanceService.CreateAttendanceAsync(request, user);
+
+        // Assert
+        // CheckInTime should be set (not default)
+        Assert.NotEqual(default, capturedCheckInTime);
+        Assert.NotEqual(default, result.CheckInTime);
+        // Time should come from TimeProvider (configured timezone)
+        Assert.Equal(capturedCheckInTime, result.CheckInTime);
     }
 
     private ClaimsPrincipal CreateInstructorUser(string userId)

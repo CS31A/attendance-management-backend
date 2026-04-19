@@ -326,14 +326,17 @@ public class QrCodeController(
     /// <summary>
     /// Scans a QR code and records attendance for a student.
     /// </summary>
-    /// <param name="request">The scan request containing QR hash and student ID.</param>
+    /// <param name="request">The scan request containing QR hash and optional student ID.</param>
     /// <returns>Scan response with attendance status.</returns>
     [HttpPost("scan")]
-    [Authorize]
+    [Authorize(Policy = "StudentPolicy")]
     public async Task<ActionResult> ScanQrCode([FromBody] ValidateQrCode request)
     {
-        logger.LogInformation("Scanning QR code with hash: {QrHash} for student ID: {StudentId}",
-            request.QrHash, request.StudentId);
+        logger.LogInformation(
+            "Scanning QR code with hash: {QrHash}. RequestStudentId: {StudentId}. AuthenticatedUserId: {UserId}",
+            request.QrHash,
+            request.StudentId,
+            User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value);
 
         var result = await qrCodeService.ScanQrCodeAsync(request, User);
 
@@ -343,7 +346,7 @@ public class QrCodeController(
             return Ok(result); // Return 200 with success: false
         }
 
-        logger.LogInformation("Successfully scanned QR code for student ID: {StudentId}", request.StudentId);
+        logger.LogInformation("Successfully scanned QR code with hash: {QrHash}", request.QrHash);
         return Ok(result);
         // No try-catch - global handler will catch any unexpected errors
     }
