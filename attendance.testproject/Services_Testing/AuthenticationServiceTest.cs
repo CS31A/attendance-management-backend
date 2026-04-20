@@ -93,6 +93,9 @@ public class AuthenticationServiceTest : IDisposable
         var key = Encoding.UTF8.GetBytes("supersecretkey12345678901234567890");
         var tokenJti = jti ?? Guid.NewGuid().ToString();
         var tokenExpires = expiresAt ?? DateTime.UtcNow.AddHours(1);
+        var tokenNotBefore = expiresAt.HasValue && expiresAt.Value < DateTime.UtcNow
+            ? expiresAt.Value.AddHours(-2)
+            : DateTime.UtcNow.AddHours(-1);
 
         var tokenDescriptor = new SecurityTokenDescriptor
         {
@@ -101,6 +104,7 @@ public class AuthenticationServiceTest : IDisposable
                 new Claim(ClaimTypes.NameIdentifier, userId),
                 new Claim("jti", tokenJti)
             }),
+            NotBefore = tokenNotBefore,
             Expires = tokenExpires,
             Issuer = "test-issuer",
             Audience = "test-audience",
@@ -503,6 +507,301 @@ public class AuthenticationServiceTest : IDisposable
         Assert.Contains("User not found", exception.Message);
     }
 
+    [Fact]
+    public async Task RefreshAsync_WithValidOldAccessToken_BlacklistsToken()
+    {
+        // Arrange
+        var userId = "user-1";
+        var oldAccessToken = GenerateTestJwt(userId);
+        var refreshTokenRequest = new RefreshTokenRequestDto
+        {
+            RefreshToken = "valid-refresh-token",
+            OldAccessToken = oldAccessToken
+        };
+
+        var refreshTokenEntity = CreateTestRefreshToken(userId);
+        var user = CreateTestUser(id: userId);
+        var roles = new List<string> { "Instructor" };
+
+        _mockRefreshTokenService
+            .Setup(s => s.ValidateRefreshTokenAsync(refreshTokenRequest.RefreshToken))
+            .ReturnsAsync(refreshTokenEntity);
+
+        _mockAccountRepository
+            .Setup(r => r.FindUserByIdAsync(refreshTokenEntity.UserId))
+            .ReturnsAsync(user);
+
+        _mockAccountRepository
+            .Setup(r => r.GetUserRolesAsync(user))
+            .ReturnsAsync(roles);
+
+        _mockRefreshTokenService
+            .Setup(s => s.RotateRefreshTokenAsync(refreshTokenRequest.RefreshToken, user.Id))
+            .ReturnsAsync((CreateTestRefreshToken(user.Id), "new-refresh-token"));
+
+        _mockAccountRepository
+            .Setup(r => r.SaveChangesAsync())
+            .Returns(async () =>
+            {
+                await _context.SaveChangesAsync();
+                return 1;
+            });
+
+        // Act
+        var result = await _authService.RefreshAsync(refreshTokenRequest);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.NotEmpty(result.AccessToken);
+        Assert.NotEmpty(result.RefreshToken);
+
+        // Verify the old access token was blacklisted
+        var tokenHandler = new JwtSecurityTokenHandler();
+        var jwtToken = tokenHandler.ReadJwtToken(oldAccessToken);
+        var jti = jwtToken.Claims.First(c => c.Type == "jti").Value;
+
+        var blacklistedToken = await _context.BlacklistedTokens
+            .FirstOrDefaultAsync(bt => bt.Jti == jti);
+        Assert.NotNull(blacklistedToken);
+        Assert.Equal(jti, blacklistedToken.Jti);
+    }
+
+    [Fact]
+    public async Task RefreshAsync_WithExpiredOldAccessToken_DoesNotBlacklist()
+    {
+        // Arrange
+        var userId = "user-1";
+        var oldAccessToken = GenerateTestJwt(userId, expiresAt: DateTime.UtcNow.AddHours(-1));
+        var refreshTokenRequest = new RefreshTokenRequestDto
+        {
+            RefreshToken = "valid-refresh-token",
+            OldAccessToken = oldAccessToken
+        };
+
+        var refreshTokenEntity = CreateTestRefreshToken(userId);
+        var user = CreateTestUser(id: userId);
+        var roles = new List<string> { "Instructor" };
+
+        _mockRefreshTokenService
+            .Setup(s => s.ValidateRefreshTokenAsync(refreshTokenRequest.RefreshToken))
+            .ReturnsAsync(refreshTokenEntity);
+
+        _mockAccountRepository
+            .Setup(r => r.FindUserByIdAsync(refreshTokenEntity.UserId))
+            .ReturnsAsync(user);
+
+        _mockAccountRepository
+            .Setup(r => r.GetUserRolesAsync(user))
+            .ReturnsAsync(roles);
+
+        _mockRefreshTokenService
+            .Setup(s => s.RotateRefreshTokenAsync(refreshTokenRequest.RefreshToken, user.Id))
+            .ReturnsAsync((CreateTestRefreshToken(user.Id), "new-refresh-token"));
+
+        // Act
+        var result = await _authService.RefreshAsync(refreshTokenRequest);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.NotEmpty(result.AccessToken);
+
+        // Verify the expired token was NOT blacklisted
+        var tokenHandler = new JwtSecurityTokenHandler();
+        var jwtToken = tokenHandler.ReadJwtToken(oldAccessToken);
+        var jti = jwtToken.Claims.First(c => c.Type == "jti").Value;
+
+        var blacklistedToken = await _context.BlacklistedTokens
+            .FirstOrDefaultAsync(bt => bt.Jti == jti);
+        Assert.Null(blacklistedToken);
+    }
+
+    [Fact]
+    public async Task RefreshAsync_WithInvalidOldAccessToken_DoesNotBlacklist()
+    {
+        // Arrange
+        var userId = "user-1";
+        var invalidToken = "invalid.jwt.token";
+        var refreshTokenRequest = new RefreshTokenRequestDto
+        {
+            RefreshToken = "valid-refresh-token",
+            OldAccessToken = invalidToken
+        };
+
+        var refreshTokenEntity = CreateTestRefreshToken(userId);
+        var user = CreateTestUser(id: userId);
+        var roles = new List<string> { "Instructor" };
+
+        _mockRefreshTokenService
+            .Setup(s => s.ValidateRefreshTokenAsync(refreshTokenRequest.RefreshToken))
+            .ReturnsAsync(refreshTokenEntity);
+
+        _mockAccountRepository
+            .Setup(r => r.FindUserByIdAsync(refreshTokenEntity.UserId))
+            .ReturnsAsync(user);
+
+        _mockAccountRepository
+            .Setup(r => r.GetUserRolesAsync(user))
+            .ReturnsAsync(roles);
+
+        _mockRefreshTokenService
+            .Setup(s => s.RotateRefreshTokenAsync(refreshTokenRequest.RefreshToken, user.Id))
+            .ReturnsAsync((CreateTestRefreshToken(user.Id), "new-refresh-token"));
+
+        // Act
+        var result = await _authService.RefreshAsync(refreshTokenRequest);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.NotEmpty(result.AccessToken);
+        // Invalid token should not cause failure, just log and continue
+    }
+
+    [Fact]
+    public async Task RefreshAsync_WithOldAccessTokenMissingJti_DoesNotBlacklist()
+    {
+        // Arrange
+        var userId = "user-1";
+        var tokenHandler = new JwtSecurityTokenHandler();
+        var key = Encoding.UTF8.GetBytes("supersecretkey12345678901234567890");
+
+        var tokenDescriptor = new SecurityTokenDescriptor
+        {
+            Subject = new ClaimsIdentity(new[]
+            {
+                new Claim(ClaimTypes.NameIdentifier, userId)
+                // Intentionally missing jti claim
+            }),
+            Expires = DateTime.UtcNow.AddHours(1),
+            Issuer = "test-issuer",
+            Audience = "test-audience",
+            SigningCredentials = new SigningCredentials(
+                new SymmetricSecurityKey(key),
+                SecurityAlgorithms.HmacSha256Signature)
+        };
+
+        var token = tokenHandler.CreateToken(tokenDescriptor);
+        var oldAccessToken = tokenHandler.WriteToken(token);
+
+        var refreshTokenRequest = new RefreshTokenRequestDto
+        {
+            RefreshToken = "valid-refresh-token",
+            OldAccessToken = oldAccessToken
+        };
+
+        var refreshTokenEntity = CreateTestRefreshToken(userId);
+        var user = CreateTestUser(id: userId);
+        var roles = new List<string> { "Instructor" };
+
+        _mockRefreshTokenService
+            .Setup(s => s.ValidateRefreshTokenAsync(refreshTokenRequest.RefreshToken))
+            .ReturnsAsync(refreshTokenEntity);
+
+        _mockAccountRepository
+            .Setup(r => r.FindUserByIdAsync(refreshTokenEntity.UserId))
+            .ReturnsAsync(user);
+
+        _mockAccountRepository
+            .Setup(r => r.GetUserRolesAsync(user))
+            .ReturnsAsync(roles);
+
+        _mockRefreshTokenService
+            .Setup(s => s.RotateRefreshTokenAsync(refreshTokenRequest.RefreshToken, user.Id))
+            .ReturnsAsync((CreateTestRefreshToken(user.Id), "new-refresh-token"));
+
+        // Act
+        var result = await _authService.RefreshAsync(refreshTokenRequest);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.NotEmpty(result.AccessToken);
+        // Token without jti should not be blacklisted
+    }
+
+    [Fact]
+    public async Task RefreshAsync_WithOldAccessTokenFromDifferentUser_DoesNotBlacklist()
+    {
+        // Arrange
+        var tokenUserId = "user-1";
+        var requestUserId = "user-2";
+        var oldAccessToken = GenerateTestJwt(tokenUserId);
+        var refreshTokenRequest = new RefreshTokenRequestDto
+        {
+            RefreshToken = "valid-refresh-token",
+            OldAccessToken = oldAccessToken
+        };
+
+        var refreshTokenEntity = CreateTestRefreshToken(requestUserId);
+        var user = CreateTestUser(id: requestUserId);
+        var roles = new List<string> { "Instructor" };
+
+        _mockRefreshTokenService
+            .Setup(s => s.ValidateRefreshTokenAsync(refreshTokenRequest.RefreshToken))
+            .ReturnsAsync(refreshTokenEntity);
+
+        _mockAccountRepository
+            .Setup(r => r.FindUserByIdAsync(refreshTokenEntity.UserId))
+            .ReturnsAsync(user);
+
+        _mockAccountRepository
+            .Setup(r => r.GetUserRolesAsync(user))
+            .ReturnsAsync(roles);
+
+        _mockRefreshTokenService
+            .Setup(s => s.RotateRefreshTokenAsync(refreshTokenRequest.RefreshToken, user.Id))
+            .ReturnsAsync((CreateTestRefreshToken(user.Id), "new-refresh-token"));
+
+        // Act
+        var result = await _authService.RefreshAsync(refreshTokenRequest);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.NotEmpty(result.AccessToken);
+
+        // Verify the token from different user was NOT blacklisted
+        var tokenHandler = new JwtSecurityTokenHandler();
+        var jwtToken = tokenHandler.ReadJwtToken(oldAccessToken);
+        var jti = jwtToken.Claims.First(c => c.Type == "jti").Value;
+
+        var blacklistedToken = await _context.BlacklistedTokens
+            .FirstOrDefaultAsync(bt => bt.Jti == jti);
+        Assert.Null(blacklistedToken);
+    }
+
+    [Fact]
+    public async Task RefreshAsync_WithRotateRefreshTokenFailure_ThrowsEntityServiceException()
+    {
+        // Arrange
+        var refreshTokenRequest = new RefreshTokenRequestDto
+        {
+            RefreshToken = "valid-refresh-token"
+        };
+
+        var refreshTokenEntity = CreateTestRefreshToken("user-1");
+        var user = CreateTestUser(id: "user-1");
+        var roles = new List<string> { "Instructor" };
+
+        _mockRefreshTokenService
+            .Setup(s => s.ValidateRefreshTokenAsync(refreshTokenRequest.RefreshToken))
+            .ReturnsAsync(refreshTokenEntity);
+
+        _mockAccountRepository
+            .Setup(r => r.FindUserByIdAsync(refreshTokenEntity.UserId))
+            .ReturnsAsync(user);
+
+        _mockAccountRepository
+            .Setup(r => r.GetUserRolesAsync(user))
+            .ReturnsAsync(roles);
+
+        _mockRefreshTokenService
+            .Setup(s => s.RotateRefreshTokenAsync(refreshTokenRequest.RefreshToken, user.Id))
+            .ThrowsAsync(new EntityServiceException("RefreshToken", "RotateRefreshToken", "Rotation failed"));
+
+        // Act & Assert
+        var exception = await Assert.ThrowsAsync<EntityServiceException>(
+            () => _authService.RefreshAsync(refreshTokenRequest));
+        Assert.Contains("Rotation failed", exception.Message);
+    }
+
     #endregion
 
     #region RevokeAsync Tests
@@ -712,6 +1011,37 @@ public class AuthenticationServiceTest : IDisposable
         Assert.Contains("database error", exception.Message);
     }
 
+    [Fact]
+    public async Task RevokeAsync_WithGenericException_ThrowsEntityServiceException()
+    {
+        // Arrange
+        var revokeTokenRequest = new RevokeTokenRequestDto
+        {
+            RefreshToken = "valid-refresh-token"
+        };
+        var userId = "user-1";
+
+        var tokenHash = "hashed-token";
+        var storedToken = CreateTestRefreshToken(userId, isRevoked: false);
+
+        _mockRefreshTokenService
+            .Setup(s => s.HashRefreshToken(revokeTokenRequest.RefreshToken))
+            .Returns(tokenHash);
+
+        _mockAccountRepository
+            .Setup(r => r.FindRefreshTokenByHashAsync(tokenHash))
+            .ReturnsAsync(storedToken);
+
+        _mockAccountRepository
+            .Setup(r => r.SaveChangesAsync())
+            .ThrowsAsync(new InvalidOperationException("Unexpected error"));
+
+        // Act & Assert
+        var exception = await Assert.ThrowsAsync<EntityServiceException>(
+            () => _authService.RevokeAsync(revokeTokenRequest, userId));
+        Assert.Contains("Revoke", exception.Message);
+    }
+
     #endregion
 
     #region LogoutAsync Tests
@@ -892,6 +1222,148 @@ public class AuthenticationServiceTest : IDisposable
         // Assert
         Assert.NotNull(result);
         Assert.True(result.Success);
+    }
+
+    [Fact]
+    public async Task LogoutAsync_WithDbConcurrencyException_ReturnsSuccess()
+    {
+        // Arrange
+        var userId = "user-1";
+        var accessToken = GenerateTestJwt(userId);
+
+        var token1 = CreateTestRefreshToken(userId, isRevoked: false);
+        token1.Id = 10;
+        _context.RefreshTokens.Add(token1);
+        await _context.SaveChangesAsync();
+
+        _mockAccountRepository
+            .Setup(r => r.SaveChangesAsync())
+            .ThrowsAsync(new DbUpdateConcurrencyException());
+
+        // Act
+        var result = await _authService.LogoutAsync(userId, accessToken);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.True(result.Success);
+        Assert.Contains("Logged out successfully", result.Message);
+    }
+
+    [Fact]
+    public async Task LogoutAsync_WithDbUpdateException_ReturnsSuccess()
+    {
+        // Arrange
+        var userId = "user-1";
+        var accessToken = GenerateTestJwt(userId);
+
+        var token1 = CreateTestRefreshToken(userId, isRevoked: false);
+        token1.Id = 11;
+        _context.RefreshTokens.Add(token1);
+        await _context.SaveChangesAsync();
+
+        _mockAccountRepository
+            .Setup(r => r.SaveChangesAsync())
+            .ThrowsAsync(new DbUpdateException());
+
+        // Act
+        var result = await _authService.LogoutAsync(userId, accessToken);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.True(result.Success);
+        Assert.Contains("Logged out successfully", result.Message);
+    }
+
+    [Fact]
+    public async Task LogoutAsync_WithInvalidAccessToken_ReturnsSuccess()
+    {
+        // Arrange
+        var userId = "user-1";
+        var invalidAccessToken = "invalid.jwt.token";
+
+        var token1 = CreateTestRefreshToken(userId, isRevoked: false);
+        token1.Id = 12;
+        _context.RefreshTokens.Add(token1);
+        await _context.SaveChangesAsync();
+
+        // Act
+        var result = await _authService.LogoutAsync(userId, invalidAccessToken);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.True(result.Success);
+        Assert.Contains("Logged out successfully", result.Message);
+    }
+
+    [Fact]
+    public async Task WebLogoutAsync_WithDbConcurrencyException_ReturnsSuccess()
+    {
+        // Arrange
+        var userId = "user-1";
+        var accessToken = GenerateTestJwt(userId);
+
+        var token1 = CreateTestRefreshToken(userId, isRevoked: false);
+        token1.Id = 13;
+        _context.RefreshTokens.Add(token1);
+        await _context.SaveChangesAsync();
+
+        _mockAccountRepository
+            .Setup(r => r.SaveChangesAsync())
+            .ThrowsAsync(new DbUpdateConcurrencyException());
+
+        // Act
+        var result = await _authService.WebLogoutAsync(userId, accessToken);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.True(result.Success);
+        Assert.Contains("Logged out successfully", result.Message);
+    }
+
+    [Fact]
+    public async Task WebLogoutAsync_WithDbUpdateException_ReturnsSuccess()
+    {
+        // Arrange
+        var userId = "user-1";
+        var accessToken = GenerateTestJwt(userId);
+
+        var token1 = CreateTestRefreshToken(userId, isRevoked: false);
+        token1.Id = 14;
+        _context.RefreshTokens.Add(token1);
+        await _context.SaveChangesAsync();
+
+        _mockAccountRepository
+            .Setup(r => r.SaveChangesAsync())
+            .ThrowsAsync(new DbUpdateException());
+
+        // Act
+        var result = await _authService.WebLogoutAsync(userId, accessToken);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.True(result.Success);
+        Assert.Contains("Logged out successfully", result.Message);
+    }
+
+    [Fact]
+    public async Task WebLogoutAsync_WithInvalidAccessToken_ReturnsSuccess()
+    {
+        // Arrange
+        var userId = "user-1";
+        var invalidAccessToken = "invalid.jwt.token";
+
+        var token1 = CreateTestRefreshToken(userId, isRevoked: false);
+        token1.Id = 15;
+        _context.RefreshTokens.Add(token1);
+        await _context.SaveChangesAsync();
+
+        // Act
+        var result = await _authService.WebLogoutAsync(userId, invalidAccessToken);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.True(result.Success);
+        Assert.Contains("Logged out successfully", result.Message);
     }
 
     #endregion
