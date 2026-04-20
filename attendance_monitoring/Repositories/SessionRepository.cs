@@ -3,6 +3,7 @@ using attendance_monitoring.Constants;
 using attendance_monitoring.Data;
 using attendance_monitoring.IRepository;
 using attendance_monitoring.Models.DTO.Response;
+using System.ComponentModel.DataAnnotations;
 using Microsoft.EntityFrameworkCore;
 
 namespace attendance_monitoring.Repositories;
@@ -160,6 +161,11 @@ public class SessionRepository(ApplicationDbContext context) : ISessionRepositor
     /// </summary>
     public async Task<Session> UpdateSessionAsync(Session session)
     {
+        if (session.RowVersion.Length == 0)
+        {
+            throw new ValidationException("Session rowVersion is required for updates.");
+        }
+
         // Load the session from database with tracking (without navigation properties)
         // This avoids conflicts with already-tracked related entities
         var trackedSession = await context.Sessions
@@ -170,6 +176,10 @@ public class SessionRepository(ApplicationDbContext context) : ISessionRepositor
         {
             throw new InvalidOperationException($"Session with ID {session.Id} not found.");
         }
+
+        context.Entry(trackedSession)
+            .Property(s => s.RowVersion)
+            .OriginalValue = session.RowVersion;
 
         // Update only the scalar properties
         trackedSession.Status = session.Status;

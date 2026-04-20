@@ -95,7 +95,8 @@ public class AttendanceRepositoryTest : IDisposable
             Id = 1,
             SessionDate = DateTime.Today,
             ScheduleId = 1,
-            Schedule = schedule
+            Schedule = schedule,
+            RowVersion = [1]
         };
 
         var attendance1 = new AttendanceRecord
@@ -418,6 +419,7 @@ public class AttendanceRepositoryTest : IDisposable
             SessionDate = now,
             CreatedAt = now,
             UpdatedAt = now,
+            RowVersion = [2],
         };
 
         var sessionB = new Session
@@ -426,6 +428,7 @@ public class AttendanceRepositoryTest : IDisposable
             SessionDate = now.AddDays(1),
             CreatedAt = now,
             UpdatedAt = now,
+            RowVersion = [3],
         };
 
         context.AttendanceRecords.AddRange(
@@ -586,6 +589,7 @@ public class AttendanceRepositoryTest : IDisposable
             SessionDate = now,
             CreatedAt = now,
             UpdatedAt = now,
+            RowVersion = [4],
         };
 
         var attendance1 = new AttendanceRecord

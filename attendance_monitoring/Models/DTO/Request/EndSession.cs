@@ -12,4 +12,10 @@ public class EndSession
     /// </summary>
     [MaxLength(500, ErrorMessage = "Description cannot exceed 500 characters")]
     public string? Description { get; set; }
+
+    /// <summary>
+    /// Optimistic concurrency token for the current session row.
+    /// Serialized as base64 over JSON.
+    /// </summary>
+    public byte[]? RowVersion { get; set; }
 }

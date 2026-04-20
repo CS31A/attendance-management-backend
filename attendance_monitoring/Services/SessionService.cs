@@ -1,12 +1,14 @@
 using attendance_monitoring.Classes;
 using attendance_monitoring.Constants;
 using attendance_monitoring.Exceptions;
+using attendance_monitoring.Extensions;
 using attendance_monitoring.Helpers;
 using attendance_monitoring.IRepository;
 using attendance_monitoring.IServices;
 using attendance_monitoring.Models.DTO.Request;
 using attendance_monitoring.Models.DTO.Response;
 using Microsoft.AspNetCore.Http;
+using Microsoft.EntityFrameworkCore;
 
 namespace attendance_monitoring.Services;
 
@@ -23,6 +25,7 @@ public class SessionService : ISessionService
     private readonly INotificationService _notificationService;
     private readonly IUserContextService _userContextService;
     private readonly IHttpContextAccessor _httpContextAccessor;
+    private readonly ConfiguredTimeZoneProvider _clock;
     private readonly ILogger<SessionService> _logger;
 
     /// <summary>
@@ -37,6 +40,7 @@ public class SessionService : ISessionService
         INotificationService notificationService,
         IUserContextService userContextService,
         IHttpContextAccessor httpContextAccessor,
+        ConfiguredTimeZoneProvider clock,
         ILogger<SessionService> logger)
     {
         _sessionRepository = sessionRepository ?? throw new ArgumentNullException(nameof(sessionRepository));
@@ -47,6 +51,7 @@ public class SessionService : ISessionService
         _notificationService = notificationService ?? throw new ArgumentNullException(nameof(notificationService));
         _userContextService = userContextService ?? throw new ArgumentNullException(nameof(userContextService));
         _httpContextAccessor = httpContextAccessor ?? throw new ArgumentNullException(nameof(httpContextAccessor));
+        _clock = clock ?? throw new ArgumentNullException(nameof(clock));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
@@ -286,7 +291,9 @@ public class SessionService : ISessionService
             }
 
             // Update the session's actual room
+            EnsureRowVersion(updateRequest.RowVersion, "update the room for");
             session.ActualRoomId = updateRequest.ActualRoomId;
+            session.RowVersion = updateRequest.RowVersion!;
 
             await _sessionRepository.UpdateSessionAsync(session).ConfigureAwait(false);
             await _sessionRepository.SaveChangesAsync().ConfigureAwait(false);
@@ -309,6 +316,15 @@ public class SessionService : ISessionService
         {
             throw;
         }
+        catch (DbUpdateConcurrencyException ex)
+        {
+            _logger.LogWarning(ex, "Concurrency conflict while updating room for session ID {SessionId}", sessionId);
+            throw new EntityConflictException(
+                "Session",
+                "concurrent-update",
+                "Session room could not be updated because the session was modified by another request.",
+                ex);
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error occurred while updating room for session ID {SessionId}", sessionId);
@@ -326,7 +342,7 @@ public class SessionService : ISessionService
     public async Task<SessionResponseDto> CreateSessionAsync(CreateSession request)
     {
         // Use provided date or default to current date (using local time for session scheduling)
-        var today = DateTime.Today;
+        var today = _clock.GetLocalNow().Date;
         var effectiveSessionDate = request.SessionDate ?? today;
 
         _logger.LogInformation("Creating session for schedule ID: {ScheduleId} on date: {SessionDate:yyyy-MM-dd}",
@@ -356,11 +372,36 @@ public class SessionService : ISessionService
 
             // Validate that the session date matches the schedule's day of week
             var sessionDayOfWeek = effectiveSessionDate.DayOfWeek.ToString();
-            if (!schedule.DayOfWeek.Equals(sessionDayOfWeek, StringComparison.OrdinalIgnoreCase))
+            var scheduleMatchesDay = schedule.DayOfWeek.Equals(sessionDayOfWeek, StringComparison.OrdinalIgnoreCase);
+            if (!scheduleMatchesDay)
             {
-                var errorMessage = $"Session date {effectiveSessionDate:yyyy-MM-dd} ({sessionDayOfWeek}) does not match the schedule's day of week ({schedule.DayOfWeek}).";
-                _logger.LogWarning("Session creation failed: {ErrorMessage}", errorMessage);
-                throw new ValidationException(errorMessage);
+                if (!request.AllowOffScheduleDate)
+                {
+                    var errorMessage = $"Session date {effectiveSessionDate:yyyy-MM-dd} ({sessionDayOfWeek}) does not match the schedule's day of week ({schedule.DayOfWeek}).";
+                    _logger.LogWarning("Session creation failed: {ErrorMessage}", errorMessage);
+                    throw new ValidationException(errorMessage);
+                }
+
+                var trimmedReason = request.OffScheduleReason?.Trim();
+                if (string.IsNullOrWhiteSpace(trimmedReason))
+                {
+                    const string errorMessage = "Off-schedule reason is required when the session date does not match the schedule day.";
+                    _logger.LogWarning("Session creation failed: {ErrorMessage}", errorMessage);
+                    throw new ValidationException(errorMessage);
+                }
+
+                if (trimmedReason.Length < 5)
+                {
+                    const string errorMessage = "Off-schedule reason must be at least 5 characters.";
+                    _logger.LogWarning("Session creation failed: {ErrorMessage}", errorMessage);
+                    throw new ValidationException(errorMessage);
+                }
+
+                _logger.LogInformation(
+                    "Allowing off-schedule session creation for schedule ID {ScheduleId} on {SessionDate:yyyy-MM-dd}. Reason: {OffScheduleReason}",
+                    request.ScheduleId,
+                    effectiveSessionDate,
+                    trimmedReason);
             }
 
             // Validate that the session date is not in the past (using local time)
@@ -479,7 +520,7 @@ public class SessionService : ISessionService
             }
 
             // Validate that the session date is today (using local time)
-            var today = DateTime.Today;
+            var today = _clock.GetLocalNow().Date;
             if (session.SessionDate.Date != today)
             {
                 var errorMessage = $"Cannot start session. The session is scheduled for {session.SessionDate:yyyy-MM-dd}, but today is {today:yyyy-MM-dd}.";
@@ -502,15 +543,17 @@ public class SessionService : ISessionService
 
             // Calculate attendance cutoff time (using local time)
             var attendanceCutoffMinutes = request.AttendanceCutoffMinutes ?? 15;
-            var actualStartTime = DateTime.Now;
+            var actualStartTime = _clock.GetLocalNow();
             var attendanceCutoff = actualStartTime.AddMinutes(attendanceCutoffMinutes);
 
             // Update the session
+            EnsureRowVersion(request.RowVersion, "start");
             session.Status = SessionStatusConstants.Active;
             session.ActualStartTime = actualStartTime;
             session.ActualRoomId = actualRoomId;
             session.AttendanceCutOff = attendanceCutoff;
             session.StartedBy = instructor.Id;
+            session.RowVersion = request.RowVersion!;
 
             await _sessionRepository.UpdateSessionAsync(session).ConfigureAwait(false);
             await _sessionRepository.SaveChangesAsync().ConfigureAwait(false);
@@ -528,6 +571,15 @@ public class SessionService : ISessionService
             return updatedSession != null ? MapToResponseDto(updatedSession)
                 : throw new EntityServiceException("Session", $"StartSession: {sessionId}",
                     "Failed to retrieve updated session");
+        }
+        catch (DbUpdateConcurrencyException ex)
+        {
+            _logger.LogWarning(ex, "Session start conflict for session ID {SessionId}", sessionId);
+            throw new EntityConflictException(
+                "Session",
+                "concurrent-start",
+                "Session start could not be completed because the session was updated by another request.",
+                ex);
         }
         catch (EntityNotFoundException<int>)
         {
@@ -616,7 +668,7 @@ public class SessionService : ISessionService
 
             // Update the session
             session.Status = SessionStatusConstants.Ended;
-            session.ActualEndTime = DateTime.Now;
+            session.ActualEndTime = _clock.GetLocalNow();
             session.EndedBy = instructor.Id;
 
             // Update description if provided
@@ -626,6 +678,8 @@ public class SessionService : ISessionService
                     ? request.Description
                     : $"{session.Description}\n\nEnd Notes: {request.Description}";
             }
+            EnsureRowVersion(request.RowVersion, "end");
+            session.RowVersion = request.RowVersion!;
 
             await _sessionRepository.UpdateSessionAsync(session).ConfigureAwait(false);
             await _sessionRepository.SaveChangesAsync().ConfigureAwait(false);
@@ -643,6 +697,15 @@ public class SessionService : ISessionService
             return updatedSession != null ? MapToResponseDto(updatedSession)
                 : throw new EntityServiceException("Session", $"EndSession: {sessionId}",
                     "Failed to retrieve updated session");
+        }
+        catch (DbUpdateConcurrencyException ex)
+        {
+            _logger.LogWarning(ex, "Concurrency conflict for session ID {SessionId}", sessionId);
+            throw new EntityConflictException(
+                "Session",
+                "concurrent-update",
+                "Session could not be updated because it was modified by another request.",
+                ex);
         }
         catch (EntityNotFoundException<int>)
         {
@@ -730,10 +793,12 @@ public class SessionService : ISessionService
             }
 
             // Update the session
+            EnsureRowVersion(request.RowVersion, "cancel");
             session.Status = SessionStatusConstants.Cancelled;
             session.Description = string.IsNullOrWhiteSpace(session.Description)
                 ? $"Cancelled: {request.Reason}"
                 : $"{session.Description}\n\nCancelled: {request.Reason}";
+            session.RowVersion = request.RowVersion!;
 
             await _sessionRepository.UpdateSessionAsync(session).ConfigureAwait(false);
             await _sessionRepository.SaveChangesAsync().ConfigureAwait(false);
@@ -747,6 +812,15 @@ public class SessionService : ISessionService
             return updatedSession != null ? MapToResponseDto(updatedSession)
                 : throw new EntityServiceException("Session", $"CancelSession: {sessionId}",
                     "Failed to retrieve updated session");
+        }
+        catch (DbUpdateConcurrencyException ex)
+        {
+            _logger.LogWarning(ex, "Concurrency conflict for session ID {SessionId}", sessionId);
+            throw new EntityConflictException(
+                "Session",
+                "concurrent-update",
+                "Session could not be updated because it was modified by another request.",
+                ex);
         }
         catch (EntityNotFoundException<int>)
         {
@@ -838,12 +912,21 @@ public class SessionService : ISessionService
                 : null,
             CreatedAt = session.CreatedAt,
             UpdatedAt = session.UpdatedAt,
+            RowVersion = session.RowVersion,
             // Schedule information
             SubjectCode = session.Schedule?.Subject?.Code,
             SubjectName = session.Schedule?.Subject?.Name,
             SectionName = session.Schedule?.Section?.Name,
             ScheduledRoomName = session.Schedule?.Classroom?.Name
         };
+    }
+
+    private static void EnsureRowVersion(byte[]? rowVersion, string operation)
+    {
+        if (rowVersion is not { Length: > 0 })
+        {
+            throw new ValidationException($"A rowVersion is required to {operation} this session.");
+        }
     }
 
     #endregion
