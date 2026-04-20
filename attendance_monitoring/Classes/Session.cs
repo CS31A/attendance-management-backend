@@ -85,7 +85,7 @@ public class Session
     /// Row version token used for optimistic concurrency checks.
     /// </summary>
     [Timestamp]
-    public byte[]? RowVersion { get; set; }
+    public byte[] RowVersion { get; set; } = null!;
 
     // Navigation properties
     [ForeignKey("ScheduleId")]

@@ -291,7 +291,9 @@ public class SessionService : ISessionService
             }
 
             // Update the session's actual room
+            EnsureRowVersion(updateRequest.RowVersion, "update the room for");
             session.ActualRoomId = updateRequest.ActualRoomId;
+            session.RowVersion = updateRequest.RowVersion!;
 
             await _sessionRepository.UpdateSessionAsync(session).ConfigureAwait(false);
             await _sessionRepository.SaveChangesAsync().ConfigureAwait(false);
@@ -545,11 +547,13 @@ public class SessionService : ISessionService
             var attendanceCutoff = actualStartTime.AddMinutes(attendanceCutoffMinutes);
 
             // Update the session
+            EnsureRowVersion(request.RowVersion, "start");
             session.Status = SessionStatusConstants.Active;
             session.ActualStartTime = actualStartTime;
             session.ActualRoomId = actualRoomId;
             session.AttendanceCutOff = attendanceCutoff;
             session.StartedBy = instructor.Id;
+            session.RowVersion = request.RowVersion!;
 
             await _sessionRepository.UpdateSessionAsync(session).ConfigureAwait(false);
             await _sessionRepository.SaveChangesAsync().ConfigureAwait(false);
@@ -674,6 +678,8 @@ public class SessionService : ISessionService
                     ? request.Description
                     : $"{session.Description}\n\nEnd Notes: {request.Description}";
             }
+            EnsureRowVersion(request.RowVersion, "end");
+            session.RowVersion = request.RowVersion!;
 
             await _sessionRepository.UpdateSessionAsync(session).ConfigureAwait(false);
             await _sessionRepository.SaveChangesAsync().ConfigureAwait(false);
@@ -787,10 +793,12 @@ public class SessionService : ISessionService
             }
 
             // Update the session
+            EnsureRowVersion(request.RowVersion, "cancel");
             session.Status = SessionStatusConstants.Cancelled;
             session.Description = string.IsNullOrWhiteSpace(session.Description)
                 ? $"Cancelled: {request.Reason}"
                 : $"{session.Description}\n\nCancelled: {request.Reason}";
+            session.RowVersion = request.RowVersion!;
 
             await _sessionRepository.UpdateSessionAsync(session).ConfigureAwait(false);
             await _sessionRepository.SaveChangesAsync().ConfigureAwait(false);
@@ -904,12 +912,21 @@ public class SessionService : ISessionService
                 : null,
             CreatedAt = session.CreatedAt,
             UpdatedAt = session.UpdatedAt,
+            RowVersion = session.RowVersion,
             // Schedule information
             SubjectCode = session.Schedule?.Subject?.Code,
             SubjectName = session.Schedule?.Subject?.Name,
             SectionName = session.Schedule?.Section?.Name,
             ScheduledRoomName = session.Schedule?.Classroom?.Name
         };
+    }
+
+    private static void EnsureRowVersion(byte[]? rowVersion, string operation)
+    {
+        if (rowVersion is not { Length: > 0 })
+        {
+            throw new ValidationException($"A rowVersion is required to {operation} this session.");
+        }
     }
 
     #endregion

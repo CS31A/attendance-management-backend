@@ -36,7 +36,6 @@ public class CreateSession
     /// Reason for allowing an off-schedule session date.
     /// Required when <see cref="AllowOffScheduleDate"/> is true and date mismatches schedule day.
     /// </summary>
-    [MinLength(5, ErrorMessage = "Off-schedule reason must be at least 5 characters")]
     [MaxLength(500, ErrorMessage = "Off-schedule reason cannot exceed 500 characters")]
     public string? OffScheduleReason { get; set; }
 }

@@ -1,6 +1,7 @@
 using attendance_monitoring.Classes;
 using attendance_monitoring.Data;
 using attendance_monitoring.Repositories;
+using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
@@ -60,6 +61,35 @@ public class SessionRepositoryTest : IDisposable
         Assert.Equal(5, row.TotalRecords);
     }
 
+    [Fact]
+    public async Task UpdateSessionAsync_ThrowsValidationException_WhenRowVersionMissing()
+    {
+        // Arrange
+        var session = new Session
+        {
+            Id = 40,
+            ScheduleId = 1,
+            SessionDate = new DateTime(2026, 4, 10),
+            Status = "NotStarted",
+            RowVersion = [9, 9, 9, 9]
+        };
+
+        _context.Sessions.Add(session);
+        await _context.SaveChangesAsync();
+
+        var update = new Session
+        {
+            Id = session.Id,
+            ScheduleId = session.ScheduleId,
+            SessionDate = session.SessionDate,
+            Status = "Active",
+            RowVersion = Array.Empty<byte>()
+        };
+
+        // Act & Assert
+        await Assert.ThrowsAsync<ValidationException>(() => _repository.UpdateSessionAsync(update));
+    }
+
     private async Task SeedReportDataAsync()
     {
         var user = new IdentityUser
@@ -107,6 +137,7 @@ public class SessionRepositoryTest : IDisposable
             Schedule = schedule,
             SessionDate = new DateTime(2026, 4, 3),
             Status = "Ended",
+            RowVersion = [1],
         };
 
         var newerSession = new Session
@@ -116,6 +147,7 @@ public class SessionRepositoryTest : IDisposable
             Schedule = schedule,
             SessionDate = new DateTime(2026, 4, 17),
             Status = "Ended",
+            RowVersion = [2],
         };
 
         _context.Users.Add(user);
