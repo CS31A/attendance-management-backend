@@ -12,8 +12,8 @@ using attendance_monitoring.Data;
 namespace attendance_monitoring.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20260419154812_MakeSessionRowVersionNonNullable")]
-    partial class MakeSessionRowVersionNonNullable
+    [Migration("20260420102938_MakeSessionRowVersionNonNullableAndFixStoredProcedure")]
+    partial class MakeSessionRowVersionNonNullableAndFixStoredProcedure
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
