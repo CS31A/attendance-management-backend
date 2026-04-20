@@ -49,18 +49,46 @@ public sealed class AdminUserManagementIntegrationTests
     }
 
     [RequiresEnvironmentVariableFact("ATTENDANCE_TEST_SQLSERVER_CONNECTION")]
+    public async Task GetApiUsers_WithActiveStatus_ReturnsOnlyActiveUsers()
+    {
+        await using var host = await ApiIntegrationHost.CreateAdminUserManagementAsync();
+        var scenario = AuthenticateAsAdmin(host);
+
+        var users = await GetUsersAsync(host, "/api/users?status=0");
+
+        Assert.Contains(users, user => user.UserId == scenario.AdminUserId);
+        Assert.Contains(users, user => user.UserId == scenario.ActiveStudentUserId && user.StudentProfile?.IsDeleted == false);
+        Assert.Contains(users, user => user.UserId == scenario.ActiveInstructorUserId && user.InstructorProfile?.IsDeleted == false);
+        Assert.DoesNotContain(users, user => user.UserId == scenario.ArchivedStudentUserId);
+    }
+
+    [RequiresEnvironmentVariableFact("ATTENDANCE_TEST_SQLSERVER_CONNECTION")]
     public async Task GetApiUsers_WithArchivedStatus_ReturnsArchivedUsers()
     {
         await using var host = await ApiIntegrationHost.CreateAdminUserManagementAsync();
         var scenario = AuthenticateAsAdmin(host);
 
-        var users = await GetUsersAsync(host, "/api/users?status=Archived");
+        var users = await GetUsersAsync(host, "/api/users?status=1");
 
         var archivedUser = Assert.Single(users);
         Assert.Equal(scenario.ArchivedStudentUserId, archivedUser.UserId);
         Assert.NotNull(archivedUser.StudentProfile);
         Assert.True(archivedUser.StudentProfile.IsDeleted);
         Assert.NotNull(archivedUser.StudentProfile.DeletedAt);
+
+        var archivedState = await host.ExecuteDbContextAsync(async (dbContext, cancellationToken) =>
+        {
+            var student = await dbContext.Students
+                .SingleAsync(row => row.UserId == scenario.ArchivedStudentUserId, cancellationToken);
+            return new
+            {
+                student.IsDeleted,
+                student.DeletedAt
+            };
+        });
+
+        Assert.True(archivedState.IsDeleted);
+        Assert.NotNull(archivedState.DeletedAt);
     }
 
     [RequiresEnvironmentVariableFact("ATTENDANCE_TEST_SQLSERVER_CONNECTION")]
@@ -69,7 +97,7 @@ public sealed class AdminUserManagementIntegrationTests
         await using var host = await ApiIntegrationHost.CreateAdminUserManagementAsync();
         var scenario = AuthenticateAsAdmin(host);
 
-        var users = await GetUsersAsync(host, "/api/users?status=All");
+        var users = await GetUsersAsync(host, "/api/users?status=2");
 
         Assert.Contains(users, user => user.UserId == scenario.ActiveStudentUserId);
         Assert.Contains(users, user => user.UserId == scenario.ArchivedStudentUserId);
@@ -91,7 +119,7 @@ public sealed class AdminUserManagementIntegrationTests
                 UserId = scenario.ArchivedStudentUserId,
                 Firstname = "Routed",
                 Lastname = "Target",
-                Email = "student.active.updated@test.com",
+                Email = "student.active.updated@gmail.com",
                 SectionId = scenario.AlternateSectionId,
                 IsRegular = false
             })
@@ -103,7 +131,7 @@ public sealed class AdminUserManagementIntegrationTests
         Assert.True(payload.Success);
         Assert.NotNull(payload.UpdatedProfile);
         Assert.Equal(scenario.ActiveStudentUserId, payload.UpdatedProfile.UserId);
-        Assert.Equal("student.active.updated@test.com", payload.UpdatedProfile.Email);
+        Assert.Equal("student.active.updated@gmail.com", payload.UpdatedProfile.Email);
         Assert.Equal("Routed", payload.UpdatedProfile.StudentProfile?.Firstname);
         Assert.Equal(scenario.AlternateSectionId, payload.UpdatedProfile.StudentProfile?.SectionId);
 
@@ -130,7 +158,7 @@ public sealed class AdminUserManagementIntegrationTests
         Assert.Equal("Target", dbAssertion.Lastname);
         Assert.Equal(scenario.AlternateSectionId, dbAssertion.SectionId);
         Assert.False(dbAssertion.IsRegular);
-        Assert.Equal("student.active.updated@test.com", dbAssertion.Email);
+        Assert.Equal("student.active.updated@gmail.com", dbAssertion.Email);
         Assert.Equal("Archie", dbAssertion.ArchivedFirstname);
     }
 
@@ -145,6 +173,7 @@ public sealed class AdminUserManagementIntegrationTests
         {
             Content = JsonContent.Create(new AdminUpdateUser
             {
+                UserId = scenario.ActiveStudentUserId,
                 NewPassword = newPassword
             })
         });
@@ -173,6 +202,7 @@ public sealed class AdminUserManagementIntegrationTests
         {
             Content = JsonContent.Create(new AdminUpdateUser
             {
+                UserId = scenario.ActiveStudentUserId,
                 Email = scenario.ConflictStudentEmail
             })
         });
@@ -193,6 +223,7 @@ public sealed class AdminUserManagementIntegrationTests
         {
             Content = JsonContent.Create(new AdminUpdateUser
             {
+                UserId = scenario.ActiveStudentUserId,
                 SectionId = int.MaxValue
             })
         });
@@ -213,6 +244,7 @@ public sealed class AdminUserManagementIntegrationTests
         {
             Content = JsonContent.Create(new AdminUpdateUser
             {
+                UserId = scenario.ActiveStudentUserId,
                 Email = "not-an-email"
             })
         });
@@ -234,10 +266,13 @@ public sealed class AdminUserManagementIntegrationTests
         Assert.True(payload.Success);
 
         var activeUsers = await GetUsersAsync(host, "/api/users");
-        var archivedUsers = await GetUsersAsync(host, "/api/users?status=Archived");
+        var archivedUsers = await GetUsersAsync(host, "/api/users?status=1");
 
         Assert.DoesNotContain(activeUsers, user => user.UserId == scenario.ActiveStudentUserId);
-        Assert.Contains(archivedUsers, user => user.UserId == scenario.ActiveStudentUserId && user.StudentProfile?.IsDeleted == true);
+        Assert.Contains(archivedUsers,
+            user => user.UserId == scenario.ActiveStudentUserId &&
+                    user.StudentProfile?.IsDeleted == true &&
+                    user.StudentProfile.DeletedAt != null);
 
         var tokenState = await host.ExecuteDbContextAsync(async (dbContext, cancellationToken) =>
         {
@@ -332,7 +367,7 @@ public sealed class AdminUserManagementIntegrationTests
         Assert.NotNull(payload);
         Assert.True(payload.Success);
 
-        var users = await GetUsersAsync(host, "/api/users?status=All");
+        var users = await GetUsersAsync(host, "/api/users?status=2");
         Assert.DoesNotContain(users, user => user.UserId == scenario.ActiveInstructorUserId);
 
         var hardDeleteState = await host.ExecuteDbContextAsync(async (dbContext, cancellationToken) =>
