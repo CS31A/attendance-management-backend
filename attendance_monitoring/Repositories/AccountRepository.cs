@@ -114,6 +114,7 @@ namespace attendance_monitoring.Repositories
                     Id = instructor.Id,
                     Firstname = instructor.Firstname,
                     Lastname = instructor.Lastname,
+                    Department = instructor.Department,
                     CreatedAt = instructor.CreatedAt,
                     UpdatedAt = instructor.UpdatedAt,
                     IsDeleted = instructor.IsDeleted,
@@ -177,6 +178,7 @@ namespace attendance_monitoring.Repositories
                     Id = r.ProfileId ?? 0,
                     Firstname = r.Firstname,
                     Lastname = r.Lastname,
+                    Department = r.Department,
                     CreatedAt = r.CreatedAt ?? DateTime.UtcNow,
                     UpdatedAt = r.UpdatedAt ?? DateTime.UtcNow,
                     IsDeleted = r.IsDeleted ?? false,
@@ -209,6 +211,7 @@ namespace attendance_monitoring.Repositories
             public int? ProfileId { get; set; }
             public string? Firstname { get; set; }
             public string? Lastname { get; set; }
+            public string? Department { get; set; }
             public int? SectionId { get; set; }
             public string? SectionName { get; set; }
             public int? CourseId { get; set; }

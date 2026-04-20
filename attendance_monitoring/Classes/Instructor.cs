@@ -16,6 +16,8 @@ public class Instructor
 
     public string? Firstname { get; set; }
     public string? Lastname { get; set; }
+    [StringLength(150)]
+    public string? Department { get; set; }
 
     // Foreign key to Identity user - should not be nullable
     public string UserId { get; set; } = string.Empty;

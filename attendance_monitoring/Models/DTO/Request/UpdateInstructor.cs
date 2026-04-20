@@ -10,4 +10,7 @@ public class UpdateInstructor
 
     [StringLength(100)]
     public string? Lastname { get; set; }
+
+    [StringLength(150)]
+    public string? Department { get; set; }
 }
