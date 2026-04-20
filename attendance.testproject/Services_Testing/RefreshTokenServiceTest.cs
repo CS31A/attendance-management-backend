@@ -233,7 +233,25 @@ public class RefreshTokenServiceTest : IDisposable
     }
 
     [Fact]
-    public async Task CreateRefreshTokenAsync_WhenRevokedTokenReuse_ThrowsValidationException()
+    public async Task CreateRefreshTokenAsync_OnRepositoryFailure_ThrowsException()
+    {
+        // Arrange
+        var userId = "user-123";
+        _mockRefreshTokenRepository
+            .Setup(r => r.CreateAsync(It.IsAny<RefreshToken>()))
+            .ThrowsAsync(new InvalidOperationException("Database error"));
+
+        // Act & Assert
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            () => _refreshTokenService.CreateRefreshTokenAsync(userId));
+    }
+
+    #endregion
+
+    #region ValidateRefreshTokenAsync Tests
+
+    [Fact]
+    public async Task ValidateRefreshTokenAsync_WhenRevokedTokenReuse_ThrowsValidationException()
     {
         // Arrange
         var userId = "user-123";
@@ -253,20 +271,6 @@ public class RefreshTokenServiceTest : IDisposable
         // Act & Assert
         await Assert.ThrowsAsync<ValidationException>(
             () => _refreshTokenService.ValidateRefreshTokenAsync("some-token"));
-    }
-
-    [Fact]
-    public async Task CreateRefreshTokenAsync_OnRepositoryFailure_ThrowsException()
-    {
-        // Arrange
-        var userId = "user-123";
-        _mockRefreshTokenRepository
-            .Setup(r => r.CreateAsync(It.IsAny<RefreshToken>()))
-            .ThrowsAsync(new InvalidOperationException("Database error"));
-
-        // Act & Assert
-        await Assert.ThrowsAsync<InvalidOperationException>(
-            () => _refreshTokenService.CreateRefreshTokenAsync(userId));
     }
 
     #endregion

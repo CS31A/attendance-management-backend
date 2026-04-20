@@ -141,27 +141,29 @@ public class SubjectServiceTest
             Name = "Mathematics",
             Code = "MATH101"
         };
-        var createdSubject = new Subject
-        {
-            Id = 1,
-            Name = "Mathematics",
-            Code = "MATH101",
-            CreatedAt = DateTime.UtcNow,
-            UpdatedAt = DateTime.UtcNow
-        };
+        Subject? capturedSubject = null;
 
         _mockSubjectRepository.Setup(r => r.GetSubjectByCodeAsync("MATH101")).ReturnsAsync((Subject?)null);
-        _mockSubjectRepository.Setup(r => r.CreateSubject(It.IsAny<Subject>())).ReturnsAsync(createdSubject);
+        _mockSubjectRepository
+            .Setup(r => r.CreateSubject(It.IsAny<Subject>()))
+            .Callback<Subject>(subject => capturedSubject = subject)
+            .ReturnsAsync((Subject subject) => subject);
         _mockSubjectRepository.Setup(r => r.SaveChangesAsync()).ReturnsAsync(1);
 
         // Act
+        var createdAtLowerBound = DateTime.UtcNow;
         var result = await _service.CreateSubjectAsync(createSubject);
+        var createdAtUpperBound = DateTime.UtcNow;
 
         // Assert
         Assert.NotNull(result);
+        Assert.NotNull(capturedSubject);
         Assert.Equal("Mathematics", result.Name);
         Assert.Equal("MATH101", result.Code);
-        Assert.True((DateTime.UtcNow - result.CreatedAt).TotalSeconds < 5);
+        Assert.InRange(capturedSubject.CreatedAt, createdAtLowerBound, createdAtUpperBound);
+        Assert.InRange(capturedSubject.UpdatedAt, createdAtLowerBound, createdAtUpperBound);
+        Assert.Equal(capturedSubject.CreatedAt, result.CreatedAt);
+        Assert.Equal(capturedSubject.UpdatedAt, result.UpdatedAt);
         _mockSubjectRepository.Verify(r => r.CreateSubject(It.IsAny<Subject>()), Times.Once);
         _mockSubjectRepository.Verify(r => r.SaveChangesAsync(), Times.Once);
     }
