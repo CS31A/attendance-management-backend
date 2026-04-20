@@ -171,6 +171,153 @@ public sealed class FingerprintServiceConcurrencyIntegrationTest : IDisposable
         Assert.Equal(persistedAttendance[0].Id, persistedScanEvents[0].AttendanceRecordId);
     }
 
+    [Fact]
+    public async Task ScanFingerprintBySensorAsync_WhenDuplicateRecoveryScanEventAlreadyExists_ReturnsDuplicateResponseWithoutAddingAnother()
+    {
+        // Arrange
+        var seed = await SeedDuplicateRaceScenarioAsync();
+
+        var mockFingerprintRepository = new Mock<IFingerprintRepository>();
+        var mockStudentRepository = new Mock<IStudentRepository>();
+        var mockSessionRepository = new Mock<ISessionRepository>();
+        var mockScheduleRepository = new Mock<IScheduleRepository>();
+        var mockStudentEnrollmentRepository = new Mock<IStudentEnrollmentRepository>();
+        var mockAttendanceService = new Mock<IAttendanceService>();
+        var mockNotificationService = new Mock<INotificationService>();
+        var mockUserContextService = new Mock<IUserContextService>();
+        var mockLogger = new Mock<ILogger<FingerprintService>>();
+        var mockTransaction = new Mock<IDbContextTransaction>();
+
+        mockTransaction
+            .Setup(transaction => transaction.CommitAsync(It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+        mockTransaction
+            .Setup(transaction => transaction.RollbackAsync(It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        mockFingerprintRepository
+            .Setup(repository => repository.BeginTransactionAsync())
+            .ReturnsAsync(mockTransaction.Object);
+        mockFingerprintRepository
+            .Setup(repository => repository.FindFingerprintByDeviceAndSensorIdAsync(seed.Device.DeviceIdentifier, 5))
+            .ReturnsAsync(new Fingerprint
+            {
+                Id = 50,
+                UserId = seed.Student.UserId,
+                DeviceId = seed.Device.DeviceIdentifier,
+                SensorFingerprintId = 5,
+                TemplateData = "ciphertext"
+            });
+
+        mockStudentRepository
+            .Setup(repository => repository.GetStudentByUserIdAsync(seed.Student.UserId))
+            .ReturnsAsync(seed.Student);
+        mockStudentRepository
+            .Setup(repository => repository.GetStudentByIdAsync(seed.Student.Id))
+            .ReturnsAsync(seed.Student);
+
+        mockSessionRepository
+            .Setup(repository => repository.GetSessionByIdAsync(seed.Session.Id))
+            .ReturnsAsync(seed.Session);
+
+        mockAttendanceService
+            .Setup(service => service.DetermineAttendanceStatus(
+                It.IsAny<DateTime>(),
+                It.IsAny<DateTime>(),
+                It.IsAny<int>()))
+            .Returns("Present");
+
+        mockNotificationService
+            .Setup(service => service.NotifyStudentCheckedInAsync(
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<int>(),
+                It.IsAny<string>()))
+            .Returns(Task.CompletedTask);
+
+        var attendanceRepository = new RaceInjectingAttendanceRepository(
+            _context,
+            async pendingAttendance =>
+            {
+                var now = _clock.GetLocalNow();
+
+                await using var competingContext = new FingerprintServiceSqliteTestDbContext(_dbOptions);
+
+                var competingAttendance = new AttendanceRecord
+                {
+                    StudentId = pendingAttendance.StudentId,
+                    SessionId = pendingAttendance.SessionId,
+                    CheckInTime = pendingAttendance.CheckInTime,
+                    Status = "Present",
+                    IsManualEntry = false,
+                    CreatedAt = pendingAttendance.CheckInTime,
+                    UpdatedAt = pendingAttendance.CheckInTime
+                };
+
+                competingContext.AttendanceRecords.Add(competingAttendance);
+                await competingContext.SaveChangesAsync();
+
+                competingContext.FingerprintScanEvents.Add(new FingerprintScanEvent
+                {
+                    DeviceId = seed.Device.Id,
+                    SessionId = seed.Session.Id,
+                    MatchedStudentId = seed.Student.Id,
+                    AttendanceRecordId = competingAttendance.Id,
+                    Status = "Duplicate",
+                    MatchScore = 0.96m,
+                    CapturedAt = now,
+                    ReceivedAt = now,
+                    CreatedAt = now,
+                });
+                await competingContext.SaveChangesAsync();
+            });
+
+        var service = new FingerprintService(
+            mockFingerprintRepository.Object,
+            mockStudentRepository.Object,
+            mockSessionRepository.Object,
+            mockScheduleRepository.Object,
+            mockStudentEnrollmentRepository.Object,
+            attendanceRepository,
+            mockAttendanceService.Object,
+            mockNotificationService.Object,
+            _context,
+            mockUserContextService.Object,
+            _configuration,
+            _dataProtectionProvider,
+            _clock,
+            mockLogger.Object);
+
+        // Act
+        var response = await service.ScanFingerprintBySensorAsync(
+            new ScanFingerprintBySensorRequest
+            {
+                DeviceId = seed.Device.DeviceIdentifier,
+                SensorFingerprintId = 5,
+                Confidence = 96,
+                SessionId = seed.Session.Id
+            },
+            "device-secret");
+
+        // Assert
+        Assert.True(response.Success);
+        Assert.True(response.IsDuplicateScan);
+
+        var persistedAttendance = await _context.AttendanceRecords
+            .AsNoTracking()
+            .Where(record => record.StudentId == seed.Student.Id && record.SessionId == seed.Session.Id)
+            .ToListAsync();
+
+        var persistedScanEvents = await _context.FingerprintScanEvents
+            .AsNoTracking()
+            .ToListAsync();
+
+        Assert.Single(persistedAttendance);
+        Assert.Single(persistedScanEvents);
+        Assert.Equal(persistedAttendance[0].Id, persistedScanEvents[0].AttendanceRecordId);
+        Assert.Equal(persistedAttendance[0].Id, response.AttendanceRecordId);
+    }
+
     public void Dispose()
     {
         _context.Dispose();
@@ -283,6 +430,7 @@ public sealed class FingerprintServiceConcurrencyIntegrationTest : IDisposable
             ActualStartTime = now.AddMinutes(-5),
             CreatedAt = now,
             UpdatedAt = now,
+            RowVersion = [1],
             Schedule = schedule
         };
 
@@ -489,6 +637,12 @@ public sealed class FingerprintServiceConcurrencyIntegrationTest : IDisposable
             base.OnModelCreating(builder);
 
             // SQLite does not support SQL Server rowversion generation semantics.
+            builder.Entity<Session>()
+                .Property(e => e.RowVersion)
+                .IsRequired(false)
+                .ValueGeneratedNever()
+                .IsConcurrencyToken(false);
+
             builder.Entity<FingerprintScanEvent>()
                 .Property(e => e.RowVersion)
                 .IsRequired(false)

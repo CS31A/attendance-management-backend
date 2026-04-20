@@ -668,6 +668,108 @@ public class FingerprintServiceTest
         Assert.Equal(existingAttendance.Id, response.AttendanceRecordId);
     }
 
+    [Fact]
+    public async Task ScanFingerprintBySensorAsync_UsesSessionDate_WhenActualStartTimeIsNull()
+    {
+        var service = CreateService();
+        var device = new FingerprintDevice
+        {
+            Id = 7,
+            DeviceIdentifier = "esp32-attendance-01",
+            IsActive = true,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+        var student = new Student
+        {
+            Id = 1,
+            UserId = "user-1",
+            Firstname = "John",
+            Lastname = "Doe",
+            SectionId = 1,
+            IsDeleted = false
+        };
+        var sessionDate = new DateTime(2026, 1, 5);
+        var session = new Session
+        {
+            Id = 11,
+            ScheduleId = 20,
+            SessionDate = sessionDate,
+            Status = SessionStatusConstants.Active,
+            ActualStartTime = null,
+            Schedule = new Schedules
+            {
+                Id = 20,
+                SectionId = 1,
+                SubjectId = 2,
+                TimeIn = new TimeOnly(8, 0),
+                Section = new Section { Id = 1, Name = "BSCS 3A" },
+                Subject = new Subject { Id = 2, Name = "Software Engineering" },
+                Instructor = new Instructor { Id = 3, Firstname = "Ada", Lastname = "Lovelace", UserId = "inst-1" }
+            }
+        };
+
+        DateTime capturedSessionStartTime = default;
+
+        _context.FingerprintDevices.Add(device);
+        await _context.SaveChangesAsync();
+
+        _mockFingerprintRepository
+            .Setup(repository => repository.FindFingerprintByDeviceAndSensorIdAsync(device.DeviceIdentifier, 5))
+            .ReturnsAsync(new Fingerprint
+            {
+                Id = 42,
+                UserId = student.UserId,
+                DeviceId = device.DeviceIdentifier,
+                SensorFingerprintId = 5,
+                TemplateData = "ciphertext"
+            });
+
+        _mockStudentRepository
+            .Setup(repository => repository.GetStudentByUserIdAsync(student.UserId))
+            .ReturnsAsync(student);
+        _mockStudentRepository
+            .Setup(repository => repository.GetStudentByIdAsync(student.Id))
+            .ReturnsAsync(student);
+        _mockSessionRepository
+            .Setup(repository => repository.GetSessionByIdAsync(session.Id))
+            .ReturnsAsync(session);
+        _mockAttendanceRepository
+            .Setup(repository => repository.GetAttendanceByStudentAndSessionAsync(student.Id, session.Id))
+            .ReturnsAsync((AttendanceRecord?)null);
+        _mockAttendanceService
+            .Setup(service => service.DetermineAttendanceStatus(
+                It.IsAny<DateTime>(),
+                It.IsAny<DateTime>(),
+                It.IsAny<int>()))
+            .Callback<DateTime, DateTime, int>((_, sessionStartTime, _) => capturedSessionStartTime = sessionStartTime)
+            .Returns("Late");
+        _mockAttendanceRepository
+            .Setup(repository => repository.CreateAsync(It.IsAny<AttendanceRecord>()))
+            .ReturnsAsync((AttendanceRecord record) =>
+            {
+                record.Id = 100;
+                return record;
+            });
+        _mockAttendanceRepository
+            .Setup(repository => repository.SaveChangesAsync())
+            .ReturnsAsync(1);
+
+        var response = await service.ScanFingerprintBySensorAsync(
+            new ScanFingerprintBySensorRequest
+            {
+                DeviceId = device.DeviceIdentifier,
+                SensorFingerprintId = 5,
+                Confidence = 90,
+                SessionId = session.Id
+            },
+            "device-secret");
+
+        Assert.True(response.Success);
+        Assert.Equal(sessionDate.AddHours(8), capturedSessionStartTime);
+        Assert.Equal("Late", response.AttendanceStatus);
+    }
+
     private FingerprintService CreateService(IConfiguration? configurationOverride = null)
     {
         _mockFingerprintRepository

@@ -545,173 +545,133 @@ public class FingerprintService(
 
         if (existingAttendance != null)
         {
-            if (scanEvent != null)
-            {
-                scanEvent.Status = "Duplicate";
-                scanEvent.MatchedStudentId = student.Id;
-                scanEvent.SessionId = session.Id;
-                scanEvent.AttendanceRecordId = existingAttendance.Id;
-                context.FingerprintScanEvents.Add(scanEvent);
-                await context.SaveChangesAsync().ConfigureAwait(false);
-            }
-
-            return new FingerprintScanResponseDto
-            {
-                Success = true,
-                Message = "Already checked in",
-                AttendanceMarked = false,
-                AttendanceTime = existingAttendance.CheckInTime,
-                StudentId = student.Id,
-                StudentName = $"{student.Firstname} {student.Lastname}",
-                ClassName = session.Schedule.Section.Name,
-                SubjectName = session.Schedule.Subject.Name,
-                RoomName = session.ActualRoom?.Name ?? "TBD",
-                InstructorName = $"{session.Schedule.Instructor.Firstname} {session.Schedule.Instructor.Lastname}",
-                AttendanceRecordId = existingAttendance.Id,
-                AttendanceStatus = existingAttendance.Status,
-                IsDuplicateScan = true,
-                SessionId = session.Id,
-                MatchMethod = matchMethod,
-                MatchScore = matchScore
-            };
+            await PersistDuplicateScanEventAsync(scanEvent, student, session, existingAttendance.Id).ConfigureAwait(false);
+            return CreateDuplicateResponse(existingAttendance, student, session, matchMethod, matchScore);
         }
 
-        using var transaction = await fingerprintRepository.BeginTransactionAsync().ConfigureAwait(false);
+        FingerprintScanResponseDto? duplicateRecoveryResponse = null;
 
-        try
+        await using (var transaction = await fingerprintRepository.BeginTransactionAsync().ConfigureAwait(false))
         {
-            var checkInTime = _clock.GetLocalNow();
-            var attendanceRecord = new AttendanceRecord
+            try
             {
-                StudentId = student.Id,
-                SessionId = session.Id,
-                CheckInTime = checkInTime,
-                Status = DetermineAttendanceStatus(checkInTime, session),
-                IsManualEntry = false,
-                CreatedAt = checkInTime,
-                UpdatedAt = checkInTime
-            };
-
-            var createdRecord = await attendanceRepository.CreateAsync(attendanceRecord).ConfigureAwait(false);
-            await attendanceRepository.SaveChangesAsync().ConfigureAwait(false);
-
-            await transaction.CommitAsync().ConfigureAwait(false);
-
-            if (scanEvent != null)
-            {
-                scanEvent.Status = "AttendanceMarked";
-                scanEvent.MatchedStudentId = student.Id;
-                scanEvent.SessionId = session.Id;
-                scanEvent.AttendanceRecordId = createdRecord.Id;
-                context.FingerprintScanEvents.Add(scanEvent);
-                await context.SaveChangesAsync().ConfigureAwait(false);
-            }
-
-            _ = Task.Run(async () =>
-            {
-                try
+                var checkInTime = _clock.GetLocalNow();
+                var attendanceRecord = new AttendanceRecord
                 {
-                    var instructorUserId = session.Schedule.Instructor.UserId;
-                    if (!string.IsNullOrWhiteSpace(instructorUserId))
-                    {
-                        await notificationService.NotifyStudentCheckedInAsync(
-                            student.UserId,
-                            instructorUserId,
-                            session.Id,
-                            attendanceRecord.Status).ConfigureAwait(false);
-                    }
-                }
-                catch (Exception ex)
-                {
-                    logger.LogError(ex, "Failed to send notification for fingerprint check-in");
-                }
-            });
+                    StudentId = student.Id,
+                    SessionId = session.Id,
+                    CheckInTime = checkInTime,
+                    Status = DetermineAttendanceStatus(checkInTime, session),
+                    IsManualEntry = false,
+                    CreatedAt = checkInTime,
+                    UpdatedAt = checkInTime
+                };
 
-            return new FingerprintScanResponseDto
-            {
-                Success = true,
-                Message = "Attendance marked successfully via fingerprint",
-                AttendanceMarked = true,
-                AttendanceTime = checkInTime,
-                StudentId = student.Id,
-                StudentName = $"{student.Firstname} {student.Lastname}",
-                ClassName = session.Schedule.Section.Name,
-                SubjectName = session.Schedule.Subject.Name,
-                RoomName = session.ActualRoom?.Name ?? "TBD",
-                InstructorName = $"{session.Schedule.Instructor.Firstname} {session.Schedule.Instructor.Lastname}",
-                AttendanceRecordId = createdRecord.Id,
-                AttendanceStatus = attendanceRecord.Status,
-                IsDuplicateScan = false,
-                SessionId = session.Id,
-                MatchMethod = matchMethod,
-                MatchScore = matchScore
-            };
-        }
-        catch (DbUpdateException ex) when (IsAttendanceDuplicateConstraintViolation(ex))
-        {
-            await transaction.RollbackAsync().ConfigureAwait(false);
+                var createdRecord = await attendanceRepository.CreateAsync(attendanceRecord).ConfigureAwait(false);
+                await attendanceRepository.SaveChangesAsync().ConfigureAwait(false);
 
-            DetachPendingAttendanceInsert(student.Id, session.Id);
+                await transaction.CommitAsync().ConfigureAwait(false);
 
-            var duplicateAttendance = await attendanceRepository
-                .GetAttendanceByStudentAndSessionAsync(student.Id, session.Id)
-                .ConfigureAwait(false);
-
-            if (duplicateAttendance != null)
-            {
                 if (scanEvent != null)
                 {
-                    scanEvent.Status = "Duplicate";
+                    scanEvent.Status = "AttendanceMarked";
                     scanEvent.MatchedStudentId = student.Id;
                     scanEvent.SessionId = session.Id;
-                    scanEvent.AttendanceRecordId = duplicateAttendance.Id;
+                    scanEvent.AttendanceRecordId = createdRecord.Id;
                     context.FingerprintScanEvents.Add(scanEvent);
                     await context.SaveChangesAsync().ConfigureAwait(false);
                 }
 
+                _ = Task.Run(async () =>
+                {
+                    try
+                    {
+                        var instructorUserId = session.Schedule.Instructor.UserId;
+                        if (!string.IsNullOrWhiteSpace(instructorUserId))
+                        {
+                            await notificationService.NotifyStudentCheckedInAsync(
+                                student.UserId,
+                                instructorUserId,
+                                session.Id,
+                                attendanceRecord.Status).ConfigureAwait(false);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        logger.LogError(ex, "Failed to send notification for fingerprint check-in");
+                    }
+                });
+
                 return new FingerprintScanResponseDto
                 {
                     Success = true,
-                    Message = "Already checked in",
-                    AttendanceMarked = false,
-                    AttendanceTime = duplicateAttendance.CheckInTime,
+                    Message = "Attendance marked successfully via fingerprint",
+                    AttendanceMarked = true,
+                    AttendanceTime = checkInTime,
                     StudentId = student.Id,
                     StudentName = $"{student.Firstname} {student.Lastname}",
                     ClassName = session.Schedule.Section.Name,
                     SubjectName = session.Schedule.Subject.Name,
                     RoomName = session.ActualRoom?.Name ?? "TBD",
                     InstructorName = $"{session.Schedule.Instructor.Firstname} {session.Schedule.Instructor.Lastname}",
-                    AttendanceRecordId = duplicateAttendance.Id,
-                    AttendanceStatus = duplicateAttendance.Status,
-                    IsDuplicateScan = true,
+                    AttendanceRecordId = createdRecord.Id,
+                    AttendanceStatus = attendanceRecord.Status,
+                    IsDuplicateScan = false,
                     SessionId = session.Id,
                     MatchMethod = matchMethod,
                     MatchScore = matchScore
                 };
             }
-
-            throw new EntityServiceException(
-                "FingerprintScan",
-                $"StudentId:{student.Id}",
-                "Attendance duplicate detected but existing record could not be loaded",
-                ex);
-        }
-        catch (Exception ex)
-        {
-            await transaction.RollbackAsync().ConfigureAwait(false);
-
-            if (scanEvent != null)
+            catch (DbUpdateException ex) when (IsAttendanceDuplicateConstraintViolation(ex))
             {
-                scanEvent.Status = "Error";
-                scanEvent.MatchedStudentId = student.Id;
-                scanEvent.SessionId = session.Id;
-                scanEvent.FailureReason = "Failed to mark attendance";
-                context.FingerprintScanEvents.Add(scanEvent);
-                await context.SaveChangesAsync().ConfigureAwait(false);
-            }
+                await transaction.RollbackAsync().ConfigureAwait(false);
 
-            throw new EntityServiceException("FingerprintScan", $"StudentId:{student.Id}", "Failed to mark attendance", ex);
+                DetachPendingAttendanceInsert(student.Id, session.Id);
+
+                var duplicateAttendance = await attendanceRepository
+                    .GetAttendanceByStudentAndSessionAsync(student.Id, session.Id)
+                    .ConfigureAwait(false);
+
+                if (duplicateAttendance == null)
+                {
+                    throw new EntityServiceException(
+                        "FingerprintScan",
+                        $"StudentId:{student.Id}",
+                        "Attendance duplicate detected but existing record could not be loaded",
+                        ex);
+                }
+
+                duplicateRecoveryResponse = CreateDuplicateResponse(duplicateAttendance, student, session, matchMethod, matchScore);
+            }
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync().ConfigureAwait(false);
+
+                if (scanEvent != null)
+                {
+                    scanEvent.Status = "Error";
+                    scanEvent.MatchedStudentId = student.Id;
+                    scanEvent.SessionId = session.Id;
+                    scanEvent.FailureReason = "Failed to mark attendance";
+                    context.FingerprintScanEvents.Add(scanEvent);
+                    await context.SaveChangesAsync().ConfigureAwait(false);
+                }
+
+                throw new EntityServiceException("FingerprintScan", $"StudentId:{student.Id}", "Failed to mark attendance", ex);
+            }
         }
+
+        if (duplicateRecoveryResponse != null)
+        {
+            await PersistDuplicateScanEventAsync(
+                scanEvent,
+                student,
+                session,
+                duplicateRecoveryResponse.AttendanceRecordId).ConfigureAwait(false);
+            return duplicateRecoveryResponse;
+        }
+
+        throw new InvalidOperationException("Fingerprint scan did not produce a response.");
     }
 
     private async Task<Session?> FindActiveSessionForStudentAsync(int studentId)
@@ -782,7 +742,7 @@ public class FingerprintService(
     private string DetermineAttendanceStatus(DateTime checkInTime, Session session)
     {
         var sessionStartTime = session.ActualStartTime ??
-                               _clock.GetLocalNow().Date.Add(session.Schedule.TimeIn.ToTimeSpan());
+                               session.SessionDate.Date.Add(session.Schedule.TimeIn.ToTimeSpan());
         var lateCutoffMinutes = 15;
 
         if (session.AttendanceCutOff.HasValue)
@@ -819,6 +779,94 @@ public class FingerprintService(
         return message.Contains("UNIQUE constraint", StringComparison.OrdinalIgnoreCase)
                || message.Contains("duplicate key", StringComparison.OrdinalIgnoreCase)
                || message.Contains("IX_AttendanceRecords_StudentId_SessionId", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private async Task PersistDuplicateScanEventAsync(
+        FingerprintScanEvent? scanEvent,
+        Student student,
+        Session session,
+        int? attendanceRecordId)
+    {
+        if (scanEvent == null || attendanceRecordId == null)
+        {
+            return;
+        }
+
+        var scanEventExists = await context.FingerprintScanEvents
+            .AsNoTracking()
+            .AnyAsync(existingEvent => existingEvent.AttendanceRecordId == attendanceRecordId)
+            .ConfigureAwait(false);
+
+        if (scanEventExists)
+        {
+            return;
+        }
+
+        scanEvent.Status = "Duplicate";
+        scanEvent.MatchedStudentId = student.Id;
+        scanEvent.SessionId = session.Id;
+        scanEvent.AttendanceRecordId = attendanceRecordId;
+        context.FingerprintScanEvents.Add(scanEvent);
+
+        try
+        {
+            await context.SaveChangesAsync().ConfigureAwait(false);
+        }
+        catch (DbUpdateException ex) when (IsFingerprintScanEventAttendanceDuplicateConstraintViolation(ex))
+        {
+            DetachPendingScanEventInsert(attendanceRecordId.Value);
+        }
+    }
+
+    private void DetachPendingScanEventInsert(int attendanceRecordId)
+    {
+        var pendingEntries = context.ChangeTracker
+            .Entries<FingerprintScanEvent>()
+            .Where(entry =>
+                entry.State == EntityState.Added
+                && entry.Entity.AttendanceRecordId == attendanceRecordId)
+            .ToList();
+
+        foreach (var pendingEntry in pendingEntries)
+        {
+            pendingEntry.State = EntityState.Detached;
+        }
+    }
+
+    private static bool IsFingerprintScanEventAttendanceDuplicateConstraintViolation(DbUpdateException ex)
+    {
+        var message = ex.InnerException?.Message ?? ex.Message;
+        return message.Contains("UNIQUE constraint", StringComparison.OrdinalIgnoreCase)
+               || message.Contains("duplicate key", StringComparison.OrdinalIgnoreCase)
+               || message.Contains("IX_FingerprintScanEvents_AttendanceRecordId", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static FingerprintScanResponseDto CreateDuplicateResponse(
+        AttendanceRecord duplicateAttendance,
+        Student student,
+        Session session,
+        string matchMethod,
+        int? matchScore)
+    {
+        return new FingerprintScanResponseDto
+        {
+            Success = true,
+            Message = "Already checked in",
+            AttendanceMarked = false,
+            AttendanceTime = duplicateAttendance.CheckInTime,
+            StudentId = student.Id,
+            StudentName = $"{student.Firstname} {student.Lastname}",
+            ClassName = session.Schedule.Section.Name,
+            SubjectName = session.Schedule.Subject.Name,
+            RoomName = session.ActualRoom?.Name ?? "TBD",
+            InstructorName = $"{session.Schedule.Instructor.Firstname} {session.Schedule.Instructor.Lastname}",
+            AttendanceRecordId = duplicateAttendance.Id,
+            AttendanceStatus = duplicateAttendance.Status,
+            IsDuplicateScan = true,
+            SessionId = session.Id,
+            MatchMethod = matchMethod,
+            MatchScore = matchScore
+        };
     }
 
     private FingerprintResponseDto MapToResponseDto(Fingerprint fingerprint, int? studentId)

@@ -123,9 +123,20 @@ namespace attendance_monitoring.Data
                 .HasForeignKey(s => s.EndedBy)
                 .OnDelete(DeleteBehavior.Restrict);
 
-            builder.Entity<Session>()
-                .Property(s => s.RowVersion)
-                .IsRowVersion();
+            if (Database.ProviderName == "Microsoft.EntityFrameworkCore.Sqlite")
+            {
+                builder.Entity<Session>()
+                    .Property(s => s.RowVersion)
+                    .IsRequired(false)
+                    .ValueGeneratedNever()
+                    .IsConcurrencyToken(false);
+            }
+            else
+            {
+                builder.Entity<Session>()
+                    .Property(s => s.RowVersion)
+                    .IsRowVersion();
+            }
 
             // Configure QrCode relationships
             builder.Entity<QrCode>()

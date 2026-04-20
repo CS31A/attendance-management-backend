@@ -14,4 +14,10 @@ public class CancelSession
     [MinLength(5, ErrorMessage = "Reason must be at least 5 characters")]
     [MaxLength(500, ErrorMessage = "Reason cannot exceed 500 characters")]
     public string Reason { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Optimistic concurrency token for the current session row.
+    /// Serialized as base64 over JSON.
+    /// </summary>
+    public byte[]? RowVersion { get; set; }
 }

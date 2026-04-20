@@ -209,6 +209,78 @@ public class AttendanceConcurrencyTests
     }
 
     [Fact]
+    public async Task CreateAttendanceFromQrScanAsync_UsesSessionDate_WhenActualStartTimeIsNull()
+    {
+        // Arrange
+        int studentId = 1;
+        int sessionId = 1;
+        int qrCodeId = 1;
+        var sessionDate = new DateTime(2026, 1, 5);
+        var checkInTime = sessionDate.AddHours(8).AddMinutes(20);
+        var createdRecord = new AttendanceRecord();
+
+        _mockSessionRepository.Setup(r => r.GetSessionByIdAsync(sessionId))
+            .ReturnsAsync(new Session
+            {
+                Id = sessionId,
+                SessionDate = sessionDate,
+                Schedule = new Schedules
+                {
+                    TimeIn = new TimeOnly(8, 0)
+                }
+            });
+
+        _mockAttendanceRepository.Setup(r => r.CreateAsync(It.IsAny<AttendanceRecord>()))
+            .Callback<AttendanceRecord>(record =>
+            {
+                createdRecord = new AttendanceRecord
+                {
+                    Id = 100,
+                    StudentId = record.StudentId,
+                    SessionId = record.SessionId,
+                    QrCodeId = record.QrCodeId,
+                    CheckInTime = record.CheckInTime,
+                    Status = record.Status,
+                    IsManualEntry = record.IsManualEntry
+                };
+            })
+            .ReturnsAsync(() => createdRecord);
+
+        _mockAttendanceRepository.Setup(r => r.SaveChangesAsync())
+            .ReturnsAsync(1);
+
+        _mockAttendanceRepository.Setup(r => r.GetByIdAsync(100))
+            .ReturnsAsync(() =>
+            {
+                createdRecord.Student = new Student
+                {
+                    Id = studentId,
+                    Firstname = "John",
+                    Lastname = "Doe"
+                };
+                createdRecord.Session = new Session
+                {
+                    Id = sessionId,
+                    Schedule = new Schedules
+                    {
+                        Classroom = new Classroom { Name = "Room 301" },
+                        Instructor = new Instructor { Firstname = "Ada", Lastname = "Lovelace" },
+                        Subject = new Subject { Name = "Software Engineering" },
+                        Section = new Section { Name = "BSCS 3A" }
+                    }
+                };
+                return createdRecord;
+            });
+
+        // Act
+        var result = await _attendanceService.CreateAttendanceFromQrScanAsync(studentId, sessionId, qrCodeId, checkInTime);
+
+        // Assert
+        Assert.Equal("Late", createdRecord.Status);
+        Assert.Equal("Late", result.Status);
+    }
+
+    [Fact]
     public async Task CreateAttendanceAsync_WithoutCheckInTime_DefaultsToLocalTime()
     {
         // Arrange
