@@ -9,6 +9,7 @@ using attendance_monitoring.Options;
 using attendance_monitoring.Repositories;
 using attendance_monitoring.Services;
 using attendance_monitoring.Services.AdminData;
+using ClosedXML.Excel;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Data.Sqlite;
@@ -794,8 +795,12 @@ public class AdminDataServiceTests
 
         Assert.Equal("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", result.ContentType);
         Assert.Equal("users-template.xlsx", result.FileName);
-        Assert.NotNull(result.Content);
-        Assert.True(result.Content.Length > 0);
+        using var workbook = OpenWorkbook(result.Content);
+        var dataSheet = workbook.Worksheet("Data");
+        var instructionSheet = workbook.Worksheet("Instructions");
+
+        AssertWorksheetHeaders(dataSheet, "username", "email", "firstname", "lastname", "role", "sectionName", "temporaryPassword");
+        Assert.Equal("users import template", instructionSheet.Cell(1, 1).GetString());
     }
 
     [Fact]
@@ -961,8 +966,267 @@ public class AdminDataServiceTests
         var export = await service.ExportAsync("subjects", "xlsx", new Dictionary<string, string?>());
 
         Assert.Equal("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", export.ContentType);
-        Assert.NotNull(export.Content);
-        Assert.True(export.Content.Length > 0);
+        Assert.StartsWith("subjects-export-", export.FileName);
+        Assert.EndsWith(".xlsx", export.FileName);
+        using var workbook = OpenWorkbook(export.Content);
+        var dataSheet = workbook.Worksheet("Data");
+
+        AssertWorksheetHeaders(dataSheet, "code", "name");
+        Assert.Equal("CS102", dataSheet.Cell(2, 1).GetString());
+        Assert.Equal("Data Structures", dataSheet.Cell(2, 2).GetString());
+        Assert.Equal("CS101", dataSheet.Cell(3, 1).GetString());
+        Assert.Null(workbook.Worksheets.FirstOrDefault(sheet => sheet.Name == "Instructions"));
+    }
+
+    [Fact]
+    public async Task ExportAsync_CoursesXlsx_ReturnsProjectedRows()
+    {
+        await using var context = CreateContext();
+        var accountService = new Mock<IAccountService>();
+
+        var courseService = new Mock<ICourseService>();
+        courseService.Setup(s => s.GetAllCoursesAsync())
+            .ReturnsAsync(new[]
+            {
+                new Course { Id = 1, Name = "Computer Science", CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow },
+                new Course { Id = 2, Name = "Information Technology", CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow },
+            });
+
+        var service = CreateService(context, accountService.Object, courseService: courseService.Object);
+
+        var export = await service.ExportAsync("courses", "xlsx", new Dictionary<string, string?>());
+
+        Assert.Equal("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", export.ContentType);
+        Assert.StartsWith("courses-export-", export.FileName);
+        Assert.EndsWith(".xlsx", export.FileName);
+        using var workbook = OpenWorkbook(export.Content);
+        var dataSheet = workbook.Worksheet("Data");
+
+        AssertWorksheetHeaders(dataSheet, "name");
+        Assert.Equal("Computer Science", dataSheet.Cell(2, 1).GetString());
+        Assert.Equal("Information Technology", dataSheet.Cell(3, 1).GetString());
+    }
+
+    [Fact]
+    public async Task ExportAsync_SectionsXlsx_ReturnsProjectedRows()
+    {
+        await using var context = CreateContext();
+        var now = DateTime.UtcNow;
+
+        context.Courses.Add(new Course { Id = 1, Name = "Computer Science", CreatedAt = now, UpdatedAt = now });
+        context.Sections.Add(new Section { Id = 1, Name = "BSCS-1A", CourseId = 1, CreatedAt = now, UpdatedAt = now });
+        context.Sections.Add(new Section { Id = 2, Name = "BSCS-1B", CourseId = 1, CreatedAt = now, UpdatedAt = now });
+        await context.SaveChangesAsync();
+
+        var accountService = new Mock<IAccountService>();
+        accountService.Setup(s => s.GetAllUsersAsync(It.IsAny<UserStatus>()))
+            .ReturnsAsync(Array.Empty<GetAllUsersDto>());
+
+        var service = CreateService(context, accountService.Object);
+
+        var export = await service.ExportAsync("sections", "xlsx", new Dictionary<string, string?>());
+
+        Assert.Equal("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", export.ContentType);
+        Assert.StartsWith("sections-export-", export.FileName);
+        Assert.EndsWith(".xlsx", export.FileName);
+        using var workbook = OpenWorkbook(export.Content);
+        var dataSheet = workbook.Worksheet("Data");
+
+        AssertWorksheetHeaders(dataSheet, "name", "courseName");
+        Assert.Equal("BSCS-1A", dataSheet.Cell(2, 1).GetString());
+        Assert.Equal("Computer Science", dataSheet.Cell(2, 2).GetString());
+        Assert.Equal("BSCS-1B", dataSheet.Cell(3, 1).GetString());
+    }
+
+    [Fact]
+    public async Task ExportAsync_ClassroomsXlsx_ReturnsProjectedRows()
+    {
+        await using var context = CreateContext();
+        var accountService = new Mock<IAccountService>();
+
+        var classroomService = new Mock<IClassroomService>();
+        classroomService.Setup(s => s.GetAllClassroomsAsync())
+            .ReturnsAsync(new[]
+            {
+                new Classroom { Id = 1, Name = "Lab 1", CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow },
+                new Classroom { Id = 2, Name = "Lab 2", CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow },
+            });
+
+        var service = CreateService(context, accountService.Object, classroomService: classroomService.Object);
+
+        var export = await service.ExportAsync("classrooms", "xlsx", new Dictionary<string, string?>());
+
+        Assert.Equal("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", export.ContentType);
+        Assert.StartsWith("classrooms-export-", export.FileName);
+        Assert.EndsWith(".xlsx", export.FileName);
+        using var workbook = OpenWorkbook(export.Content);
+        var dataSheet = workbook.Worksheet("Data");
+
+        AssertWorksheetHeaders(dataSheet, "name");
+        Assert.Equal("Lab 1", dataSheet.Cell(2, 1).GetString());
+        Assert.Equal("Lab 2", dataSheet.Cell(3, 1).GetString());
+    }
+
+    [Fact]
+    public async Task ExportAsync_SchedulesXlsx_ReturnsProjectedRows()
+    {
+        await using var context = CreateContext();
+        var now = DateTime.UtcNow;
+
+        context.Subjects.Add(new Subject { Id = 1, Code = "CS101", Name = "Intro to Computing", CreatedAt = now, UpdatedAt = now });
+        context.Classrooms.Add(new Classroom { Id = 1, Name = "Lab 1", CreatedAt = now, UpdatedAt = now });
+        context.Sections.Add(new Section { Id = 1, Name = "BSCS-1A", CourseId = 1, CreatedAt = now, UpdatedAt = now });
+        context.Users.Add(new IdentityUser { Id = "inst-1", Email = "teacher@example.com", UserName = "teacher@example.com" });
+        context.Instructors.Add(new Instructor { Id = 1, UserId = "inst-1", Firstname = "Ada", Lastname = "Lovelace", CreatedAt = now, UpdatedAt = now });
+        await context.SaveChangesAsync();
+
+        var accountService = new Mock<IAccountService>();
+        accountService.Setup(s => s.GetAllUsersAsync(It.IsAny<UserStatus>()))
+            .ReturnsAsync(Array.Empty<GetAllUsersDto>());
+
+        var scheduleService = new Mock<IScheduleService>();
+        scheduleService.Setup(s => s.GetAllSchedulesAsync())
+            .ReturnsAsync(new[]
+            {
+                new ScheduleResponseDto
+                {
+                    Id = 1,
+                    DayOfWeek = "Monday",
+                    TimeIn = new TimeOnly(8, 0),
+                    TimeOut = new TimeOnly(10, 0),
+                    Subject = new SubjectResponseDto { Id = 1, Code = "CS101", Name = "Intro to Computing", CreatedAt = now, UpdatedAt = now },
+                    Section = new SectionResponseDto { Id = 1, Name = "BSCS-1A", CourseId = 1, CreatedAt = now, UpdatedAt = now },
+                    Classroom = new ClassroomResponseDto { Id = 1, Name = "Lab 1", CreatedAt = now, UpdatedAt = now },
+                    Instructor = new InstructorResponseDto { Id = 1, Firstname = "Ada", Lastname = "Lovelace", Email = "teacher@example.com" },
+                    CreatedAt = now,
+                    UpdatedAt = now,
+                },
+            });
+
+        var service = CreateService(context, accountService.Object, scheduleService: scheduleService.Object);
+
+        var export = await service.ExportAsync("schedules", "xlsx", new Dictionary<string, string?>());
+
+        Assert.Equal("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", export.ContentType);
+        Assert.StartsWith("schedules-export-", export.FileName);
+        Assert.EndsWith(".xlsx", export.FileName);
+        using var workbook = OpenWorkbook(export.Content);
+        var dataSheet = workbook.Worksheet("Data");
+
+        AssertWorksheetHeaders(dataSheet, "dayOfWeek", "timeIn", "timeOut", "subjectCode", "sectionName", "classroomName", "instructorEmail");
+        Assert.Equal("Monday", dataSheet.Cell(2, 1).GetString());
+        Assert.Equal("08:00", dataSheet.Cell(2, 2).GetString());
+        Assert.Equal("10:00", dataSheet.Cell(2, 3).GetString());
+        Assert.Equal("CS101", dataSheet.Cell(2, 4).GetString());
+        Assert.Equal("BSCS-1A", dataSheet.Cell(2, 5).GetString());
+        Assert.Equal("Lab 1", dataSheet.Cell(2, 6).GetString());
+        Assert.Equal("teacher@example.com", dataSheet.Cell(2, 7).GetString());
+    }
+
+    [Fact]
+    public async Task ExportAsync_UsersXlsx_ReturnsProjectedRows()
+    {
+        await using var context = CreateContext();
+
+        var accountService = new Mock<IAccountService>();
+        accountService.Setup(service => service.GetAllUsersAsync(UserStatus.Active))
+            .ReturnsAsync(new[]
+            {
+                new GetAllUsersDto
+                {
+                    UserId = "u-1",
+                    Username = "ada.teacher",
+                    Email = "ada@example.com",
+                    Role = "Instructor",
+                    InstructorProfile = new InstructorProfileDto
+                    {
+                        Firstname = "Ada",
+                        Lastname = "Lovelace",
+                    },
+                },
+                new GetAllUsersDto
+                {
+                    UserId = "u-2",
+                    Username = "bob.student",
+                    Email = "bob@example.com",
+                    Role = "Student",
+                    StudentProfile = new StudentProfileDto
+                    {
+                        Firstname = "Bob",
+                        Lastname = "Stone",
+                    },
+                },
+            });
+
+        var service = CreateService(context, accountService.Object);
+
+        var export = await service.ExportAsync("users", "xlsx", new Dictionary<string, string?>
+        {
+            ["status"] = "Active",
+        });
+
+        Assert.Equal("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", export.ContentType);
+        Assert.StartsWith("users-export-", export.FileName);
+        Assert.EndsWith(".xlsx", export.FileName);
+        using var workbook = OpenWorkbook(export.Content);
+        var dataSheet = workbook.Worksheet("Data");
+
+        AssertWorksheetHeaders(dataSheet, "username", "email", "firstname", "lastname", "role", "sectionName", "temporaryPassword");
+        Assert.Equal("ada.teacher", dataSheet.Cell(2, 1).GetString());
+        Assert.Equal("ada@example.com", dataSheet.Cell(2, 2).GetString());
+        Assert.Equal("Ada", dataSheet.Cell(2, 3).GetString());
+        Assert.Equal("Lovelace", dataSheet.Cell(2, 4).GetString());
+        Assert.Equal("Instructor", dataSheet.Cell(2, 5).GetString());
+        Assert.Equal(string.Empty, dataSheet.Cell(2, 6).GetString());
+        Assert.Equal("bob.student", dataSheet.Cell(3, 1).GetString());
+        accountService.Verify(service => service.GetAllUsersAsync(UserStatus.Active), Times.Once);
+    }
+
+    [Fact]
+    public async Task ExportAsync_EnrollmentsXlsx_ReturnsProjectedRows()
+    {
+        await using var context = CreateContext();
+        var now = DateTime.UtcNow;
+
+        context.Users.Add(new IdentityUser { Id = "s-1", Email = "student@x.com", UserName = "student@x.com" });
+        context.Students.Add(new Student { Id = 20, UserId = "s-1", SectionId = 3, CreatedAt = now, UpdatedAt = now });
+        context.Sections.Add(new Section { Id = 3, Name = "BSCS-1A", CourseId = 1, CreatedAt = now, UpdatedAt = now });
+        context.Subjects.Add(new Subject { Id = 11, Code = "CS101", Name = "Computing", CreatedAt = now, UpdatedAt = now });
+        context.StudentEnrollments.Add(new StudentEnrollment
+        {
+            Id = 1,
+            StudentId = 20,
+            SectionId = 3,
+            SubjectId = 11,
+            EnrollmentType = "Regular",
+            AcademicYear = "2024-2025",
+            Semester = "1st",
+            CreatedAt = now,
+            UpdatedAt = now,
+        });
+        await context.SaveChangesAsync();
+
+        var accountService = new Mock<IAccountService>();
+        accountService.Setup(s => s.GetAllUsersAsync(It.IsAny<UserStatus>()))
+            .ReturnsAsync(Array.Empty<GetAllUsersDto>());
+
+        var service = CreateService(context, accountService.Object);
+
+        var export = await service.ExportAsync("enrollments", "xlsx", new Dictionary<string, string?>());
+
+        Assert.Equal("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", export.ContentType);
+        Assert.StartsWith("enrollments-export-", export.FileName);
+        Assert.EndsWith(".xlsx", export.FileName);
+        using var workbook = OpenWorkbook(export.Content);
+        var dataSheet = workbook.Worksheet("Data");
+
+        AssertWorksheetHeaders(dataSheet, "studentEmail", "sectionName", "subjectCode", "enrollmentType", "academicYear", "semester");
+        Assert.Equal("student@x.com", dataSheet.Cell(2, 1).GetString());
+        Assert.Equal("BSCS-1A", dataSheet.Cell(2, 2).GetString());
+        Assert.Equal("CS101", dataSheet.Cell(2, 3).GetString());
+        Assert.Equal("Regular", dataSheet.Cell(2, 4).GetString());
+        Assert.Equal("2024-2025", dataSheet.Cell(2, 5).GetString());
+        Assert.Equal("1st", dataSheet.Cell(2, 6).GetString());
     }
 
     [Fact]
@@ -1205,5 +1469,17 @@ public class AdminDataServiceTests
             Headers = new HeaderDictionary(),
             ContentType = "text/csv",
         };
+    }
+
+    private static XLWorkbook OpenWorkbook(byte[] content)
+        => new(new MemoryStream(content));
+
+    private static void AssertWorksheetHeaders(IXLWorksheet worksheet, params string[] expectedHeaders)
+    {
+        var actualHeaders = expectedHeaders
+            .Select((_, index) => worksheet.Cell(1, index + 1).GetString())
+            .ToArray();
+
+        Assert.Equal(expectedHeaders, actualHeaders);
     }
 }
