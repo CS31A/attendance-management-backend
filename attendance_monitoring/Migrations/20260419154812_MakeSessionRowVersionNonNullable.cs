@@ -21,8 +21,7 @@ namespace attendance_monitoring.Migrations
                 table: "Sessions",
                 type: "rowversion",
                 rowVersion: true,
-                nullable: false,
-                defaultValue: new byte[0]);
+                nullable: false);
         }
 
         /// <inheritdoc />
