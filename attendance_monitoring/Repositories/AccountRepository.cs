@@ -376,12 +376,15 @@ namespace attendance_monitoring.Repositories
         #endregion
 
         #region GetStudentByUserIdAsync
+        /// <summary>
+        /// Gets a student by user ID without eager loading navigation properties.
+        /// Performance optimization: Section and Course are not loaded since no callers depend on these navigation properties.
+        /// All callers only use student.Id, student.IsDeleted, or basic properties like Firstname, Lastname, SectionId (FK).
+        /// </summary>
         public async Task<Student?> GetStudentByUserIdAsync(string userId)
         {
             return await context.Students
                 .AsNoTracking()
-                .Include(s => s.Section)
-                .ThenInclude(s => s.Course)
                 .FirstOrDefaultAsync(s => s.UserId == userId && !s.IsDeleted)
                 .ConfigureAwait(false);
         }
