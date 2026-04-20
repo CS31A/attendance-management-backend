@@ -33,6 +33,31 @@ public class ClassroomControllerDependencyTest
     }
 
     [Fact]
+    public async Task HasSchedulesInClassroom_ReturnsBadRequest_ForInvalidId()
+    {
+        var result = await _controller.HasSchedulesInClassroom(0);
+
+        var badRequestResult = Assert.IsType<BadRequestObjectResult>(result.Result);
+        Assert.Equal("Classroom ID must be greater than 0.", badRequestResult.Value);
+        _mockClassroomService.Verify(service => service.HasSchedulesInClassroomAsync(It.IsAny<int>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task HasSchedulesInClassroom_ReturnsServerError_WhenServiceThrowsException()
+    {
+        const int classroomId = 12;
+        _mockClassroomService
+            .Setup(service => service.HasSchedulesInClassroomAsync(classroomId))
+            .ThrowsAsync(new EntityServiceException("Classroom", $"HasSchedulesInClassroom: {classroomId}", "Error checking classroom dependencies"));
+
+        var result = await _controller.HasSchedulesInClassroom(classroomId);
+
+        var objectResult = Assert.IsType<ObjectResult>(result.Result);
+        Assert.Equal(500, objectResult.StatusCode);
+        Assert.Equal("An error occurred while checking classroom dependencies", objectResult.Value);
+    }
+
+    [Fact]
     public async Task HasSessionsInClassroom_ReturnsOk_WithBooleanResult()
     {
         const int classroomId = 8;
@@ -44,5 +69,30 @@ public class ClassroomControllerDependencyTest
 
         var okResult = Assert.IsType<OkObjectResult>(result.Result);
         Assert.True(Assert.IsType<bool>(okResult.Value));
+    }
+
+    [Fact]
+    public async Task HasSessionsInClassroom_ReturnsBadRequest_ForInvalidId()
+    {
+        var result = await _controller.HasSessionsInClassroom(-1);
+
+        var badRequestResult = Assert.IsType<BadRequestObjectResult>(result.Result);
+        Assert.Equal("Classroom ID must be greater than 0.", badRequestResult.Value);
+        _mockClassroomService.Verify(service => service.HasSessionsInClassroomAsync(It.IsAny<int>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task HasSessionsInClassroom_ReturnsServerError_WhenServiceThrowsException()
+    {
+        const int classroomId = 15;
+        _mockClassroomService
+            .Setup(service => service.HasSessionsInClassroomAsync(classroomId))
+            .ThrowsAsync(new EntityServiceException("Classroom", $"HasSessionsInClassroom: {classroomId}", "Error checking classroom dependencies"));
+
+        var result = await _controller.HasSessionsInClassroom(classroomId);
+
+        var objectResult = Assert.IsType<ObjectResult>(result.Result);
+        Assert.Equal(500, objectResult.StatusCode);
+        Assert.Equal("An error occurred while checking classroom dependencies", objectResult.Value);
     }
 }
