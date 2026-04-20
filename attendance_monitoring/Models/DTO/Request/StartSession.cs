@@ -19,4 +19,10 @@ public class StartSession
     /// </summary>
     [Range(0, 120, ErrorMessage = "Attendance cutoff must be between 0 and 120 minutes")]
     public int? AttendanceCutoffMinutes { get; set; }
+
+    /// <summary>
+    /// Optimistic concurrency token for the current session row.
+    /// Serialized as base64 over JSON.
+    /// </summary>
+    public byte[]? RowVersion { get; set; }
 }

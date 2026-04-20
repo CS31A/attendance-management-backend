@@ -81,6 +81,12 @@ public class Session
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
 
+    /// <summary>
+    /// Row version token used for optimistic concurrency checks.
+    /// </summary>
+    [Timestamp]
+    public byte[] RowVersion { get; set; } = null!;
+
     // Navigation properties
     [ForeignKey("ScheduleId")]
     [JsonIgnore]

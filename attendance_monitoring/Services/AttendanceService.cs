@@ -129,7 +129,7 @@ public class AttendanceService(
         }
 
         // Determine attendance status based on check-in time
-        var sessionStartTime = session.ActualStartTime ?? DateTime.Today.Add(session.Schedule.TimeIn.ToTimeSpan());
+        var sessionStartTime = session.ActualStartTime ?? session.SessionDate.Date.Add(session.Schedule.TimeIn.ToTimeSpan());
         var status = DetermineAttendanceStatus(checkInTime, sessionStartTime);
 
         // Create attendance record

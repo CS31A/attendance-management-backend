@@ -25,4 +25,17 @@ public class CreateSession
     /// </summary>
     [MaxLength(500, ErrorMessage = "Description cannot exceed 500 characters")]
     public string? Description { get; set; }
+
+    /// <summary>
+    /// Allows creating a session even when the date does not match the schedule day of week.
+    /// Must be paired with <see cref="OffScheduleReason"/> when used.
+    /// </summary>
+    public bool AllowOffScheduleDate { get; set; }
+
+    /// <summary>
+    /// Reason for allowing an off-schedule session date.
+    /// Required when <see cref="AllowOffScheduleDate"/> is true and date mismatches schedule day.
+    /// </summary>
+    [MaxLength(500, ErrorMessage = "Off-schedule reason cannot exceed 500 characters")]
+    public string? OffScheduleReason { get; set; }
 }

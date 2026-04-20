@@ -14,4 +14,10 @@ public class UpdateSessionRoom
     [Required(ErrorMessage = "ActualRoomId is required")]
     [Range(1, int.MaxValue, ErrorMessage = "ActualRoomId must be a valid positive integer")]
     public int ActualRoomId { get; set; }
+
+    /// <summary>
+    /// Optimistic concurrency token for the current session row.
+    /// Serialized as base64 over JSON.
+    /// </summary>
+    public byte[]? RowVersion { get; set; }
 }

@@ -3,9 +3,11 @@ using attendance_monitoring.Classes;
 using attendance_monitoring.Constants;
 using attendance_monitoring.Data;
 using attendance_monitoring.Exceptions;
+using attendance_monitoring.Extensions;
 using attendance_monitoring.IRepository;
 using attendance_monitoring.IServices;
 using attendance_monitoring.Models.DTO.Request;
+using attendance_monitoring.Options;
 using attendance_monitoring.Services;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
@@ -28,6 +30,8 @@ public class FingerprintServiceTest
     private readonly Mock<IAttendanceService> _mockAttendanceService;
     private readonly Mock<INotificationService> _mockNotificationService;
     private readonly Mock<ILogger<FingerprintService>> _mockLogger;
+    private readonly Mock<IDbContextTransaction> _mockTransaction;
+    private readonly ConfiguredTimeZoneProvider _timeZoneProvider;
     private readonly ApplicationDbContext _context;
     private readonly UserContextService _userContextService;
     private readonly IConfiguration _configuration;
@@ -44,6 +48,17 @@ public class FingerprintServiceTest
         _mockAttendanceService = new Mock<IAttendanceService>();
         _mockNotificationService = new Mock<INotificationService>();
         _mockLogger = new Mock<ILogger<FingerprintService>>();
+        _mockTransaction = new Mock<IDbContextTransaction>();
+
+        _mockTransaction
+            .Setup(transaction => transaction.CommitAsync(It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+        _mockTransaction
+            .Setup(transaction => transaction.RollbackAsync(It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        _timeZoneProvider = new ConfiguredTimeZoneProvider(
+            new TimeZoneSettings { TimeZoneId = TimeZoneInfo.Local.Id });
 
         _mockAttendanceService
             .Setup(service => service.DetermineAttendanceStatus(
@@ -549,11 +564,217 @@ public class FingerprintServiceTest
         Assert.Equal("Late", response.AttendanceStatus);
     }
 
+    [Fact]
+    public async Task ScanFingerprintBySensorAsync_WhenDuplicateRaceHitsUniqueConstraint_ReturnsDuplicateResponse()
+    {
+        var service = CreateService();
+        var device = new FingerprintDevice
+        {
+            Id = 7,
+            DeviceIdentifier = "esp32-attendance-01",
+            IsActive = true,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+        var student = new Student
+        {
+            Id = 1,
+            UserId = "user-1",
+            Firstname = "John",
+            Lastname = "Doe",
+            SectionId = 1,
+            IsDeleted = false
+        };
+        var session = new Session
+        {
+            Id = 11,
+            ScheduleId = 20,
+            SessionDate = DateTime.Now.Date,
+            Status = SessionStatusConstants.Active,
+            ActualStartTime = DateTime.Now.AddMinutes(-5),
+            Schedule = new Schedules
+            {
+                Id = 20,
+                SectionId = 1,
+                SubjectId = 2,
+                Section = new Section { Id = 1, Name = "BSCS 3A" },
+                Subject = new Subject { Id = 2, Name = "Software Engineering" },
+                Instructor = new Instructor { Id = 3, Firstname = "Ada", Lastname = "Lovelace", UserId = "inst-1" }
+            }
+        };
+
+        var existingAttendance = new AttendanceRecord
+        {
+            Id = 99,
+            StudentId = student.Id,
+            SessionId = session.Id,
+            CheckInTime = DateTime.UtcNow,
+            Status = "Present",
+            Student = student,
+            Session = session
+        };
+
+        _context.FingerprintDevices.Add(device);
+        await _context.SaveChangesAsync();
+
+        _mockFingerprintRepository
+            .Setup(repository => repository.FindFingerprintByDeviceAndSensorIdAsync(device.DeviceIdentifier, 5))
+            .ReturnsAsync(new Fingerprint
+            {
+                Id = 42,
+                UserId = student.UserId,
+                DeviceId = device.DeviceIdentifier,
+                SensorFingerprintId = 5,
+                TemplateData = "ciphertext"
+            });
+
+        _mockStudentRepository
+            .Setup(repository => repository.GetStudentByUserIdAsync(student.UserId))
+            .ReturnsAsync(student);
+        _mockStudentRepository
+            .Setup(repository => repository.GetStudentByIdAsync(student.Id))
+            .ReturnsAsync(student);
+        _mockSessionRepository
+            .Setup(repository => repository.GetSessionByIdAsync(session.Id))
+            .ReturnsAsync(session);
+        _mockAttendanceRepository
+            .SetupSequence(repository => repository.GetAttendanceByStudentAndSessionAsync(student.Id, session.Id))
+            .ReturnsAsync((AttendanceRecord?)null)
+            .ReturnsAsync(existingAttendance);
+        _mockAttendanceRepository
+            .Setup(repository => repository.CreateAsync(It.IsAny<AttendanceRecord>()))
+            .ReturnsAsync((AttendanceRecord record) =>
+            {
+                record.Id = 100;
+                return record;
+            });
+        _mockAttendanceRepository
+            .Setup(repository => repository.SaveChangesAsync())
+            .ThrowsAsync(new DbUpdateException("Error", new Exception("UNIQUE constraint failed: IX_AttendanceRecords_StudentId_SessionId")));
+
+        var response = await service.ScanFingerprintBySensorAsync(
+            new ScanFingerprintBySensorRequest
+            {
+                DeviceId = device.DeviceIdentifier,
+                SensorFingerprintId = 5,
+                Confidence = 90,
+                SessionId = session.Id
+            },
+            "device-secret");
+
+        Assert.True(response.Success);
+        Assert.True(response.IsDuplicateScan);
+        Assert.False(response.AttendanceMarked);
+        Assert.Equal(existingAttendance.Id, response.AttendanceRecordId);
+    }
+
+    [Fact]
+    public async Task ScanFingerprintBySensorAsync_UsesSessionDate_WhenActualStartTimeIsNull()
+    {
+        var service = CreateService();
+        var device = new FingerprintDevice
+        {
+            Id = 7,
+            DeviceIdentifier = "esp32-attendance-01",
+            IsActive = true,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+        var student = new Student
+        {
+            Id = 1,
+            UserId = "user-1",
+            Firstname = "John",
+            Lastname = "Doe",
+            SectionId = 1,
+            IsDeleted = false
+        };
+        var sessionDate = new DateTime(2026, 1, 5);
+        var session = new Session
+        {
+            Id = 11,
+            ScheduleId = 20,
+            SessionDate = sessionDate,
+            Status = SessionStatusConstants.Active,
+            ActualStartTime = null,
+            Schedule = new Schedules
+            {
+                Id = 20,
+                SectionId = 1,
+                SubjectId = 2,
+                TimeIn = new TimeOnly(8, 0),
+                Section = new Section { Id = 1, Name = "BSCS 3A" },
+                Subject = new Subject { Id = 2, Name = "Software Engineering" },
+                Instructor = new Instructor { Id = 3, Firstname = "Ada", Lastname = "Lovelace", UserId = "inst-1" }
+            }
+        };
+
+        DateTime capturedSessionStartTime = default;
+
+        _context.FingerprintDevices.Add(device);
+        await _context.SaveChangesAsync();
+
+        _mockFingerprintRepository
+            .Setup(repository => repository.FindFingerprintByDeviceAndSensorIdAsync(device.DeviceIdentifier, 5))
+            .ReturnsAsync(new Fingerprint
+            {
+                Id = 42,
+                UserId = student.UserId,
+                DeviceId = device.DeviceIdentifier,
+                SensorFingerprintId = 5,
+                TemplateData = "ciphertext"
+            });
+
+        _mockStudentRepository
+            .Setup(repository => repository.GetStudentByUserIdAsync(student.UserId))
+            .ReturnsAsync(student);
+        _mockStudentRepository
+            .Setup(repository => repository.GetStudentByIdAsync(student.Id))
+            .ReturnsAsync(student);
+        _mockSessionRepository
+            .Setup(repository => repository.GetSessionByIdAsync(session.Id))
+            .ReturnsAsync(session);
+        _mockAttendanceRepository
+            .Setup(repository => repository.GetAttendanceByStudentAndSessionAsync(student.Id, session.Id))
+            .ReturnsAsync((AttendanceRecord?)null);
+        _mockAttendanceService
+            .Setup(service => service.DetermineAttendanceStatus(
+                It.IsAny<DateTime>(),
+                It.IsAny<DateTime>(),
+                It.IsAny<int>()))
+            .Callback<DateTime, DateTime, int>((_, sessionStartTime, _) => capturedSessionStartTime = sessionStartTime)
+            .Returns("Late");
+        _mockAttendanceRepository
+            .Setup(repository => repository.CreateAsync(It.IsAny<AttendanceRecord>()))
+            .ReturnsAsync((AttendanceRecord record) =>
+            {
+                record.Id = 100;
+                return record;
+            });
+        _mockAttendanceRepository
+            .Setup(repository => repository.SaveChangesAsync())
+            .ReturnsAsync(1);
+
+        var response = await service.ScanFingerprintBySensorAsync(
+            new ScanFingerprintBySensorRequest
+            {
+                DeviceId = device.DeviceIdentifier,
+                SensorFingerprintId = 5,
+                Confidence = 90,
+                SessionId = session.Id
+            },
+            "device-secret");
+
+        Assert.True(response.Success);
+        Assert.Equal(sessionDate.AddHours(8), capturedSessionStartTime);
+        Assert.Equal("Late", response.AttendanceStatus);
+    }
+
     private FingerprintService CreateService(IConfiguration? configurationOverride = null)
     {
         _mockFingerprintRepository
             .Setup(repository => repository.BeginTransactionAsync())
-            .ReturnsAsync(Mock.Of<IDbContextTransaction>());
+            .ReturnsAsync(_mockTransaction.Object);
 
         return new FingerprintService(
             _mockFingerprintRepository.Object,
@@ -568,6 +789,7 @@ public class FingerprintServiceTest
             _userContextService,
             configurationOverride ?? _configuration,
             _dataProtectionProvider,
+            _timeZoneProvider,
             _mockLogger.Object);
     }
 
