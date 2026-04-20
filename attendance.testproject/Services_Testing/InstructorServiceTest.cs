@@ -315,6 +315,7 @@ public class InstructorServiceTest
             Id = instructorId,
             Firstname = "John",
             Lastname = "Doe",
+            Department = "Computer Science",
             UserId = userId,
             User = user,
             CreatedAt = DateTime.UtcNow,
@@ -333,6 +334,7 @@ public class InstructorServiceTest
         Assert.Equal("John", result.Firstname);
         Assert.Equal("Doe", result.Lastname);
         Assert.Equal("test@example.com", result.Email);
+        Assert.Equal("Computer Science", result.Department);
     }
 
     [Fact]
@@ -524,13 +526,15 @@ public class InstructorServiceTest
         var updateInstructor = new UpdateInstructor
         {
             Firstname = "John Updated",
-            Lastname = "Doe Updated"
+            Lastname = "Doe Updated",
+            Department = "Engineering"
         };
         var existingInstructor = new Instructor
         {
             Id = instructorId,
             Firstname = "John",
             Lastname = "Doe",
+            Department = "Computer Science",
             UserId = userId
         };
         var updatedInstructor = new Instructor
@@ -538,6 +542,7 @@ public class InstructorServiceTest
             Id = instructorId,
             Firstname = "John Updated",
             Lastname = "Doe Updated",
+            Department = "Engineering",
             UserId = userId,
             UpdatedAt = DateTime.UtcNow
         };
@@ -555,6 +560,7 @@ public class InstructorServiceTest
         Assert.NotNull(result);
         Assert.Equal("John Updated", result.Firstname);
         Assert.Equal("Doe Updated", result.Lastname);
+        Assert.Equal("Engineering", result.Department);
         _mockInstructorRepository.Verify(r => r.UpdateInstructorAsync(It.IsAny<Instructor>()), Times.Once);
         _mockInstructorRepository.Verify(r => r.SaveChangesAsync(), Times.Once);
     }
