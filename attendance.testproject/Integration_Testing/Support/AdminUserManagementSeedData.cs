@@ -49,11 +49,11 @@ internal static class AdminUserManagementSeedData
         dbContext.Sections.AddRange(primarySection, alternateSection);
         await dbContext.SaveChangesAsync(cancellationToken);
 
-        var adminUser = await CreateUserAsync(userManager, "admin-user", "admin.integration@test.com", "Admin");
-        var activeStudentUser = await CreateUserAsync(userManager, "active-student", "student.active@test.com", "Student");
-        var archivedStudentUser = await CreateUserAsync(userManager, "archived-student", "student.archived@test.com", "Student");
-        var activeInstructorUser = await CreateUserAsync(userManager, "active-instructor", "instructor.active@test.com", "Instructor");
-        var conflictStudentUser = await CreateUserAsync(userManager, "conflict-student", "student.conflict@test.com", "Student");
+        var adminUser = await CreateUserAsync(userManager, "admin-user", "admin.integration@gmail.com", "Admin");
+        var activeStudentUser = await CreateUserAsync(userManager, "active-student", "student.active@gmail.com", "Student");
+        var archivedStudentUser = await CreateUserAsync(userManager, "archived-student", "student.archived@gmail.com", "Student");
+        var activeInstructorUser = await CreateUserAsync(userManager, "active-instructor", "instructor.active@gmail.com", "Instructor");
+        var conflictStudentUser = await CreateUserAsync(userManager, "conflict-student", "student.conflict@gmail.com", "Student");
 
         dbContext.Admins.Add(new Admin
         {
