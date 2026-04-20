@@ -44,6 +44,25 @@ The Attendance Management System addresses the challenges of traditional attenda
 - **Status Tracking**: Present, Late, Excused, and Absent status management
 - **Manual Override**: Instructor ability to manually mark attendance
 
+## Recent Implementation Notes
+
+### Session Concurrency Contract
+- Session APIs now expose a `rowVersion` token on session read and mutation responses.
+- Session mutation endpoints require that token on `start`, `end`, `room update`, and `cancel/delete` requests.
+- The backend uses this token for optimistic concurrency, and stale writes are expected to return HTTP `409 Conflict`.
+- Mobile and web clients should replace their local session object with the mutation response so the latest `rowVersion` is preserved.
+
+### Conditional Off-Schedule Validation
+- `OffScheduleReason` should not be rejected for normal on-schedule session creation.
+- Minimum-length enforcement is conditional and belongs to the off-schedule override path in service logic, not to unconditional DTO model validation.
+
+### QR And Fingerprint Attendance Fallback
+- When a session has not been explicitly started yet, QR and fingerprint attendance status fallback should compute the scheduled start from `SessionDate` plus the schedule start time, not from the current local date.
+
+### Fingerprint Duplicate Recovery
+- Duplicate fingerprint race recovery is designed to return the intended "Already checked in" success response.
+- Duplicate scan-event persistence should happen outside the rolled-back attendance transaction and should skip insertion if another scan event already exists for the attendance row.
+
 ### 🏢 Classroom Management
 - **Room Inventory**: Physical classroom information and capacity
 - **Resource Tracking**: Projector and whiteboard availability
