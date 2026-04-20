@@ -297,7 +297,7 @@ public class SessionServiceTest
     {
         // Arrange
         // Calculate next Monday
-        var today = DateTime.UtcNow.Date;
+        var today = _timeZoneProvider.GetLocalNow().Date;
         var daysUntilMonday = ((int)DayOfWeek.Monday - (int)today.DayOfWeek + 7) % 7;
         if (daysUntilMonday == 0) daysUntilMonday = 7; // If today is Monday, get next Monday
         var nextMonday = today.AddDays(daysUntilMonday);
@@ -374,7 +374,7 @@ public class SessionServiceTest
         var request = new CreateSession
         {
             ScheduleId = 999,
-            SessionDate = DateTime.UtcNow.Date.AddDays(1)
+            SessionDate = _timeZoneProvider.GetLocalNow().Date.AddDays(1)
         };
 
         _mockScheduleRepository
@@ -394,7 +394,7 @@ public class SessionServiceTest
         var request = new CreateSession
         {
             ScheduleId = 1,
-            SessionDate = DateTime.UtcNow.Date.AddDays(1)
+            SessionDate = _timeZoneProvider.GetLocalNow().Date.AddDays(1)
         };
 
         var schedule = CreateTestSchedule(1, "Monday");
@@ -444,7 +444,7 @@ public class SessionServiceTest
     public async Task CreateSessionAsync_CreatesSession_WhenDateDoesNotMatchButOffScheduleOverrideProvided()
     {
         // Arrange
-        var today = DateTime.UtcNow.Date;
+        var today = _timeZoneProvider.GetLocalNow().Date;
         var daysUntilTuesday = ((int)DayOfWeek.Tuesday - (int)today.DayOfWeek + 7) % 7;
         if (daysUntilTuesday == 0) daysUntilTuesday = 7;
         var nextTuesday = today.AddDays(daysUntilTuesday);
@@ -510,7 +510,7 @@ public class SessionServiceTest
     public async Task CreateSessionAsync_AllowsEmptyOffScheduleReason_WhenDateMatchesSchedule(string? offScheduleReason)
     {
         // Arrange
-        var today = DateTime.UtcNow.Date;
+        var today = _timeZoneProvider.GetLocalNow().Date;
         var matchingDate = today.AddDays(((int)DayOfWeek.Monday - (int)today.DayOfWeek + 7) % 7);
         var request = new CreateSession
         {
@@ -554,7 +554,7 @@ public class SessionServiceTest
     public async Task CreateSessionAsync_ThrowsValidationException_WhenDateIsInPast()
     {
         // Arrange
-        var pastDate = DateTime.UtcNow.Date.AddDays(-1);
+        var pastDate = _timeZoneProvider.GetLocalNow().Date.AddDays(-1);
         var request = new CreateSession
         {
             ScheduleId = 1,
@@ -1357,7 +1357,7 @@ public class SessionServiceTest
             Id = id,
             ScheduleId = scheduleId,
             Status = status,
-            SessionDate = sessionDate ?? DateTime.UtcNow.Date,
+            SessionDate = sessionDate ?? _timeZoneProvider.GetLocalNow().Date,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow,
             RowVersion = CreateRowVersion(),
