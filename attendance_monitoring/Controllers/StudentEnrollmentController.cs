@@ -27,7 +27,7 @@ public class StudentEnrollmentController : ControllerBase
     /// Enroll a student in an additional section-subject combination (for irregular students)
     /// </summary>
     [HttpPost("enroll")]
-    [Authorize(Roles = "Admin,Instructor")]
+    [Authorize(Roles = "Admin")]
     public async Task<ActionResult<StudentEnrollmentResponseDto>> EnrollStudent([FromBody] CreateStudentEnrollment request)
     {
         try
@@ -164,7 +164,7 @@ public class StudentEnrollmentController : ControllerBase
     /// Drop a student from a specific enrollment (deactivate)
     /// </summary>
     [HttpPatch("{enrollmentId}/drop")]
-    [Authorize(Roles = "Admin,Instructor")]
+    [Authorize(Roles = "Admin")]
     public async Task<ActionResult> DropStudent(int enrollmentId)
     {
         try
@@ -193,7 +193,7 @@ public class StudentEnrollmentController : ControllerBase
     /// Re-enroll a student (reactivate enrollment)
     /// </summary>
     [HttpPatch("{enrollmentId}/reenroll")]
-    [Authorize(Roles = "Admin,Instructor")]
+    [Authorize(Roles = "Admin")]
     public async Task<ActionResult> ReenrollStudent(int enrollmentId)
     {
         try
