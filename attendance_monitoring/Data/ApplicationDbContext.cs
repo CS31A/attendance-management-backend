@@ -47,6 +47,39 @@ namespace attendance_monitoring.Data
                 .HasIndex(r => r.TokenHash)
                 .IsUnique();
 
+            builder.Entity<Student>()
+                .Property(s => s.Uuid)
+                .HasColumnType("uniqueidentifier")
+                .HasDefaultValueSql("NEWSEQUENTIALID()")
+                .ValueGeneratedOnAdd();
+
+            builder.Entity<Student>()
+                .HasIndex(s => s.Uuid)
+                .IsUnique()
+                .HasDatabaseName("IX_Students_Uuid");
+
+            builder.Entity<Instructor>()
+                .Property(i => i.Uuid)
+                .HasColumnType("uniqueidentifier")
+                .HasDefaultValueSql("NEWSEQUENTIALID()")
+                .ValueGeneratedOnAdd();
+
+            builder.Entity<Instructor>()
+                .HasIndex(i => i.Uuid)
+                .IsUnique()
+                .HasDatabaseName("IX_Instructors_Uuid");
+
+            builder.Entity<Admin>()
+                .Property(a => a.Uuid)
+                .HasColumnType("uniqueidentifier")
+                .HasDefaultValueSql("NEWSEQUENTIALID()")
+                .ValueGeneratedOnAdd();
+
+            builder.Entity<Admin>()
+                .HasIndex(a => a.Uuid)
+                .IsUnique()
+                .HasDatabaseName("IX_Admins_Uuid");
+
             // Configure Schedules relationships
             builder.Entity<Schedules>()
                 .HasOne(s => s.Subject)
