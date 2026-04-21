@@ -12,16 +12,16 @@ namespace attendance_monitoring.Services;
 /// </summary>
 public class AccountService : IAccountService
 {
-    private readonly RegistrationService _registrationService;
-    private readonly AuthenticationService _authenticationService;
-    private readonly ProfileService _profileService;
-    private readonly AdminService _adminService;
+    private readonly IRegistrationService _registrationService;
+    private readonly IAuthenticationService _authenticationService;
+    private readonly IProfileService _profileService;
+    private readonly IAdminService _adminService;
 
     internal AccountService(
-        RegistrationService registrationService,
-        AuthenticationService authenticationService,
-        ProfileService profileService,
-        AdminService adminService)
+        IRegistrationService registrationService,
+        IAuthenticationService authenticationService,
+        IProfileService profileService,
+        IAdminService adminService)
     {
         _registrationService = registrationService ?? throw new ArgumentNullException(nameof(registrationService));
         _authenticationService = authenticationService ?? throw new ArgumentNullException(nameof(authenticationService));

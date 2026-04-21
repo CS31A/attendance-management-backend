@@ -21,7 +21,7 @@ namespace attendance_monitoring.Services.Account;
 /// Focused unit responsible for authentication and token management.
 /// Handles login, token refresh/revoke/logout, JWT generation, and token blacklisting.
 /// </summary>
-internal sealed class AuthenticationService
+internal sealed class AuthenticationService : IAuthenticationService
 {
     private readonly IConfiguration _configuration;
     private readonly ApplicationDbContext _context;

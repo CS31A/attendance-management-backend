@@ -14,19 +14,19 @@ namespace attendance_monitoring.Services.Account;
 /// Focused unit responsible for admin operations on user accounts.
 /// Handles user listing, admin profile updates, soft/hard deletes, and restores.
 /// </summary>
-internal sealed class AdminService
+internal sealed class AdminService : IAdminService
 {
     private readonly ApplicationDbContext _context;
     private readonly IAccountRepository _accountRepository;
     private readonly ISectionRepository _sectionRepository;
-    private readonly ProfileService _profileService;
+    private readonly IProfileService _profileService;
     private readonly ILogger<AdminService> _logger;
 
     public AdminService(
         ApplicationDbContext context,
         IAccountRepository accountRepository,
         ISectionRepository sectionRepository,
-        ProfileService profileService,
+        IProfileService profileService,
         ILogger<AdminService> logger)
     {
         _context = context ?? throw new ArgumentNullException(nameof(context));
