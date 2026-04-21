@@ -14,7 +14,7 @@ namespace attendance_monitoring.Services.Account;
 /// Focused unit responsible for user profile operations.
 /// Handles profile retrieval and self-service profile updates.
 /// </summary>
-internal sealed class ProfileService
+internal sealed class ProfileService : IProfileService
 {
     private readonly ApplicationDbContext _context;
     private readonly IAccountRepository _accountRepository;
