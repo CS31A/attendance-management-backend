@@ -1,6 +1,8 @@
+using attendance_monitoring.Classes;
 using attendance_monitoring.Controllers;
 using attendance_monitoring.Exceptions;
 using attendance_monitoring.IServices;
+using attendance_monitoring.Models.DTO.Request;
 using attendance_monitoring.Models.DTO.Response;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -19,6 +21,504 @@ public class SectionControllerTest
         _mockSectionService = new Mock<ISectionService>();
         _mockLogger = new Mock<ILogger<SectionController>>();
         _controller = new SectionController(_mockSectionService.Object, _mockLogger.Object);
+    }
+
+    private static Section CreateSectionEntity(
+        int id = 1,
+        string name = "Section A",
+        int courseId = 10,
+        DateTime? createdAt = null,
+        DateTime? updatedAt = null)
+    {
+        return new Section
+        {
+            Id = id,
+            Name = name,
+            CourseId = courseId,
+            CreatedAt = createdAt ?? new DateTime(2024, 1, 1, 8, 0, 0, DateTimeKind.Utc),
+            UpdatedAt = updatedAt ?? new DateTime(2024, 1, 2, 8, 0, 0, DateTimeKind.Utc)
+        };
+    }
+
+    private static SectionResponseDto CreateSectionResponseDto(
+        int id = 1,
+        string name = "Section A",
+        int courseId = 10,
+        DateTime? createdAt = null,
+        DateTime? updatedAt = null)
+    {
+        return new SectionResponseDto
+        {
+            Id = id,
+            Name = name,
+            CourseId = courseId,
+            CreatedAt = createdAt ?? new DateTime(2024, 1, 1, 8, 0, 0, DateTimeKind.Utc),
+            UpdatedAt = updatedAt ?? new DateTime(2024, 1, 2, 8, 0, 0, DateTimeKind.Utc)
+        };
+    }
+
+    private static CreateSection CreateSectionRequest(string name = "Section A", int courseId = 10)
+    {
+        return new CreateSection
+        {
+            Name = name,
+            CourseId = courseId
+        };
+    }
+
+    private static Student CreateStudent(int id, string firstname, string lastname, string userId, int sectionId = 1)
+    {
+        return new Student
+        {
+            Id = id,
+            Firstname = firstname,
+            Lastname = lastname,
+            UserId = userId,
+            SectionId = sectionId,
+            CreatedAt = new DateTime(2024, 1, 1, 8, 0, 0, DateTimeKind.Utc),
+            UpdatedAt = new DateTime(2024, 1, 2, 8, 0, 0, DateTimeKind.Utc)
+        };
+    }
+
+    [Fact]
+    public async Task GetSection_ReturnsOkResult_WithSectionResponseDto()
+    {
+        // Arrange
+        const int sectionId = 3;
+        var section = CreateSectionEntity(id: sectionId, name: "Section 3", courseId: 12);
+        _mockSectionService
+            .Setup(service => service.GetSectionByIdAsync(sectionId))
+            .ReturnsAsync(section);
+
+        // Act
+        var result = await _controller.GetSection(sectionId);
+
+        // Assert
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        var dto = Assert.IsType<SectionResponseDto>(okResult.Value);
+        Assert.Equal(section.Id, dto.Id);
+        Assert.Equal(section.Name, dto.Name);
+        Assert.Equal(section.CourseId, dto.CourseId);
+        Assert.Equal(section.CreatedAt, dto.CreatedAt);
+        Assert.Equal(section.UpdatedAt, dto.UpdatedAt);
+        _mockSectionService.Verify(service => service.GetSectionByIdAsync(sectionId), Times.Once);
+    }
+
+    [Fact]
+    public async Task GetSection_ReturnsNotFound_WhenSectionDoesNotExist()
+    {
+        // Arrange
+        const int sectionId = 77;
+        _mockSectionService
+            .Setup(service => service.GetSectionByIdAsync(sectionId))
+            .ThrowsAsync(new EntityNotFoundException<int>("Section", sectionId));
+
+        // Act
+        var result = await _controller.GetSection(sectionId);
+
+        // Assert
+        var notFoundResult = Assert.IsType<NotFoundObjectResult>(result.Result);
+        Assert.Equal($"Section with ID {sectionId} not found", notFoundResult.Value);
+    }
+
+    [Fact]
+    public async Task GetSection_ReturnsServerError_WhenServiceThrowsException()
+    {
+        // Arrange
+        const int sectionId = 91;
+        _mockSectionService
+            .Setup(service => service.GetSectionByIdAsync(sectionId))
+            .ThrowsAsync(new EntityServiceException("Section", $"GetSection: {sectionId}", "Lookup failed"));
+
+        // Act
+        var result = await _controller.GetSection(sectionId);
+
+        // Assert
+        var objectResult = Assert.IsType<ObjectResult>(result.Result);
+        Assert.Equal(StatusCodes.Status500InternalServerError, objectResult.StatusCode);
+        Assert.Equal("An error occurred while retrieving the section", objectResult.Value);
+    }
+
+    [Fact]
+    public async Task GetAllSections_ReturnsOkResult_WithSectionsList()
+    {
+        // Arrange
+        var sections = new List<SectionResponseDto>
+        {
+            CreateSectionResponseDto(id: 1, name: "Section A", courseId: 10),
+            CreateSectionResponseDto(id: 2, name: "Section B", courseId: 11)
+        };
+        _mockSectionService
+            .Setup(service => service.GetAllSectionsAsync())
+            .ReturnsAsync(sections);
+
+        // Act
+        var result = await _controller.GetAllSections();
+
+        // Assert
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        var returnedSections = Assert.IsAssignableFrom<IEnumerable<SectionResponseDto>>(okResult.Value);
+        Assert.Equal(2, returnedSections.Count());
+        Assert.Equal(sections[0].Id, returnedSections.First().Id);
+    }
+
+    [Fact]
+    public async Task GetAllSections_ReturnsServerError_WhenServiceThrowsException()
+    {
+        // Arrange
+        _mockSectionService
+            .Setup(service => service.GetAllSectionsAsync())
+            .ThrowsAsync(new EntityServiceException("Section", "GetAllSections", "List failed"));
+
+        // Act
+        var result = await _controller.GetAllSections();
+
+        // Assert
+        var objectResult = Assert.IsType<ObjectResult>(result.Result);
+        Assert.Equal(StatusCodes.Status500InternalServerError, objectResult.StatusCode);
+        Assert.Equal("An error occurred while retrieving sections", objectResult.Value);
+    }
+
+    [Fact]
+    public async Task CreateSection_ReturnsCreatedResult_WhenValidInput()
+    {
+        // Arrange
+        var request = CreateSectionRequest(name: "New Section", courseId: 13);
+        var createdSection = CreateSectionResponseDto(id: 8, name: request.Name, courseId: request.CourseId);
+
+        _mockSectionService
+            .Setup(service => service.CreateSectionAsync(It.Is<Section>(section =>
+                section.Name == request.Name &&
+                section.CourseId == request.CourseId)))
+            .ReturnsAsync(createdSection);
+
+        // Act
+        var result = await _controller.CreateSection(request);
+
+        // Assert
+        var createdAtResult = Assert.IsType<CreatedAtActionResult>(result.Result);
+        Assert.Equal(nameof(SectionController.GetSection), createdAtResult.ActionName);
+        Assert.Equal(createdSection.Id, createdAtResult.RouteValues!["id"]);
+        var dto = Assert.IsType<SectionResponseDto>(createdAtResult.Value);
+        Assert.Equal(createdSection.Id, dto.Id);
+        Assert.Equal(request.Name, dto.Name);
+    }
+
+    [Fact]
+    public async Task CreateSection_ReturnsBadRequest_WhenInvalidModelState()
+    {
+        // Arrange
+        var request = CreateSectionRequest();
+        _controller.ModelState.AddModelError("Name", "Section name is required");
+
+        // Act
+        var result = await _controller.CreateSection(request);
+
+        // Assert
+        var badRequestResult = Assert.IsType<BadRequestObjectResult>(result.Result);
+        Assert.IsType<SerializableError>(badRequestResult.Value);
+        _mockSectionService.Verify(service => service.CreateSectionAsync(It.IsAny<Section>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task CreateSection_ReturnsBadRequest_WhenServiceException()
+    {
+        // Arrange
+        var request = CreateSectionRequest(name: "Duplicate Section", courseId: 10);
+        const string errorMessage = "Section already exists";
+        _mockSectionService
+            .Setup(service => service.CreateSectionAsync(It.IsAny<Section>()))
+            .ThrowsAsync(new EntityServiceException("Section", "CreateSection", errorMessage));
+
+        // Act
+        var result = await _controller.CreateSection(request);
+
+        // Assert
+        var badRequestResult = Assert.IsType<BadRequestObjectResult>(result.Result);
+        Assert.Equal(errorMessage, badRequestResult.Value);
+    }
+
+    [Fact]
+    public async Task UpdateSection_ReturnsOkResult_WhenUpdateSucceeds()
+    {
+        // Arrange
+        const int sectionId = 15;
+        var request = CreateSectionRequest(name: "Updated Section", courseId: 99);
+        var updatedSection = CreateSectionResponseDto(id: sectionId, name: request.Name, courseId: request.CourseId);
+
+        _mockSectionService
+            .Setup(service => service.UpdateSectionAsync(sectionId, It.Is<Section>(section =>
+                section.Name == request.Name &&
+                section.CourseId == request.CourseId)))
+            .ReturnsAsync(updatedSection);
+
+        // Act
+        var result = await _controller.UpdateSection(sectionId, request);
+
+        // Assert
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        var dto = Assert.IsType<SectionResponseDto>(okResult.Value);
+        Assert.Equal(sectionId, dto.Id);
+        Assert.Equal(request.Name, dto.Name);
+        Assert.Equal(request.CourseId, dto.CourseId);
+    }
+
+    [Fact]
+    public async Task UpdateSection_ReturnsNotFound_WhenSectionDoesNotExist()
+    {
+        // Arrange
+        const int sectionId = 101;
+        var request = CreateSectionRequest();
+        _mockSectionService
+            .Setup(service => service.UpdateSectionAsync(sectionId, It.IsAny<Section>()))
+            .ThrowsAsync(new EntityNotFoundException<int>("Section", sectionId));
+
+        // Act
+        var result = await _controller.UpdateSection(sectionId, request);
+
+        // Assert
+        var notFoundResult = Assert.IsType<NotFoundObjectResult>(result.Result);
+        Assert.Equal($"Section with ID {sectionId} not found", notFoundResult.Value);
+    }
+
+    [Fact]
+    public async Task UpdateSection_ReturnsBadRequest_WhenServiceException()
+    {
+        // Arrange
+        const int sectionId = 16;
+        var request = CreateSectionRequest();
+        const string errorMessage = "Unable to update section";
+        _mockSectionService
+            .Setup(service => service.UpdateSectionAsync(sectionId, It.IsAny<Section>()))
+            .ThrowsAsync(new EntityServiceException("Section", $"UpdateSection: {sectionId}", errorMessage));
+
+        // Act
+        var result = await _controller.UpdateSection(sectionId, request);
+
+        // Assert
+        var badRequestResult = Assert.IsType<BadRequestObjectResult>(result.Result);
+        Assert.Equal(errorMessage, badRequestResult.Value);
+    }
+
+    [Fact]
+    public async Task UpdateSection_ReturnsBadRequest_WhenInvalidModelState()
+    {
+        // Arrange
+        const int sectionId = 5;
+        var request = CreateSectionRequest();
+        _controller.ModelState.AddModelError("CourseId", "Course ID is required");
+
+        // Act
+        var result = await _controller.UpdateSection(sectionId, request);
+
+        // Assert
+        var badRequestResult = Assert.IsType<BadRequestObjectResult>(result.Result);
+        Assert.IsType<SerializableError>(badRequestResult.Value);
+        _mockSectionService.Verify(service => service.UpdateSectionAsync(It.IsAny<int>(), It.IsAny<Section>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task GetActiveStudentsBySectionId_ReturnsOkResult_WithStudentsList()
+    {
+        // Arrange
+        const int sectionId = 4;
+        var students = new List<Student>
+        {
+            CreateStudent(1, "Alice", "Anderson", "user-1", sectionId),
+            CreateStudent(2, "Bob", "Brown", "user-2", sectionId)
+        };
+        _mockSectionService
+            .Setup(service => service.GetActiveStudentsBySectionIdAsync(sectionId))
+            .ReturnsAsync(students);
+
+        // Act
+        var result = await _controller.GetActiveStudentsBySectionId(sectionId);
+
+        // Assert
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        var returnedStudents = Assert.IsAssignableFrom<IEnumerable<Student>>(okResult.Value);
+        Assert.Equal(2, returnedStudents.Count());
+        Assert.Equal("Alice", returnedStudents.First().Firstname);
+    }
+
+    [Fact]
+    public async Task GetActiveStudentsBySectionId_ReturnsBadRequest_ForInvalidId()
+    {
+        // Act
+        var result = await _controller.GetActiveStudentsBySectionId(0);
+
+        // Assert
+        var badRequestResult = Assert.IsType<BadRequestObjectResult>(result.Result);
+        Assert.Equal("Section ID must be greater than 0.", badRequestResult.Value);
+        _mockSectionService.Verify(service => service.GetActiveStudentsBySectionIdAsync(It.IsAny<int>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task GetActiveStudentsBySectionId_ReturnsServerError_WhenServiceThrowsException()
+    {
+        // Arrange
+        const int sectionId = 6;
+        _mockSectionService
+            .Setup(service => service.GetActiveStudentsBySectionIdAsync(sectionId))
+            .ThrowsAsync(new EntityServiceException("Section", $"GetActiveStudentsBySectionId: {sectionId}", "Lookup failed"));
+
+        // Act
+        var result = await _controller.GetActiveStudentsBySectionId(sectionId);
+
+        // Assert
+        var objectResult = Assert.IsType<ObjectResult>(result.Result);
+        Assert.Equal(StatusCodes.Status500InternalServerError, objectResult.StatusCode);
+        Assert.Equal("An error occurred while retrieving active students", objectResult.Value);
+    }
+
+    [Fact]
+    public async Task GetAllStudentsBySectionId_ReturnsOkResult_WithStudentsList()
+    {
+        // Arrange
+        const int sectionId = 5;
+        var students = new List<Student>
+        {
+            CreateStudent(10, "Carla", "Cruz", "user-10", sectionId),
+            CreateStudent(11, "Diego", "Diaz", "user-11", sectionId)
+        };
+        _mockSectionService
+            .Setup(service => service.GetAllStudentsBySectionIdAsync(sectionId))
+            .ReturnsAsync(students);
+
+        // Act
+        var result = await _controller.GetAllStudentsBySectionId(sectionId);
+
+        // Assert
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        var returnedStudents = Assert.IsAssignableFrom<IEnumerable<Student>>(okResult.Value);
+        Assert.Equal(2, returnedStudents.Count());
+        Assert.Contains(returnedStudents, student => student.Lastname == "Diaz");
+    }
+
+    [Fact]
+    public async Task GetAllStudentsBySectionId_ReturnsBadRequest_ForInvalidId()
+    {
+        // Act
+        var result = await _controller.GetAllStudentsBySectionId(-1);
+
+        // Assert
+        var badRequestResult = Assert.IsType<BadRequestObjectResult>(result.Result);
+        Assert.Equal("Section ID must be greater than 0.", badRequestResult.Value);
+        _mockSectionService.Verify(service => service.GetAllStudentsBySectionIdAsync(It.IsAny<int>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task GetAllStudentsBySectionId_ReturnsServerError_WhenServiceThrowsException()
+    {
+        // Arrange
+        const int sectionId = 7;
+        _mockSectionService
+            .Setup(service => service.GetAllStudentsBySectionIdAsync(sectionId))
+            .ThrowsAsync(new EntityServiceException("Section", $"GetAllStudentsBySectionId: {sectionId}", "Lookup failed"));
+
+        // Act
+        var result = await _controller.GetAllStudentsBySectionId(sectionId);
+
+        // Assert
+        var objectResult = Assert.IsType<ObjectResult>(result.Result);
+        Assert.Equal(StatusCodes.Status500InternalServerError, objectResult.StatusCode);
+        Assert.Equal("An error occurred while retrieving students", objectResult.Value);
+    }
+
+    [Fact]
+    public async Task HasStudentsInSection_ReturnsOkResult_WithBoolean()
+    {
+        // Arrange
+        const int sectionId = 8;
+        _mockSectionService
+            .Setup(service => service.HasStudentsInSectionAsync(sectionId))
+            .ReturnsAsync(true);
+
+        // Act
+        var result = await _controller.HasStudentsInSection(sectionId);
+
+        // Assert
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        Assert.True(Assert.IsType<bool>(okResult.Value));
+        _mockSectionService.Verify(service => service.HasStudentsInSectionAsync(sectionId), Times.Once);
+    }
+
+    [Fact]
+    public async Task HasStudentsInSection_ReturnsBadRequest_ForInvalidId()
+    {
+        // Act
+        var result = await _controller.HasStudentsInSection(0);
+
+        // Assert
+        var badRequestResult = Assert.IsType<BadRequestObjectResult>(result.Result);
+        Assert.Equal("Section ID must be greater than 0.", badRequestResult.Value);
+        _mockSectionService.Verify(service => service.HasStudentsInSectionAsync(It.IsAny<int>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task HasStudentsInSection_ReturnsServerError_WhenServiceThrowsException()
+    {
+        // Arrange
+        const int sectionId = 14;
+        _mockSectionService
+            .Setup(service => service.HasStudentsInSectionAsync(sectionId))
+            .ThrowsAsync(new EntityServiceException("Section", $"HasStudentsInSection: {sectionId}", "Dependency check failed"));
+
+        // Act
+        var result = await _controller.HasStudentsInSection(sectionId);
+
+        // Assert
+        var objectResult = Assert.IsType<ObjectResult>(result.Result);
+        Assert.Equal(StatusCodes.Status500InternalServerError, objectResult.StatusCode);
+        Assert.Equal("An error occurred while checking section dependencies", objectResult.Value);
+    }
+
+    [Fact]
+    public async Task HasStudentEnrollmentsInSection_ReturnsOkResult_WithBoolean()
+    {
+        // Arrange
+        const int sectionId = 9;
+        _mockSectionService
+            .Setup(service => service.HasStudentEnrollmentsInSectionAsync(sectionId))
+            .ReturnsAsync(false);
+
+        // Act
+        var result = await _controller.HasStudentEnrollmentsInSection(sectionId);
+
+        // Assert
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        Assert.False(Assert.IsType<bool>(okResult.Value));
+        _mockSectionService.Verify(service => service.HasStudentEnrollmentsInSectionAsync(sectionId), Times.Once);
+    }
+
+    [Fact]
+    public async Task HasStudentEnrollmentsInSection_ReturnsBadRequest_ForInvalidId()
+    {
+        // Act
+        var result = await _controller.HasStudentEnrollmentsInSection(0);
+
+        // Assert
+        var badRequestResult = Assert.IsType<BadRequestObjectResult>(result.Result);
+        Assert.Equal("Section ID must be greater than 0.", badRequestResult.Value);
+        _mockSectionService.Verify(service => service.HasStudentEnrollmentsInSectionAsync(It.IsAny<int>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task HasStudentEnrollmentsInSection_ReturnsServerError_WhenServiceThrowsException()
+    {
+        // Arrange
+        const int sectionId = 13;
+        _mockSectionService
+            .Setup(service => service.HasStudentEnrollmentsInSectionAsync(sectionId))
+            .ThrowsAsync(new EntityServiceException("Section", $"HasStudentEnrollmentsInSection: {sectionId}", "Dependency check failed"));
+
+        // Act
+        var result = await _controller.HasStudentEnrollmentsInSection(sectionId);
+
+        // Assert
+        var objectResult = Assert.IsType<ObjectResult>(result.Result);
+        Assert.Equal(StatusCodes.Status500InternalServerError, objectResult.StatusCode);
+        Assert.Equal("An error occurred while checking section dependencies", objectResult.Value);
     }
 
     [Fact]

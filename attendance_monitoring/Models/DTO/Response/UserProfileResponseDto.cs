@@ -76,6 +76,7 @@ public class InstructorProfileInfo
     public int Id { get; set; }
     public string? Firstname { get; set; }
     public string? Lastname { get; set; }
+    public string? Department { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
 }

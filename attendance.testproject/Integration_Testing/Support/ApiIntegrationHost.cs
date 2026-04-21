@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Data.Common;
 using System.Diagnostics.Metrics;
 using System.Net;
 using System.Net.Http.Json;
@@ -19,6 +20,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.ApplicationParts;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Data.Sqlite;
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -37,30 +39,37 @@ internal sealed class ApiIntegrationHost : IAsyncDisposable
     private readonly SqliteConnection? _sqliteConnection;
     private readonly Dictionary<string, string> _cookies = new(StringComparer.Ordinal);
     private readonly ReliabilityTelemetryCollector? _telemetryCollector;
+    private readonly Func<ValueTask>? _cleanupAsync;
+    private readonly Mock<IAccountService>? _accountService;
 
     private ApiIntegrationHost(
         WebApplication app,
         HttpClient client,
-        Mock<IAccountService> accountService,
+        Mock<IAccountService>? accountService = null,
         SqliteConnection? sqliteConnection = null,
-        ReliabilityTelemetryCollector? telemetryCollector = null)
+        ReliabilityTelemetryCollector? telemetryCollector = null,
+        Func<ValueTask>? cleanupAsync = null)
     {
         _app = app;
         Client = client;
-        AccountService = accountService;
+        _accountService = accountService;
         _sqliteConnection = sqliteConnection;
         _telemetryCollector = telemetryCollector;
+        _cleanupAsync = cleanupAsync;
     }
 
     public HttpClient Client { get; }
 
-    public Mock<IAccountService> AccountService { get; }
+    public Mock<IAccountService> AccountService => _accountService
+        ?? throw new InvalidOperationException("IAccountService mock is not configured for this host.");
 
     public AttendanceQrScenarioContext? AttendanceQrScenario { get; private set; }
 
     public ReportsScenarioContext? ReportsScenario { get; private set; }
 
     public AccountScenarioContext? AccountScenario { get; private set; }
+
+    public AdminUserManagementScenarioContext? AdminUserManagementScenario { get; private set; }
 
     public IServiceProvider Services => _app.Services;
 
@@ -113,6 +122,94 @@ internal sealed class ApiIntegrationHost : IAsyncDisposable
         client.BaseAddress = new Uri("https://localhost");
 
         return new ApiIntegrationHost(app, client, accountService);
+    }
+
+    public static async Task<ApiIntegrationHost> CreateAdminUserManagementAsync(
+        CancellationToken cancellationToken = default)
+    {
+        var baseConnectionString = GetRequiredEnvironmentVariable("ATTENDANCE_TEST_SQLSERVER_CONNECTION");
+        var isolatedConnectionString = CreateIsolatedSqlServerConnectionString(baseConnectionString);
+
+        var builder = WebApplication.CreateBuilder(new WebApplicationOptions
+        {
+            EnvironmentName = Environments.Production
+        });
+
+        builder.WebHost.UseTestServer();
+        builder.Services.AddLogging();
+        builder.Services.AddRouting();
+        builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["ConnectionStrings:DefaultConnection"] = isolatedConnectionString,
+            ["CookieSettings:AccessTokenExpirationMinutes"] = "15",
+            ["CookieSettings:RefreshTokenExpirationDays"] = "7",
+            ["CorsSettings:AllowedOrigins"] = "https://localhost",
+            ["Jwt:Token"] = "test-secret-key-for-integration-testing-minimum-32-characters",
+            ["Jwt:Issuer"] = "test-issuer",
+            ["Jwt:Audience"] = "test-audience",
+            ["TimeZoneSettings:TimeZoneId"] = TimeZoneInfo.Local.Id
+        });
+
+        builder.Services.AddDbContext<ApplicationDbContext>(options =>
+            options.UseSqlServer(isolatedConnectionString, sqlOptions =>
+                sqlOptions.EnableRetryOnFailure(
+                    maxRetryCount: 5,
+                    maxRetryDelay: TimeSpan.FromSeconds(5),
+                    errorNumbersToAdd: null)));
+        builder.Services.AddIdentity<IdentityUser, IdentityRole>(options =>
+        {
+            options.Password.RequireDigit = true;
+            options.Password.RequiredLength = 8;
+            options.Password.RequireNonAlphanumeric = true;
+            options.Password.RequireUppercase = true;
+            options.Password.RequireLowercase = true;
+        })
+            .AddEntityFrameworkStores<ApplicationDbContext>()
+            .AddDefaultTokenProviders();
+        builder.Services
+            .AddAuthentication(options =>
+            {
+                options.DefaultAuthenticateScheme = AuthenticationScheme;
+                options.DefaultChallengeScheme = AuthenticationScheme;
+                options.DefaultScheme = AuthenticationScheme;
+            })
+            .AddScheme<AuthenticationSchemeOptions, TestAuthenticationHandler>(AuthenticationScheme, _ => { });
+        builder.Services.ConfigureApplicationCookie(options =>
+        {
+            options.LoginPath = PathString.Empty;
+            options.AccessDeniedPath = PathString.Empty;
+        });
+        builder.Services.AddAuthorizationPolicies();
+        builder.Services.AddRepositories();
+        builder.Services.AddApplicationServices();
+        builder.Services.AddControllers()
+            .ConfigureApplicationPartManager(manager =>
+            {
+                manager.ApplicationParts.Clear();
+                manager.ApplicationParts.Add(new AssemblyPart(typeof(UserController).Assembly));
+                manager.ApplicationParts.Add(new AssemblyPart(typeof(AccountController).Assembly));
+            });
+
+        var app = builder.Build();
+        await ResetSqlServerDatabaseAsync(app.Services, cancellationToken);
+
+        app.UseRouting();
+        app.UseAuthentication();
+        app.UseAuthorization();
+        app.UseGlobalExceptionHandler();
+        app.MapControllers();
+
+        await app.StartAsync(cancellationToken);
+
+        var client = app.GetTestClient();
+        client.BaseAddress = new Uri("https://localhost");
+
+        var host = new ApiIntegrationHost(
+            app,
+            client,
+            cleanupAsync: () => CleanupSqlServerDatabaseAsync(isolatedConnectionString));
+        await host.LoadAdminUserManagementScenarioAsync(cancellationToken);
+        return host;
     }
 
     public static async Task<ApiIntegrationHost> CreateAttendanceQrAsync(
@@ -444,6 +541,22 @@ internal sealed class ApiIntegrationHost : IAsyncDisposable
         return AccountScenario;
     }
 
+    public async Task<AdminUserManagementScenarioContext> LoadAdminUserManagementScenarioAsync(
+        CancellationToken cancellationToken = default)
+    {
+        await using var scope = _app.Services.CreateAsyncScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        var userManager = scope.ServiceProvider.GetRequiredService<UserManager<IdentityUser>>();
+        var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
+
+        AdminUserManagementScenario = await AdminUserManagementSeedData.SeedScenarioAsync(
+            dbContext,
+            userManager,
+            roleManager,
+            cancellationToken);
+        return AdminUserManagementScenario;
+    }
+
     public async Task<TResult> ExecuteDbContextAsync<TResult>(
         Func<ApplicationDbContext, CancellationToken, Task<TResult>> action,
         CancellationToken cancellationToken = default)
@@ -462,6 +575,10 @@ internal sealed class ApiIntegrationHost : IAsyncDisposable
         if (_sqliteConnection is not null)
         {
             await _sqliteConnection.DisposeAsync();
+        }
+        if (_cleanupAsync is not null)
+        {
+            await _cleanupAsync();
         }
     }
 
@@ -503,6 +620,51 @@ internal sealed class ApiIntegrationHost : IAsyncDisposable
         }
 
         ApplyCookieHeader();
+    }
+
+    private static string GetRequiredEnvironmentVariable(string name)
+    {
+        var value = Environment.GetEnvironmentVariable(name);
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            throw new InvalidOperationException($"Environment variable {name} is required.");
+        }
+
+        return value;
+    }
+
+    private static string CreateIsolatedSqlServerConnectionString(string baseConnectionString)
+    {
+        var builder = new SqlConnectionStringBuilder(baseConnectionString);
+        var originalDatabase = !string.IsNullOrWhiteSpace(builder.InitialCatalog)
+            ? builder.InitialCatalog
+            : builder["Database"]?.ToString();
+
+        if (string.IsNullOrWhiteSpace(originalDatabase))
+        {
+            throw new InvalidOperationException("ATTENDANCE_TEST_SQLSERVER_CONNECTION must include Initial Catalog or Database.");
+        }
+
+        builder.InitialCatalog = $"{originalDatabase}_it_{Guid.NewGuid():N}";
+        return builder.ConnectionString;
+    }
+
+    private static async Task ResetSqlServerDatabaseAsync(IServiceProvider services, CancellationToken cancellationToken)
+    {
+        await using var scope = services.CreateAsyncScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        await dbContext.Database.EnsureDeletedAsync(cancellationToken);
+        await dbContext.Database.MigrateAsync(cancellationToken);
+    }
+
+    private static async ValueTask CleanupSqlServerDatabaseAsync(string connectionString)
+    {
+        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
+            .UseSqlServer(connectionString)
+            .Options;
+
+        await using var dbContext = new ApplicationDbContext(options);
+        await dbContext.Database.EnsureDeletedAsync();
     }
 
     private sealed class TestAuthenticationHandler(
