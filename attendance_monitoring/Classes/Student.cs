@@ -14,6 +14,8 @@ public class Student
     [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
     public int Id { get; set; }
 
+    public Guid Uuid { get; set; }
+
     [Required]
     [StringLength(100)]
     public string Firstname { get; set; } = string.Empty;
