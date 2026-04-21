@@ -68,14 +68,14 @@ public static class DependencyInjectionExtensions
         services.AddScoped<IInstructorService, InstructorService>();
         services.AddScoped<IRefreshTokenService, RefreshTokenService>();
         services.AddScoped<IAccountService>(sp => new AccountService(
-            sp.GetRequiredService<RegistrationService>(),
-            sp.GetRequiredService<AuthenticationService>(),
-            sp.GetRequiredService<ProfileService>(),
-            sp.GetRequiredService<AdminService>()));
-        services.AddScoped<RegistrationService>();
-        services.AddScoped<AuthenticationService>();
-        services.AddScoped<ProfileService>();
-        services.AddScoped<AdminService>();
+            sp.GetRequiredService<IRegistrationService>(),
+            sp.GetRequiredService<IAuthenticationService>(),
+            sp.GetRequiredService<IProfileService>(),
+            sp.GetRequiredService<IAdminService>()));
+        services.AddScoped<IRegistrationService, RegistrationService>();
+        services.AddScoped<IAuthenticationService, AuthenticationService>();
+        services.AddScoped<IProfileService, ProfileService>();
+        services.AddScoped<IAdminService, AdminService>();
         services.AddScoped<IUserFactory, attendance_monitoring.Classes.Factory.UserFactory>();
         services.AddScoped<ISectionService, SectionService>();
         services.AddScoped<ICourseService, CourseService>();
