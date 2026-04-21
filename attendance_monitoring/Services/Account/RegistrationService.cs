@@ -13,7 +13,7 @@ namespace attendance_monitoring.Services.Account;
 /// Focused unit responsible for user registration operations.
 /// Handles validation, role assignment, and user creation.
 /// </summary>
-internal sealed class RegistrationService
+internal sealed class RegistrationService : IRegistrationService
 {
     private readonly IAccountRepository _accountRepository;
     private readonly ISectionRepository _sectionRepository;
