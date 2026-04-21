@@ -61,6 +61,7 @@ public class InstructorRepository(ApplicationDbContext context) : IInstructorRep
     {
         return await context.Instructors
             .AsNoTracking()
+            .Include(i => i.User)
             .FirstOrDefaultAsync(i => i.UserId == userId && !i.IsDeleted)
             .ConfigureAwait(false);
     }

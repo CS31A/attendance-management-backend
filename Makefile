@@ -16,6 +16,7 @@ help: ## Show this help message
 	@echo "Usage:"
 	@echo "  make run                    - Run the application"
 	@echo "  make test                   - Run all tests"
+	@echo "  make test-integration-sqlserver - Run SQL Server-backed integration tests via Podman wrapper"
 	@echo "  make test-architecture-guardrails - Run architecture and policy guardrail suites"
 	@echo "  make test-critical-verification   - Run explicit auth, attendance, QR, and integration verification suites"
 	@echo "  make test-specific          - Run specific test class (StudentControllerTest)"
@@ -32,6 +33,10 @@ run: ## Run the application
 .PHONY: test
 test: ## Run all tests
 	$(DOTNET) test $(SOLUTION)
+
+.PHONY: test-integration-sqlserver
+test-integration-sqlserver: ## Run SQL Server-backed integration tests via Podman wrapper
+	./scripts/run-sqlserver-integration-tests.sh
 
 .PHONY: test-architecture-guardrails
 test-architecture-guardrails: build ## Run architecture and policy guardrail suites

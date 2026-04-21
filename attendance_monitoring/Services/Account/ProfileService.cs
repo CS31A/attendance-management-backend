@@ -114,6 +114,7 @@ internal sealed class ProfileService
                     Id = instructor.Id,
                     Firstname = instructor.Firstname,
                     Lastname = instructor.Lastname,
+                    Department = instructor.Department,
                     CreatedAt = instructor.CreatedAt,
                     UpdatedAt = instructor.UpdatedAt
                 };

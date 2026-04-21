@@ -238,6 +238,7 @@ namespace attendance_monitoring.Services
                     Id = instructor.Id,
                     Firstname = instructor.Firstname,
                     Lastname = instructor.Lastname,
+                    Department = instructor.Department,
                     Email = instructor.User?.Email,
                     CreatedAt = instructor.CreatedAt,
                     UpdatedAt = instructor.UpdatedAt
@@ -375,6 +376,13 @@ namespace attendance_monitoring.Services
                 if (!string.IsNullOrEmpty(updateInstructor.Lastname))
                 {
                     existingInstructor.Lastname = updateInstructor.Lastname;
+                }
+
+                if (updateInstructor.Department != null)
+                {
+                    existingInstructor.Department = string.IsNullOrWhiteSpace(updateInstructor.Department)
+                        ? null
+                        : updateInstructor.Department.Trim();
                 }
 
                 existingInstructor.UpdatedAt = DateTime.UtcNow;
