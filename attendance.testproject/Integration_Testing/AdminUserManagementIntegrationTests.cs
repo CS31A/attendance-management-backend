@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Text.Json;
 using attendance.testproject.Integration_Testing.Support;
 using attendance_monitoring.Classes;
 using attendance_monitoring.Data;
@@ -97,13 +98,37 @@ public sealed class AdminUserManagementIntegrationTests
         await using var host = await ApiIntegrationHost.CreateAdminUserManagementAsync();
         var scenario = AuthenticateAsAdmin(host);
 
-        var users = await GetUsersAsync(host, "/api/users?status=2");
+        var response = await host.Client.GetAsync("/api/users?status=2");
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var payloadJson = await response.Content.ReadAsStringAsync();
+        var users = JsonSerializer.Deserialize<List<GetAllUsersDto>>(payloadJson, new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        Assert.NotNull(users);
 
         Assert.Contains(users, user => user.UserId == scenario.ActiveStudentUserId);
         Assert.Contains(users, user => user.UserId == scenario.ArchivedStudentUserId);
         Assert.Contains(users, user => user.UserId == scenario.ActiveInstructorUserId);
         Assert.Contains(users, user => user.UserId == scenario.ConflictStudentUserId);
         Assert.Contains(users, user => user.UserId == scenario.AdminUserId);
+
+        var activeStudent = Assert.Single(users, user => user.UserId == scenario.ActiveStudentUserId);
+        var activeInstructor = Assert.Single(users, user => user.UserId == scenario.ActiveInstructorUserId);
+        var admin = Assert.Single(users, user => user.UserId == scenario.AdminUserId);
+
+        Assert.NotNull(activeStudent.StudentProfile);
+        Assert.True(activeStudent.StudentProfile!.Id > 0);
+        Assert.NotNull(activeInstructor.InstructorProfile);
+        Assert.True(activeInstructor.InstructorProfile!.Id > 0);
+        Assert.NotNull(admin.AdminProfile);
+        Assert.True(admin.AdminProfile!.Id > 0);
+
+        using var document = JsonDocument.Parse(payloadJson);
+        foreach (var userElement in document.RootElement.EnumerateArray())
+        {
+            AssertNestedProfileDoesNotExposeUuid(userElement, "studentProfile");
+            AssertNestedProfileDoesNotExposeUuid(userElement, "instructorProfile");
+            AssertNestedProfileDoesNotExposeUuid(userElement, "adminProfile");
+        }
     }
 
     [RequiresEnvironmentVariableFact("ATTENDANCE_TEST_SQLSERVER_CONNECTION")]
@@ -413,5 +438,15 @@ public sealed class AdminUserManagementIntegrationTests
         var payload = await response.Content.ReadFromJsonAsync<List<GetAllUsersDto>>();
         Assert.NotNull(payload);
         return payload;
+    }
+
+    private static void AssertNestedProfileDoesNotExposeUuid(JsonElement userElement, string propertyName)
+    {
+        if (!userElement.TryGetProperty(propertyName, out var profileElement) || profileElement.ValueKind == JsonValueKind.Null)
+        {
+            return;
+        }
+
+        Assert.False(profileElement.TryGetProperty("uuid", out _), $"{propertyName} unexpectedly exposed a uuid field during Phase 3.");
     }
 }
