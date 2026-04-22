@@ -210,13 +210,13 @@ namespace attendance_monitoring.Services
         /// </summary>
         private static string ResolveConflictType(DbUpdateException ex)
         {
-            var message = ex.InnerException?.Message?.ToLowerInvariant() ?? string.Empty;
+            var message = ex.InnerException?.Message ?? ex.Message;
 
-            if (message.Contains("schedule"))
+            if (message.Contains("schedule", StringComparison.OrdinalIgnoreCase))
                 return "schedules";
-            if (message.Contains("enrollment"))
+            if (message.Contains("enrollment", StringComparison.OrdinalIgnoreCase))
                 return "enrollments";
-            if (message.Contains("student"))
+            if (message.Contains("student", StringComparison.OrdinalIgnoreCase))
                 return "students";
 
             return "dependencies";
@@ -227,13 +227,13 @@ namespace attendance_monitoring.Services
         /// </summary>
         private static string ResolveConflictMessage(DbUpdateException ex)
         {
-            var message = ex.InnerException?.Message?.ToLowerInvariant() ?? string.Empty;
+            var message = ex.InnerException?.Message ?? ex.Message;
 
-            if (message.Contains("schedule"))
+            if (message.Contains("schedule", StringComparison.OrdinalIgnoreCase))
                 return "Cannot delete: Section has schedules assigned. Remove schedules first.";
-            if (message.Contains("enrollment"))
+            if (message.Contains("enrollment", StringComparison.OrdinalIgnoreCase))
                 return "Cannot delete: Section has student enrollments. Remove enrollments first.";
-            if (message.Contains("student"))
+            if (message.Contains("student", StringComparison.OrdinalIgnoreCase))
                 return "Cannot delete: Section has assigned students. Reassign students first.";
 
             return "Cannot delete: Section has dependencies that prevent deletion.";
