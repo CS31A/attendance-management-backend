@@ -62,6 +62,40 @@ public class SessionRepositoryTest : IDisposable
     }
 
     [Fact]
+    public async Task GetSectionSessionReportRowsAsync_PreservesSliceABridgeWhenUuidColumnsExist()
+    {
+        // Arrange
+        await SeedReportDataAsync();
+
+        var schedule = await _context.Schedules
+            .AsNoTracking()
+            .Include(row => row.Subject)
+            .Include(row => row.Classroom)
+            .Include(row => row.Section)
+                .ThenInclude(section => section.Course)
+            .SingleAsync();
+
+        // Act
+        var row = Assert.Single(await _repository.GetSectionSessionReportRowsAsync(
+            schedule.SectionId,
+            new DateTime(2026, 4, 10),
+            new DateTime(2026, 4, 30)));
+
+        // Assert
+        Assert.True(schedule.SubjectId > 0);
+        Assert.True(schedule.SectionId > 0);
+        Assert.True(schedule.ClassroomId > 0);
+        Assert.NotEqual(Guid.Empty, schedule.Uuid);
+        Assert.NotEqual(Guid.Empty, schedule.Subject.Uuid);
+        Assert.NotEqual(Guid.Empty, schedule.Section.Uuid);
+        Assert.NotEqual(Guid.Empty, schedule.Classroom.Uuid);
+        Assert.NotEqual(Guid.Empty, schedule.Section.Course.Uuid);
+        Assert.Equal(schedule.Subject.Name, row.SubjectName);
+        Assert.Equal(schedule.Section.Name, row.SectionName);
+        Assert.Equal(schedule.DayOfWeek, row.DayOfWeek);
+    }
+
+    [Fact]
     public async Task UpdateSessionAsync_ThrowsValidationException_WhenRowVersionMissing()
     {
         // Arrange
