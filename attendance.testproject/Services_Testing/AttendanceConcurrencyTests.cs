@@ -368,7 +368,7 @@ public class AttendanceConcurrencyTests
         return new AttendanceRecord
         {
             Id = 321,
-            Uuid = Guid.Empty,
+            Uuid = Guid.NewGuid(),
             StudentId = studentId,
             SessionId = sessionId,
             CheckInTime = DateTime.UtcNow.AddMinutes(-10),
@@ -385,7 +385,7 @@ public class AttendanceConcurrencyTests
             Session = new Session
             {
                 Id = sessionId,
-                Uuid = Guid.Empty,
+                Uuid = Guid.NewGuid(),
                 SessionDate = DateTime.UtcNow.Date,
                 ScheduleId = 77,
                 ActualRoom = new Classroom
