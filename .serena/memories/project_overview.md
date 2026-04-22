@@ -1,0 +1,1 @@
+Attendance Monitoring System backend for educational institutions. ASP.NET Core 10 Web API with EF Core SQL Server, ASP.NET Core Identity, JWT/cookie auth, Swagger/Scalar docs, and xUnit/Moq tests. Main code is in `attendance_monitoring/`; tests in `attendance.testproject/`; docs in `docs/`.

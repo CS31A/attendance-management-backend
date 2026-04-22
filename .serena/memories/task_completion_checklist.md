@@ -1,0 +1,1 @@
+After changes, usually run `dotnet build attendance.sln` and relevant tests with `dotnet test attendance.sln` or targeted test project. For DB changes, ensure EF migrations/stored-procedure migrations are in sync and consider `dotnet ef database update` locally. Keep docs and API behavior aligned with controller/service layering.

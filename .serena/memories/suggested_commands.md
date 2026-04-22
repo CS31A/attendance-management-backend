@@ -1,0 +1,1 @@
+Common commands: `dotnet restore attendance.sln`, `dotnet build attendance.sln`, `dotnet test attendance.sln`, `dotnet test attendance.testproject/`, `dotnet run --project attendance_monitoring/attendance_monitoring.csproj`, `dotnet ef database update` (from repo root after restoring tools/packages), `make run`, `make build`, `make test`, `make check`, `git status`, `ls`.

@@ -1,0 +1,1 @@
+C#/.NET 10 project with nullable enabled and implicit usings. Uses primary constructors heavily for DI, XML docs on many public APIs, repository/service/controller layering, and role constants/policies for auth. Identity is configured via `AddIdentity<IdentityUser, IdentityRole>().AddEntityFrameworkStores<ApplicationDbContext>()`.
