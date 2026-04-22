@@ -73,6 +73,18 @@ SELECT 'Admins' AS [TableName],
 SQL
 
 anomaly_detected=0
+rows_seen=0
+
+if ! query_output="$(sqlcmd "${sqlcmd_args[@]}" -Q "$anomaly_query" | tr -d '\r')"; then
+  echo "Failed to query UUID anomaly state from SQL Server." >&2
+  exit 1
+fi
+
+if [[ -z "${query_output//[$'\t\r\n ']}" ]]; then
+  echo "UUID anomaly query returned no rows." >&2
+  exit 1
+fi
+
 while IFS='|' read -r table_name null_count duplicate_count zero_guid_count; do
   [[ -z "${table_name// }" ]] && continue
 
@@ -81,12 +93,24 @@ while IFS='|' read -r table_name null_count duplicate_count zero_guid_count; do
   duplicate_count="${duplicate_count//[$'\t\r\n ']/}"
   zero_guid_count="${zero_guid_count//[$'\t\r\n ']/}"
 
+  if [[ ! "$null_count" =~ ^[0-9]+$ || ! "$duplicate_count" =~ ^[0-9]+$ || ! "$zero_guid_count" =~ ^[0-9]+$ ]]; then
+    echo "UUID anomaly query returned unexpected output for table '$table_name'." >&2
+    exit 1
+  fi
+
+  rows_seen=$((rows_seen + 1))
+
   printf '%s: null=%s duplicate=%s zero=%s\n' "$table_name" "$null_count" "$duplicate_count" "$zero_guid_count"
 
   if (( null_count > 0 || duplicate_count > 0 || zero_guid_count > 0 )); then
     anomaly_detected=1
   fi
-done < <(sqlcmd "${sqlcmd_args[@]}" -Q "$anomaly_query" | tr -d '\r')
+done <<< "$query_output"
+
+if (( rows_seen != 3 )); then
+  echo "UUID anomaly query returned $rows_seen row(s); expected 3." >&2
+  exit 1
+fi
 
 if (( anomaly_detected > 0 )); then
   echo "UUID anomaly gate failed. Fix the reported rows before rollout." >&2
