@@ -185,6 +185,41 @@ public class QrCodeControllerTest
     }
 
     [Fact]
+    public async Task GenerateQrCode_WithSliceBUuidSchemaPresent_KeepsLegacyResponseShape()
+    {
+        // Arrange
+        var request = new QrCodeRequest
+        {
+            SessionId = 8,
+            ExpirationMinutes = 20,
+            UniqueHash = "slice-b-uuid-shape"
+        };
+
+        _mockQrCodeService.Setup(s => s.GenerateQrCodeAsync(It.IsAny<QrCodeRequest>(), It.IsAny<System.Security.Claims.ClaimsPrincipal>()))
+            .ReturnsAsync(new attendance_monitoring.Models.DTO.Response.QrCodeGenerationResponseDto
+            {
+                Success = true,
+                QrHash = "slice-b-hash",
+                QrCodeId = 8,
+                ExpiresAt = DateTime.UtcNow.AddMinutes(20)
+            });
+
+        // Act
+        var result = await _qrCodeController.GenerateQrCode(request);
+
+        // Assert
+        var okResult = Assert.IsType<OkObjectResult>(result);
+        var response = Assert.IsType<attendance_monitoring.Models.DTO.Response.QrCodeGenerationResponseDto>(
+            _mockQrCodeService.Invocations.Single().ReturnValue);
+        Assert.NotEqual(Guid.Empty, new attendance_monitoring.Classes.QrCode { Uuid = Guid.NewGuid() }.Uuid);
+        Assert.NotEqual(Guid.Empty, new attendance_monitoring.Classes.Session { Uuid = Guid.NewGuid() }.Uuid);
+        Assert.Null(okResult.Value!.GetType().GetProperty("uuid"));
+        Assert.Null(okResult.Value.GetType().GetProperty("qrCodeUuid"));
+        Assert.Null(okResult.Value.GetType().GetProperty("sessionUuid"));
+        Assert.Equal(response.QrCodeId, okResult.Value.GetType().GetProperty("qrCodeId")?.GetValue(okResult.Value));
+    }
+
+    [Fact]
     public async Task GenerateQrCode_LogsCorrectInformation()
     {
         // Arrange
