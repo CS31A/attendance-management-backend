@@ -292,6 +292,7 @@ public class FingerprintServiceTest
             {
                 createdFingerprint = fingerprint;
                 fingerprint.Id = 99;
+                fingerprint.Uuid = Guid.NewGuid();
                 return fingerprint;
             });
 

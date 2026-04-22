@@ -84,6 +84,7 @@ public sealed class FingerprintServiceConcurrencyIntegrationTest : IDisposable
         var matchedFingerprint = new Fingerprint
         {
             Id = 50,
+            Uuid = Guid.NewGuid(),
             UserId = seed.Student.UserId,
             DeviceId = seed.Device.DeviceIdentifier,
             SensorFingerprintId = 5,
