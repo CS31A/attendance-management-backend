@@ -73,10 +73,70 @@ namespace attendance_monitoring.Data
                 .HasColumnType("uniqueidentifier")
                 .ValueGeneratedOnAdd();
 
+            var courseUuid = builder.Entity<Course>()
+                .Property(c => c.Uuid)
+                .HasColumnType("uniqueidentifier")
+                .ValueGeneratedOnAdd();
+
+            var subjectUuid = builder.Entity<Subject>()
+                .Property(s => s.Uuid)
+                .HasColumnType("uniqueidentifier")
+                .ValueGeneratedOnAdd();
+
+            var sectionUuid = builder.Entity<Section>()
+                .Property(s => s.Uuid)
+                .HasColumnType("uniqueidentifier")
+                .ValueGeneratedOnAdd();
+
+            var classroomUuid = builder.Entity<Classroom>()
+                .Property(c => c.Uuid)
+                .HasColumnType("uniqueidentifier")
+                .ValueGeneratedOnAdd();
+
+            var scheduleUuid = builder.Entity<Schedules>()
+                .Property(s => s.Uuid)
+                .HasColumnType("uniqueidentifier")
+                .ValueGeneratedOnAdd();
+
+            var studentEnrollmentUuid = builder.Entity<StudentEnrollment>()
+                .Property(se => se.Uuid)
+                .HasColumnType("uniqueidentifier")
+                .ValueGeneratedOnAdd();
+
             builder.Entity<Admin>()
                 .HasIndex(a => a.Uuid)
                 .IsUnique()
                 .HasDatabaseName("IX_Admins_Uuid");
+
+            builder.Entity<Course>()
+                .HasIndex(c => c.Uuid)
+                .IsUnique()
+                .HasDatabaseName("IX_Courses_Uuid");
+
+            builder.Entity<Subject>()
+                .HasIndex(s => s.Uuid)
+                .IsUnique()
+                .HasDatabaseName("IX_Subjects_Uuid");
+
+            builder.Entity<Section>()
+                .HasIndex(s => s.Uuid)
+                .IsUnique()
+                .HasDatabaseName("IX_Sections_Uuid");
+
+            builder.Entity<Classroom>()
+                .HasIndex(c => c.Uuid)
+                .IsUnique()
+                .HasDatabaseName("IX_Classrooms_Uuid");
+
+            builder.Entity<Schedules>()
+                .HasIndex(s => s.Uuid)
+                .IsUnique()
+                .HasDatabaseName("IX_Schedules_Uuid");
+
+            builder.Entity<StudentEnrollment>()
+                .HasIndex(se => se.Uuid)
+                .IsUnique()
+                .HasDatabaseName("IX_StudentEnrollments_Uuid");
 
             // Configure Schedules relationships
             builder.Entity<Schedules>()
@@ -159,6 +219,12 @@ namespace attendance_monitoring.Data
                 studentUuid.HasDefaultValueSql("NEWSEQUENTIALID()");
                 instructorUuid.HasDefaultValueSql("NEWSEQUENTIALID()");
                 adminUuid.HasDefaultValueSql("NEWSEQUENTIALID()");
+                courseUuid.HasDefaultValueSql("NEWSEQUENTIALID()");
+                subjectUuid.HasDefaultValueSql("NEWSEQUENTIALID()");
+                sectionUuid.HasDefaultValueSql("NEWSEQUENTIALID()");
+                classroomUuid.HasDefaultValueSql("NEWSEQUENTIALID()");
+                scheduleUuid.HasDefaultValueSql("NEWSEQUENTIALID()");
+                studentEnrollmentUuid.HasDefaultValueSql("NEWSEQUENTIALID()");
             }
             else
             {
@@ -166,6 +232,12 @@ namespace attendance_monitoring.Data
                 studentUuid.HasValueGenerator<GuidValueGenerator>();
                 instructorUuid.HasValueGenerator<GuidValueGenerator>();
                 adminUuid.HasValueGenerator<GuidValueGenerator>();
+                courseUuid.HasValueGenerator<GuidValueGenerator>();
+                subjectUuid.HasValueGenerator<GuidValueGenerator>();
+                sectionUuid.HasValueGenerator<GuidValueGenerator>();
+                classroomUuid.HasValueGenerator<GuidValueGenerator>();
+                scheduleUuid.HasValueGenerator<GuidValueGenerator>();
+                studentEnrollmentUuid.HasValueGenerator<GuidValueGenerator>();
             }
 
             if (Database.ProviderName == "Microsoft.EntityFrameworkCore.Sqlite")

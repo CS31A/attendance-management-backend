@@ -29,9 +29,9 @@ public sealed class UuidProfileMigrationIntegrationTests
 
         Assert.Collection(
             tableStates,
-            state => AssertUuidTableState(state, minimumExpectedRows: 3),
-            state => AssertUuidTableState(state, minimumExpectedRows: 1),
-            state => AssertUuidTableState(state, minimumExpectedRows: 1));
+            state => AssertUuidTableState(state, "Students", minimumExpectedRows: 3),
+            state => AssertUuidTableState(state, "Instructors", minimumExpectedRows: 1),
+            state => AssertUuidTableState(state, "Admins", minimumExpectedRows: 1));
     }
 
     [RequiresEnvironmentVariableFact("ATTENDANCE_TEST_SQLSERVER_CONNECTION")]
@@ -191,9 +191,9 @@ public sealed class UuidProfileMigrationIntegrationTests
         Assert.Contains(persisted.EnrollmentId, persisted.AdditionalEnrollmentIds);
     }
 
-    private static void AssertUuidTableState(UuidTableState state, int minimumExpectedRows)
+    private static void AssertUuidTableState(UuidTableState state, string expectedTableName, int minimumExpectedRows)
     {
-        Assert.Equal(state.TableName, state.TableName);
+        Assert.Equal(expectedTableName, state.TableName);
         Assert.True(state.TotalRows >= minimumExpectedRows, $"Expected at least {minimumExpectedRows} rows in {state.TableName} but found {state.TotalRows}.");
         Assert.Equal(0, state.NullUuidRows);
         Assert.Equal(0, state.DuplicateUuidRows);

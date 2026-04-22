@@ -13,6 +13,8 @@ public class Subject
     [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
     public int Id { get; set; }
 
+    public Guid Uuid { get; set; }
+
     [Required]
     [StringLength(100, MinimumLength = 2, ErrorMessage = "Subject name must be greater than or equal to 2 characters")]
     public string Name { get; set; } = string.Empty;

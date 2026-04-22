@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -11,6 +11,11 @@ namespace attendance_monitoring.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
+            if (!IsSqlServer(migrationBuilder))
+            {
+                return;
+            }
+
             migrationBuilder.AddColumn<Guid>(
                 name: "Uuid",
                 table: "Students",
@@ -135,5 +140,8 @@ namespace attendance_monitoring.Migrations
         {
             throw new NotSupportedException("AddWave1ProfileUuidColumns is forward-only. Restore from backup before this migration to roll back.");
         }
+
+        private static bool IsSqlServer(MigrationBuilder migrationBuilder)
+            => migrationBuilder.ActiveProvider == "Microsoft.EntityFrameworkCore.SqlServer";
     }
 }
