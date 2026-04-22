@@ -81,16 +81,18 @@ public sealed class FingerprintServiceConcurrencyIntegrationTest : IDisposable
         mockFingerprintRepository
             .Setup(repository => repository.BeginTransactionAsync())
             .ReturnsAsync(mockTransaction.Object);
+        var matchedFingerprint = new Fingerprint
+        {
+            Id = 50,
+            UserId = seed.Student.UserId,
+            DeviceId = seed.Device.DeviceIdentifier,
+            SensorFingerprintId = 5,
+            TemplateData = "ciphertext"
+        };
+
         mockFingerprintRepository
             .Setup(repository => repository.FindFingerprintByDeviceAndSensorIdAsync(seed.Device.DeviceIdentifier, 5))
-            .ReturnsAsync(new Fingerprint
-            {
-                Id = 50,
-                UserId = seed.Student.UserId,
-                DeviceId = seed.Device.DeviceIdentifier,
-                SensorFingerprintId = 5,
-                TemplateData = "ciphertext"
-            });
+            .ReturnsAsync(matchedFingerprint);
 
         mockStudentRepository
             .Setup(repository => repository.GetStudentByUserIdAsync(seed.Student.UserId))
@@ -169,6 +171,8 @@ public sealed class FingerprintServiceConcurrencyIntegrationTest : IDisposable
         Assert.Equal(persistedAttendance[0].Id, response.AttendanceRecordId);
         Assert.Equal("Duplicate", persistedScanEvents[0].Status);
         Assert.Equal(persistedAttendance[0].Id, persistedScanEvents[0].AttendanceRecordId);
+        Assert.NotEqual(Guid.Empty, matchedFingerprint.Uuid);
+        Assert.NotEqual(Guid.Empty, persistedScanEvents[0].Uuid);
     }
 
     [Fact]
