@@ -818,6 +818,117 @@ public class AccountControllerTest
         Assert.IsType<UnauthorizedObjectResult>(result.Result);
     }
 
+    [Fact]
+    public async Task GetMe_ReturnsStudentProfile_WithNonEmptyUuid()
+    {
+        // Arrange
+        var claims = new List<Claim> { new(ClaimTypes.NameIdentifier, "student123") };
+        var identity = new ClaimsIdentity(claims, "TestAuthType");
+        var claimsPrincipal = new ClaimsPrincipal(identity);
+        _accountController.ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext { User = claimsPrincipal } };
+
+        var expectedUuid = Guid.Parse("a1b2c3d4-e5f6-7890-abcd-ef1234567890");
+        var profileResponse = new UserProfileResponseDto
+        {
+            UserId = "student123",
+            Username = "studentuser",
+            Email = "student@test.com",
+            Role = "Student",
+            StudentProfile = new StudentProfileInfo
+            {
+                Id = 1,
+                Uuid = expectedUuid,
+                Firstname = "Alice",
+                Lastname = "Student"
+            }
+        };
+        _mockAccountService.Setup(s => s.GetUserProfileAsync("student123")).ReturnsAsync(profileResponse);
+
+        // Act
+        var result = await _accountController.GetMe();
+
+        // Assert
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        var responseDto = Assert.IsType<UserProfileResponseDto>(okResult.Value);
+        Assert.NotNull(responseDto.StudentProfile);
+        Assert.NotEqual(Guid.Empty, responseDto.StudentProfile!.Uuid);
+        Assert.Equal(expectedUuid, responseDto.StudentProfile.Uuid);
+    }
+
+    [Fact]
+    public async Task GetMe_ReturnsInstructorProfile_WithNonEmptyUuid()
+    {
+        // Arrange
+        var claims = new List<Claim> { new(ClaimTypes.NameIdentifier, "instructor123") };
+        var identity = new ClaimsIdentity(claims, "TestAuthType");
+        var claimsPrincipal = new ClaimsPrincipal(identity);
+        _accountController.ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext { User = claimsPrincipal } };
+
+        var expectedUuid = Guid.Parse("b2c3d4e5-f6a7-8901-bcde-f12345678901");
+        var profileResponse = new UserProfileResponseDto
+        {
+            UserId = "instructor123",
+            Username = "instructoruser",
+            Email = "instructor@test.com",
+            Role = "Instructor",
+            InstructorProfile = new InstructorProfileInfo
+            {
+                Id = 2,
+                Uuid = expectedUuid,
+                Firstname = "Ian",
+                Lastname = "Instructor"
+            }
+        };
+        _mockAccountService.Setup(s => s.GetUserProfileAsync("instructor123")).ReturnsAsync(profileResponse);
+
+        // Act
+        var result = await _accountController.GetMe();
+
+        // Assert
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        var responseDto = Assert.IsType<UserProfileResponseDto>(okResult.Value);
+        Assert.NotNull(responseDto.InstructorProfile);
+        Assert.NotEqual(Guid.Empty, responseDto.InstructorProfile!.Uuid);
+        Assert.Equal(expectedUuid, responseDto.InstructorProfile.Uuid);
+    }
+
+    [Fact]
+    public async Task GetMe_ReturnsAdminProfile_WithNonEmptyUuid()
+    {
+        // Arrange
+        var claims = new List<Claim> { new(ClaimTypes.NameIdentifier, "admin123") };
+        var identity = new ClaimsIdentity(claims, "TestAuthType");
+        var claimsPrincipal = new ClaimsPrincipal(identity);
+        _accountController.ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext { User = claimsPrincipal } };
+
+        var expectedUuid = Guid.Parse("c3d4e5f6-a7b8-9012-cdef-123456789012");
+        var profileResponse = new UserProfileResponseDto
+        {
+            UserId = "admin123",
+            Username = "adminuser",
+            Email = "admin@test.com",
+            Role = "Admin",
+            AdminProfile = new AdminProfileInfo
+            {
+                Id = 3,
+                Uuid = expectedUuid,
+                Firstname = "Ada",
+                Lastname = "Admin"
+            }
+        };
+        _mockAccountService.Setup(s => s.GetUserProfileAsync("admin123")).ReturnsAsync(profileResponse);
+
+        // Act
+        var result = await _accountController.GetMe();
+
+        // Assert
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        var responseDto = Assert.IsType<UserProfileResponseDto>(okResult.Value);
+        Assert.NotNull(responseDto.AdminProfile);
+        Assert.NotEqual(Guid.Empty, responseDto.AdminProfile!.Uuid);
+        Assert.Equal(expectedUuid, responseDto.AdminProfile.Uuid);
+    }
+
     #endregion
 
     #region UpdateProfile Tests
