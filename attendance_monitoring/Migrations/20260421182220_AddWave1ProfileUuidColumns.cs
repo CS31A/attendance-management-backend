@@ -15,23 +15,26 @@ namespace attendance_monitoring.Migrations
                 name: "Uuid",
                 table: "Students",
                 type: "uniqueidentifier",
-                nullable: true);
+                nullable: true,
+                defaultValueSql: "NEWSEQUENTIALID()");
 
             migrationBuilder.AddColumn<Guid>(
                 name: "Uuid",
                 table: "Instructors",
                 type: "uniqueidentifier",
-                nullable: true);
+                nullable: true,
+                defaultValueSql: "NEWSEQUENTIALID()");
 
             migrationBuilder.AddColumn<Guid>(
                 name: "Uuid",
                 table: "Admins",
                 type: "uniqueidentifier",
-                nullable: true);
+                nullable: true,
+                defaultValueSql: "NEWSEQUENTIALID()");
 
             migrationBuilder.Sql(@"
                 UPDATE [Students]
-                SET [Uuid] = NEWSEQUENTIALID()
+                SET [Uuid] = DEFAULT
                 WHERE [Uuid] IS NULL;
 
                 IF EXISTS (
@@ -56,7 +59,7 @@ namespace attendance_monitoring.Migrations
 
             migrationBuilder.Sql(@"
                 UPDATE [Instructors]
-                SET [Uuid] = NEWSEQUENTIALID()
+                SET [Uuid] = DEFAULT
                 WHERE [Uuid] IS NULL;
 
                 IF EXISTS (
@@ -81,7 +84,7 @@ namespace attendance_monitoring.Migrations
 
             migrationBuilder.Sql(@"
                 UPDATE [Admins]
-                SET [Uuid] = NEWSEQUENTIALID()
+                SET [Uuid] = DEFAULT
                 WHERE [Uuid] IS NULL;
 
                 IF EXISTS (
@@ -104,35 +107,9 @@ namespace attendance_monitoring.Migrations
                 END;
             ");
 
-            migrationBuilder.AlterColumn<Guid>(
-                name: "Uuid",
-                table: "Students",
-                type: "uniqueidentifier",
-                nullable: false,
-                defaultValueSql: "NEWSEQUENTIALID()",
-                oldClrType: typeof(Guid),
-                oldType: "uniqueidentifier",
-                oldNullable: true);
-
-            migrationBuilder.AlterColumn<Guid>(
-                name: "Uuid",
-                table: "Instructors",
-                type: "uniqueidentifier",
-                nullable: false,
-                defaultValueSql: "NEWSEQUENTIALID()",
-                oldClrType: typeof(Guid),
-                oldType: "uniqueidentifier",
-                oldNullable: true);
-
-            migrationBuilder.AlterColumn<Guid>(
-                name: "Uuid",
-                table: "Admins",
-                type: "uniqueidentifier",
-                nullable: false,
-                defaultValueSql: "NEWSEQUENTIALID()",
-                oldClrType: typeof(Guid),
-                oldType: "uniqueidentifier",
-                oldNullable: true);
+            migrationBuilder.Sql("ALTER TABLE [Students] ALTER COLUMN [Uuid] uniqueidentifier NOT NULL;");
+            migrationBuilder.Sql("ALTER TABLE [Instructors] ALTER COLUMN [Uuid] uniqueidentifier NOT NULL;");
+            migrationBuilder.Sql("ALTER TABLE [Admins] ALTER COLUMN [Uuid] uniqueidentifier NOT NULL;");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Students_Uuid",
