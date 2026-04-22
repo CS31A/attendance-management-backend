@@ -209,14 +209,12 @@ public class QrCodeControllerTest
 
         // Assert
         var okResult = Assert.IsType<OkObjectResult>(result);
-        var response = Assert.IsType<attendance_monitoring.Models.DTO.Response.QrCodeGenerationResponseDto>(
-            _mockQrCodeService.Invocations.Single().ReturnValue);
         Assert.NotEqual(Guid.Empty, new attendance_monitoring.Classes.QrCode { Uuid = Guid.NewGuid() }.Uuid);
         Assert.NotEqual(Guid.Empty, new attendance_monitoring.Classes.Session { Uuid = Guid.NewGuid() }.Uuid);
         Assert.Null(okResult.Value!.GetType().GetProperty("uuid"));
         Assert.Null(okResult.Value.GetType().GetProperty("qrCodeUuid"));
         Assert.Null(okResult.Value.GetType().GetProperty("sessionUuid"));
-        Assert.Equal(response.QrCodeId, okResult.Value.GetType().GetProperty("qrCodeId")?.GetValue(okResult.Value));
+        Assert.Equal(8, okResult.Value.GetType().GetProperty("qrCodeId")?.GetValue(okResult.Value));
     }
 
     [Fact]
