@@ -192,7 +192,7 @@ public sealed class UuidProfileMigrationIntegrationTests
     }
 
     [RequiresEnvironmentVariableFact("ATTENDANCE_TEST_SQLSERVER_CONNECTION")]
-    public async Task ExpandedPhase8UuidTables_HaveMigrationCoverage_ForSliceAAndSliceB()
+    public async Task ExpandedPhase8UuidTables_HaveMigrationCoverage_ForSliceAAndSliceBAndFingerprintSupport()
     {
         await using var host = await ApiIntegrationHost.CreateAdminUserManagementAsync();
 
@@ -325,7 +325,11 @@ public sealed class UuidProfileMigrationIntegrationTests
                     await ReadUuidTableStateAsync(dbContext, "StudentEnrollments", cancellationToken),
                     await ReadUuidTableStateAsync(dbContext, "Sessions", cancellationToken),
                     await ReadUuidTableStateAsync(dbContext, "AttendanceRecords", cancellationToken),
-                    await ReadUuidTableStateAsync(dbContext, "QrCodes", cancellationToken)
+                    await ReadUuidTableStateAsync(dbContext, "QrCodes", cancellationToken),
+                    await ReadUuidTableStateAsync(dbContext, "Fingerprints", cancellationToken),
+                    await ReadUuidTableStateAsync(dbContext, "FingerprintDevices", cancellationToken),
+                    await ReadUuidTableStateAsync(dbContext, "FingerprintEnrollmentSessions", cancellationToken),
+                    await ReadUuidTableStateAsync(dbContext, "FingerprintScanEvents", cancellationToken)
                 },
                 persistedEnrollment,
                 persistedSession,
@@ -340,7 +344,11 @@ public sealed class UuidProfileMigrationIntegrationTests
             state => AssertUuidTableState(state, "StudentEnrollments", minimumExpectedRows: 1),
             state => AssertUuidTableState(state, "Sessions", minimumExpectedRows: 1),
             state => AssertUuidTableState(state, "AttendanceRecords", minimumExpectedRows: 1),
-            state => AssertUuidTableState(state, "QrCodes", minimumExpectedRows: 1));
+            state => AssertUuidTableState(state, "QrCodes", minimumExpectedRows: 1),
+            state => AssertUuidTableState(state, "Fingerprints", minimumExpectedRows: 1),
+            state => AssertUuidTableState(state, "FingerprintDevices", minimumExpectedRows: 1),
+            state => AssertUuidTableState(state, "FingerprintEnrollmentSessions", minimumExpectedRows: 1),
+            state => AssertUuidTableState(state, "FingerprintScanEvents", minimumExpectedRows: 1));
 
         Assert.NotEqual(Guid.Empty, persisted.Enrollment.Uuid);
         Assert.Equal(persisted.Enrollment.StudentId, persisted.Attendance.StudentId);
