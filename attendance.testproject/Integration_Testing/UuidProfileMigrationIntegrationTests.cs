@@ -296,6 +296,67 @@ public sealed class UuidProfileMigrationIntegrationTests
             dbContext.AttendanceRecords.Add(attendanceRecord);
             await dbContext.SaveChangesAsync(cancellationToken);
 
+            var device = new FingerprintDevice
+            {
+                DeviceIdentifier = $"device-{suffix}",
+                Name = $"UUID Device {suffix}",
+                Location = "Integration Lab",
+                IsActive = true,
+                LastSeenAt = now,
+                CreatedAt = now,
+                UpdatedAt = now
+            };
+
+            dbContext.FingerprintDevices.Add(device);
+            await dbContext.SaveChangesAsync(cancellationToken);
+
+            var fingerprint = new Fingerprint
+            {
+                UserId = student.UserId,
+                TemplateData = $"template-{suffix}",
+                DeviceId = device.DeviceIdentifier,
+                SensorFingerprintId = 7,
+                CreatedAt = now,
+                UpdatedAt = now,
+                IsDeleted = false
+            };
+
+            var enrollmentSession = new FingerprintEnrollmentSession
+            {
+                DeviceId = device.Id,
+                StudentId = student.Id,
+                RequestedByUserId = scenario.ActiveInstructorUserId,
+                AssignedSensorFingerprintId = fingerprint.SensorFingerprintId,
+                Status = "Completed",
+                ExpiresAt = now.AddMinutes(10),
+                StartedAt = now,
+                CompletedAt = now.AddMinutes(1),
+                CreatedAt = now,
+                UpdatedAt = now
+            };
+
+            dbContext.Fingerprints.Add(fingerprint);
+            dbContext.FingerprintEnrollmentSessions.Add(enrollmentSession);
+            await dbContext.SaveChangesAsync(cancellationToken);
+
+            var scanEvent = new FingerprintScanEvent
+            {
+                DeviceId = device.Id,
+                MatchedStudentId = student.Id,
+                SessionId = session.Id,
+                AttendanceRecordId = attendanceRecord.Id,
+                MatchScore = 0.9750m,
+                ThresholdUsed = 0.8000m,
+                Status = "Matched",
+                PayloadHash = $"payload-{suffix}",
+                CapturedAt = now.AddMinutes(2),
+                ReceivedAt = now.AddMinutes(2),
+                CreatedAt = now.AddMinutes(2)
+            };
+
+            dbContext.FingerprintScanEvents.Add(scanEvent);
+            await dbContext.SaveChangesAsync(cancellationToken);
+
             var persistedEnrollment = await dbContext.StudentEnrollments
                 .AsNoTracking()
                 .Include(row => row.Student)
@@ -316,6 +377,24 @@ public sealed class UuidProfileMigrationIntegrationTests
                 .Include(row => row.Session)
                 .Include(row => row.QrCode)
                 .SingleAsync(row => row.Id == attendanceRecord.Id, cancellationToken);
+            var persistedFingerprint = await dbContext.Fingerprints
+                .AsNoTracking()
+                .SingleAsync(row => row.Id == fingerprint.Id, cancellationToken);
+            var persistedDevice = await dbContext.FingerprintDevices
+                .AsNoTracking()
+                .SingleAsync(row => row.Id == device.Id, cancellationToken);
+            var persistedEnrollmentSession = await dbContext.FingerprintEnrollmentSessions
+                .AsNoTracking()
+                .Include(row => row.Device)
+                .Include(row => row.Student)
+                .SingleAsync(row => row.Id == enrollmentSession.Id, cancellationToken);
+            var persistedScanEvent = await dbContext.FingerprintScanEvents
+                .AsNoTracking()
+                .Include(row => row.Device)
+                .Include(row => row.MatchedStudent)
+                .Include(row => row.Session)
+                .Include(row => row.AttendanceRecord)
+                .SingleAsync(row => row.Id == scanEvent.Id, cancellationToken);
 
             return new ExpandedPhase8UuidPersistence(
                 new[]
@@ -334,7 +413,11 @@ public sealed class UuidProfileMigrationIntegrationTests
                 persistedEnrollment,
                 persistedSession,
                 persistedQrCode,
-                persistedAttendance);
+                persistedAttendance,
+                persistedFingerprint,
+                persistedDevice,
+                persistedEnrollmentSession,
+                persistedScanEvent);
         });
 
         Assert.Collection(
@@ -371,6 +454,31 @@ public sealed class UuidProfileMigrationIntegrationTests
         Assert.Equal(persisted.Session.Uuid, persisted.Attendance.Session.Uuid);
         Assert.Equal(persisted.QrCode.Id, persisted.Attendance.QrCodeId);
         Assert.Equal(persisted.QrCode.Uuid, persisted.Attendance.QrCode!.Uuid);
+
+        Assert.NotEqual(Guid.Empty, persisted.Fingerprint.Uuid);
+        Assert.Equal(persisted.FingerprintDevice.DeviceIdentifier, persisted.Fingerprint.DeviceId);
+        Assert.True(persisted.Fingerprint.SensorFingerprintId > 0);
+
+        Assert.NotEqual(Guid.Empty, persisted.FingerprintDevice.Uuid);
+        Assert.Equal(persisted.FingerprintScanEvent.DeviceId, persisted.FingerprintDevice.Id);
+        Assert.Equal(persisted.FingerprintEnrollmentSession.DeviceId, persisted.FingerprintDevice.Id);
+
+        Assert.NotEqual(Guid.Empty, persisted.FingerprintEnrollmentSession.Uuid);
+        Assert.NotEqual(persisted.FingerprintEnrollmentSession.Uuid, persisted.FingerprintEnrollmentSession.EnrollmentSessionId);
+        Assert.NotEqual(Guid.Empty, persisted.FingerprintEnrollmentSession.EnrollmentSessionId);
+        Assert.Equal(persisted.FingerprintEnrollmentSession.DeviceId, persisted.FingerprintEnrollmentSession.Device.Id);
+        Assert.Equal(persisted.FingerprintEnrollmentSession.StudentId, persisted.FingerprintEnrollmentSession.Student.Id);
+        Assert.Equal(persisted.Enrollment.StudentId, persisted.FingerprintEnrollmentSession.StudentId);
+
+        Assert.NotEqual(Guid.Empty, persisted.FingerprintScanEvent.Uuid);
+        Assert.NotEqual(persisted.FingerprintScanEvent.Uuid, persisted.FingerprintScanEvent.EventId);
+        Assert.NotEqual(Guid.Empty, persisted.FingerprintScanEvent.EventId);
+        Assert.Equal(persisted.FingerprintDevice.Id, persisted.FingerprintScanEvent.DeviceId);
+        Assert.Equal(persisted.Enrollment.StudentId, persisted.FingerprintScanEvent.MatchedStudentId);
+        Assert.Equal(persisted.Session.Id, persisted.FingerprintScanEvent.SessionId);
+        Assert.Equal(persisted.Attendance.Id, persisted.FingerprintScanEvent.AttendanceRecordId);
+        Assert.Equal(persisted.FingerprintDevice.Uuid, persisted.FingerprintScanEvent.Device.Uuid);
+        Assert.Equal(persisted.Attendance.Uuid, persisted.FingerprintScanEvent.AttendanceRecord!.Uuid);
     }
 
     private static void AssertUuidTableState(UuidTableState state, string expectedTableName, int minimumExpectedRows)
@@ -455,5 +563,9 @@ FROM [{tableName}];";
         StudentEnrollment Enrollment,
         Session Session,
         QrCode QrCode,
-        AttendanceRecord Attendance);
+        AttendanceRecord Attendance,
+        Fingerprint Fingerprint,
+        FingerprintDevice FingerprintDevice,
+        FingerprintEnrollmentSession FingerprintEnrollmentSession,
+        FingerprintScanEvent FingerprintScanEvent);
 }
