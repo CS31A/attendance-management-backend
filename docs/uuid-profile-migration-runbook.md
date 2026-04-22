@@ -6,8 +6,8 @@ This runbook covers Phase 3 rollout for additive `Uuid` columns on `Students`, `
 
 - Applies the `AddWave1ProfileUuidColumns` migration.
 - Adds database-owned `Uuid` values with `NEWSEQUENTIALID()`.
-- Preserves existing integer `Id` primary keys, `StudentEnrollment.StudentId`, stored procedures, routes, and response contracts.
-- Reserves additive `Uuid` response exposure for Phase 4.
+- Preserves existing integer `Id` primary keys, `StudentEnrollment.StudentId`, stored procedures, and routes.
+- Exposes additive `Uuid` values in API response contracts (`UserProfileResponseDto`, `GetAllUsersDto`).
 
 ## Migration Posture
 
@@ -86,8 +86,7 @@ HAVING COUNT(*) > 1;
 Confirm legacy integer boundaries remain unchanged:
 
 - `StudentEnrollment.StudentId` still references `Students.Id`
-- API and stored-procedure contracts still use integer profile IDs in Phase 3
-- No public response payload exposes additive `Uuid` fields until Phase 4
+- API response contracts expose additive `Uuid` fields alongside existing integer profile IDs
 
 ## Stop Rollout Conditions
 
@@ -110,6 +109,5 @@ If rollout stops after the migration has started, treat recovery as restore-only
 
 ## Notes For Later Phases
 
-- Phase 3 is schema/data only.
-- Phase 4 is the first phase allowed to expose additive response fields named `Uuid` beside the existing numeric `Id` fields.
-- Do not repurpose the Phase 3 migration to change controllers, DTOs, repository response shapes, or stored procedures.
+- Phase 3 covers both the schema/data migration and the API contract exposure of additive `Uuid` fields.
+- Do not repurpose the Phase 3 migration to change legacy integer key relationships or stored-procedure signatures.

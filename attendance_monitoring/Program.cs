@@ -19,7 +19,6 @@ builder.Services.AddAuthorizationPolicies();
 
 // Bulk data
 builder.Services.Configure<BulkDataOptions>(builder.Configuration.GetSection(BulkDataOptions.SectionName));
-builder.Services.Configure<DatabaseOptions>(builder.Configuration.GetSection(DatabaseOptions.SectionName));
 
 // API Documentation
 builder.Services.AddApiDocumentation();

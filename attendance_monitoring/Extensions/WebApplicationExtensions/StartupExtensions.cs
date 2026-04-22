@@ -1,8 +1,6 @@
 using attendance_monitoring.Data;
 using attendance_monitoring.IServices;
-using attendance_monitoring.Options;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Options;
 
 namespace attendance_monitoring.Extensions.WebApplicationExtensions;
 
@@ -24,28 +22,6 @@ public static class StartupExtensions
 
         using (var scope = app.Services.CreateScope())
         {
-            var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-            var databaseOptions = scope.ServiceProvider.GetRequiredService<IOptions<DatabaseOptions>>().Value;
-
-            if (dbContext.Database.IsRelational() && databaseOptions.ApplyMigrationsAtStartup)
-            {
-                var pendingMigrations = await dbContext.Database.GetPendingMigrationsAsync();
-                var pendingMigrationList = pendingMigrations.ToArray();
-
-                if (pendingMigrationList.Length > 0)
-                {
-                    logger.LogInformation(
-                        "Applying pending EF Core migrations at startup: {PendingMigrations}.",
-                        pendingMigrationList);
-
-                    await dbContext.Database.MigrateAsync();
-
-                    logger.LogInformation(
-                        "Applied pending EF Core migrations at startup: {PendingMigrations}.",
-                        pendingMigrationList);
-                }
-            }
-
             var dataSeederService = scope.ServiceProvider
                 .GetRequiredService<IDataSeederService>();
 
@@ -56,7 +32,6 @@ public static class StartupExtensions
             catch (Exception ex)
             {
                 logger.LogError(ex, "Data seeding failed. Application will continue without seed data.");
-                // Don't throw - allow application to start even if seeding fails
             }
         }
     }
