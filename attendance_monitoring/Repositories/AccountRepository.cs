@@ -34,6 +34,7 @@ namespace attendance_monitoring.Repositories
                     u.Email,
                     ISNULL(r.Name, 'Unknown') AS Role,
                     COALESCE(s.Id, i.Id, a.Id) AS ProfileId,
+                    COALESCE(s.Uuid, i.Uuid, a.Uuid) AS ProfileUuid,
                     COALESCE(s.Firstname, i.Firstname, a.Firstname) AS Firstname,
                     COALESCE(s.Lastname, i.Lastname, a.Lastname) AS Lastname,
                     COALESCE(s.CreatedAt, i.CreatedAt, a.CreatedAt, GETUTCDATE()) AS CreatedAt,
@@ -97,6 +98,7 @@ namespace attendance_monitoring.Repositories
                 StudentProfile = student != null ? new StudentProfileDto
                 {
                     Id = student.Id,
+                    Uuid = student.Uuid,
                     Firstname = student.Firstname,
                     Lastname = student.Lastname,
                     IsRegular = student.IsRegular,
@@ -112,6 +114,7 @@ namespace attendance_monitoring.Repositories
                 InstructorProfile = instructor != null ? new InstructorProfileDto
                 {
                     Id = instructor.Id,
+                    Uuid = instructor.Uuid,
                     Firstname = instructor.Firstname,
                     Lastname = instructor.Lastname,
                     Department = instructor.Department,
@@ -123,6 +126,7 @@ namespace attendance_monitoring.Repositories
                 AdminProfile = admin != null ? new AdminProfileDto
                 {
                     Id = admin.Id,
+                    Uuid = admin.Uuid,
                     Firstname = admin.Firstname,
                     Lastname = admin.Lastname,
                     CreatedAt = admin.CreatedAt,
@@ -161,6 +165,7 @@ namespace attendance_monitoring.Repositories
                 StudentProfile = r.Role.Equals("Student", StringComparison.OrdinalIgnoreCase) ? new StudentProfileDto
                 {
                     Id = r.ProfileId ?? 0,
+                    Uuid = r.ProfileUuid ?? Guid.Empty,
                     Firstname = r.Firstname ?? string.Empty,
                     Lastname = r.Lastname ?? string.Empty,
                     SectionId = r.SectionId ?? 0,
@@ -176,6 +181,7 @@ namespace attendance_monitoring.Repositories
                 InstructorProfile = RoleConstants.IsInstructorRole(r.Role) ? new InstructorProfileDto
                 {
                     Id = r.ProfileId ?? 0,
+                    Uuid = r.ProfileUuid ?? Guid.Empty,
                     Firstname = r.Firstname,
                     Lastname = r.Lastname,
                     Department = r.Department,
@@ -187,6 +193,7 @@ namespace attendance_monitoring.Repositories
                 AdminProfile = r.Role.Equals("Admin", StringComparison.OrdinalIgnoreCase) ? new AdminProfileDto
                 {
                     Id = r.ProfileId ?? 0,
+                    Uuid = r.ProfileUuid ?? Guid.Empty,
                     Firstname = r.Firstname,
                     Lastname = r.Lastname,
                     CreatedAt = r.CreatedAt ?? DateTime.UtcNow,
@@ -209,6 +216,7 @@ namespace attendance_monitoring.Repositories
             public string Email { get; set; } = string.Empty;
             public string Role { get; set; } = string.Empty;
             public int? ProfileId { get; set; }
+            public Guid? ProfileUuid { get; set; }
             public string? Firstname { get; set; }
             public string? Lastname { get; set; }
             public string? Department { get; set; }
@@ -403,6 +411,26 @@ namespace attendance_monitoring.Repositories
         }
         #endregion
 
+        #region GetAdminByUserIdAsync
+        public async Task<Admin?> GetAdminByUserIdAsync(string userId)
+        {
+            return await context.Admins
+                .AsNoTracking()
+                .FirstOrDefaultAsync(a => a.UserId == userId && !a.IsDeleted)
+                .ConfigureAwait(false);
+        }
+        #endregion
+
+        #region GetAdminByUuidAsync
+        public async Task<Admin?> GetAdminByUuidAsync(Guid uuid)
+        {
+            return await context.Admins
+                .AsNoTracking()
+                .FirstOrDefaultAsync(a => a.Uuid == uuid && !a.IsDeleted)
+                .ConfigureAwait(false);
+        }
+        #endregion
+
         #region UpdateStudentProfileAsync
         public Task UpdateStudentProfileAsync(Student student)
         {
@@ -417,6 +445,15 @@ namespace attendance_monitoring.Repositories
         {
             instructor.UpdatedAt = DateTime.UtcNow;
             context.Instructors.Update(instructor);
+            return Task.CompletedTask;
+        }
+        #endregion
+
+        #region UpdateAdminProfileAsync
+        public Task UpdateAdminProfileAsync(Admin admin)
+        {
+            admin.UpdatedAt = DateTime.UtcNow;
+            context.Admins.Update(admin);
             return Task.CompletedTask;
         }
         #endregion
@@ -548,6 +585,7 @@ namespace attendance_monitoring.Repositories
                             userDto.StudentProfile = new StudentProfileDto
                             {
                                 Id = result.ProfileId,
+                                Uuid = result.ProfileUuid ?? Guid.Empty,
                                 Firstname = result.Firstname ?? string.Empty,
                                 Lastname = result.Lastname ?? string.Empty,
                                 CreatedAt = result.CreatedAt,
@@ -559,6 +597,7 @@ namespace attendance_monitoring.Repositories
                             userDto.InstructorProfile = new InstructorProfileDto
                             {
                                 Id = result.ProfileId,
+                                Uuid = result.ProfileUuid ?? Guid.Empty,
                                 Firstname = result.Firstname,
                                 Lastname = result.Lastname,
                                 CreatedAt = result.CreatedAt,
@@ -570,6 +609,7 @@ namespace attendance_monitoring.Repositories
                             userDto.AdminProfile = new AdminProfileDto
                             {
                                 Id = result.ProfileId,
+                                Uuid = result.ProfileUuid ?? Guid.Empty,
                                 Firstname = result.Firstname,
                                 Lastname = result.Lastname,
                                 CreatedAt = result.CreatedAt,
