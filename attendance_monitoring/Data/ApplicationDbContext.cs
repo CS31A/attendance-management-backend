@@ -118,6 +118,26 @@ namespace attendance_monitoring.Data
                 .HasColumnType("uniqueidentifier")
                 .ValueGeneratedOnAdd();
 
+            var fingerprintUuid = builder.Entity<Fingerprint>()
+                .Property(f => f.Uuid)
+                .HasColumnType("uniqueidentifier")
+                .ValueGeneratedOnAdd();
+
+            var fingerprintDeviceUuid = builder.Entity<FingerprintDevice>()
+                .Property(d => d.Uuid)
+                .HasColumnType("uniqueidentifier")
+                .ValueGeneratedOnAdd();
+
+            var fingerprintEnrollmentSessionUuid = builder.Entity<FingerprintEnrollmentSession>()
+                .Property(e => e.Uuid)
+                .HasColumnType("uniqueidentifier")
+                .ValueGeneratedOnAdd();
+
+            var fingerprintScanEventUuid = builder.Entity<FingerprintScanEvent>()
+                .Property(e => e.Uuid)
+                .HasColumnType("uniqueidentifier")
+                .ValueGeneratedOnAdd();
+
             builder.Entity<Admin>()
                 .HasIndex(a => a.Uuid)
                 .IsUnique()
@@ -167,6 +187,26 @@ namespace attendance_monitoring.Data
                 .HasIndex(q => q.Uuid)
                 .IsUnique()
                 .HasDatabaseName("IX_QrCodes_Uuid");
+
+            builder.Entity<Fingerprint>()
+                .HasIndex(f => f.Uuid)
+                .IsUnique()
+                .HasDatabaseName("IX_Fingerprints_Uuid");
+
+            builder.Entity<FingerprintDevice>()
+                .HasIndex(d => d.Uuid)
+                .IsUnique()
+                .HasDatabaseName("IX_FingerprintDevices_Uuid");
+
+            builder.Entity<FingerprintEnrollmentSession>()
+                .HasIndex(e => e.Uuid)
+                .IsUnique()
+                .HasDatabaseName("IX_FingerprintEnrollmentSessions_Uuid");
+
+            builder.Entity<FingerprintScanEvent>()
+                .HasIndex(e => e.Uuid)
+                .IsUnique()
+                .HasDatabaseName("IX_FingerprintScanEvents_Uuid");
 
             // Configure Schedules relationships
             builder.Entity<Schedules>()
@@ -258,6 +298,10 @@ namespace attendance_monitoring.Data
                 sessionUuid.HasDefaultValueSql("NEWSEQUENTIALID()");
                 attendanceRecordUuid.HasDefaultValueSql("NEWSEQUENTIALID()");
                 qrCodeUuid.HasDefaultValueSql("NEWSEQUENTIALID()");
+                fingerprintUuid.HasDefaultValueSql("NEWSEQUENTIALID()");
+                fingerprintDeviceUuid.HasDefaultValueSql("NEWSEQUENTIALID()");
+                fingerprintEnrollmentSessionUuid.HasDefaultValueSql("NEWSEQUENTIALID()");
+                fingerprintScanEventUuid.HasDefaultValueSql("NEWSEQUENTIALID()");
             }
             else
             {
@@ -274,6 +318,10 @@ namespace attendance_monitoring.Data
                 sessionUuid.HasValueGenerator<GuidValueGenerator>();
                 attendanceRecordUuid.HasValueGenerator<GuidValueGenerator>();
                 qrCodeUuid.HasValueGenerator<GuidValueGenerator>();
+                fingerprintUuid.HasValueGenerator<GuidValueGenerator>();
+                fingerprintDeviceUuid.HasValueGenerator<GuidValueGenerator>();
+                fingerprintEnrollmentSessionUuid.HasValueGenerator<GuidValueGenerator>();
+                fingerprintScanEventUuid.HasValueGenerator<GuidValueGenerator>();
             }
 
             if (Database.ProviderName == "Microsoft.EntityFrameworkCore.Sqlite")
