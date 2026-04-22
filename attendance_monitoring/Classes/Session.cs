@@ -20,6 +20,8 @@ public class Session
     [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
     public int Id { get; set; }
 
+    public Guid Uuid { get; set; }
+
     /// <summary>
     /// Foreign key to the recurring schedule this session belongs to
     /// </summary>
