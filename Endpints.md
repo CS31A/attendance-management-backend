@@ -25,7 +25,7 @@ This document lists all the API endpoints for the attendance monitoring system.
 - `GET /api/attendance/{id}`: Get a specific attendance record by ID
 - `GET /api/attendance`: Get all attendance records with optional filtering and pagination
 - `GET /api/attendance/student/{studentId}`: Get attendance history for a specific student
-- `GET /api/attendance/session/{sessionId}`: Get attendance overview for a specific session (Admin, Instructor only)
+- `GET /api/attendance/session/{sessionId}`: Get attendance overview for a specific session (Admin, Instructor only) - Requires PrivilegedPolicy authorization
 - `GET /api/attendance/summary`: Get attendance summary statistics
 - `PUT /api/attendance/{id}`: Update an existing attendance record (Admin, Instructor only)
 - `DELETE /api/attendance/{id}`: Delete an attendance record (Admin only)
