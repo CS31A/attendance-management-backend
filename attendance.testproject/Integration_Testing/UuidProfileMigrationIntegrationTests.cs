@@ -191,6 +191,34 @@ public sealed class UuidProfileMigrationIntegrationTests
         Assert.Contains(persisted.EnrollmentId, persisted.AdditionalEnrollmentIds);
     }
 
+    [RequiresEnvironmentVariableFact("ATTENDANCE_TEST_SQLSERVER_CONNECTION")]
+    public async Task ExpandedPhase8UuidTables_HaveMigrationCoverage_ForSliceAAndSliceB()
+    {
+        await using var host = await ApiIntegrationHost.CreateAdminUserManagementAsync();
+
+        var tableStates = await host.ExecuteDbContextAsync(async (dbContext, cancellationToken) =>
+        {
+            return new[]
+            {
+                await ReadUuidTableStateAsync(dbContext, "Courses", cancellationToken),
+                await ReadUuidTableStateAsync(dbContext, "Sections", cancellationToken),
+                await ReadUuidTableStateAsync(dbContext, "StudentEnrollments", cancellationToken),
+                await ReadUuidTableStateAsync(dbContext, "Sessions", cancellationToken),
+                await ReadUuidTableStateAsync(dbContext, "AttendanceRecords", cancellationToken),
+                await ReadUuidTableStateAsync(dbContext, "QrCodes", cancellationToken)
+            };
+        });
+
+        Assert.Collection(
+            tableStates,
+            state => AssertUuidTableState(state, "Courses", minimumExpectedRows: 1),
+            state => AssertUuidTableState(state, "Sections", minimumExpectedRows: 2),
+            state => AssertUuidTableState(state, "StudentEnrollments", minimumExpectedRows: 1),
+            state => AssertUuidTableState(state, "Sessions", minimumExpectedRows: 1),
+            state => AssertUuidTableState(state, "AttendanceRecords", minimumExpectedRows: 1),
+            state => AssertUuidTableState(state, "QrCodes", minimumExpectedRows: 1));
+    }
+
     private static void AssertUuidTableState(UuidTableState state, string expectedTableName, int minimumExpectedRows)
     {
         Assert.Equal(expectedTableName, state.TableName);
