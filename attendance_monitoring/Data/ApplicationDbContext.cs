@@ -103,6 +103,21 @@ namespace attendance_monitoring.Data
                 .HasColumnType("uniqueidentifier")
                 .ValueGeneratedOnAdd();
 
+            var sessionUuid = builder.Entity<Session>()
+                .Property(s => s.Uuid)
+                .HasColumnType("uniqueidentifier")
+                .ValueGeneratedOnAdd();
+
+            var attendanceRecordUuid = builder.Entity<AttendanceRecord>()
+                .Property(a => a.Uuid)
+                .HasColumnType("uniqueidentifier")
+                .ValueGeneratedOnAdd();
+
+            var qrCodeUuid = builder.Entity<QrCode>()
+                .Property(q => q.Uuid)
+                .HasColumnType("uniqueidentifier")
+                .ValueGeneratedOnAdd();
+
             builder.Entity<Admin>()
                 .HasIndex(a => a.Uuid)
                 .IsUnique()
@@ -137,6 +152,21 @@ namespace attendance_monitoring.Data
                 .HasIndex(se => se.Uuid)
                 .IsUnique()
                 .HasDatabaseName("IX_StudentEnrollments_Uuid");
+
+            builder.Entity<Session>()
+                .HasIndex(s => s.Uuid)
+                .IsUnique()
+                .HasDatabaseName("IX_Sessions_Uuid");
+
+            builder.Entity<AttendanceRecord>()
+                .HasIndex(a => a.Uuid)
+                .IsUnique()
+                .HasDatabaseName("IX_AttendanceRecords_Uuid");
+
+            builder.Entity<QrCode>()
+                .HasIndex(q => q.Uuid)
+                .IsUnique()
+                .HasDatabaseName("IX_QrCodes_Uuid");
 
             // Configure Schedules relationships
             builder.Entity<Schedules>()
@@ -225,6 +255,9 @@ namespace attendance_monitoring.Data
                 classroomUuid.HasDefaultValueSql("NEWSEQUENTIALID()");
                 scheduleUuid.HasDefaultValueSql("NEWSEQUENTIALID()");
                 studentEnrollmentUuid.HasDefaultValueSql("NEWSEQUENTIALID()");
+                sessionUuid.HasDefaultValueSql("NEWSEQUENTIALID()");
+                attendanceRecordUuid.HasDefaultValueSql("NEWSEQUENTIALID()");
+                qrCodeUuid.HasDefaultValueSql("NEWSEQUENTIALID()");
             }
             else
             {
@@ -238,6 +271,9 @@ namespace attendance_monitoring.Data
                 classroomUuid.HasValueGenerator<GuidValueGenerator>();
                 scheduleUuid.HasValueGenerator<GuidValueGenerator>();
                 studentEnrollmentUuid.HasValueGenerator<GuidValueGenerator>();
+                sessionUuid.HasValueGenerator<GuidValueGenerator>();
+                attendanceRecordUuid.HasValueGenerator<GuidValueGenerator>();
+                qrCodeUuid.HasValueGenerator<GuidValueGenerator>();
             }
 
             if (Database.ProviderName == "Microsoft.EntityFrameworkCore.Sqlite")

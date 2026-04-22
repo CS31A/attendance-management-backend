@@ -19,6 +19,8 @@ public class QrCode
     [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
     public int Id { get; set; }
 
+    public Guid Uuid { get; set; }
+
     /// <summary>
     /// Foreign key to the session this QR code belongs to.
     /// Session contains: ScheduleId, ActualRoomId, SectionId (via Schedule)
