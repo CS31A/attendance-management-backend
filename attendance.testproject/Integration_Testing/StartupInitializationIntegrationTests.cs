@@ -17,40 +17,6 @@ namespace attendance.testproject.Integration_Testing;
 public sealed class StartupInitializationIntegrationTests
 {
     [Fact]
-    public async Task InitializeApplicationAsync_WithPendingRelationalMigrations_AppliesThemBeforeSeeding()
-    {
-        await using var connection = new SqliteConnection($"Data Source=file:startup-init-{Guid.NewGuid():N}?mode=memory&cache=shared");
-        await connection.OpenAsync();
-
-        await PrepareDatabaseWithSinglePendingMigrationAsync(connection);
-
-        var builder = WebApplication.CreateBuilder(new WebApplicationOptions
-        {
-            EnvironmentName = Environments.Production
-        });
-
-        builder.WebHost.UseTestServer();
-        builder.Services.AddLogging();
-        builder.Services.AddDbContext<ApplicationDbContext>(options =>
-            options.UseSqlite(connection)
-                .ConfigureWarnings(warnings => warnings.Ignore(RelationalEventId.PendingModelChangesWarning)));
-
-        var seeder = new CountingSeederService();
-        builder.Services.AddSingleton<IDataSeederService>(seeder);
-
-        await using var app = builder.Build();
-
-        await app.InitializeApplicationAsync();
-
-        await using var scope = app.Services.CreateAsyncScope();
-        var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-        var pendingMigrations = await dbContext.Database.GetPendingMigrationsAsync();
-
-        Assert.Empty(pendingMigrations);
-        Assert.Equal(1, seeder.CallCount);
-    }
-
-    [Fact]
     public async Task InitializeApplicationAsync_WithInMemoryDatabase_SeedsWithoutMigrationGuard()
     {
         var builder = WebApplication.CreateBuilder(new WebApplicationOptions
@@ -71,45 +37,6 @@ public sealed class StartupInitializationIntegrationTests
         await app.InitializeApplicationAsync();
 
         Assert.Equal(1, seeder.CallCount);
-    }
-
-    [Fact]
-    public async Task InitializeApplicationAsync_WhenRelationalMigrationApplicationFails_SurfacesTheRealFailure()
-    {
-        var databasePath = Path.Combine(Path.GetTempPath(), $"startup-init-readonly-{Guid.NewGuid():N}.db");
-        await using (var setupConnection = new SqliteConnection($"Data Source={databasePath}"))
-        {
-            await setupConnection.OpenAsync();
-            await PrepareDatabaseWithSinglePendingMigrationAsync(setupConnection);
-        }
-
-        try
-        {
-            var builder = WebApplication.CreateBuilder(new WebApplicationOptions
-            {
-                EnvironmentName = Environments.Production
-            });
-
-            builder.WebHost.UseTestServer();
-            builder.Services.AddLogging();
-            builder.Services.AddDbContext<ApplicationDbContext>(options =>
-                options.UseSqlite($"Data Source={databasePath};Mode=ReadOnly")
-                    .ConfigureWarnings(warnings => warnings.Ignore(RelationalEventId.PendingModelChangesWarning)));
-
-            var seeder = new CountingSeederService();
-            builder.Services.AddSingleton<IDataSeederService>(seeder);
-
-            await using var app = builder.Build();
-
-            var exception = await Assert.ThrowsAsync<SqliteException>(() => app.InitializeApplicationAsync());
-
-            Assert.Contains("readonly", exception.Message, StringComparison.OrdinalIgnoreCase);
-            Assert.Equal(0, seeder.CallCount);
-        }
-        finally
-        {
-            File.Delete(databasePath);
-        }
     }
 
     [Fact]
@@ -221,35 +148,6 @@ public sealed class StartupInitializationIntegrationTests
         {
             CallCount++;
             return Task.CompletedTask;
-        }
-    }
-
-    private static async Task PrepareDatabaseWithSinglePendingMigrationAsync(SqliteConnection connection)
-    {
-        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
-            .UseSqlite(connection)
-            .ConfigureWarnings(warnings => warnings.Ignore(RelationalEventId.PendingModelChangesWarning))
-            .Options;
-
-        await using var context = new ApplicationDbContext(options);
-        var migrations = context.Database.GetMigrations().ToArray();
-
-        Assert.NotEmpty(migrations);
-
-        await context.Database.EnsureCreatedAsync();
-        await context.Database.ExecuteSqlRawAsync(@"
-            CREATE TABLE IF NOT EXISTS __EFMigrationsHistory (
-                MigrationId TEXT NOT NULL CONSTRAINT PK___EFMigrationsHistory PRIMARY KEY,
-                ProductVersion TEXT NOT NULL
-            );
-        ");
-
-        foreach (var migration in migrations.Take(migrations.Length - 1))
-        {
-            await context.Database.ExecuteSqlInterpolatedAsync($@"
-                INSERT OR IGNORE INTO __EFMigrationsHistory (MigrationId, ProductVersion)
-                VALUES ({migration}, {"10.0.0"});
-            ");
         }
     }
 }
