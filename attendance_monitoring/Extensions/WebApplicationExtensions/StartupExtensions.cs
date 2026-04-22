@@ -1,4 +1,6 @@
+using attendance_monitoring.Data;
 using attendance_monitoring.IServices;
+using Microsoft.EntityFrameworkCore;
 
 namespace attendance_monitoring.Extensions.WebApplicationExtensions;
 
@@ -18,9 +20,25 @@ public static class StartupExtensions
     {
         var logger = app.Services.GetRequiredService<ILogger<WebApplication>>();
 
-        // Seed data with error handling
         using (var scope = app.Services.CreateScope())
         {
+            var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+            if (dbContext.Database.IsRelational())
+            {
+                var pendingMigrations = await dbContext.Database.GetPendingMigrationsAsync();
+                var pendingMigrationList = pendingMigrations.ToArray();
+
+                if (pendingMigrationList.Length > 0)
+                {
+                    logger.LogCritical(
+                        "Pending EF Core migrations detected at startup: {PendingMigrations}. Apply migrations before starting the application.",
+                        pendingMigrationList);
+
+                    throw new InvalidOperationException(
+                        $"Pending EF Core migrations detected: {string.Join(", ", pendingMigrationList)}. Apply migrations before starting the application.");
+                }
+            }
+
             var dataSeederService = scope.ServiceProvider
                 .GetRequiredService<IDataSeederService>();
 
@@ -36,4 +54,3 @@ public static class StartupExtensions
         }
     }
 }
-

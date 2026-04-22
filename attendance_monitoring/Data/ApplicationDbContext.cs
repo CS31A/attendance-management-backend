@@ -2,6 +2,7 @@ using attendance_monitoring.Classes;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.ValueGeneration;
 
 namespace attendance_monitoring.Data
 {
@@ -47,10 +48,9 @@ namespace attendance_monitoring.Data
                 .HasIndex(r => r.TokenHash)
                 .IsUnique();
 
-            builder.Entity<Student>()
+            var studentUuid = builder.Entity<Student>()
                 .Property(s => s.Uuid)
                 .HasColumnType("uniqueidentifier")
-                .HasDefaultValueSql("NEWSEQUENTIALID()")
                 .ValueGeneratedOnAdd();
 
             builder.Entity<Student>()
@@ -58,10 +58,9 @@ namespace attendance_monitoring.Data
                 .IsUnique()
                 .HasDatabaseName("IX_Students_Uuid");
 
-            builder.Entity<Instructor>()
+            var instructorUuid = builder.Entity<Instructor>()
                 .Property(i => i.Uuid)
                 .HasColumnType("uniqueidentifier")
-                .HasDefaultValueSql("NEWSEQUENTIALID()")
                 .ValueGeneratedOnAdd();
 
             builder.Entity<Instructor>()
@@ -69,10 +68,9 @@ namespace attendance_monitoring.Data
                 .IsUnique()
                 .HasDatabaseName("IX_Instructors_Uuid");
 
-            builder.Entity<Admin>()
+            var adminUuid = builder.Entity<Admin>()
                 .Property(a => a.Uuid)
                 .HasColumnType("uniqueidentifier")
-                .HasDefaultValueSql("NEWSEQUENTIALID()")
                 .ValueGeneratedOnAdd();
 
             builder.Entity<Admin>()
@@ -155,6 +153,20 @@ namespace attendance_monitoring.Data
                 .WithMany()
                 .HasForeignKey(s => s.EndedBy)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            if (Database.IsSqlServer())
+            {
+                studentUuid.HasDefaultValueSql("NEWSEQUENTIALID()");
+                instructorUuid.HasDefaultValueSql("NEWSEQUENTIALID()");
+                adminUuid.HasDefaultValueSql("NEWSEQUENTIALID()");
+            }
+            else
+            {
+                // Non-SQL Server test providers cannot execute NEWSEQUENTIALID(), so generate GUIDs client-side.
+                studentUuid.HasValueGenerator<GuidValueGenerator>();
+                instructorUuid.HasValueGenerator<GuidValueGenerator>();
+                adminUuid.HasValueGenerator<GuidValueGenerator>();
+            }
 
             if (Database.ProviderName == "Microsoft.EntityFrameworkCore.Sqlite")
             {
