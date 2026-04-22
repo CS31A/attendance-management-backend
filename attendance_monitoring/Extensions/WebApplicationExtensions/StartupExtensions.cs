@@ -30,12 +30,15 @@ public static class StartupExtensions
 
                 if (pendingMigrationList.Length > 0)
                 {
-                    logger.LogCritical(
-                        "Pending EF Core migrations detected at startup: {PendingMigrations}. Apply migrations before starting the application.",
+                    logger.LogInformation(
+                        "Applying pending EF Core migrations at startup: {PendingMigrations}.",
                         pendingMigrationList);
 
-                    throw new InvalidOperationException(
-                        $"Pending EF Core migrations detected: {string.Join(", ", pendingMigrationList)}. Apply migrations before starting the application.");
+                    await dbContext.Database.MigrateAsync();
+
+                    logger.LogInformation(
+                        "Applied pending EF Core migrations at startup: {PendingMigrations}.",
+                        pendingMigrationList);
                 }
             }
 

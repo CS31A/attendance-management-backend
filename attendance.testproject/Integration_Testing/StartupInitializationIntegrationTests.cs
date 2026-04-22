@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
@@ -21,6 +22,8 @@ public sealed class StartupInitializationIntegrationTests
         await using var connection = new SqliteConnection($"Data Source=file:startup-init-{Guid.NewGuid():N}?mode=memory&cache=shared");
         await connection.OpenAsync();
 
+        await PrepareDatabaseWithSinglePendingMigrationAsync(connection);
+
         var builder = WebApplication.CreateBuilder(new WebApplicationOptions
         {
             EnvironmentName = Environments.Production
@@ -28,7 +31,9 @@ public sealed class StartupInitializationIntegrationTests
 
         builder.WebHost.UseTestServer();
         builder.Services.AddLogging();
-        builder.Services.AddDbContext<ApplicationDbContext>(options => options.UseSqlite(connection));
+        builder.Services.AddDbContext<ApplicationDbContext>(options =>
+            options.UseSqlite(connection)
+                .ConfigureWarnings(warnings => warnings.Ignore(RelationalEventId.PendingModelChangesWarning)));
 
         var seeder = new CountingSeederService();
         builder.Services.AddSingleton<IDataSeederService>(seeder);
@@ -72,7 +77,11 @@ public sealed class StartupInitializationIntegrationTests
     public async Task InitializeApplicationAsync_WhenRelationalMigrationApplicationFails_SurfacesTheRealFailure()
     {
         var databasePath = Path.Combine(Path.GetTempPath(), $"startup-init-readonly-{Guid.NewGuid():N}.db");
-        await File.WriteAllBytesAsync(databasePath, []);
+        await using (var setupConnection = new SqliteConnection($"Data Source={databasePath}"))
+        {
+            await setupConnection.OpenAsync();
+            await PrepareDatabaseWithSinglePendingMigrationAsync(setupConnection);
+        }
 
         try
         {
@@ -84,7 +93,8 @@ public sealed class StartupInitializationIntegrationTests
             builder.WebHost.UseTestServer();
             builder.Services.AddLogging();
             builder.Services.AddDbContext<ApplicationDbContext>(options =>
-                options.UseSqlite($"Data Source={databasePath};Mode=ReadOnly"));
+                options.UseSqlite($"Data Source={databasePath};Mode=ReadOnly")
+                    .ConfigureWarnings(warnings => warnings.Ignore(RelationalEventId.PendingModelChangesWarning)));
 
             var seeder = new CountingSeederService();
             builder.Services.AddSingleton<IDataSeederService>(seeder);
@@ -211,6 +221,35 @@ public sealed class StartupInitializationIntegrationTests
         {
             CallCount++;
             return Task.CompletedTask;
+        }
+    }
+
+    private static async Task PrepareDatabaseWithSinglePendingMigrationAsync(SqliteConnection connection)
+    {
+        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
+            .UseSqlite(connection)
+            .ConfigureWarnings(warnings => warnings.Ignore(RelationalEventId.PendingModelChangesWarning))
+            .Options;
+
+        await using var context = new ApplicationDbContext(options);
+        var migrations = context.Database.GetMigrations().ToArray();
+
+        Assert.NotEmpty(migrations);
+
+        await context.Database.EnsureCreatedAsync();
+        await context.Database.ExecuteSqlRawAsync(@"
+            CREATE TABLE IF NOT EXISTS __EFMigrationsHistory (
+                MigrationId TEXT NOT NULL CONSTRAINT PK___EFMigrationsHistory PRIMARY KEY,
+                ProductVersion TEXT NOT NULL
+            );
+        ");
+
+        foreach (var migration in migrations.Take(migrations.Length - 1))
+        {
+            await context.Database.ExecuteSqlInterpolatedAsync($@"
+                INSERT OR IGNORE INTO __EFMigrationsHistory (MigrationId, ProductVersion)
+                VALUES ({migration}, {"10.0.0"});
+            ");
         }
     }
 }
