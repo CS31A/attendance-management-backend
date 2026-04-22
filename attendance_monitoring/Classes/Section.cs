@@ -12,6 +12,8 @@ public class Section
     [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
     public int Id { get; set; }
 
+    public Guid Uuid { get; set; }
+
     [Required(ErrorMessage = "Section name is required")]
     [StringLength(100, ErrorMessage = "Section name must be between 1 and 100 characters", MinimumLength = 1)]
     public string Name { get; set; } = string.Empty;

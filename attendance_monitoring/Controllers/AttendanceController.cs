@@ -176,6 +176,7 @@ public class AttendanceController(IAttendanceService attendanceService, ILogger<
     /// <response code="404">Session not found</response>
     /// <response code="500">Internal server error</response>
     [HttpGet("session/{sessionId:int}")]
+    [Authorize(Policy = "PrivilegedPolicy")]
     public async Task<ActionResult<SessionAttendanceDto>> GetSessionAttendance(int sessionId)
     {
         logger.LogInformation("Getting session attendance for SessionId: {SessionId}", sessionId);

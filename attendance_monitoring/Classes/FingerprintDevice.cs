@@ -12,6 +12,8 @@ public class FingerprintDevice
     [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
     public int Id { get; set; }
 
+    public Guid Uuid { get; set; }
+
     [Required]
     [StringLength(100)]
     public string DeviceIdentifier { get; set; } = string.Empty;

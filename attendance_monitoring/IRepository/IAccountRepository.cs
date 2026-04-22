@@ -153,6 +153,20 @@ namespace attendance_monitoring.IRepository
         Task<Instructor?> GetInstructorByUserIdAsync(string userId);
 
         /// <summary>
+        /// Gets an admin profile by user ID.
+        /// </summary>
+        /// <param name="userId">The user ID.</param>
+        /// <returns>The admin profile if found; otherwise, null.</returns>
+        Task<Admin?> GetAdminByUserIdAsync(string userId);
+
+        /// <summary>
+        /// Gets an admin profile by UUID.
+        /// </summary>
+        /// <param name="uuid">The admin UUID.</param>
+        /// <returns>The admin profile if found; otherwise, null.</returns>
+        Task<Admin?> GetAdminByUuidAsync(Guid uuid);
+
+        /// <summary>
         /// Updates a student profile.
         /// </summary>
         /// <param name="student">The student profile with updated information.</param>
@@ -165,6 +179,13 @@ namespace attendance_monitoring.IRepository
         /// <param name="instructor">The instructor profile with updated information.</param>
         /// <returns>A task representing the asynchronous operation.</returns>
         Task UpdateInstructorProfileAsync(Instructor instructor);
+
+        /// <summary>
+        /// Updates an admin profile.
+        /// </summary>
+        /// <param name="admin">The admin profile with updated information.</param>
+        /// <returns>A task representing the asynchronous operation.</returns>
+        Task UpdateAdminProfileAsync(Admin admin);
 
         /// <summary>
         /// Resets a user's password (admin operation - no current password required).

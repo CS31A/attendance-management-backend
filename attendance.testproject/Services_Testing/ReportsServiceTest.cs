@@ -175,6 +175,68 @@ public class ReportsServiceTest
         _sessionRepository.Verify(repository => repository.GetInstructorSessionReportRowsAsync(instructorId, filter.StartDate, filter.EndDate), Times.Once);
     }
 
+    [Fact]
+    public async Task GetInstructorSessionsReportAsync_WithInstructorUuid_UsesUuidLookupAndBuildsScheduleTitles()
+    {
+        // Arrange
+        var instructorUuid = Guid.NewGuid();
+        var filter = new AttendanceFilterRequest
+        {
+            StartDate = new DateTime(2026, 4, 1),
+            EndDate = new DateTime(2026, 4, 30),
+        };
+
+        _instructorRepository
+            .Setup(repository => repository.GetInstructorByUuidAsync(instructorUuid))
+            .ReturnsAsync(new Instructor
+            {
+                Id = 9,
+                Uuid = instructorUuid,
+                Firstname = "Ada",
+                Lastname = "Lovelace",
+                UserId = "inst-9",
+            });
+
+        _sessionRepository
+            .Setup(repository => repository.GetInstructorSessionReportRowsAsync(9, filter.StartDate, filter.EndDate))
+            .ReturnsAsync([
+                new SessionReportRowDto
+                {
+                    SessionId = 201,
+                    SessionDate = new DateTime(2026, 4, 12),
+                    SubjectName = "Physics",
+                    SectionName = "BSCS 3A",
+                    Status = "Ended",
+                    PresentCount = 6,
+                    LateCount = 2,
+                    AbsentCount = 1,
+                    ExcusedCount = 0,
+                    TotalRecords = 9,
+                    TotalEnrolled = 9,
+                },
+            ]);
+
+        var service = new ReportsService(
+            _attendanceService.Object,
+            _sessionRepository.Object,
+            _sectionRepository.Object,
+            _instructorRepository.Object,
+            _scheduleRepository.Object,
+            _userContextService.Object,
+            _logger.Object);
+
+        // Act
+        var result = await service.GetInstructorSessionsReportAsync(instructorUuid, filter, _user);
+
+        // Assert
+        Assert.Equal(9, result.InstructorId);
+        Assert.Equal("Ada Lovelace", result.InstructorName);
+        Assert.Single(result.Sessions);
+        Assert.Equal("Physics - BSCS 3A", result.Sessions[0].ScheduleTitle);
+        _instructorRepository.Verify(repository => repository.GetInstructorByUuidAsync(instructorUuid), Times.Once);
+        _sessionRepository.Verify(repository => repository.GetInstructorSessionReportRowsAsync(9, filter.StartDate, filter.EndDate), Times.Once);
+    }
+
 
     [Fact]
     public void InstructorSessionItemDto_InheritsFrom_SessionAttendanceStatsDto()

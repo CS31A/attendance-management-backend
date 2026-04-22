@@ -12,7 +12,7 @@ public static class ExceptionHandlingHelper
 {
     /// <summary>
     /// Determines if the exception is caused by a unique constraint violation.
-    /// Supports both SQL Server and SQLite database providers.
+    /// Supports SQL Server and SQLite database providers.
     /// </summary>
     /// <param name="ex">The DbUpdateException to analyze.</param>
     /// <returns>True if the exception is due to a unique constraint violation; otherwise, false.</returns>
@@ -23,7 +23,7 @@ public static class ExceptionHandlingHelper
 
     /// <summary>
     /// Determines if the exception is caused by a unique constraint violation for a specific constraint/index.
-    /// Supports both SQL Server and SQLite database providers.
+    /// Supports SQL Server and SQLite database providers.
     /// </summary>
     /// <param name="ex">The DbUpdateException to analyze.</param>
     /// <param name="constraintHints">Constraint or column hints expected in the provider error message.</param>
@@ -49,7 +49,7 @@ public static class ExceptionHandlingHelper
 
     /// <summary>
     /// Determines if the exception is caused by a foreign key constraint violation.
-    /// Supports SQL Server, SQLite, and PostgreSQL database providers.
+    /// Supports SQL Server and SQLite database providers.
     /// </summary>
     /// <param name="ex">The DbUpdateException to analyze.</param>
     /// <returns>True if the exception is due to a foreign key constraint violation; otherwise, false.</returns>
@@ -58,23 +58,16 @@ public static class ExceptionHandlingHelper
         var innerException = ex.InnerException?.Message ?? ex.Message;
 
         // SQL Server foreign key violation
-        if (innerException.Contains("FOREIGN KEY constraint") ||
-            innerException.Contains("REFERENCE constraint") ||
-            innerException.Contains("conflicted with the FOREIGN KEY") ||
-            innerException.Contains("The DELETE statement conflicted"))
+        if (innerException.Contains("FOREIGN KEY constraint", StringComparison.OrdinalIgnoreCase) ||
+            innerException.Contains("REFERENCE constraint", StringComparison.OrdinalIgnoreCase) ||
+            innerException.Contains("conflicted with the FOREIGN KEY", StringComparison.OrdinalIgnoreCase) ||
+            innerException.Contains("The DELETE statement conflicted", StringComparison.OrdinalIgnoreCase))
         {
             return true;
         }
 
         // SQLite foreign key violation
-        if (innerException.Contains("FOREIGN KEY constraint failed"))
-        {
-            return true;
-        }
-
-        // PostgreSQL foreign key violation (SQLSTATE 23503)
-        if (innerException.Contains("violates foreign key constraint") ||
-            innerException.Contains("23503"))
+        if (innerException.Contains("FOREIGN KEY constraint failed", StringComparison.OrdinalIgnoreCase))
         {
             return true;
         }

@@ -21,6 +21,8 @@ public class StudentEnrollment
     [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
     public int Id { get; set; }
 
+    public Guid Uuid { get; set; }
+
     // Foreign key to Student
     [Required]
     public int StudentId { get; set; }

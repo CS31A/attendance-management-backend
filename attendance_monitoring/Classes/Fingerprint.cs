@@ -10,6 +10,8 @@ public class Fingerprint
     [Key]
     [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
     public int Id { get; set; }/*  */
+
+    public Guid Uuid { get; set; }
     
     // Foreign key to Identity user - should not be nullable
     public string UserId { get; set; } = string.Empty;

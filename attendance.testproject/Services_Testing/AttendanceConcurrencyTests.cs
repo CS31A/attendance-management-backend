@@ -146,6 +146,9 @@ public class AttendanceConcurrencyTests
         Assert.Equal(existingRecord.Status, result.Status);
         Assert.Equal(existingRecord.Notes, result.Notes);
         Assert.True(result.IsManualEntry);
+        Assert.NotEqual(Guid.Empty, existingRecord.Uuid);
+        Assert.NotEqual(Guid.Empty, existingRecord.Session.Uuid);
+        Assert.Null(result.GetType().GetProperty("Uuid"));
 
         // Verify warning log
         _mockLogger.Verify(
@@ -365,6 +368,7 @@ public class AttendanceConcurrencyTests
         return new AttendanceRecord
         {
             Id = 321,
+            Uuid = Guid.NewGuid(),
             StudentId = studentId,
             SessionId = sessionId,
             CheckInTime = DateTime.UtcNow.AddMinutes(-10),
@@ -381,6 +385,7 @@ public class AttendanceConcurrencyTests
             Session = new Session
             {
                 Id = sessionId,
+                Uuid = Guid.NewGuid(),
                 SessionDate = DateTime.UtcNow.Date,
                 ScheduleId = 77,
                 ActualRoom = new Classroom

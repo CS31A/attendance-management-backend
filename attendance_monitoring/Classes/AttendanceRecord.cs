@@ -19,6 +19,8 @@ public class AttendanceRecord
     [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
     public int Id { get; set; }
 
+    public Guid Uuid { get; set; }
+
     /// <summary>
     /// Foreign key to the student who attended
     /// </summary>
@@ -83,4 +85,3 @@ public class AttendanceRecord
     [JsonIgnore]
     public QrCode? QrCode { get; set; }
 }
-

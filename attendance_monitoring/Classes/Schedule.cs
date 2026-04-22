@@ -15,6 +15,8 @@ public class Schedules
     [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
     public int Id { get; set; }
 
+    public Guid Uuid { get; set; }
+
     [Required]
     public TimeOnly TimeIn { get; set; }
 

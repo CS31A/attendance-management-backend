@@ -7,6 +7,7 @@ namespace attendance_monitoring.Exceptions
     /// Exception thrown when an entity operation fails due to a conflict with existing data,
     /// such as foreign key constraint violations during delete operations.
     /// </summary>
+    [Serializable]
     public class EntityConflictException : Exception
     {
         public string EntityName { get; }

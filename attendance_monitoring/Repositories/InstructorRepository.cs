@@ -39,6 +39,20 @@ public class InstructorRepository(ApplicationDbContext context) : IInstructorRep
     }
     #endregion
 
+    #region GetInstructorByUuidAsync
+    /// <summary>
+    /// Retrieves an instructor by UUID (read-only).
+    /// Performance: Single query, no navigation properties loaded.
+    /// </summary>
+    public async Task<Instructor?> GetInstructorByUuidAsync(Guid uuid)
+    {
+        return await context.Instructors
+            .AsNoTracking()
+            .FirstOrDefaultAsync(i => i.Uuid == uuid && !i.IsDeleted)
+            .ConfigureAwait(false);
+    }
+    #endregion
+
     #region GetInstructorByIdTrackedAsync
     /// <summary>
     /// Retrieves an instructor by ID with change tracking for updates.
@@ -48,6 +62,19 @@ public class InstructorRepository(ApplicationDbContext context) : IInstructorRep
     {
         return await context.Instructors
             .FirstOrDefaultAsync(i => i.Id == id && !i.IsDeleted)
+            .ConfigureAwait(false);
+    }
+    #endregion
+
+    #region GetInstructorByUuidTrackedAsync
+    /// <summary>
+    /// Retrieves an instructor by UUID with change tracking for updates.
+    /// Performance: Single query, no navigation properties loaded.
+    /// </summary>
+    public async Task<Instructor?> GetInstructorByUuidTrackedAsync(Guid uuid)
+    {
+        return await context.Instructors
+            .FirstOrDefaultAsync(i => i.Uuid == uuid && !i.IsDeleted)
             .ConfigureAwait(false);
     }
     #endregion

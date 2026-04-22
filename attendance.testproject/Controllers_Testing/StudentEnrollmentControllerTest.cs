@@ -92,6 +92,64 @@ public class StudentEnrollmentControllerTest
     }
 
     [Fact]
+    public async Task EnrollStudent_SliceAUuidsPresent_KeepsLegacyIdsAuthoritativeInResponse()
+    {
+        // Arrange
+        var request = new CreateStudentEnrollment
+        {
+            StudentId = 11,
+            SectionId = 21,
+            SubjectId = 31,
+            EnrollmentType = "Irregular",
+            AcademicYear = "2025-2026",
+            Semester = "2nd"
+        };
+
+        var enrollment = new StudentEnrollment
+        {
+            Id = 41,
+            Uuid = Guid.NewGuid(),
+            StudentId = request.StudentId,
+            SectionId = request.SectionId,
+            SubjectId = request.SubjectId,
+            IsActive = true,
+            EnrollmentType = request.EnrollmentType,
+            AcademicYear = request.AcademicYear,
+            Semester = request.Semester,
+            EnrolledAt = DateTime.UtcNow,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow,
+            Student = new Student { Id = request.StudentId, Uuid = Guid.NewGuid(), Firstname = "Slice", Lastname = "A" },
+            Section = new Section { Id = request.SectionId, Uuid = Guid.NewGuid(), Name = "BSCS 3A" },
+            Subject = new Subject { Id = request.SubjectId, Uuid = Guid.NewGuid(), Name = "Algorithms", Code = "CS303" }
+        };
+
+        _mockService.Setup(s => s.EnrollStudentAsync(
+            request.StudentId,
+            request.SectionId,
+            request.SubjectId,
+            request.EnrollmentType,
+            request.AcademicYear,
+            request.Semester))
+            .ReturnsAsync(enrollment);
+
+        // Act
+        var result = await _controller.EnrollStudent(request);
+
+        // Assert
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        var response = Assert.IsType<StudentEnrollmentResponseDto>(okResult.Value);
+        Assert.Equal(enrollment.Id, response.Id);
+        Assert.Equal(enrollment.StudentId, response.StudentId);
+        Assert.Equal(enrollment.SectionId, response.SectionId);
+        Assert.Equal(enrollment.SubjectId, response.SubjectId);
+        Assert.Null(typeof(StudentEnrollmentResponseDto).GetProperty("Uuid"));
+        Assert.Null(typeof(StudentEnrollmentResponseDto).GetProperty("StudentUuid"));
+        Assert.Null(typeof(StudentEnrollmentResponseDto).GetProperty("SectionUuid"));
+        Assert.Null(typeof(StudentEnrollmentResponseDto).GetProperty("SubjectUuid"));
+    }
+
+    [Fact]
     public async Task EnrollStudent_StudentNotFound_ReturnsNotFound()
     {
         // Arrange
@@ -479,4 +537,3 @@ public class StudentEnrollmentControllerTest
 
     #endregion
 }
-

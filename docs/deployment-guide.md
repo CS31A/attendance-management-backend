@@ -194,7 +194,9 @@ For production, always use HTTPS. Configure SSL certificates through:
 - **Azure**: Managed certificates or custom SSL
 
 ### Database Migration
-Run migrations before starting the application:
+The application applies pending EF Core migrations during startup before it begins serving requests. Production deployments should still use a connection string/account with permission to apply schema changes so cold starts can reach a healthy state automatically.
+
+For controlled rollouts, you can still run the migration step ahead of time to shorten startup work or separate schema application from process restarts:
 ```bash
 dotnet ef database update --connection "your-production-connection-string"
 ```

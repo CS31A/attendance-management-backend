@@ -14,6 +14,8 @@ public class Instructor
     [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
     public int Id { get; set; }
 
+    public Guid Uuid { get; set; }
+
     public string? Firstname { get; set; }
     public string? Lastname { get; set; }
     [StringLength(150)]

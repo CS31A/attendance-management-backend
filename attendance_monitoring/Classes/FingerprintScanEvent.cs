@@ -15,6 +15,8 @@ public class FingerprintScanEvent
     [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
     public int Id { get; set; }
 
+    public Guid Uuid { get; set; }
+
     public Guid EventId { get; set; } = Guid.NewGuid();
 
     [Required]

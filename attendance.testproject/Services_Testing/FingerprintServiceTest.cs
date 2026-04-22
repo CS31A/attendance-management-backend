@@ -152,6 +152,7 @@ public class FingerprintServiceTest
         var persistedSession = await _context.FingerprintEnrollmentSessions.SingleAsync();
         Assert.Equal("Pending", persistedSession.Status);
         Assert.Equal(2, persistedSession.AssignedSensorFingerprintId);
+        Assert.NotEqual(Guid.Empty, persistedSession.Uuid);
     }
 
     [Fact]
@@ -283,11 +284,15 @@ public class FingerprintServiceTest
             .Setup(repository => repository.FindFingerprintByDeviceAndSensorIdAsync(device.DeviceIdentifier, enrollmentSession.AssignedSensorFingerprintId))
             .ReturnsAsync((Fingerprint?)null);
 
+        Fingerprint? createdFingerprint = null;
+
         _mockFingerprintRepository
             .Setup(repository => repository.CreateFingerprintAsync(It.IsAny<Fingerprint>()))
             .ReturnsAsync((Fingerprint fingerprint) =>
             {
+                createdFingerprint = fingerprint;
                 fingerprint.Id = 99;
+                fingerprint.Uuid = Guid.NewGuid();
                 return fingerprint;
             });
 
@@ -319,6 +324,9 @@ public class FingerprintServiceTest
         var persistedSession = await _context.FingerprintEnrollmentSessions.SingleAsync();
         Assert.Equal("Completed", persistedSession.Status);
         Assert.NotNull(persistedSession.CompletedAt);
+        Assert.NotNull(createdFingerprint);
+        Assert.NotEqual(Guid.Empty, createdFingerprint!.Uuid);
+        Assert.NotEqual(Guid.Empty, persistedSession.Uuid);
     }
 
     [Fact]
@@ -357,6 +365,7 @@ public class FingerprintServiceTest
         Assert.Equal("NoMatch", scanEvent.Status);
         Assert.Equal(device.Id, scanEvent.DeviceId);
         Assert.Equal(0.3451m, scanEvent.MatchScore);
+        Assert.NotEqual(Guid.Empty, scanEvent.Uuid);
     }
 
     [Fact]

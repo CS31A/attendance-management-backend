@@ -90,6 +90,7 @@ internal sealed class ProfileService : IProfileService
                 profile.StudentProfile = new StudentProfileInfo
                 {
                     Id = student.Id,
+                    Uuid = student.Uuid,
                     Firstname = student.Firstname,
                     Lastname = student.Lastname,
                     IsRegular = student.IsRegular,
@@ -112,6 +113,7 @@ internal sealed class ProfileService : IProfileService
                 profile.InstructorProfile = new InstructorProfileInfo
                 {
                     Id = instructor.Id,
+                    Uuid = instructor.Uuid,
                     Firstname = instructor.Firstname,
                     Lastname = instructor.Lastname,
                     Department = instructor.Department,
@@ -124,16 +126,14 @@ internal sealed class ProfileService : IProfileService
         }
         else if (role.Equals("Admin", StringComparison.OrdinalIgnoreCase))
         {
-            var admin = await _context.Admins
-                .AsNoTracking()
-                .FirstOrDefaultAsync(a => a.UserId == userId && !a.IsDeleted)
-                .ConfigureAwait(false);
+            var admin = await _accountRepository.GetAdminByUserIdAsync(userId).ConfigureAwait(false);
 
             if (admin != null)
             {
                 profile.AdminProfile = new AdminProfileInfo
                 {
                     Id = admin.Id,
+                    Uuid = admin.Uuid,
                     Firstname = admin.Firstname,
                     Lastname = admin.Lastname,
                     CreatedAt = admin.CreatedAt,

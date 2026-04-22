@@ -65,6 +65,20 @@ public class StudentRepository(ApplicationDbContext context) : IStudentRepositor
     }
     #endregion
 
+    #region GetStudentByUuidAsync
+    /// <summary>
+    /// Retrieves a student by UUID (read-only).
+    /// Performance: Single query, no navigation properties loaded.
+    /// </summary>
+    public async Task<Student?> GetStudentByUuidAsync(Guid uuid)
+    {
+        return await context.Students
+            .AsNoTracking()
+            .FirstOrDefaultAsync(s => s.Uuid == uuid && !s.IsDeleted)
+            .ConfigureAwait(false);
+    }
+    #endregion
+
     #region GetStudentByIdTrackedAsync
     /// <summary>
     /// Retrieves a student by ID with change tracking for updates.
@@ -74,6 +88,19 @@ public class StudentRepository(ApplicationDbContext context) : IStudentRepositor
     {
         return await context.Students
             .FirstOrDefaultAsync(s => s.Id == id && !s.IsDeleted)
+            .ConfigureAwait(false);
+    }
+    #endregion
+
+    #region GetStudentByUuidTrackedAsync
+    /// <summary>
+    /// Retrieves a student by UUID with change tracking for updates.
+    /// Performance: Single query, no navigation properties loaded.
+    /// </summary>
+    public async Task<Student?> GetStudentByUuidTrackedAsync(Guid uuid)
+    {
+        return await context.Students
+            .FirstOrDefaultAsync(s => s.Uuid == uuid && !s.IsDeleted)
             .ConfigureAwait(false);
     }
     #endregion

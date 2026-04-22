@@ -20,6 +20,7 @@ public class GetAllUsersDto
 public class StudentProfileDto
 {
     public int Id { get; set; }
+    public Guid Uuid { get; set; }
     public string Firstname { get; set; } = string.Empty;
     public string Lastname { get; set; } = string.Empty;
     public bool IsRegular { get; set; }
@@ -39,6 +40,7 @@ public class StudentProfileDto
 public class InstructorProfileDto
 {
     public int Id { get; set; }
+    public Guid Uuid { get; set; }
     public string? Firstname { get; set; }
     public string? Lastname { get; set; }
     public string? Department { get; set; }
@@ -54,6 +56,7 @@ public class InstructorProfileDto
 public class AdminProfileDto
 {
     public int Id { get; set; }
+    public Guid Uuid { get; set; }
     public string? Firstname { get; set; }
     public string? Lastname { get; set; }
     public DateTime CreatedAt { get; set; }
