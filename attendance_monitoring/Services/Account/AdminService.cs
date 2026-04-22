@@ -227,6 +227,28 @@ internal sealed class AdminService : IAdminService
                 await _accountRepository.UpdateInstructorProfileAsync(instructor).ConfigureAwait(false);
             }
         }
+        else if (targetRole.Equals("Admin", StringComparison.OrdinalIgnoreCase))
+        {
+            var adminProfile = await _accountRepository.GetAdminByUserIdAsync(adminUpdateDto.UserId).ConfigureAwait(false);
+            if (adminProfile != null)
+            {
+                if (!string.IsNullOrEmpty(adminUpdateDto.Firstname))
+                {
+                    adminProfile.Firstname = adminUpdateDto.Firstname;
+                }
+                if (!string.IsNullOrEmpty(adminUpdateDto.Lastname))
+                {
+                    adminProfile.Lastname = adminUpdateDto.Lastname;
+                }
+                if (adminUpdateDto.IsDeleted.HasValue)
+                {
+                    adminProfile.IsDeleted = adminUpdateDto.IsDeleted.Value;
+                    adminProfile.DeletedAt = adminUpdateDto.IsDeleted.Value ? DateTime.UtcNow : null;
+                }
+
+                await _accountRepository.UpdateAdminProfileAsync(adminProfile).ConfigureAwait(false);
+            }
+        }
 
         // Save all changes
         await _accountRepository.SaveChangesAsync().ConfigureAwait(false);

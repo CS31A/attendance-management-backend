@@ -117,17 +117,20 @@ public sealed class AdminUserManagementIntegrationTests
 
         Assert.NotNull(activeStudent.StudentProfile);
         Assert.True(activeStudent.StudentProfile!.Id > 0);
+        Assert.NotEqual(Guid.Empty, activeStudent.StudentProfile.Uuid);
         Assert.NotNull(activeInstructor.InstructorProfile);
         Assert.True(activeInstructor.InstructorProfile!.Id > 0);
+        Assert.NotEqual(Guid.Empty, activeInstructor.InstructorProfile.Uuid);
         Assert.NotNull(admin.AdminProfile);
         Assert.True(admin.AdminProfile!.Id > 0);
+        Assert.NotEqual(Guid.Empty, admin.AdminProfile.Uuid);
 
         using var document = JsonDocument.Parse(payloadJson);
         foreach (var userElement in document.RootElement.EnumerateArray())
         {
-            AssertNestedProfileDoesNotExposeUuid(userElement, "studentProfile");
-            AssertNestedProfileDoesNotExposeUuid(userElement, "instructorProfile");
-            AssertNestedProfileDoesNotExposeUuid(userElement, "adminProfile");
+            AssertNestedProfileExposesUuid(userElement, "studentProfile");
+            AssertNestedProfileExposesUuid(userElement, "instructorProfile");
+            AssertNestedProfileExposesUuid(userElement, "adminProfile");
         }
     }
 
@@ -440,13 +443,15 @@ public sealed class AdminUserManagementIntegrationTests
         return payload;
     }
 
-    private static void AssertNestedProfileDoesNotExposeUuid(JsonElement userElement, string propertyName)
+    private static void AssertNestedProfileExposesUuid(JsonElement userElement, string propertyName)
     {
         if (!userElement.TryGetProperty(propertyName, out var profileElement) || profileElement.ValueKind == JsonValueKind.Null)
         {
             return;
         }
 
-        Assert.False(profileElement.TryGetProperty("uuid", out _), $"{propertyName} unexpectedly exposed a uuid field during Phase 3.");
+        Assert.True(profileElement.TryGetProperty("uuid", out var uuidElement), $"{propertyName} should expose a uuid field during Phase 4.");
+        Assert.True(Guid.TryParse(uuidElement.GetString(), out var parsedUuid), $"{propertyName}.uuid should be a valid GUID.");
+        Assert.NotEqual(Guid.Empty, parsedUuid);
     }
 }

@@ -57,6 +57,7 @@ public class UserProfileResponseDto
 public class StudentProfileInfo
 {
     public int Id { get; set; }
+    public Guid Uuid { get; set; }
     public string? Firstname { get; set; }
     public string? Lastname { get; set; }
     public bool IsRegular { get; set; }
@@ -74,6 +75,7 @@ public class StudentProfileInfo
 public class InstructorProfileInfo
 {
     public int Id { get; set; }
+    public Guid Uuid { get; set; }
     public string? Firstname { get; set; }
     public string? Lastname { get; set; }
     public string? Department { get; set; }
@@ -87,6 +89,7 @@ public class InstructorProfileInfo
 public class AdminProfileInfo
 {
     public int Id { get; set; }
+    public Guid Uuid { get; set; }
     public string? Firstname { get; set; }
     public string? Lastname { get; set; }
     public DateTime CreatedAt { get; set; }
