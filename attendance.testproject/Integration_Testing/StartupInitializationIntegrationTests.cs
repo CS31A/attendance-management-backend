@@ -16,7 +16,7 @@ namespace attendance.testproject.Integration_Testing;
 public sealed class StartupInitializationIntegrationTests
 {
     [Fact]
-    public async Task InitializeApplicationAsync_WithPendingRelationalMigrations_ThrowsBeforeSeeding()
+    public async Task InitializeApplicationAsync_WithPendingRelationalMigrations_AppliesThemBeforeSeeding()
     {
         await using var connection = new SqliteConnection($"Data Source=file:startup-init-{Guid.NewGuid():N}?mode=memory&cache=shared");
         await connection.OpenAsync();
@@ -35,10 +35,14 @@ public sealed class StartupInitializationIntegrationTests
 
         await using var app = builder.Build();
 
-        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => app.InitializeApplicationAsync());
+        await app.InitializeApplicationAsync();
 
-        Assert.Contains("Pending EF Core migrations detected", exception.Message);
-        Assert.Equal(0, seeder.CallCount);
+        await using var scope = app.Services.CreateAsyncScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        var pendingMigrations = await dbContext.Database.GetPendingMigrationsAsync();
+
+        Assert.Empty(pendingMigrations);
+        Assert.Equal(1, seeder.CallCount);
     }
 
     [Fact]
@@ -62,6 +66,40 @@ public sealed class StartupInitializationIntegrationTests
         await app.InitializeApplicationAsync();
 
         Assert.Equal(1, seeder.CallCount);
+    }
+
+    [Fact]
+    public async Task InitializeApplicationAsync_WhenRelationalMigrationApplicationFails_SurfacesTheRealFailure()
+    {
+        var databasePath = Path.Combine(Path.GetTempPath(), $"startup-init-readonly-{Guid.NewGuid():N}.db");
+        await File.WriteAllBytesAsync(databasePath, []);
+
+        try
+        {
+            var builder = WebApplication.CreateBuilder(new WebApplicationOptions
+            {
+                EnvironmentName = Environments.Production
+            });
+
+            builder.WebHost.UseTestServer();
+            builder.Services.AddLogging();
+            builder.Services.AddDbContext<ApplicationDbContext>(options =>
+                options.UseSqlite($"Data Source={databasePath};Mode=ReadOnly"));
+
+            var seeder = new CountingSeederService();
+            builder.Services.AddSingleton<IDataSeederService>(seeder);
+
+            await using var app = builder.Build();
+
+            var exception = await Assert.ThrowsAsync<SqliteException>(() => app.InitializeApplicationAsync());
+
+            Assert.Contains("readonly", exception.Message, StringComparison.OrdinalIgnoreCase);
+            Assert.Equal(0, seeder.CallCount);
+        }
+        finally
+        {
+            File.Delete(databasePath);
+        }
     }
 
     [Fact]
