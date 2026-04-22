@@ -8,6 +8,7 @@ using attendance_monitoring.IServices;
 using attendance_monitoring.Models.DTO.Request;
 using attendance_monitoring.Models.DTO.Response;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 using QrCodeEntity = attendance_monitoring.Classes.QrCode;
 
 namespace attendance_monitoring.Services.QrCode;
@@ -210,78 +211,103 @@ internal sealed class QrCodeScanService
                 return CreateDuplicateScanResponse(qrCode, student, localNow, remainingScansForDuplicate);
             }
 
-            await using var transaction = await _qrCodeRepository.BeginTransactionAsync().ConfigureAwait(false);
-
-            _logger.LogInformation("No duplicate found, incrementing usage counter for QR hash: {QrHash}", validateQrCode.QrHash);
-            var incrementResult = await _qrCodeRepository.AtomicIncrementUsageAsync(validateQrCode.QrHash, utcNow).ConfigureAwait(false);
-
-            if (incrementResult == 0)
-            {
-                await transaction.RollbackAsync().ConfigureAwait(false);
-                _logger.LogWarning("QR code usage increment failed - another scan may have reached the limit");
-                return new QrCodeScanResponseDto
-                {
-                    Success = false,
-                    Message = "QR code usage limit reached or QR code state changed",
-                    AttendanceMarked = false
-                };
-            }
-
+            var hasAmbientTransaction = _dbContext.Database.CurrentTransaction != null;
+            IDbContextTransaction? transaction = null;
             try
             {
-                _logger.LogDebug("Creating attendance record: StudentId={StudentId}, SessionId={SessionId}",
-                    studentId, qrCode.SessionId);
-
-                var attendanceRecord = await _attendanceService.CreateAttendanceFromQrScanAsync(
-                    studentId,
-                    qrCode.SessionId,
-                    qrCode.Id,
-                    localNow
-                ).ConfigureAwait(false);
-
-                await _qrCodeRepository.SaveChangesAsync().ConfigureAwait(false);
-
-                // Commit the QR usage increment and attendance creation together.
-                await transaction.CommitAsync().ConfigureAwait(false);
-
-                var instructorUserId = qrCode.Session?.Schedule?.Instructor?.UserId ?? string.Empty;
-                if (!string.IsNullOrEmpty(instructorUserId))
+                if (!hasAmbientTransaction)
                 {
-                    await _notificationService.NotifyStudentCheckedInAsync(
-                        student.UserId,
-                        instructorUserId,
-                        qrCode.SessionId,
-                        attendanceRecord.Status
-                    ).ConfigureAwait(false);
+                    transaction = await _qrCodeRepository.BeginTransactionAsync().ConfigureAwait(false);
                 }
 
-                var remainingScans = qrCode.MaxUsage.HasValue
-                    ? Math.Max(0, qrCode.MaxUsage.Value - qrCode.UsageCount - 1)
-                    : int.MaxValue;
+                _logger.LogInformation("No duplicate found, incrementing usage counter for QR hash: {QrHash}", validateQrCode.QrHash);
+                var incrementResult = await _qrCodeRepository.AtomicIncrementUsageAsync(validateQrCode.QrHash, utcNow).ConfigureAwait(false);
 
-                _logger.LogInformation("Successfully processed QR code scan for student ID: {StudentId}, attendance record ID: {AttendanceId}",
-                    studentId, attendanceRecord.Id);
+                if (incrementResult == 0)
+                {
+                    if (transaction != null)
+                    {
+                        await transaction.RollbackAsync().ConfigureAwait(false);
+                    }
 
-                return CreateSuccessfulScanResponse(
-                    qrCode,
-                    student,
-                    attendanceRecord.CheckInTime,
-                    remainingScans,
-                    attendanceRecord.Id,
-                    attendanceRecord.Status);
+                    _logger.LogWarning("QR code usage increment failed - another scan may have reached the limit");
+                    return new QrCodeScanResponseDto
+                    {
+                        Success = false,
+                        Message = "QR code usage limit reached or QR code state changed",
+                        AttendanceMarked = false
+                    };
+                }
+
+                try
+                {
+                    _logger.LogDebug("Creating attendance record: StudentId={StudentId}, SessionId={SessionId}",
+                        studentId, qrCode.SessionId);
+
+                    var attendanceRecord = await _attendanceService.CreateAttendanceFromQrScanAsync(
+                        studentId,
+                        qrCode.SessionId,
+                        qrCode.Id,
+                        localNow
+                    ).ConfigureAwait(false);
+
+                    await _qrCodeRepository.SaveChangesAsync().ConfigureAwait(false);
+
+                    // Commit the QR usage increment and attendance creation together.
+                    if (transaction != null)
+                    {
+                        await transaction.CommitAsync().ConfigureAwait(false);
+                    }
+
+                    var instructorUserId = qrCode.Session?.Schedule?.Instructor?.UserId ?? string.Empty;
+                    if (!string.IsNullOrEmpty(instructorUserId))
+                    {
+                        await _notificationService.NotifyStudentCheckedInAsync(
+                            student.UserId,
+                            instructorUserId,
+                            qrCode.SessionId,
+                            attendanceRecord.Status
+                        ).ConfigureAwait(false);
+                    }
+
+                    var remainingScans = qrCode.MaxUsage.HasValue
+                        ? Math.Max(0, qrCode.MaxUsage.Value - qrCode.UsageCount - 1)
+                        : int.MaxValue;
+
+                    _logger.LogInformation("Successfully processed QR code scan for student ID: {StudentId}, attendance record ID: {AttendanceId}",
+                        studentId, attendanceRecord.Id);
+
+                    return CreateSuccessfulScanResponse(
+                        qrCode,
+                        student,
+                        attendanceRecord.CheckInTime,
+                        remainingScans,
+                        attendanceRecord.Id,
+                        attendanceRecord.Status);
+                }
+                catch (InvalidOperationException ex) when (ex.Message.Contains("duplicate"))
+                {
+                    if (transaction != null)
+                    {
+                        await transaction.RollbackAsync().ConfigureAwait(false);
+                    }
+
+                    _logger.LogWarning("Duplicate detected during attendance creation (edge case): StudentId={StudentId}, SessionId={SessionId}",
+                        studentId, qrCode.SessionId);
+
+                    var remainingScansEdge = qrCode.MaxUsage.HasValue
+                        ? Math.Max(0, qrCode.MaxUsage.Value - qrCode.UsageCount)
+                        : int.MaxValue;
+
+                    return CreateDuplicateScanResponse(qrCode, student, localNow, remainingScansEdge);
+                }
             }
-            catch (InvalidOperationException ex) when (ex.Message.Contains("duplicate"))
+            finally
             {
-                await transaction.RollbackAsync().ConfigureAwait(false);
-
-                _logger.LogWarning("Duplicate detected during attendance creation (edge case): StudentId={StudentId}, SessionId={SessionId}",
-                    studentId, qrCode.SessionId);
-
-                var remainingScansEdge = qrCode.MaxUsage.HasValue
-                    ? Math.Max(0, qrCode.MaxUsage.Value - qrCode.UsageCount)
-                    : int.MaxValue;
-
-                return CreateDuplicateScanResponse(qrCode, student, localNow, remainingScansEdge);
+                if (transaction != null)
+                {
+                    await transaction.DisposeAsync().ConfigureAwait(false);
+                }
             }
         }
         catch (Exception ex)
