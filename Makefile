@@ -17,7 +17,7 @@ help: ## Show this help message
 	@echo "  make run                    - Run the application"
 	@echo "  make test                   - Run all tests"
 	@echo "  make test-integration-sqlserver - Run SQL Server-backed integration tests via Podman wrapper"
-	@echo "  make verify-profile-uuid-predeploy - Run the UUID predeploy anomaly gate"
+	@echo "  make verify-profile-uuid-predeploy - Run the UUID predeploy anomaly gate for Wave 1 + Phase 8 tables"
 	@echo "  make test-architecture-guardrails - Run architecture and policy guardrail suites"
 	@echo "  make test-critical-verification   - Run explicit auth, attendance, QR, and integration verification suites"
 	@echo "  make test-specific          - Run specific test class (StudentControllerTest)"
@@ -40,7 +40,7 @@ test-integration-sqlserver: ## Run SQL Server-backed integration tests via Podma
 	./scripts/run-sqlserver-integration-tests.sh
 
 .PHONY: verify-profile-uuid-predeploy
-verify-profile-uuid-predeploy: ## Run the UUID predeploy anomaly gate
+verify-profile-uuid-predeploy: ## Run the UUID predeploy anomaly gate for Wave 1 + Phase 8 UUID tables
 	./scripts/verify-profile-uuid-predeploy.sh
 
 .PHONY: test-architecture-guardrails
