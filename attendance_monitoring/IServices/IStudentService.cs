@@ -10,6 +10,7 @@ public interface IStudentService
     Task<IList<Student>> GetAllStudentsAsync();
     Task<IList<StudentListDto>> GetAllNonDeletedStudentsAsync();
     Task<Student> GetStudentByIdAsync(int id);
+    Task<Student> GetStudentByUuidAsync(Guid uuid);
     Task<Student> CreateStudentAsync(CreateStudent createStudent, ClaimsPrincipal user);
     Task<Student> UpdateStudentAsync(int id, UpdateStudent updateStudent, ClaimsPrincipal user);
     Task SoftDeleteStudentAsync(int id, ClaimsPrincipal user);

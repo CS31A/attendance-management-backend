@@ -33,4 +33,9 @@ public interface IReportsService
     /// Returns session list with attendance counts for a specific instructor.
     /// </summary>
     Task<InstructorSessionsReportDto> GetInstructorSessionsReportAsync(int instructorId, AttendanceFilterRequest filter, ClaimsPrincipal user);
+
+    /// <summary>
+    /// Returns session list with attendance counts for a specific instructor UUID.
+    /// </summary>
+    Task<InstructorSessionsReportDto> GetInstructorSessionsReportAsync(Guid instructorUuid, AttendanceFilterRequest filter, ClaimsPrincipal user);
 }

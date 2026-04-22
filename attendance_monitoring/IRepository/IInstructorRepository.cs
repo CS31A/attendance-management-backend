@@ -21,11 +21,25 @@ public interface IInstructorRepository : ISaveableRepository
     Task<Instructor?> GetInstructorByIdAsync(int id);
 
     /// <summary>
+    /// Retrieves an instructor by their UUID.
+    /// </summary>
+    /// <param name="uuid">The instructor UUID.</param>
+    /// <returns>The instructor if found; otherwise, null.</returns>
+    Task<Instructor?> GetInstructorByUuidAsync(Guid uuid);
+
+    /// <summary>
     /// Retrieves an instructor by their ID with change tracking enabled for updates.
     /// </summary>
     /// <param name="id">The instructor ID.</param>
     /// <returns>The instructor if found; otherwise, null.</returns>
     Task<Instructor?> GetInstructorByIdTrackedAsync(int id);
+
+    /// <summary>
+    /// Retrieves an instructor by their UUID with change tracking enabled for updates.
+    /// </summary>
+    /// <param name="uuid">The instructor UUID.</param>
+    /// <returns>The instructor if found; otherwise, null.</returns>
+    Task<Instructor?> GetInstructorByUuidTrackedAsync(Guid uuid);
 
     /// <summary>
     /// Retrieves an instructor by their ID, ignoring the delete status.

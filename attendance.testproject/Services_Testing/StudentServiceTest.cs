@@ -211,6 +211,55 @@ public class StudentServiceTest
 
     #endregion
 
+    #region GetStudentByUuidAsync Tests
+
+    [Fact]
+    public async Task GetStudentByUuidAsync_WhenStudentExists_ReturnsStudent()
+    {
+        // Arrange
+        var studentUuid = Guid.NewGuid();
+        var student = new Student
+        {
+            Id = 1,
+            Uuid = studentUuid,
+            Firstname = "John",
+            Lastname = "Doe",
+            UserId = "test-user-id",
+            SectionId = 1
+        };
+
+        _mockStudentRepository
+            .Setup(r => r.GetStudentByUuidAsync(studentUuid))
+            .ReturnsAsync(student);
+
+        // Act
+        var result = await _service.GetStudentByUuidAsync(studentUuid);
+
+        // Assert
+        Assert.Same(student, result);
+        _mockStudentRepository.Verify(r => r.GetStudentByUuidAsync(studentUuid), Times.Once);
+    }
+
+    [Fact]
+    public async Task GetStudentByUuidAsync_WhenStudentMissing_ThrowsEntityNotFoundException()
+    {
+        // Arrange
+        var studentUuid = Guid.NewGuid();
+
+        _mockStudentRepository
+            .Setup(r => r.GetStudentByUuidAsync(studentUuid))
+            .ReturnsAsync((Student?)null);
+
+        // Act
+        var exception = await Assert.ThrowsAsync<EntityNotFoundException<Guid>>(() => _service.GetStudentByUuidAsync(studentUuid));
+
+        // Assert
+        Assert.Equal("Student", exception.EntityName);
+        Assert.Equal(studentUuid, exception.Key);
+    }
+
+    #endregion
+
     #region RestoreStudentAsync Tests
 
     [Fact]

@@ -40,11 +40,25 @@ public interface IStudentRepository : ISaveableRepository
     Task<Student?> GetStudentByIdAsync(int id);
 
     /// <summary>
+    /// Retrieves a student by their UUID.
+    /// </summary>
+    /// <param name="uuid">The student UUID.</param>
+    /// <returns>The student if found; otherwise, null.</returns>
+    Task<Student?> GetStudentByUuidAsync(Guid uuid);
+
+    /// <summary>
     /// Retrieves a student by their ID with change tracking enabled for updates.
     /// </summary>
     /// <param name="id">The student ID.</param>
     /// <returns>The student if found; otherwise, null.</returns>
     Task<Student?> GetStudentByIdTrackedAsync(int id);
+
+    /// <summary>
+    /// Retrieves a student by their UUID with change tracking enabled for updates.
+    /// </summary>
+    /// <param name="uuid">The student UUID.</param>
+    /// <returns>The student if found; otherwise, null.</returns>
+    Task<Student?> GetStudentByUuidTrackedAsync(Guid uuid);
 
     /// <summary>
     /// Retrieves a student by their user ID.
