@@ -90,4 +90,11 @@ public interface IInstructorRepository : ISaveableRepository
     /// <returns>True if the instructor was restored; otherwise, false.</returns>
     Task<bool> RestoreInstructorAsync(int id);
 
+    /// <summary>
+    /// Retrieves all schedules with related data (Section, Course, Subject, Classroom, Students, StudentEnrollments) for a specific instructor.
+    /// </summary>
+    /// <param name="instructorId">The instructor ID.</param>
+    /// <returns>A collection of schedules with eagerly loaded related entities.</returns>
+    Task<IEnumerable<Schedules>> GetSchedulesWithRelatedDataByInstructorIdAsync(int instructorId);
+
 }

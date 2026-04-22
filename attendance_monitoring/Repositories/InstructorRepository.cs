@@ -187,6 +187,35 @@ public class InstructorRepository(ApplicationDbContext context) : IInstructorRep
 
     #endregion
 
+    #region Specialized Query Operations
+
+    #region GetSchedulesWithRelatedDataByInstructorIdAsync
+    /// <summary>
+    /// Retrieves all schedules with related data for a specific instructor.
+    /// Uses eager loading to minimize database round trips (N+1 query prevention).
+    /// Includes: Schedule → Section → Course, Subject, Classroom, StudentEnrollments (with Students)
+    /// Note: Regular students (Student.SectionId matches) must be queried separately in the service layer.
+    /// Note: Soft-delete filtering is NOT applied to Schedules in this query.
+    /// Performance: Single query with multiple joins.
+    /// </summary>
+    public async Task<IEnumerable<Schedules>> GetSchedulesWithRelatedDataByInstructorIdAsync(int instructorId)
+    {
+        return await context.Schedules
+            .AsNoTracking()
+            .Where(s => s.InstructorId == instructorId)
+            .Include(s => s.Section)
+                .ThenInclude(sec => sec.Course)
+            .Include(s => s.Subject)
+            .Include(s => s.Classroom)
+            .Include(s => s.Section.StudentEnrollments.Where(se => se.IsActive))
+                .ThenInclude(se => se.Student)
+            .ToListAsync()
+            .ConfigureAwait(false);
+    }
+    #endregion
+
+    #endregion
+
     #region Utility Operations
 
     #region SaveChangesAsync
