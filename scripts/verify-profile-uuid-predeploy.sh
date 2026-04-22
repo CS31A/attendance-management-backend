@@ -67,10 +67,14 @@ uuid_tables=(
   "Sessions"
   "AttendanceRecords"
   "QrCodes"
+  "Fingerprints"
+  "FingerprintDevices"
+  "FingerprintEnrollmentSessions"
+  "FingerprintScanEvents"
 )
 
-# Phase 8 widens the read-only anomaly gate to the expanded UUID schema surface.
-# Fingerprint/device tables stay out of scope until their dedicated later-phase rollout work.
+# Phase 8 widens the read-only anomaly gate to the full expanded UUID schema surface,
+# including the fingerprint-support tables added in the gap-closure follow-up.
 anomaly_query="SET NOCOUNT ON;"
 for table_name in "${uuid_tables[@]}"; do
   if [[ "$anomaly_query" != "SET NOCOUNT ON;" ]]; then
@@ -133,4 +137,4 @@ if (( anomaly_detected > 0 )); then
   exit 1
 fi
 
-echo "UUID anomaly gate passed for Wave 1 profile tables and Phase 8 Slice A/Slice B UUID tables."
+echo "UUID anomaly gate passed for Wave 1 profile tables and all Phase 8 UUID tables, including fingerprint-support tables."
