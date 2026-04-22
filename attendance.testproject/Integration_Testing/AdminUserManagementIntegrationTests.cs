@@ -135,6 +135,30 @@ public sealed class AdminUserManagementIntegrationTests
     }
 
     [RequiresEnvironmentVariableFact("ATTENDANCE_TEST_SQLSERVER_CONNECTION")]
+    public async Task GetApiUsers_WithAllStatus_PreservesOrphanedUser_WithNullProfile()
+    {
+        await using var host = await ApiIntegrationHost.CreateAdminUserManagementAsync();
+        var scenario = AuthenticateAsAdmin(host);
+
+        var users = await GetUsersAsync(host, "/api/users?status=2");
+
+        // The orphaned user must survive as a top-level row
+        var orphanedUser = Assert.Single(users, user => user.UserId == scenario.OrphanedUserId);
+        Assert.Equal("Student", orphanedUser.Role);
+
+        // The orphaned user's nested profile must be honestly null, not fabricated
+        Assert.Null(orphanedUser.StudentProfile);
+        Assert.Null(orphanedUser.InstructorProfile);
+        Assert.Null(orphanedUser.AdminProfile);
+
+        // Non-orphaned users still preserve the additive Id + Uuid contract
+        var activeStudent = Assert.Single(users, user => user.UserId == scenario.ActiveStudentUserId);
+        Assert.NotNull(activeStudent.StudentProfile);
+        Assert.True(activeStudent.StudentProfile!.Id > 0);
+        Assert.NotEqual(Guid.Empty, activeStudent.StudentProfile.Uuid);
+    }
+
+    [RequiresEnvironmentVariableFact("ATTENDANCE_TEST_SQLSERVER_CONNECTION")]
     public async Task PatchApiAccountAdminUsersTarget_UpdatesStudentProfile_AndRouteIdWins()
     {
         await using var host = await ApiIntegrationHost.CreateAdminUserManagementAsync();

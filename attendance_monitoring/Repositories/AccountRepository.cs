@@ -162,9 +162,9 @@ namespace attendance_monitoring.Repositories
                 Username = r.Username,
                 Email = r.Email,
                 Role = string.IsNullOrEmpty(r.Role) ? "Unknown" : RoleConstants.NormalizeRole(r.Role),
-                StudentProfile = r.Role.Equals("Student", StringComparison.OrdinalIgnoreCase) ? new StudentProfileDto
+                StudentProfile = r.Role.Equals("Student", StringComparison.OrdinalIgnoreCase) && r.ProfileId.HasValue ? new StudentProfileDto
                 {
-                    Id = r.ProfileId ?? 0,
+                    Id = r.ProfileId.Value,
                     Uuid = r.ProfileUuid ?? Guid.Empty,
                     Firstname = r.Firstname ?? string.Empty,
                     Lastname = r.Lastname ?? string.Empty,
@@ -178,9 +178,9 @@ namespace attendance_monitoring.Repositories
                     IsDeleted = r.IsDeleted ?? false,
                     DeletedAt = r.DeletedAt
                 } : null,
-                InstructorProfile = RoleConstants.IsInstructorRole(r.Role) ? new InstructorProfileDto
+                InstructorProfile = RoleConstants.IsInstructorRole(r.Role) && r.ProfileId.HasValue ? new InstructorProfileDto
                 {
-                    Id = r.ProfileId ?? 0,
+                    Id = r.ProfileId.Value,
                     Uuid = r.ProfileUuid ?? Guid.Empty,
                     Firstname = r.Firstname,
                     Lastname = r.Lastname,
@@ -190,9 +190,9 @@ namespace attendance_monitoring.Repositories
                     IsDeleted = r.IsDeleted ?? false,
                     DeletedAt = r.DeletedAt
                 } : null,
-                AdminProfile = r.Role.Equals("Admin", StringComparison.OrdinalIgnoreCase) ? new AdminProfileDto
+                AdminProfile = r.Role.Equals("Admin", StringComparison.OrdinalIgnoreCase) && r.ProfileId.HasValue ? new AdminProfileDto
                 {
-                    Id = r.ProfileId ?? 0,
+                    Id = r.ProfileId.Value,
                     Uuid = r.ProfileUuid ?? Guid.Empty,
                     Firstname = r.Firstname,
                     Lastname = r.Lastname,

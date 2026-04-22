@@ -54,6 +54,7 @@ internal static class AdminUserManagementSeedData
         var archivedStudentUser = await CreateUserAsync(userManager, "archived-student", "student.archived@gmail.com", "Student");
         var activeInstructorUser = await CreateUserAsync(userManager, "active-instructor", "instructor.active@gmail.com", "Instructor");
         var conflictStudentUser = await CreateUserAsync(userManager, "conflict-student", "student.conflict@gmail.com", "Student");
+        var orphanedUser = await CreateUserAsync(userManager, "orphaned-user", "orphaned.user@gmail.com", "Student");
 
         dbContext.Admins.Add(new Admin
         {
@@ -145,6 +146,8 @@ internal static class AdminUserManagementSeedData
             ActiveInstructorEmail = activeInstructorUser.Email!,
             ConflictStudentUserId = conflictStudentUser.Id,
             ConflictStudentEmail = conflictStudentUser.Email!,
+            OrphanedUserId = orphanedUser.Id,
+            OrphanedUserEmail = orphanedUser.Email!,
             PrimarySectionId = primarySection.Id,
             AlternateSectionId = alternateSection.Id,
             ActiveStudentRefreshTokenId = activeStudentRefreshTokenId,
