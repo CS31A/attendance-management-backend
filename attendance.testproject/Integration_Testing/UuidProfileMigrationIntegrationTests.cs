@@ -196,27 +196,173 @@ public sealed class UuidProfileMigrationIntegrationTests
     {
         await using var host = await ApiIntegrationHost.CreateAdminUserManagementAsync();
 
-        var tableStates = await host.ExecuteDbContextAsync(async (dbContext, cancellationToken) =>
+        var persisted = await host.ExecuteDbContextAsync(async (dbContext, cancellationToken) =>
         {
-            return new[]
+            var scenario = host.AdminUserManagementScenario ?? throw new InvalidOperationException("Admin user management scenario was not loaded.");
+            var now = DateTime.UtcNow;
+            var suffix = Guid.NewGuid().ToString("N")[..8].ToUpperInvariant();
+
+            var student = await dbContext.Students.SingleAsync(row => row.UserId == scenario.ActiveStudentUserId, cancellationToken);
+            var instructor = await dbContext.Instructors.SingleAsync(row => row.UserId == scenario.ActiveInstructorUserId, cancellationToken);
+
+            var subject = new Subject
             {
-                await ReadUuidTableStateAsync(dbContext, "Courses", cancellationToken),
-                await ReadUuidTableStateAsync(dbContext, "Sections", cancellationToken),
-                await ReadUuidTableStateAsync(dbContext, "StudentEnrollments", cancellationToken),
-                await ReadUuidTableStateAsync(dbContext, "Sessions", cancellationToken),
-                await ReadUuidTableStateAsync(dbContext, "AttendanceRecords", cancellationToken),
-                await ReadUuidTableStateAsync(dbContext, "QrCodes", cancellationToken)
+                Name = $"UUID Migration Subject {suffix}",
+                Code = $"PH8-{suffix}",
+                CreatedAt = now,
+                UpdatedAt = now
             };
+            var classroom = new Classroom
+            {
+                Name = $"UUID Migration Room {suffix}",
+                CreatedAt = now,
+                UpdatedAt = now
+            };
+
+            dbContext.Subjects.Add(subject);
+            dbContext.Classrooms.Add(classroom);
+            await dbContext.SaveChangesAsync(cancellationToken);
+
+            var schedule = new Schedules
+            {
+                SubjectId = subject.Id,
+                ClassroomId = classroom.Id,
+                SectionId = scenario.PrimarySectionId,
+                InstructorId = instructor.Id,
+                DayOfWeek = "Monday",
+                TimeIn = new TimeOnly(9, 0),
+                TimeOut = new TimeOnly(10, 0),
+                CreatedAt = now,
+                UpdatedAt = now
+            };
+            var enrollment = new StudentEnrollment
+            {
+                StudentId = student.Id,
+                SectionId = scenario.PrimarySectionId,
+                SubjectId = subject.Id,
+                EnrollmentType = "Irregular",
+                AcademicYear = "2025-2026",
+                Semester = "2nd",
+                EnrolledAt = now,
+                CreatedAt = now,
+                UpdatedAt = now
+            };
+
+            dbContext.Schedules.Add(schedule);
+            dbContext.StudentEnrollments.Add(enrollment);
+            await dbContext.SaveChangesAsync(cancellationToken);
+
+            var session = new Session
+            {
+                ScheduleId = schedule.Id,
+                Status = "InProgress",
+                SessionDate = now.Date,
+                ActualStartTime = now,
+                AttendanceCutOff = now.AddMinutes(15),
+                StartedBy = instructor.Id,
+                CreatedAt = now,
+                UpdatedAt = now
+            };
+
+            dbContext.Sessions.Add(session);
+            await dbContext.SaveChangesAsync(cancellationToken);
+
+            var qrCode = new QrCode
+            {
+                SessionId = session.Id,
+                QrHash = $"phase8-uuid-{suffix}",
+                GeneratedAt = now,
+                ExpiresAt = now.AddMinutes(15),
+                IsActive = true,
+                CreatedAt = now,
+                UpdatedAt = now
+            };
+
+            dbContext.QrCodes.Add(qrCode);
+            await dbContext.SaveChangesAsync(cancellationToken);
+
+            var attendanceRecord = new AttendanceRecord
+            {
+                StudentId = student.Id,
+                SessionId = session.Id,
+                QrCodeId = qrCode.Id,
+                CheckInTime = now.AddMinutes(1),
+                Status = "Present",
+                IsManualEntry = false,
+                CreatedAt = now,
+                UpdatedAt = now
+            };
+
+            dbContext.AttendanceRecords.Add(attendanceRecord);
+            await dbContext.SaveChangesAsync(cancellationToken);
+
+            var persistedEnrollment = await dbContext.StudentEnrollments
+                .AsNoTracking()
+                .Include(row => row.Student)
+                .Include(row => row.Section)
+                .Include(row => row.Subject)
+                .SingleAsync(row => row.Id == enrollment.Id, cancellationToken);
+            var persistedSession = await dbContext.Sessions
+                .AsNoTracking()
+                .Include(row => row.Schedule)
+                .SingleAsync(row => row.Id == session.Id, cancellationToken);
+            var persistedQrCode = await dbContext.QrCodes
+                .AsNoTracking()
+                .Include(row => row.Session)
+                .SingleAsync(row => row.Id == qrCode.Id, cancellationToken);
+            var persistedAttendance = await dbContext.AttendanceRecords
+                .AsNoTracking()
+                .Include(row => row.Student)
+                .Include(row => row.Session)
+                .Include(row => row.QrCode)
+                .SingleAsync(row => row.Id == attendanceRecord.Id, cancellationToken);
+
+            return new ExpandedPhase8UuidPersistence(
+                new[]
+                {
+                    await ReadUuidTableStateAsync(dbContext, "Courses", cancellationToken),
+                    await ReadUuidTableStateAsync(dbContext, "Sections", cancellationToken),
+                    await ReadUuidTableStateAsync(dbContext, "StudentEnrollments", cancellationToken),
+                    await ReadUuidTableStateAsync(dbContext, "Sessions", cancellationToken),
+                    await ReadUuidTableStateAsync(dbContext, "AttendanceRecords", cancellationToken),
+                    await ReadUuidTableStateAsync(dbContext, "QrCodes", cancellationToken)
+                },
+                persistedEnrollment,
+                persistedSession,
+                persistedQrCode,
+                persistedAttendance);
         });
 
         Assert.Collection(
-            tableStates,
+            persisted.TableStates,
             state => AssertUuidTableState(state, "Courses", minimumExpectedRows: 1),
             state => AssertUuidTableState(state, "Sections", minimumExpectedRows: 2),
             state => AssertUuidTableState(state, "StudentEnrollments", minimumExpectedRows: 1),
             state => AssertUuidTableState(state, "Sessions", minimumExpectedRows: 1),
             state => AssertUuidTableState(state, "AttendanceRecords", minimumExpectedRows: 1),
             state => AssertUuidTableState(state, "QrCodes", minimumExpectedRows: 1));
+
+        Assert.NotEqual(Guid.Empty, persisted.Enrollment.Uuid);
+        Assert.Equal(persisted.Enrollment.StudentId, persisted.Attendance.StudentId);
+        Assert.Equal(persisted.Enrollment.Student.Uuid, persisted.Attendance.Student.Uuid);
+        Assert.Equal(persisted.Enrollment.SectionId, persisted.Enrollment.Section.Id);
+        Assert.NotEqual(Guid.Empty, persisted.Enrollment.Section.Uuid);
+        Assert.Equal(persisted.Enrollment.SubjectId, persisted.Enrollment.Subject.Id);
+        Assert.NotEqual(Guid.Empty, persisted.Enrollment.Subject.Uuid);
+
+        Assert.NotEqual(Guid.Empty, persisted.Session.Uuid);
+        Assert.Equal(persisted.Session.ScheduleId, persisted.Session.Schedule.Id);
+        Assert.NotEqual(Guid.Empty, persisted.Session.Schedule.Uuid);
+
+        Assert.NotEqual(Guid.Empty, persisted.QrCode.Uuid);
+        Assert.Equal(persisted.Session.Id, persisted.QrCode.SessionId);
+        Assert.Equal(persisted.Session.Uuid, persisted.QrCode.Session.Uuid);
+
+        Assert.NotEqual(Guid.Empty, persisted.Attendance.Uuid);
+        Assert.Equal(persisted.Session.Id, persisted.Attendance.SessionId);
+        Assert.Equal(persisted.Session.Uuid, persisted.Attendance.Session.Uuid);
+        Assert.Equal(persisted.QrCode.Id, persisted.Attendance.QrCodeId);
+        Assert.Equal(persisted.QrCode.Uuid, persisted.Attendance.QrCode!.Uuid);
     }
 
     private static void AssertUuidTableState(UuidTableState state, string expectedTableName, int minimumExpectedRows)
@@ -252,8 +398,8 @@ public sealed class UuidProfileMigrationIntegrationTests
         command.CommandText = $@"
 SELECT
     COUNT(*) AS TotalRows,
-    SUM(CASE WHEN [Uuid] IS NULL THEN 1 ELSE 0 END) AS NullUuidRows,
-    SUM(CASE WHEN [Uuid] = '{ZeroUuidLiteral}' THEN 1 ELSE 0 END) AS ZeroUuidRows,
+    COALESCE(SUM(CASE WHEN [Uuid] IS NULL THEN 1 ELSE 0 END), 0) AS NullUuidRows,
+    COALESCE(SUM(CASE WHEN [Uuid] = '{ZeroUuidLiteral}' THEN 1 ELSE 0 END), 0) AS ZeroUuidRows,
     COUNT(*) - COUNT(DISTINCT [Uuid]) AS DuplicateUuidRows
 FROM [{tableName}];";
 
@@ -295,4 +441,11 @@ FROM [{tableName}];";
         int NullUuidRows,
         int ZeroUuidRows,
         int DuplicateUuidRows);
+
+    private sealed record ExpandedPhase8UuidPersistence(
+        UuidTableState[] TableStates,
+        StudentEnrollment Enrollment,
+        Session Session,
+        QrCode QrCode,
+        AttendanceRecord Attendance);
 }
