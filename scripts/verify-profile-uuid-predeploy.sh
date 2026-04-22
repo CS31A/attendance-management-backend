@@ -54,23 +54,37 @@ if [[ "${trust_server_certificate,,}" == "true" ]]; then
   sqlcmd_args+=(-C)
 fi
 
-read -r -d '' anomaly_query <<'SQL' || true
-SET NOCOUNT ON;
-SELECT 'Students' AS [TableName],
-       (SELECT COUNT(*) FROM [Students] WHERE [Uuid] IS NULL) AS [NullCount],
-       (SELECT COUNT(*) FROM (SELECT [Uuid] FROM [Students] WHERE [Uuid] IS NOT NULL GROUP BY [Uuid] HAVING COUNT(*) > 1) AS duplicates) AS [DuplicateCount],
-       (SELECT COUNT(*) FROM [Students] WHERE [Uuid] = '00000000-0000-0000-0000-000000000000') AS [ZeroGuidCount]
-UNION ALL
-SELECT 'Instructors' AS [TableName],
-       (SELECT COUNT(*) FROM [Instructors] WHERE [Uuid] IS NULL) AS [NullCount],
-       (SELECT COUNT(*) FROM (SELECT [Uuid] FROM [Instructors] WHERE [Uuid] IS NOT NULL GROUP BY [Uuid] HAVING COUNT(*) > 1) AS duplicates) AS [DuplicateCount],
-       (SELECT COUNT(*) FROM [Instructors] WHERE [Uuid] = '00000000-0000-0000-0000-000000000000') AS [ZeroGuidCount]
-UNION ALL
-SELECT 'Admins' AS [TableName],
-       (SELECT COUNT(*) FROM [Admins] WHERE [Uuid] IS NULL) AS [NullCount],
-       (SELECT COUNT(*) FROM (SELECT [Uuid] FROM [Admins] WHERE [Uuid] IS NOT NULL GROUP BY [Uuid] HAVING COUNT(*) > 1) AS duplicates) AS [DuplicateCount],
-       (SELECT COUNT(*) FROM [Admins] WHERE [Uuid] = '00000000-0000-0000-0000-000000000000') AS [ZeroGuidCount];
-SQL
+uuid_tables=(
+  "Students"
+  "Instructors"
+  "Admins"
+  "Courses"
+  "Subjects"
+  "Sections"
+  "Classrooms"
+  "Schedules"
+  "StudentEnrollments"
+  "Sessions"
+  "AttendanceRecords"
+  "QrCodes"
+)
+
+# Phase 8 widens the read-only anomaly gate to the expanded UUID schema surface.
+# Fingerprint/device tables stay out of scope until their dedicated later-phase rollout work.
+anomaly_query="SET NOCOUNT ON;"
+for table_name in "${uuid_tables[@]}"; do
+  if [[ "$anomaly_query" != "SET NOCOUNT ON;" ]]; then
+    anomaly_query+=$'\nUNION ALL\n'
+  else
+    anomaly_query+=$'\n'
+  fi
+
+  anomaly_query+="SELECT '${table_name}' AS [TableName],
+       (SELECT COUNT(*) FROM [${table_name}] WHERE [Uuid] IS NULL) AS [NullCount],
+       (SELECT COUNT(*) FROM (SELECT [Uuid] FROM [${table_name}] WHERE [Uuid] IS NOT NULL GROUP BY [Uuid] HAVING COUNT(*) > 1) AS duplicates) AS [DuplicateCount],
+       (SELECT COUNT(*) FROM [${table_name}] WHERE [Uuid] = '00000000-0000-0000-0000-000000000000') AS [ZeroGuidCount]"
+done
+anomaly_query+=";"
 
 anomaly_detected=0
 rows_seen=0
@@ -107,8 +121,10 @@ while IFS='|' read -r table_name null_count duplicate_count zero_guid_count; do
   fi
 done <<< "$query_output"
 
-if (( rows_seen != 3 )); then
-  echo "UUID anomaly query returned $rows_seen row(s); expected 3." >&2
+expected_rows="${#uuid_tables[@]}"
+
+if (( rows_seen != expected_rows )); then
+  echo "UUID anomaly query returned $rows_seen row(s); expected $expected_rows." >&2
   exit 1
 fi
 
@@ -117,4 +133,4 @@ if (( anomaly_detected > 0 )); then
   exit 1
 fi
 
-echo "UUID anomaly gate passed for Students, Instructors, and Admins."
+echo "UUID anomaly gate passed for Wave 1 profile tables and Phase 8 Slice A/Slice B UUID tables."
