@@ -12,6 +12,8 @@ public class Course
     [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
     public int Id { get; set; }
 
+    public Guid Uuid { get; set; }
+
     [Required(ErrorMessage = "Course name is required")]
     [StringLength(100, ErrorMessage = "Course name must be between 1 and 100 characters", MinimumLength = 1)]
     public string Name { get; set; } = string.Empty;
