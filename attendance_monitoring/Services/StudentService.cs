@@ -107,6 +107,39 @@ namespace attendance_monitoring.Services
             }
         }
 
+        /// <summary>
+        /// Retrieves a specific student by UUID
+        /// </summary>
+        /// <param name="uuid">The UUID of the student to retrieve</param>
+        /// <returns>The student with the specified UUID</returns>
+        /// <exception cref="T:attendance_monitoring.Exceptions.EntityNotFoundException{System.Guid}">Thrown when the student is not found</exception>
+        /// <exception cref="EntityServiceException">Thrown when an error occurs during retrieval</exception>
+        public async Task<Student> GetStudentByUuidAsync(Guid uuid)
+        {
+            try
+            {
+                _logger.LogInformation("Retrieving student by UUID: {Uuid}", uuid);
+                var student = await _studentRepository.GetStudentByUuidAsync(uuid).ConfigureAwait(false);
+                if (student == null)
+                {
+                    _logger.LogWarning("Student with UUID {Uuid} not found", uuid);
+                    throw new EntityNotFoundException<Guid>("Student", uuid);
+                }
+
+                _logger.LogInformation("Successfully retrieved student with UUID: {Uuid}", uuid);
+                return student;
+            }
+            catch (EntityNotFoundException<Guid>)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error occurred while retrieving student with UUID: {Uuid}", uuid);
+                throw new EntityServiceException("Student", $"GetStudentByUuid: {uuid}", "An error occurred while retrieving the student", ex);
+            }
+        }
+
         #endregion
 
         #region Create Operations

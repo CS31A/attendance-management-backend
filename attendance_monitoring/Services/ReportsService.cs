@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using attendance_monitoring.Classes;
 using attendance_monitoring.Constants;
 using attendance_monitoring.Exceptions;
 using attendance_monitoring.IRepository;
@@ -129,6 +130,28 @@ public class ReportsService(
         var instructor = await instructorRepository.GetInstructorByIdAsync(instructorId).ConfigureAwait(false);
         if (instructor == null)
             throw new EntityNotFoundException<int>("Instructor", instructorId);
+
+        return await BuildInstructorSessionsReportAsync(instructor, filter, user).ConfigureAwait(false);
+    }
+
+    public async Task<InstructorSessionsReportDto> GetInstructorSessionsReportAsync(
+        Guid instructorUuid, AttendanceFilterRequest filter, ClaimsPrincipal user)
+    {
+        logger.LogInformation("Retrieving instructor sessions report for InstructorUuid: {InstructorUuid}", instructorUuid);
+
+        var instructor = await instructorRepository.GetInstructorByUuidAsync(instructorUuid).ConfigureAwait(false);
+        if (instructor == null)
+            throw new EntityNotFoundException<Guid>("Instructor", instructorUuid);
+
+        return await BuildInstructorSessionsReportAsync(instructor, filter, user).ConfigureAwait(false);
+    }
+
+    private async Task<InstructorSessionsReportDto> BuildInstructorSessionsReportAsync(
+        Instructor instructor,
+        AttendanceFilterRequest filter,
+        ClaimsPrincipal user)
+    {
+        var instructorId = instructor.Id;
 
         // Authorization: Instructors can only view their own session reports
         var userRole = user.FindFirst(ClaimTypes.Role)?.Value;
