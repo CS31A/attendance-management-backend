@@ -133,6 +133,12 @@ public class SessionRepositoryTest : IDisposable
         // Act
         var newerSession = await _context.Sessions
             .AsNoTracking()
+            .Include(session => session.Schedule)
+                .ThenInclude(schedule => schedule.Subject)
+            .Include(session => session.Schedule)
+                .ThenInclude(schedule => schedule.Section)
+            .Include(session => session.Schedule)
+                .ThenInclude(schedule => schedule.Classroom)
             .Include(session => session.AttendanceRecords)
             .Include(session => session.QrCodes)
             .SingleAsync(session => session.Id == 11);
@@ -144,6 +150,13 @@ public class SessionRepositoryTest : IDisposable
 
         // Assert
         Assert.NotEqual(Guid.Empty, newerSession.Uuid);
+        Assert.NotEqual(Guid.Empty, newerSession.Schedule.Uuid);
+        Assert.NotEqual(Guid.Empty, newerSession.Schedule.Subject.Uuid);
+        Assert.NotEqual(Guid.Empty, newerSession.Schedule.Section.Uuid);
+        Assert.NotEqual(Guid.Empty, newerSession.Schedule.Classroom.Uuid);
+        Assert.Equal(newerSession.Schedule.Subject.Name, reportRow.SubjectName);
+        Assert.Equal(newerSession.Schedule.Section.Name, reportRow.SectionName);
+        Assert.Equal(newerSession.Schedule.DayOfWeek, reportRow.DayOfWeek);
         Assert.All(newerSession.AttendanceRecords, record => Assert.NotEqual(Guid.Empty, record.Uuid));
 
         var qrCode = Assert.Single(newerSession.QrCodes);

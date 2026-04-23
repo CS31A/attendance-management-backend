@@ -141,6 +141,10 @@ public class StudentEnrollmentControllerTest
         // Assert
         var okResult = Assert.IsType<OkObjectResult>(result.Result);
         var response = Assert.IsType<StudentEnrollmentResponseDto>(okResult.Value);
+        Assert.NotEqual(Guid.Empty, enrollment.Uuid);
+        Assert.NotEqual(Guid.Empty, enrollment.Student.Uuid);
+        Assert.NotEqual(Guid.Empty, enrollment.Section.Uuid);
+        Assert.NotEqual(Guid.Empty, enrollment.Subject.Uuid);
         Assert.Equal(enrollment.Id, response.Id);
         Assert.Equal(enrollment.StudentId, response.StudentId);
         Assert.Equal(enrollment.SectionId, response.SectionId);

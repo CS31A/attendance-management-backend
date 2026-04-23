@@ -153,6 +153,8 @@ public class FingerprintServiceTest
         Assert.Equal("Pending", persistedSession.Status);
         Assert.Equal(2, persistedSession.AssignedSensorFingerprintId);
         Assert.NotEqual(Guid.Empty, persistedSession.Uuid);
+        Assert.NotEqual(Guid.Empty, persistedSession.EnrollmentSessionId);
+        Assert.NotEqual(persistedSession.Uuid, persistedSession.EnrollmentSessionId);
     }
 
     [Fact]
@@ -327,6 +329,8 @@ public class FingerprintServiceTest
         Assert.NotNull(createdFingerprint);
         Assert.NotEqual(Guid.Empty, createdFingerprint!.Uuid);
         Assert.NotEqual(Guid.Empty, persistedSession.Uuid);
+        Assert.NotEqual(Guid.Empty, persistedSession.EnrollmentSessionId);
+        Assert.NotEqual(persistedSession.Uuid, persistedSession.EnrollmentSessionId);
     }
 
     [Fact]
@@ -366,6 +370,8 @@ public class FingerprintServiceTest
         Assert.Equal(device.Id, scanEvent.DeviceId);
         Assert.Equal(0.3451m, scanEvent.MatchScore);
         Assert.NotEqual(Guid.Empty, scanEvent.Uuid);
+        Assert.NotEqual(Guid.Empty, scanEvent.EventId);
+        Assert.NotEqual(scanEvent.Uuid, scanEvent.EventId);
     }
 
     [Fact]

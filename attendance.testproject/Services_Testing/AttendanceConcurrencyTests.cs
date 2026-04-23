@@ -173,12 +173,20 @@ public class AttendanceConcurrencyTests
         DateTime checkInTime = DateTime.UtcNow;
 
         // Setup mocks
-        _mockSessionRepository.Setup(r => r.GetSessionByIdAsync(sessionId))
-            .ReturnsAsync(new Session
+        var qrSession = new Session
+        {
+            Id = sessionId,
+            Uuid = Guid.NewGuid(),
+            Schedule = new Schedules
             {
-                Id = sessionId,
-                Schedule = new Schedules { TimeIn = TimeOnly.FromDateTime(DateTime.UtcNow) }
-            });
+                Id = 91,
+                Uuid = Guid.NewGuid(),
+                TimeIn = TimeOnly.FromDateTime(DateTime.UtcNow)
+            }
+        };
+
+        _mockSessionRepository.Setup(r => r.GetSessionByIdAsync(sessionId))
+            .ReturnsAsync(qrSession);
 
         // Simulate race condition: HasAttendanceRecordAsync returns false (check passed)
         // But CreateAsync/SaveChangesAsync throws DbUpdateException (DB constraint hit)
@@ -199,6 +207,8 @@ public class AttendanceConcurrencyTests
         );
 
         Assert.Contains("duplicate - Attendance record already exists", exception.Message);
+        Assert.NotEqual(Guid.Empty, qrSession.Uuid);
+        Assert.NotEqual(Guid.Empty, qrSession.Schedule.Uuid);
 
         // Verify warning log
         _mockLogger.Verify(
@@ -396,19 +406,23 @@ public class AttendanceConcurrencyTests
                 Schedule = new Schedules
                 {
                     Id = 77,
+                    Uuid = Guid.NewGuid(),
                     Subject = new Subject
                     {
                         Id = 200,
+                        Uuid = Guid.NewGuid(),
                         Name = "Integration Testing"
                     },
                     Section = new Section
                     {
                         Id = 100,
+                        Uuid = Guid.NewGuid(),
                         Name = "INT-SEC-A"
                     },
                     Classroom = new Classroom
                     {
                         Id = 5,
+                        Uuid = Guid.NewGuid(),
                         Name = "Integration Room 1"
                     },
                     Instructor = new Instructor

@@ -171,9 +171,13 @@ public sealed class FingerprintServiceConcurrencyIntegrationTest : IDisposable
 
         Assert.Equal(persistedAttendance[0].Id, response.AttendanceRecordId);
         Assert.Equal("Duplicate", persistedScanEvents[0].Status);
+        Assert.Equal(seed.Session.Id, persistedScanEvents[0].SessionId);
         Assert.Equal(persistedAttendance[0].Id, persistedScanEvents[0].AttendanceRecordId);
+        Assert.NotEqual(Guid.Empty, seed.Session.Uuid);
         Assert.NotEqual(Guid.Empty, matchedFingerprint.Uuid);
         Assert.NotEqual(Guid.Empty, persistedScanEvents[0].Uuid);
+        Assert.NotEqual(Guid.Empty, persistedScanEvents[0].EventId);
+        Assert.NotEqual(persistedScanEvents[0].Uuid, persistedScanEvents[0].EventId);
     }
 
     [Fact]
@@ -319,8 +323,12 @@ public sealed class FingerprintServiceConcurrencyIntegrationTest : IDisposable
 
         Assert.Single(persistedAttendance);
         Assert.Single(persistedScanEvents);
+        Assert.Equal(seed.Session.Id, persistedScanEvents[0].SessionId);
         Assert.Equal(persistedAttendance[0].Id, persistedScanEvents[0].AttendanceRecordId);
         Assert.Equal(persistedAttendance[0].Id, response.AttendanceRecordId);
+        Assert.NotEqual(Guid.Empty, persistedScanEvents[0].Uuid);
+        Assert.NotEqual(Guid.Empty, persistedScanEvents[0].EventId);
+        Assert.NotEqual(persistedScanEvents[0].Uuid, persistedScanEvents[0].EventId);
     }
 
     public void Dispose()
