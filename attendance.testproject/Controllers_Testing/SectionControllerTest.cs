@@ -13,14 +13,16 @@ namespace attendance.testproject.Controllers_Testing;
 public class SectionControllerTest
 {
     private readonly Mock<ISectionService> _mockSectionService;
+    private readonly Mock<ICourseService> _mockCourseService;
     private readonly Mock<ILogger<SectionController>> _mockLogger;
     private readonly SectionController _controller;
 
     public SectionControllerTest()
     {
         _mockSectionService = new Mock<ISectionService>();
+        _mockCourseService = new Mock<ICourseService>();
         _mockLogger = new Mock<ILogger<SectionController>>();
-        _controller = new SectionController(_mockSectionService.Object, _mockLogger.Object);
+        _controller = new SectionController(_mockSectionService.Object, _mockCourseService.Object, _mockLogger.Object);
     }
 
     private static Section CreateSectionEntity(
@@ -105,6 +107,27 @@ public class SectionControllerTest
     }
 
     [Fact]
+    public async Task GetSectionByUuid_ReturnsOkResult_WithSectionResponseDto()
+    {
+        var sectionUuid = Guid.NewGuid();
+        var courseUuid = Guid.NewGuid();
+        var section = CreateSectionEntity(id: 3, name: "Section 3", courseId: 12);
+        section.Uuid = sectionUuid;
+        section.Course = new Course { Id = 12, Uuid = courseUuid, Name = "BSCS" };
+
+        _mockSectionService
+            .Setup(service => service.GetSectionByUuidAsync(sectionUuid))
+            .ReturnsAsync(section);
+
+        var result = await _controller.GetSectionByUuid(sectionUuid);
+
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        var dto = Assert.IsType<SectionResponseDto>(okResult.Value);
+        Assert.Equal(sectionUuid, dto.Uuid);
+        Assert.Equal(courseUuid, dto.CourseUuid);
+    }
+
+    [Fact]
     public async Task GetSection_ReturnsNotFound_WhenSectionDoesNotExist()
     {
         // Arrange
@@ -184,12 +207,12 @@ public class SectionControllerTest
     {
         // Arrange
         var request = CreateSectionRequest(name: "New Section", courseId: 13);
-        var createdSection = CreateSectionResponseDto(id: 8, name: request.Name, courseId: request.CourseId);
+        var createdSection = CreateSectionResponseDto(id: 8, name: request.Name, courseId: request.CourseId!.Value);
 
         _mockSectionService
             .Setup(service => service.CreateSectionAsync(It.Is<Section>(section =>
                 section.Name == request.Name &&
-                section.CourseId == request.CourseId)))
+                section.CourseId == request.CourseId!.Value)))
             .ReturnsAsync(createdSection);
 
         // Act
@@ -244,12 +267,12 @@ public class SectionControllerTest
         // Arrange
         const int sectionId = 15;
         var request = CreateSectionRequest(name: "Updated Section", courseId: 99);
-        var updatedSection = CreateSectionResponseDto(id: sectionId, name: request.Name, courseId: request.CourseId);
+        var updatedSection = CreateSectionResponseDto(id: sectionId, name: request.Name, courseId: request.CourseId!.Value);
 
         _mockSectionService
             .Setup(service => service.UpdateSectionAsync(sectionId, It.Is<Section>(section =>
                 section.Name == request.Name &&
-                section.CourseId == request.CourseId)))
+                section.CourseId == request.CourseId!.Value)))
             .ReturnsAsync(updatedSection);
 
         // Act
@@ -261,6 +284,42 @@ public class SectionControllerTest
         Assert.Equal(sectionId, dto.Id);
         Assert.Equal(request.Name, dto.Name);
         Assert.Equal(request.CourseId, dto.CourseId);
+    }
+
+    [Fact]
+    public async Task UpdateSectionByUuid_ReturnsOkResult_WhenUuidCourseReferenceSucceeds()
+    {
+        var sectionUuid = Guid.NewGuid();
+        var courseUuid = Guid.NewGuid();
+        var request = new CreateSection
+        {
+            Name = "Updated Section",
+            CourseUuid = courseUuid
+        };
+
+        _mockCourseService
+            .Setup(service => service.GetCourseByUuidAsync(courseUuid))
+            .ReturnsAsync(new Course { Id = 99, Uuid = courseUuid, Name = "BSIT" });
+
+        _mockSectionService
+            .Setup(service => service.UpdateSectionByUuidAsync(sectionUuid, It.Is<Section>(section =>
+                section.Name == request.Name &&
+                section.CourseId == 99)))
+            .ReturnsAsync(new SectionResponseDto
+            {
+                Id = 15,
+                Uuid = sectionUuid,
+                Name = request.Name,
+                CourseId = 99,
+                CourseUuid = courseUuid
+            });
+
+        var result = await _controller.UpdateSectionByUuid(sectionUuid, request);
+
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        var dto = Assert.IsType<SectionResponseDto>(okResult.Value);
+        Assert.Equal(sectionUuid, dto.Uuid);
+        Assert.Equal(courseUuid, dto.CourseUuid);
     }
 
     [Fact]
@@ -584,6 +643,20 @@ public class SectionControllerTest
         // Assert
         Assert.IsType<NoContentResult>(result);
         _mockSectionService.Verify(service => service.DeleteSectionAsync(sectionId), Times.Once);
+    }
+
+    [Fact]
+    public async Task DeleteSectionByUuid_ReturnsNoContent_WhenDeletionSucceeds()
+    {
+        var sectionUuid = Guid.NewGuid();
+        _mockSectionService
+            .Setup(service => service.DeleteSectionByUuidAsync(sectionUuid))
+            .Returns(Task.CompletedTask);
+
+        var result = await _controller.DeleteSectionByUuid(sectionUuid);
+
+        Assert.IsType<NoContentResult>(result);
+        _mockSectionService.Verify(service => service.DeleteSectionByUuidAsync(sectionUuid), Times.Once);
     }
 
     [Fact]

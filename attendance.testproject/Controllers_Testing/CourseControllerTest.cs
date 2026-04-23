@@ -95,6 +95,31 @@ public class CourseControllerTest
     }
 
     [Fact]
+    public async Task GetCourseByUuid_ReturnsOkResult_WhenCourseExists()
+    {
+        var courseUuid = Guid.NewGuid();
+        var expectedCourse = new Course
+        {
+            Id = 12,
+            Uuid = courseUuid,
+            Name = "Bachelor of Science in Data Science",
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+
+        _mockCourseService
+            .Setup(s => s.GetCourseByUuidAsync(courseUuid))
+            .ReturnsAsync(expectedCourse);
+
+        var result = await _controller.GetCourseByUuid(courseUuid);
+
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        var course = Assert.IsType<Course>(okResult.Value);
+        Assert.Equal(courseUuid, course.Uuid);
+        _mockCourseService.Verify(s => s.GetCourseByUuidAsync(courseUuid), Times.Once);
+    }
+
+    [Fact]
     public async Task GetCourse_ReturnsNotFound_WhenCourseDoesNotExist()
     {
         // Arrange
@@ -234,6 +259,35 @@ public class CourseControllerTest
     }
 
     [Fact]
+    public async Task UpdateCourseByUuid_ReturnsOkResult_WhenUpdateSucceeds()
+    {
+        var courseUuid = Guid.NewGuid();
+        var updateCourse = new UpdateCourse { Name = "Bachelor of Science in Cybersecurity" };
+        var user = new ClaimsPrincipal(new ClaimsIdentity());
+        SetControllerUser(user);
+
+        var updatedCourse = new Course
+        {
+            Id = 19,
+            Uuid = courseUuid,
+            Name = updateCourse.Name,
+            CreatedAt = DateTime.UtcNow.AddDays(-7),
+            UpdatedAt = DateTime.UtcNow
+        };
+
+        _mockCourseService
+            .Setup(s => s.UpdateCourseByUuidAsync(courseUuid, updateCourse, user))
+            .ReturnsAsync(updatedCourse);
+
+        var result = await _controller.UpdateCourseByUuid(courseUuid, updateCourse);
+
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        var course = Assert.IsType<Course>(okResult.Value);
+        Assert.Equal(courseUuid, course.Uuid);
+        _mockCourseService.Verify(s => s.UpdateCourseByUuidAsync(courseUuid, updateCourse, user), Times.Once);
+    }
+
+    [Fact]
     public async Task UpdateCourse_ReturnsNotFound_WhenCourseDoesNotExist()
     {
         // Arrange
@@ -296,6 +350,23 @@ public class CourseControllerTest
         // Assert
         Assert.IsType<NoContentResult>(result);
         _mockCourseService.Verify(s => s.DeleteCourseAsync(courseId, user), Times.Once);
+    }
+
+    [Fact]
+    public async Task DeleteCourseByUuid_ReturnsNoContent_WhenDeletionSucceeds()
+    {
+        var courseUuid = Guid.NewGuid();
+        var user = new ClaimsPrincipal(new ClaimsIdentity());
+        SetControllerUser(user);
+
+        _mockCourseService
+            .Setup(s => s.DeleteCourseByUuidAsync(courseUuid, user))
+            .Returns(Task.CompletedTask);
+
+        var result = await _controller.DeleteCourseByUuid(courseUuid);
+
+        Assert.IsType<NoContentResult>(result);
+        _mockCourseService.Verify(s => s.DeleteCourseByUuidAsync(courseUuid, user), Times.Once);
     }
 
     [Fact]

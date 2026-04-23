@@ -64,6 +64,40 @@ public class ScheduleControllerTest
         _mockScheduleService.Verify(s => s.GetScheduleByIdAsync(scheduleId), Times.Once);
     }
 
+    [Fact]
+    public async Task GetScheduleByUuid_ReturnsOkResult_WithSchedule()
+    {
+        var scheduleUuid = Guid.NewGuid();
+        var subjectUuid = Guid.NewGuid();
+        var classroomUuid = Guid.NewGuid();
+        var sectionUuid = Guid.NewGuid();
+        var expectedSchedule = new ScheduleResponseDto
+        {
+            Id = 22,
+            Uuid = scheduleUuid,
+            TimeIn = new TimeOnly(8, 0),
+            TimeOut = new TimeOnly(9, 0),
+            DayOfWeek = "Monday",
+            Subject = new SubjectResponseDto { Id = 1, Uuid = subjectUuid, Name = "Math", Code = "MATH101" },
+            Classroom = new ClassroomResponseDto { Id = 2, Uuid = classroomUuid, Name = "Room 301" },
+            Section = new SectionResponseDto { Id = 3, Uuid = sectionUuid, CourseId = 4, Name = "BSCS 3A" },
+            Instructor = new InstructorResponseDto { Id = 4, Firstname = "Ada", Lastname = "Lovelace" }
+        };
+
+        _mockScheduleService
+            .Setup(s => s.GetScheduleByUuidAsync(scheduleUuid))
+            .ReturnsAsync(expectedSchedule);
+
+        var result = await _scheduleController.GetScheduleByUuid(scheduleUuid);
+
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        var schedule = Assert.IsType<ScheduleResponseDto>(okResult.Value);
+        Assert.Equal(scheduleUuid, schedule.Uuid);
+        Assert.Equal(subjectUuid, schedule.Subject.Uuid);
+        Assert.Equal(classroomUuid, schedule.Classroom.Uuid);
+        Assert.Equal(sectionUuid, schedule.Section.Uuid);
+    }
+
     #endregion
 
     #region Dependency Check Tests
@@ -293,6 +327,35 @@ public class ScheduleControllerTest
     }
 
     [Fact]
+    public async Task UpdateScheduleByUuid_ReturnsOkResult_WithUpdatedSchedule()
+    {
+        var scheduleUuid = Guid.NewGuid();
+        var updateSchedule = new UpdateSchedule
+        {
+            DayOfWeek = "Wednesday"
+        };
+
+        var updatedSchedule = new Schedules
+        {
+            Id = 17,
+            Uuid = scheduleUuid,
+            TimeIn = new TimeOnly(9, 0),
+            TimeOut = new TimeOnly(10, 0),
+            DayOfWeek = updateSchedule.DayOfWeek!
+        };
+
+        _mockScheduleService
+            .Setup(s => s.UpdateScheduleByUuidAsync(scheduleUuid, updateSchedule))
+            .ReturnsAsync(updatedSchedule);
+
+        var result = await _scheduleController.UpdateScheduleByUuid(scheduleUuid, updateSchedule);
+
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        var schedule = Assert.IsType<Schedules>(okResult.Value);
+        Assert.Equal(scheduleUuid, schedule.Uuid);
+    }
+
+    [Fact]
     public async Task UpdateSchedule_ReturnsOkResult_WithPartialUpdate()
     {
         // Arrange - Test PATCH endpoint with only TimeIn field provided
@@ -465,6 +528,21 @@ public class ScheduleControllerTest
         Assert.IsType<NoContentResult>(result);
 
         _mockScheduleService.Verify(s => s.DeleteScheduleAsync(scheduleId, It.IsAny<ClaimsPrincipal>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task DeleteScheduleByUuid_ReturnsNoContent_WhenSuccessful()
+    {
+        var scheduleUuid = Guid.NewGuid();
+
+        _mockScheduleService
+            .Setup(s => s.DeleteScheduleByUuidAsync(scheduleUuid, It.IsAny<ClaimsPrincipal>()))
+            .Returns(Task.CompletedTask);
+
+        var result = await _scheduleController.DeleteScheduleByUuid(scheduleUuid);
+
+        Assert.IsType<NoContentResult>(result);
+        _mockScheduleService.Verify(s => s.DeleteScheduleByUuidAsync(scheduleUuid, It.IsAny<ClaimsPrincipal>()), Times.Once);
     }
 
     [Fact]

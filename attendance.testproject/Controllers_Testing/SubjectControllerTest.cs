@@ -59,6 +59,57 @@ public class SubjectControllerTest
         await Assert.ThrowsAsync<EntityServiceException>(() => _controller.GetSubjects());
     }
 
+    [Fact]
+    public async Task GetSubjectByUuid_ReturnsOkResult_WhenSubjectExists()
+    {
+        var subjectUuid = Guid.NewGuid();
+        var subject = new Subject { Id = 5, Uuid = subjectUuid, Name = "Physics", Code = "PHY101" };
+
+        _mockSubjectService
+            .Setup(s => s.GetSubjectByUuidAsync(subjectUuid))
+            .ReturnsAsync(subject);
+
+        var result = await _controller.GetSubjectByUuid(subjectUuid);
+
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        var returnedSubject = Assert.IsType<Subject>(okResult.Value);
+        Assert.Equal(subjectUuid, returnedSubject.Uuid);
+        _mockSubjectService.Verify(s => s.GetSubjectByUuidAsync(subjectUuid), Times.Once);
+    }
+
+    [Fact]
+    public async Task UpdateSubjectByUuid_ReturnsOkResult_WhenUpdateSucceeds()
+    {
+        var subjectUuid = Guid.NewGuid();
+        var updateSubject = new UpdateSubject { Name = "Advanced Physics" };
+        var updatedSubject = new Subject { Id = 5, Uuid = subjectUuid, Name = updateSubject.Name! };
+
+        _mockSubjectService
+            .Setup(s => s.UpdateSubjectByUuidAsync(subjectUuid, updateSubject))
+            .ReturnsAsync(updatedSubject);
+
+        var result = await _controller.UpdateSubjectByUuid(subjectUuid, updateSubject);
+
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        var returnedSubject = Assert.IsType<Subject>(okResult.Value);
+        Assert.Equal(subjectUuid, returnedSubject.Uuid);
+    }
+
+    [Fact]
+    public async Task DeleteSubjectByUuid_ReturnsNoContent_WhenDeletionSucceeds()
+    {
+        var subjectUuid = Guid.NewGuid();
+
+        _mockSubjectService
+            .Setup(s => s.DeleteSubjectByUuidAsync(subjectUuid))
+            .Returns(Task.CompletedTask);
+
+        var result = await _controller.DeleteSubjectByUuid(subjectUuid);
+
+        Assert.IsType<NoContentResult>(result);
+        _mockSubjectService.Verify(s => s.DeleteSubjectByUuidAsync(subjectUuid), Times.Once);
+    }
+
     #endregion
 
     #region Dependency Check Tests

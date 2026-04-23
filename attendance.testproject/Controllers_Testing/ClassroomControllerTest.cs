@@ -76,6 +76,30 @@ public class ClassroomControllerTest
     }
 
     [Fact]
+    public async Task GetClassroomByUuid_ReturnsOkResult_WhenClassroomExists()
+    {
+        var classroomUuid = Guid.NewGuid();
+        var expectedClassroom = new Classroom
+        {
+            Id = 4,
+            Uuid = classroomUuid,
+            Name = "Room 204",
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+
+        _mockClassroomService
+            .Setup(s => s.GetClassroomByUuidAsync(classroomUuid))
+            .ReturnsAsync(expectedClassroom);
+
+        var result = await _controller.GetClassroomByUuid(classroomUuid);
+
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        var classroom = Assert.IsType<Classroom>(okResult.Value);
+        Assert.Equal(classroomUuid, classroom.Uuid);
+    }
+
+    [Fact]
     public async Task GetClassroom_ReturnsNotFound_WhenClassroomDoesNotExist()
     {
         // Arrange
@@ -181,6 +205,35 @@ public class ClassroomControllerTest
     }
 
     [Fact]
+    public async Task UpdateClassroomByUuid_ReturnsOkResult_WhenUpdateSucceeds()
+    {
+        var classroomUuid = Guid.NewGuid();
+        var updateClassroom = new UpdateClassroom
+        {
+            Name = "Updated Room 204"
+        };
+
+        var updatedClassroom = new Classroom
+        {
+            Id = 4,
+            Uuid = classroomUuid,
+            Name = updateClassroom.Name!,
+            CreatedAt = DateTime.UtcNow.AddDays(-1),
+            UpdatedAt = DateTime.UtcNow
+        };
+
+        _mockClassroomService
+            .Setup(s => s.UpdateClassroomByUuidAsync(classroomUuid, updateClassroom))
+            .ReturnsAsync(updatedClassroom);
+
+        var result = await _controller.UpdateClassroomByUuid(classroomUuid, updateClassroom);
+
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        var classroom = Assert.IsType<Classroom>(okResult.Value);
+        Assert.Equal(classroomUuid, classroom.Uuid);
+    }
+
+    [Fact]
     public async Task UpdateClassroom_ReturnsBadRequest_WhenInvalidModelState()
     {
         // Arrange
@@ -216,6 +269,21 @@ public class ClassroomControllerTest
         // Assert
         Assert.IsType<NoContentResult>(result);
         _mockClassroomService.Verify(s => s.DeleteClassroomAsync(classroomId), Times.Once);
+    }
+
+    [Fact]
+    public async Task DeleteClassroomByUuid_ReturnsNoContent_WhenDeletionSucceeds()
+    {
+        var classroomUuid = Guid.NewGuid();
+
+        _mockClassroomService
+            .Setup(s => s.DeleteClassroomByUuidAsync(classroomUuid))
+            .Returns(Task.CompletedTask);
+
+        var result = await _controller.DeleteClassroomByUuid(classroomUuid);
+
+        Assert.IsType<NoContentResult>(result);
+        _mockClassroomService.Verify(s => s.DeleteClassroomByUuidAsync(classroomUuid), Times.Once);
     }
 
     [Fact]
