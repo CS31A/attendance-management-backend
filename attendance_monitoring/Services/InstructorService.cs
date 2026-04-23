@@ -1220,13 +1220,14 @@ namespace attendance_monitoring.Services
                 return true;
             }
 
-            var handledSections = await _instructorRepository.GetHandledSectionsByInstructorIdAsync(instructorId).ConfigureAwait(false);
-            var handledSectionIds = handledSections.Select(s => s.Id).ToHashSet();
+            var instructorSchedules = await _scheduleRepository.GetSchedulesByInstructorIdAsync(instructorId).ConfigureAwait(false);
+            var handledSectionSubjectPairs = instructorSchedules
+                .Select(schedule => (schedule.SectionId, schedule.SubjectId))
+                .ToHashSet();
 
-            var hasActiveEnrollmentInHandledSection = student.AdditionalEnrollments
-                .Any(se => se.IsActive && handledSectionIds.Contains(se.SectionId));
-
-            return hasActiveEnrollmentInHandledSection;
+            return student.AdditionalEnrollments.Any(studentEnrollment =>
+                studentEnrollment.IsActive
+                && handledSectionSubjectPairs.Contains((studentEnrollment.SectionId, studentEnrollment.SubjectId)));
         }
         #endregion
 

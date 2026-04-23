@@ -280,13 +280,7 @@ public class InstructorRepository(ApplicationDbContext context) : IInstructorRep
     /// </summary>
     public async Task<IEnumerable<Student>> GetHomeSectionStudentsAsync(int sectionId)
     {
-        return await context.Students
-            .AsNoTracking()
-            .Where(student => student.SectionId == sectionId && !student.IsDeleted)
-            .OrderBy(student => student.Lastname)
-            .ThenBy(student => student.Firstname)
-            .ToListAsync()
-            .ConfigureAwait(false);
+        return await GetRegularStudentsBySectionIdAsync(sectionId).ConfigureAwait(false);
     }
     #endregion
 
