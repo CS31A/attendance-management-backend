@@ -46,12 +46,14 @@ internal static class ScheduleServiceSupport
         return new ScheduleResponseDto
         {
             Id = schedule.Id,
+            Uuid = schedule.Uuid,
             TimeIn = schedule.TimeIn,
             TimeOut = schedule.TimeOut,
             DayOfWeek = schedule.DayOfWeek,
             Subject = new SubjectResponseDto
             {
                 Id = schedule.Subject.Id,
+                Uuid = schedule.Subject.Uuid,
                 Name = schedule.Subject.Name,
                 Code = schedule.Subject.Code,
                 CreatedAt = schedule.Subject.CreatedAt,
@@ -60,6 +62,7 @@ internal static class ScheduleServiceSupport
             Classroom = new ClassroomResponseDto
             {
                 Id = schedule.Classroom.Id,
+                Uuid = schedule.Classroom.Uuid,
                 Name = schedule.Classroom.Name,
                 CreatedAt = schedule.Classroom.CreatedAt,
                 UpdatedAt = schedule.Classroom.UpdatedAt,
@@ -67,14 +70,17 @@ internal static class ScheduleServiceSupport
             Section = new SectionResponseDto
             {
                 Id = schedule.Section.Id,
+                Uuid = schedule.Section.Uuid,
                 Name = schedule.Section.Name,
                 CourseId = schedule.Section.CourseId,
+                CourseUuid = schedule.Section.Course?.Uuid,
                 CreatedAt = schedule.Section.CreatedAt,
                 UpdatedAt = schedule.Section.UpdatedAt,
             },
             Instructor = new InstructorResponseDto
             {
                 Id = schedule.Instructor.Id,
+                Uuid = schedule.Instructor.Uuid,
                 Firstname = schedule.Instructor.Firstname,
                 Lastname = schedule.Instructor.Lastname,
                 Email = schedule.Instructor.User?.Email,

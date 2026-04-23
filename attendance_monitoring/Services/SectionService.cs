@@ -85,8 +85,10 @@ namespace attendance_monitoring.Services
                 var sectionDtos = sections.Select(s => new SectionResponseDto
                 {
                     Id = s.Id,
+                    Uuid = s.Uuid,
                     Name = s.Name,
                     CourseId = s.CourseId,
+                    CourseUuid = s.Course?.Uuid,
                     CreatedAt = s.CreatedAt,
                     UpdatedAt = s.UpdatedAt
                 }).ToList();
@@ -121,8 +123,10 @@ namespace attendance_monitoring.Services
                 var sectionDto = new SectionResponseDto
                 {
                     Id = createdSection.Id,
+                    Uuid = createdSection.Uuid,
                     Name = createdSection.Name,
                     CourseId = createdSection.CourseId,
+                    CourseUuid = createdSection.Course?.Uuid,
                     CreatedAt = createdSection.CreatedAt,
                     UpdatedAt = createdSection.UpdatedAt
                 };
@@ -165,8 +169,10 @@ namespace attendance_monitoring.Services
                 var sectionDto = new SectionResponseDto
                 {
                     Id = updatedSection.Id,
+                    Uuid = updatedSection.Uuid,
                     Name = updatedSection.Name,
                     CourseId = updatedSection.CourseId,
+                    CourseUuid = updatedSection.Course?.Uuid,
                     CreatedAt = updatedSection.CreatedAt,
                     UpdatedAt = updatedSection.UpdatedAt
                 };

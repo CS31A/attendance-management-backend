@@ -164,6 +164,12 @@ public class StudentEnrollmentService : IStudentEnrollmentService
         return await _enrollmentRepository.GetStudentEnrollmentsAsync(studentId);
     }
 
+    public async Task<IEnumerable<StudentEnrollment>> GetStudentEnrollmentsByStudentUuidAsync(Guid studentUuid)
+    {
+        var studentId = await ResolveStudentIdAsync(null, studentUuid).ConfigureAwait(false);
+        return await GetStudentEnrollmentsAsync(studentId).ConfigureAwait(false);
+    }
+
     public async Task<IEnumerable<StudentEnrollment>> GetActiveStudentEnrollmentsAsync(int studentId)
     {
         return await _enrollmentRepository.GetActiveEnrollmentsAsync(studentId);
@@ -182,6 +188,14 @@ public class StudentEnrollmentService : IStudentEnrollmentService
     public async Task<bool> IsStudentEnrolledInSectionSubjectAsync(int studentId, int sectionId, int subjectId)
     {
         return await _enrollmentRepository.IsStudentEnrolledAsync(studentId, sectionId, subjectId);
+    }
+
+    public async Task<bool> IsStudentEnrolledInSectionSubjectByUuidAsync(Guid studentUuid, Guid sectionUuid, Guid subjectUuid)
+    {
+        var studentId = await ResolveStudentIdAsync(null, studentUuid).ConfigureAwait(false);
+        var sectionId = await ResolveSectionIdAsync(null, sectionUuid).ConfigureAwait(false);
+        var subjectId = await ResolveSubjectIdAsync(null, subjectUuid).ConfigureAwait(false);
+        return await IsStudentEnrolledInSectionSubjectAsync(studentId, sectionId, subjectId).ConfigureAwait(false);
     }
 
     public async Task<IEnumerable<Student>> GetStudentsInSectionAsync(int sectionId)
@@ -206,6 +220,12 @@ public class StudentEnrollmentService : IStudentEnrollmentService
     public async Task<IEnumerable<StudentEnrollment>> GetActiveSectionEnrollmentsAsync(int sectionId)
     {
         return await _enrollmentRepository.GetActiveSectionEnrollmentsAsync(sectionId);
+    }
+
+    public async Task<IEnumerable<StudentEnrollment>> GetActiveSectionEnrollmentsBySectionUuidAsync(Guid sectionUuid)
+    {
+        var sectionId = await ResolveSectionIdAsync(null, sectionUuid).ConfigureAwait(false);
+        return await GetActiveSectionEnrollmentsAsync(sectionId).ConfigureAwait(false);
     }
 
     public async Task<StudentEnrollment?> GetSpecificEnrollmentAsync(int studentId, int sectionId, int subjectId)

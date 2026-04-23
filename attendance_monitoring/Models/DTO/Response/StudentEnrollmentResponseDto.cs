@@ -3,13 +3,17 @@ namespace attendance_monitoring.Models.DTO.Response;
 public class StudentEnrollmentResponseDto
 {
     public int Id { get; set; }
+    public Guid Uuid { get; set; }
     public int StudentId { get; set; }
+    public Guid? StudentUuid { get; set; }
     public string? StudentFirstname { get; set; }
     public string? StudentLastname { get; set; }
     public string? StudentEmail { get; set; }
     public int SectionId { get; set; }
+    public Guid? SectionUuid { get; set; }
     public string? SectionName { get; set; }
     public int SubjectId { get; set; }
+    public Guid? SubjectUuid { get; set; }
     public string? SubjectName { get; set; }
     public string? SubjectCode { get; set; }
     public bool IsActive { get; set; }
@@ -25,6 +29,7 @@ public class StudentEnrollmentResponseDto
 public class StudentSectionsResponseDto
 {
     public int StudentId { get; set; }
+    public Guid? StudentUuid { get; set; }
     public string? StudentFirstname { get; set; }
     public string? StudentLastname { get; set; }
     public bool IsRegular { get; set; }
@@ -34,9 +39,12 @@ public class StudentSectionsResponseDto
 public class EnrollmentSummaryDto
 {
     public int EnrollmentId { get; set; }
+    public Guid? EnrollmentUuid { get; set; }
     public int SectionId { get; set; }
+    public Guid? SectionUuid { get; set; }
     public string? SectionName { get; set; }
     public int SubjectId { get; set; }
+    public Guid? SubjectUuid { get; set; }
     public string? SubjectName { get; set; }
     public string? SubjectCode { get; set; }
     public string EnrollmentType { get; set; } = string.Empty;

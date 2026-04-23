@@ -3,6 +3,7 @@ namespace attendance_monitoring.Models.DTO.Response
     public class ScheduleResponseDto
     {
         public int Id { get; set; }
+        public Guid Uuid { get; set; }
         public TimeOnly TimeIn { get; set; }
         public TimeOnly TimeOut { get; set; }
         public string DayOfWeek { get; set; } = string.Empty;
