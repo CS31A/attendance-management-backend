@@ -262,6 +262,8 @@ public class InstructorRepository(ApplicationDbContext context) : IInstructorRep
             .Include(schedule => schedule.Subject)
             .Include(schedule => schedule.Classroom)
             .Include(schedule => schedule.Section)
+                .ThenInclude(section => section.Course)
+            .Include(schedule => schedule.Section)
                 .ThenInclude(section => section.StudentEnrollments.Where(studentEnrollment => studentEnrollment.IsActive))
                     .ThenInclude(studentEnrollment => studentEnrollment.Student)
             .OrderBy(schedule => schedule.DayOfWeek)
