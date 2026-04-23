@@ -21,6 +21,7 @@ namespace attendance.testproject.Services_Testing;
 public class InstructorServiceTest
 {
     private readonly Mock<IInstructorRepository> _mockInstructorRepository;
+    private readonly Mock<ISectionRepository> _mockSectionRepository;
     private readonly Mock<IScheduleRepository> _mockScheduleRepository;
     private readonly Mock<IUserContextService> _mockUserContextService;
     private readonly Mock<ILogger<InstructorService>> _mockLogger;
@@ -30,12 +31,18 @@ public class InstructorServiceTest
     public InstructorServiceTest()
     {
         _mockInstructorRepository = new Mock<IInstructorRepository>();
+        _mockSectionRepository = new Mock<ISectionRepository>();
         _mockScheduleRepository = new Mock<IScheduleRepository>();
         _mockUserContextService = new Mock<IUserContextService>();
         _mockLogger = new Mock<ILogger<InstructorService>>();
 
+        _mockSectionRepository
+            .Setup(r => r.GetSectionByIdAsync(It.IsAny<int>()))
+            .ReturnsAsync((int id) => new Section { Id = id });
+
         _service = new InstructorService(
             _mockInstructorRepository.Object,
+            _mockSectionRepository.Object,
             _mockScheduleRepository.Object,
             _mockUserContextService.Object,
             _mockLogger.Object
@@ -56,10 +63,11 @@ public class InstructorServiceTest
     public void Constructor_NullDependency_ThrowsArgumentNullException()
     {
         // Arrange & Act & Assert
-        Assert.Throws<ArgumentNullException>(() => new InstructorService(null!, _mockScheduleRepository.Object, _mockUserContextService.Object, _mockLogger.Object));
-        Assert.Throws<ArgumentNullException>(() => new InstructorService(_mockInstructorRepository.Object, null!, _mockUserContextService.Object, _mockLogger.Object));
-        Assert.Throws<ArgumentNullException>(() => new InstructorService(_mockInstructorRepository.Object, _mockScheduleRepository.Object, null!, _mockLogger.Object));
-        Assert.Throws<ArgumentNullException>(() => new InstructorService(_mockInstructorRepository.Object, _mockScheduleRepository.Object, _mockUserContextService.Object, null!));
+        Assert.Throws<ArgumentNullException>(() => new InstructorService(null!, _mockSectionRepository.Object, _mockScheduleRepository.Object, _mockUserContextService.Object, _mockLogger.Object));
+        Assert.Throws<ArgumentNullException>(() => new InstructorService(_mockInstructorRepository.Object, null!, _mockScheduleRepository.Object, _mockUserContextService.Object, _mockLogger.Object));
+        Assert.Throws<ArgumentNullException>(() => new InstructorService(_mockInstructorRepository.Object, _mockSectionRepository.Object, null!, _mockUserContextService.Object, _mockLogger.Object));
+        Assert.Throws<ArgumentNullException>(() => new InstructorService(_mockInstructorRepository.Object, _mockSectionRepository.Object, _mockScheduleRepository.Object, null!, _mockLogger.Object));
+        Assert.Throws<ArgumentNullException>(() => new InstructorService(_mockInstructorRepository.Object, _mockSectionRepository.Object, _mockScheduleRepository.Object, _mockUserContextService.Object, null!));
     }
 
     #endregion
@@ -1952,7 +1960,7 @@ public class InstructorServiceTest
         // Arrange
         const string userId = "test-user-id";
         const int instructorId = 1;
-        const int sectionId = 999;
+        const int sectionId = 1;
         var instructor = new Instructor { Id = instructorId, Firstname = "John", Lastname = "Doe", UserId = userId };
 
         _mockUserContextService.Setup(s => s.GetUserIdAsync(_testUserPrincipal)).ReturnsAsync(userId);
@@ -1963,6 +1971,27 @@ public class InstructorServiceTest
         var exception = await Assert.ThrowsAsync<EntityUnauthorizedException>(
             () => _service.GetInstructorSectionDetailAsync(_testUserPrincipal, sectionId));
         Assert.Equal("Section", exception.EntityName);
+    }
+
+    [Fact]
+    public async Task GetInstructorSectionDetailAsync_SectionNotFound_ThrowsEntityNotFoundException()
+    {
+        // Arrange
+        const string userId = "test-user-id";
+        const int instructorId = 1;
+        const int sectionId = 999;
+        var instructor = new Instructor { Id = instructorId, Firstname = "John", Lastname = "Doe", UserId = userId };
+
+        _mockUserContextService.Setup(s => s.GetUserIdAsync(_testUserPrincipal)).ReturnsAsync(userId);
+        _mockInstructorRepository.Setup(r => r.GetInstructorByUserIdAsync(userId)).ReturnsAsync(instructor);
+        _mockSectionRepository.Setup(r => r.GetSectionByIdAsync(sectionId)).ReturnsAsync((Section?)null);
+
+        // Act & Assert
+        var exception = await Assert.ThrowsAsync<EntityNotFoundException<int>>(
+            () => _service.GetInstructorSectionDetailAsync(_testUserPrincipal, sectionId));
+        Assert.Equal("Section", exception.EntityName);
+        Assert.Equal(sectionId, exception.Key);
+        _mockInstructorRepository.Verify(r => r.IsInstructorHandlingSectionAsync(It.IsAny<int>(), It.IsAny<int>()), Times.Never);
     }
 
     [Fact]

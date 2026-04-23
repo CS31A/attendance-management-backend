@@ -19,6 +19,7 @@ namespace attendance_monitoring.Services
     public class InstructorService : IInstructorService
     {
         private readonly IInstructorRepository _instructorRepository;
+        private readonly ISectionRepository _sectionRepository;
         private readonly IScheduleRepository _scheduleRepository;
         private readonly IUserContextService _userContextService;
         private readonly ILogger<InstructorService> _logger;
@@ -27,12 +28,14 @@ namespace attendance_monitoring.Services
         /// Initializes a new instance of the InstructorService class
         /// </summary>
         /// <param name="instructorRepository">Repository for instructor data operations</param>
+        /// <param name="sectionRepository">Repository for section data operations</param>
         /// <param name="scheduleRepository">Repository for schedule data operations</param>
         /// <param name="userContextService">Service for managing user context and authorization</param>
         /// <param name="logger">Logger for logging operations</param>
-        public InstructorService(IInstructorRepository instructorRepository, IScheduleRepository scheduleRepository, IUserContextService userContextService, ILogger<InstructorService> logger)
+        public InstructorService(IInstructorRepository instructorRepository, ISectionRepository sectionRepository, IScheduleRepository scheduleRepository, IUserContextService userContextService, ILogger<InstructorService> logger)
         {
             _instructorRepository = instructorRepository ?? throw new ArgumentNullException(nameof(instructorRepository));
+            _sectionRepository = sectionRepository ?? throw new ArgumentNullException(nameof(sectionRepository));
             _scheduleRepository = scheduleRepository ?? throw new ArgumentNullException(nameof(scheduleRepository));
             _userContextService = userContextService ?? throw new ArgumentNullException(nameof(userContextService));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -940,6 +943,13 @@ namespace attendance_monitoring.Services
                 {
                     _logger.LogWarning("No instructor record found for user ID: {UserId}", userId);
                     throw new EntityNotFoundException<string>("Instructor", $"UserId: {userId}");
+                }
+
+                var sectionExists = await _sectionRepository.GetSectionByIdAsync(sectionId).ConfigureAwait(false);
+                if (sectionExists == null)
+                {
+                    _logger.LogWarning("Section with ID {SectionId} not found", sectionId);
+                    throw new EntityNotFoundException<int>("Section", sectionId);
                 }
 
                 var isHandlingSection = await _instructorRepository.IsInstructorHandlingSectionAsync(instructor.Id, sectionId).ConfigureAwait(false);
