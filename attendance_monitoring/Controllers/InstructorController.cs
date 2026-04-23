@@ -165,6 +165,30 @@ public class InstructorController(IInstructorService instructorService, ILogger<
         }
     }
 
+    // GET: api/instructors/me/sections-with-students
+    [HttpGet("me/sections-with-students")]
+    [Authorize(Policy = "PrivilegedPolicy")]
+    public async Task<ActionResult<InstructorSectionsWithStudentsResponseDto>> GetMySectionsWithStudents()
+    {
+        try
+        {
+            logger.LogInformation("Getting sections with students for authenticated instructor");
+            var response = await instructorService.GetSectionsWithStudentsByInstructorAsync(User);
+            logger.LogInformation("Successfully retrieved sections with students for instructor ID: {InstructorId}", response.InstructorId);
+            return Ok(response);
+        }
+        catch (EntityNotFoundException<string> ex)
+        {
+            logger.LogWarning(ex, "Instructor not found for authenticated user");
+            return NotFound("No instructor record found for the current user");
+        }
+        catch (EntityServiceException ex)
+        {
+            logger.LogError(ex, "Service error occurred while retrieving sections with students");
+            return StatusCode(500, "An error occurred while retrieving sections");
+        }
+    }
+
     #endregion
 
     #region Update Operations

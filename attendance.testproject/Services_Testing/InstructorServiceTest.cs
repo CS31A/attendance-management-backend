@@ -1046,4 +1046,560 @@ public class InstructorServiceTest
     }
 
     #endregion
+
+    #region GetSectionsWithStudentsByInstructorAsync Tests
+
+    [Fact]
+    public async Task GetSectionsWithStudentsByInstructorAsync_Success_ReturnsMappedDto()
+    {
+        // Arrange
+        const string userId = "test-user-id";
+        const int instructorId = 1;
+        var instructorGuid = Guid.NewGuid();
+        var sectionGuid = Guid.NewGuid();
+        var courseGuid = Guid.NewGuid();
+        var subjectGuid = Guid.NewGuid();
+        var scheduleGuid = Guid.NewGuid();
+        var classroomGuid = Guid.NewGuid();
+        var student1Guid = Guid.NewGuid();
+        var student2Guid = Guid.NewGuid();
+
+        var instructor = new Instructor
+        {
+            Id = instructorId,
+            Uuid = instructorGuid,
+            Firstname = "John",
+            Lastname = "Doe",
+            UserId = userId
+        };
+
+        var course = new Course { Id = 1, Uuid = courseGuid, Name = "Computer Science" };
+        var section = new Section
+        {
+            Id = 1,
+            Uuid = sectionGuid,
+            Name = "CS-3A",
+            CourseId = 1,
+            Course = course,
+            StudentEnrollments = new List<StudentEnrollment>()
+        };
+
+        var subject = new Subject { Id = 1, Uuid = subjectGuid, Name = "Data Structures", Code = "CS301" };
+        var classroom = new Classroom { Id = 1, Uuid = classroomGuid, Name = "Room 101" };
+
+        var student1 = new Student
+        {
+            Id = 1,
+            Uuid = student1Guid,
+            Firstname = "Alice",
+            Lastname = "Smith",
+            SectionId = 1,
+            IsDeleted = false
+        };
+
+        var student2 = new Student
+        {
+            Id = 2,
+            Uuid = student2Guid,
+            Firstname = "Bob",
+            Lastname = "Johnson",
+            SectionId = 2, // Different section - irregular student
+            IsDeleted = false
+        };
+
+        var enrollment1 = new StudentEnrollment
+        {
+            StudentId = 1,
+            SectionId = 1,
+            SubjectId = 1,
+            Student = student1,
+            IsActive = true,
+            EnrollmentType = "Regular"
+        };
+
+        var enrollment2 = new StudentEnrollment
+        {
+            StudentId = 2,
+            SectionId = 1,
+            SubjectId = 1,
+            Student = student2,
+            IsActive = true,
+            EnrollmentType = "Irregular"
+        };
+
+        section.StudentEnrollments = new List<StudentEnrollment> { enrollment1, enrollment2 };
+
+        var schedule = new Schedules
+        {
+            Id = 1,
+            Uuid = scheduleGuid,
+            InstructorId = instructorId,
+            SectionId = 1,
+            SubjectId = 1,
+            ClassroomId = 1,
+            DayOfWeek = "Monday",
+            TimeIn = TimeOnly.FromTimeSpan(TimeSpan.FromHours(8)),
+            TimeOut = TimeOnly.FromTimeSpan(TimeSpan.FromHours(10)),
+            Section = section,
+            Subject = subject,
+            Classroom = classroom,
+            Instructor = instructor
+        };
+
+        var schedules = new List<Schedules> { schedule };
+
+        _mockUserContextService.Setup(s => s.GetUserIdAsync(_testUserPrincipal)).ReturnsAsync(userId);
+        _mockInstructorRepository.Setup(r => r.GetInstructorByUserIdAsync(userId)).ReturnsAsync(instructor);
+        _mockInstructorRepository.Setup(r => r.GetSchedulesWithRelatedDataByInstructorIdAsync(instructorId))
+            .ReturnsAsync(schedules);
+
+        // Act
+        var result = await _service.GetSectionsWithStudentsByInstructorAsync(_testUserPrincipal);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Equal(instructorId, result.InstructorId);
+        Assert.Equal(instructorGuid, result.InstructorUuid);
+        Assert.Equal("John", result.InstructorFirstname);
+        Assert.Equal("Doe", result.InstructorLastname);
+        Assert.Single(result.Sections);
+
+        var sectionDto = result.Sections.First();
+        Assert.Equal(1, sectionDto.SectionId);
+        Assert.Equal(sectionGuid, sectionDto.SectionUuid);
+        Assert.Equal("CS-3A", sectionDto.SectionName);
+        Assert.Equal(1, sectionDto.CourseId);
+        Assert.Equal(courseGuid, sectionDto.CourseUuid);
+        Assert.Equal("Computer Science", sectionDto.CourseName);
+        Assert.Single(sectionDto.Subjects);
+
+        var subjectDto = sectionDto.Subjects.First();
+        Assert.Equal(1, subjectDto.SubjectId);
+        Assert.Equal(subjectGuid, subjectDto.SubjectUuid);
+        Assert.Equal("Data Structures", subjectDto.SubjectName);
+        Assert.Equal("CS301", subjectDto.SubjectCode);
+        Assert.Equal(1, subjectDto.ScheduleId);
+        Assert.Equal(scheduleGuid, subjectDto.ScheduleUuid);
+        Assert.Equal("Monday", subjectDto.DayOfWeek);
+        Assert.Equal(1, subjectDto.ClassroomId);
+        Assert.Equal(classroomGuid, subjectDto.ClassroomUuid);
+        Assert.Equal("Room 101", subjectDto.ClassroomName);
+        Assert.Equal(2, subjectDto.Students.Count);
+
+        var regularStudent = subjectDto.Students.First(s => s.StudentId == 1);
+        Assert.Equal(student1Guid, regularStudent.StudentUuid);
+        Assert.Equal("Alice", regularStudent.Firstname);
+        Assert.Equal("Smith", regularStudent.Lastname);
+        Assert.True(regularStudent.IsRegular);
+        Assert.Equal("Regular", regularStudent.EnrollmentType);
+
+        var irregularStudent = subjectDto.Students.First(s => s.StudentId == 2);
+        Assert.Equal(student2Guid, irregularStudent.StudentUuid);
+        Assert.Equal("Bob", irregularStudent.Firstname);
+        Assert.Equal("Johnson", irregularStudent.Lastname);
+        Assert.False(irregularStudent.IsRegular);
+        Assert.Equal("Irregular", irregularStudent.EnrollmentType);
+
+        _mockInstructorRepository.Verify(r => r.GetSchedulesWithRelatedDataByInstructorIdAsync(instructorId), Times.Once);
+    }
+
+    [Fact]
+    public async Task GetSectionsWithStudentsByInstructorAsync_RegularAndIrregularStudents_AggregatesCorrectly()
+    {
+        // Arrange
+        const string userId = "test-user-id";
+        const int instructorId = 1;
+
+        var instructor = new Instructor { Id = instructorId, Uuid = Guid.NewGuid(), Firstname = "John", Lastname = "Doe", UserId = userId };
+        var course = new Course { Id = 1, Uuid = Guid.NewGuid(), Name = "Computer Science" };
+        var section = new Section
+        {
+            Id = 1,
+            Uuid = Guid.NewGuid(),
+            Name = "CS-3A",
+            CourseId = 1,
+            Course = course,
+            StudentEnrollments = new List<StudentEnrollment>()
+        };
+
+        var subject = new Subject { Id = 1, Uuid = Guid.NewGuid(), Name = "Mathematics", Code = "MATH101" };
+        var classroom = new Classroom { Id = 1, Uuid = Guid.NewGuid(), Name = "Room 101" };
+
+        // Regular student (SectionId matches)
+        var regularStudent = new Student
+        {
+            Id = 1,
+            Uuid = Guid.NewGuid(),
+            Firstname = "Regular",
+            Lastname = "Student",
+            SectionId = 1,
+            IsDeleted = false
+        };
+
+        // Irregular student (SectionId different)
+        var irregularStudent = new Student
+        {
+            Id = 2,
+            Uuid = Guid.NewGuid(),
+            Firstname = "Irregular",
+            Lastname = "Student",
+            SectionId = 2,
+            IsDeleted = false
+        };
+
+        var enrollment1 = new StudentEnrollment
+        {
+            StudentId = 1,
+            SectionId = 1,
+            SubjectId = 1,
+            Student = regularStudent,
+            IsActive = true,
+            EnrollmentType = "Regular"
+        };
+
+        var enrollment2 = new StudentEnrollment
+        {
+            StudentId = 2,
+            SectionId = 1,
+            SubjectId = 1,
+            Student = irregularStudent,
+            IsActive = true,
+            EnrollmentType = "Irregular"
+        };
+
+        section.StudentEnrollments = new List<StudentEnrollment> { enrollment1, enrollment2 };
+
+        var schedule = new Schedules
+        {
+            Id = 1,
+            Uuid = Guid.NewGuid(),
+            InstructorId = instructorId,
+            SectionId = 1,
+            SubjectId = 1,
+            ClassroomId = 1,
+            DayOfWeek = "Monday",
+            TimeIn = TimeOnly.FromTimeSpan(TimeSpan.FromHours(8)),
+            TimeOut = TimeOnly.FromTimeSpan(TimeSpan.FromHours(10)),
+            Section = section,
+            Subject = subject,
+            Classroom = classroom,
+            Instructor = instructor
+        };
+
+        _mockUserContextService.Setup(s => s.GetUserIdAsync(_testUserPrincipal)).ReturnsAsync(userId);
+        _mockInstructorRepository.Setup(r => r.GetInstructorByUserIdAsync(userId)).ReturnsAsync(instructor);
+        _mockInstructorRepository.Setup(r => r.GetSchedulesWithRelatedDataByInstructorIdAsync(instructorId))
+            .ReturnsAsync(new List<Schedules> { schedule });
+
+        // Act
+        var result = await _service.GetSectionsWithStudentsByInstructorAsync(_testUserPrincipal);
+
+        // Assert
+        Assert.NotNull(result);
+        var students = result.Sections.First().Subjects.First().Students;
+        Assert.Equal(2, students.Count);
+
+        var regular = students.First(s => s.StudentId == 1);
+        Assert.True(regular.IsRegular);
+        Assert.Equal("Regular", regular.EnrollmentType);
+
+        var irregular = students.First(s => s.StudentId == 2);
+        Assert.False(irregular.IsRegular);
+        Assert.Equal("Irregular", irregular.EnrollmentType);
+    }
+
+    [Fact]
+    public async Task GetSectionsWithStudentsByInstructorAsync_MissingUserId_ThrowsEntityNotFoundException()
+    {
+        // Arrange
+        _mockUserContextService.Setup(s => s.GetUserIdAsync(_testUserPrincipal)).ReturnsAsync((string?)null);
+
+        // Act & Assert
+        var exception = await Assert.ThrowsAsync<EntityNotFoundException<string>>(
+            () => _service.GetSectionsWithStudentsByInstructorAsync(_testUserPrincipal));
+        Assert.Equal("User", exception.EntityName);
+    }
+
+    [Fact]
+    public async Task GetSectionsWithStudentsByInstructorAsync_InstructorNotFound_ThrowsEntityNotFoundException()
+    {
+        // Arrange
+        const string userId = "test-user-id";
+        _mockUserContextService.Setup(s => s.GetUserIdAsync(_testUserPrincipal)).ReturnsAsync(userId);
+        _mockInstructorRepository.Setup(r => r.GetInstructorByUserIdAsync(userId)).ReturnsAsync((Instructor?)null);
+
+        // Act & Assert
+        var exception = await Assert.ThrowsAsync<EntityNotFoundException<string>>(
+            () => _service.GetSectionsWithStudentsByInstructorAsync(_testUserPrincipal));
+        Assert.Equal("Instructor", exception.EntityName);
+    }
+
+    [Fact]
+    public async Task GetSectionsWithStudentsByInstructorAsync_NoSchedules_ReturnsEmptySections()
+    {
+        // Arrange
+        const string userId = "test-user-id";
+        const int instructorId = 1;
+        var instructor = new Instructor
+        {
+            Id = instructorId,
+            Uuid = Guid.NewGuid(),
+            Firstname = "John",
+            Lastname = "Doe",
+            UserId = userId
+        };
+
+        _mockUserContextService.Setup(s => s.GetUserIdAsync(_testUserPrincipal)).ReturnsAsync(userId);
+        _mockInstructorRepository.Setup(r => r.GetInstructorByUserIdAsync(userId)).ReturnsAsync(instructor);
+        _mockInstructorRepository.Setup(r => r.GetSchedulesWithRelatedDataByInstructorIdAsync(instructorId))
+            .ReturnsAsync(new List<Schedules>());
+
+        // Act
+        var result = await _service.GetSectionsWithStudentsByInstructorAsync(_testUserPrincipal);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Equal(instructorId, result.InstructorId);
+        Assert.Equal("John", result.InstructorFirstname);
+        Assert.Equal("Doe", result.InstructorLastname);
+        Assert.Empty(result.Sections);
+    }
+
+    [Fact]
+    public async Task GetSectionsWithStudentsByInstructorAsync_SoftDeletedStudents_ExcludesDeletedStudents()
+    {
+        // Arrange
+        const string userId = "test-user-id";
+        const int instructorId = 1;
+
+        var instructor = new Instructor { Id = instructorId, Uuid = Guid.NewGuid(), Firstname = "John", Lastname = "Doe", UserId = userId };
+        var course = new Course { Id = 1, Uuid = Guid.NewGuid(), Name = "Computer Science" };
+        var section = new Section
+        {
+            Id = 1,
+            Uuid = Guid.NewGuid(),
+            Name = "CS-3A",
+            CourseId = 1,
+            Course = course,
+            StudentEnrollments = new List<StudentEnrollment>()
+        };
+
+        var subject = new Subject { Id = 1, Uuid = Guid.NewGuid(), Name = "Mathematics", Code = "MATH101" };
+        var classroom = new Classroom { Id = 1, Uuid = Guid.NewGuid(), Name = "Room 101" };
+
+        // Active student
+        var activeStudent = new Student
+        {
+            Id = 1,
+            Uuid = Guid.NewGuid(),
+            Firstname = "Active",
+            Lastname = "Student",
+            SectionId = 1,
+            IsDeleted = false
+        };
+
+        // Soft-deleted student
+        var deletedStudent = new Student
+        {
+            Id = 2,
+            Uuid = Guid.NewGuid(),
+            Firstname = "Deleted",
+            Lastname = "Student",
+            SectionId = 1,
+            IsDeleted = true,
+            DeletedAt = DateTime.UtcNow.AddDays(-1)
+        };
+
+        var enrollment1 = new StudentEnrollment
+        {
+            StudentId = 1,
+            SectionId = 1,
+            SubjectId = 1,
+            Student = activeStudent,
+            IsActive = true,
+            EnrollmentType = "Regular"
+        };
+
+        var enrollment2 = new StudentEnrollment
+        {
+            StudentId = 2,
+            SectionId = 1,
+            SubjectId = 1,
+            Student = deletedStudent,
+            IsActive = true,
+            EnrollmentType = "Regular"
+        };
+
+        section.StudentEnrollments = new List<StudentEnrollment> { enrollment1, enrollment2 };
+
+        var schedule = new Schedules
+        {
+            Id = 1,
+            Uuid = Guid.NewGuid(),
+            InstructorId = instructorId,
+            SectionId = 1,
+            SubjectId = 1,
+            ClassroomId = 1,
+            DayOfWeek = "Monday",
+            TimeIn = TimeOnly.FromTimeSpan(TimeSpan.FromHours(8)),
+            TimeOut = TimeOnly.FromTimeSpan(TimeSpan.FromHours(10)),
+            Section = section,
+            Subject = subject,
+            Classroom = classroom,
+            Instructor = instructor
+        };
+
+        _mockUserContextService.Setup(s => s.GetUserIdAsync(_testUserPrincipal)).ReturnsAsync(userId);
+        _mockInstructorRepository.Setup(r => r.GetInstructorByUserIdAsync(userId)).ReturnsAsync(instructor);
+        _mockInstructorRepository.Setup(r => r.GetSchedulesWithRelatedDataByInstructorIdAsync(instructorId))
+            .ReturnsAsync(new List<Schedules> { schedule });
+
+        // Act
+        var result = await _service.GetSectionsWithStudentsByInstructorAsync(_testUserPrincipal);
+
+        // Assert
+        Assert.NotNull(result);
+        var students = result.Sections.First().Subjects.First().Students;
+        Assert.Single(students);
+        Assert.Equal(1, students.First().StudentId);
+        Assert.Equal("Active", students.First().Firstname);
+    }
+
+    [Fact]
+    public async Task GetSectionsWithStudentsByInstructorAsync_MultipleSubjectsForSameSection_ReturnsAllSubjects()
+    {
+        // Arrange
+        const string userId = "test-user-id";
+        const int instructorId = 1;
+
+        var instructor = new Instructor { Id = instructorId, Uuid = Guid.NewGuid(), Firstname = "John", Lastname = "Doe", UserId = userId };
+        var course = new Course { Id = 1, Uuid = Guid.NewGuid(), Name = "Computer Science" };
+        var section = new Section
+        {
+            Id = 1,
+            Uuid = Guid.NewGuid(),
+            Name = "CS-3A",
+            CourseId = 1,
+            Course = course,
+            StudentEnrollments = new List<StudentEnrollment>()
+        };
+
+        var subject1 = new Subject { Id = 1, Uuid = Guid.NewGuid(), Name = "Mathematics", Code = "MATH101" };
+        var subject2 = new Subject { Id = 2, Uuid = Guid.NewGuid(), Name = "Physics", Code = "PHYS101" };
+        var classroom = new Classroom { Id = 1, Uuid = Guid.NewGuid(), Name = "Room 101" };
+
+        var student = new Student
+        {
+            Id = 1,
+            Uuid = Guid.NewGuid(),
+            Firstname = "Alice",
+            Lastname = "Smith",
+            SectionId = 1,
+            IsDeleted = false
+        };
+
+        var enrollment1 = new StudentEnrollment
+        {
+            StudentId = 1,
+            SectionId = 1,
+            SubjectId = 1,
+            Student = student,
+            IsActive = true,
+            EnrollmentType = "Regular"
+        };
+
+        var enrollment2 = new StudentEnrollment
+        {
+            StudentId = 1,
+            SectionId = 1,
+            SubjectId = 2,
+            Student = student,
+            IsActive = true,
+            EnrollmentType = "Regular"
+        };
+
+        section.StudentEnrollments = new List<StudentEnrollment> { enrollment1, enrollment2 };
+
+        var schedule1 = new Schedules
+        {
+            Id = 1,
+            Uuid = Guid.NewGuid(),
+            InstructorId = instructorId,
+            SectionId = 1,
+            SubjectId = 1,
+            ClassroomId = 1,
+            DayOfWeek = "Monday",
+            TimeIn = TimeOnly.FromTimeSpan(TimeSpan.FromHours(8)),
+            TimeOut = TimeOnly.FromTimeSpan(TimeSpan.FromHours(10)),
+            Section = section,
+            Subject = subject1,
+            Classroom = classroom,
+            Instructor = instructor
+        };
+
+        var schedule2 = new Schedules
+        {
+            Id = 2,
+            Uuid = Guid.NewGuid(),
+            InstructorId = instructorId,
+            SectionId = 1,
+            SubjectId = 2,
+            ClassroomId = 1,
+            DayOfWeek = "Tuesday",
+            TimeIn = TimeOnly.FromTimeSpan(TimeSpan.FromHours(10)),
+            TimeOut = TimeOnly.FromTimeSpan(TimeSpan.FromHours(12)),
+            Section = section,
+            Subject = subject2,
+            Classroom = classroom,
+            Instructor = instructor
+        };
+
+        _mockUserContextService.Setup(s => s.GetUserIdAsync(_testUserPrincipal)).ReturnsAsync(userId);
+        _mockInstructorRepository.Setup(r => r.GetInstructorByUserIdAsync(userId)).ReturnsAsync(instructor);
+        _mockInstructorRepository.Setup(r => r.GetSchedulesWithRelatedDataByInstructorIdAsync(instructorId))
+            .ReturnsAsync(new List<Schedules> { schedule1, schedule2 });
+
+        // Act
+        var result = await _service.GetSectionsWithStudentsByInstructorAsync(_testUserPrincipal);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Single(result.Sections);
+        var sectionDto = result.Sections.First();
+        Assert.Equal(2, sectionDto.Subjects.Count);
+
+        var mathSubject = sectionDto.Subjects.First(s => s.SubjectCode == "MATH101");
+        Assert.Equal("Mathematics", mathSubject.SubjectName);
+        Assert.Equal("Monday", mathSubject.DayOfWeek);
+
+        var physicsSubject = sectionDto.Subjects.First(s => s.SubjectCode == "PHYS101");
+        Assert.Equal("Physics", physicsSubject.SubjectName);
+        Assert.Equal("Tuesday", physicsSubject.DayOfWeek);
+    }
+
+    [Fact]
+    public async Task GetSectionsWithStudentsByInstructorAsync_RepositoryFailure_WrapsInEntityServiceException()
+    {
+        // Arrange
+        const string userId = "test-user-id";
+        const int instructorId = 1;
+        var instructor = new Instructor { Id = instructorId, Uuid = Guid.NewGuid(), Firstname = "John", Lastname = "Doe", UserId = userId };
+        var expectedException = new InvalidOperationException("Database error");
+
+        _mockUserContextService.Setup(s => s.GetUserIdAsync(_testUserPrincipal)).ReturnsAsync(userId);
+        _mockInstructorRepository.Setup(r => r.GetInstructorByUserIdAsync(userId)).ReturnsAsync(instructor);
+        _mockInstructorRepository.Setup(r => r.GetSchedulesWithRelatedDataByInstructorIdAsync(instructorId))
+            .ThrowsAsync(expectedException);
+
+        // Act
+        var exception = await Assert.ThrowsAsync<EntityServiceException>(
+            () => _service.GetSectionsWithStudentsByInstructorAsync(_testUserPrincipal));
+
+        // Assert
+        Assert.Equal("Instructor", exception.EntityName);
+        Assert.Equal("GetSectionsWithStudentsByInstructor", exception.Operation);
+        Assert.Same(expectedException, exception.InnerException);
+    }
+
+    #endregion
 }

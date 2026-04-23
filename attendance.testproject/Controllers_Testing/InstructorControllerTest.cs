@@ -160,4 +160,106 @@ public class InstructorControllerTest
     }
 
     #endregion
+
+    #region GetMySectionsWithStudents Tests
+
+    [Fact]
+    public async Task GetMySectionsWithStudents_ReturnsOkResult_WithSectionsAndStudents()
+    {
+        // Arrange
+        var expectedResponse = new InstructorSectionsWithStudentsResponseDto
+        {
+            InstructorId = 1,
+            InstructorUuid = Guid.NewGuid(),
+            InstructorFirstname = "John",
+            InstructorLastname = "Doe",
+            Sections = new List<SectionWithStudentsDto>
+            {
+                new SectionWithStudentsDto
+                {
+                    SectionId = 1,
+                    SectionName = "BSCS 3A",
+                    CourseId = 1,
+                    CourseName = "Bachelor of Science in Computer Science",
+                    Subjects = new List<SubjectScheduleDto>
+                    {
+                        new SubjectScheduleDto
+                        {
+                            SubjectId = 1,
+                            SubjectName = "Data Structures",
+                            SubjectCode = "CS301",
+                            ScheduleId = 1,
+                            DayOfWeek = "Monday",
+                            TimeIn = new TimeOnly(8, 0),
+                            TimeOut = new TimeOnly(10, 0),
+                            ClassroomName = "Room 101",
+                            Students = new List<StudentDto>
+                            {
+                                new StudentDto
+                                {
+                                    StudentId = 1,
+                                    Firstname = "Alice",
+                                    Lastname = "Smith",
+                                    IsRegular = true,
+                                    EnrollmentType = "Regular"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        };
+        _mockInstructorService
+            .Setup(s => s.GetSectionsWithStudentsByInstructorAsync(It.IsAny<ClaimsPrincipal>()))
+            .ReturnsAsync(expectedResponse);
+
+        // Act
+        var result = await _instructorController.GetMySectionsWithStudents();
+
+        // Assert
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        var response = Assert.IsType<InstructorSectionsWithStudentsResponseDto>(okResult.Value);
+        Assert.Equal(1, response.InstructorId);
+        Assert.Equal("John", response.InstructorFirstname);
+        Assert.Equal("Doe", response.InstructorLastname);
+        Assert.Single(response.Sections);
+        _mockInstructorService.Verify(s => s.GetSectionsWithStudentsByInstructorAsync(It.IsAny<ClaimsPrincipal>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task GetMySectionsWithStudents_ReturnsNotFound_WhenInstructorNotFound()
+    {
+        // Arrange
+        _mockInstructorService
+            .Setup(s => s.GetSectionsWithStudentsByInstructorAsync(It.IsAny<ClaimsPrincipal>()))
+            .ThrowsAsync(new attendance_monitoring.Exceptions.EntityNotFoundException<string>("Instructor", "UserId: 1"));
+
+        // Act
+        var result = await _instructorController.GetMySectionsWithStudents();
+
+        // Assert
+        var notFoundResult = Assert.IsType<NotFoundObjectResult>(result.Result);
+        Assert.Equal("No instructor record found for the current user", notFoundResult.Value);
+        _mockInstructorService.Verify(s => s.GetSectionsWithStudentsByInstructorAsync(It.IsAny<ClaimsPrincipal>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task GetMySectionsWithStudents_ReturnsInternalServerError_WhenServiceExceptionOccurs()
+    {
+        // Arrange
+        _mockInstructorService
+            .Setup(s => s.GetSectionsWithStudentsByInstructorAsync(It.IsAny<ClaimsPrincipal>()))
+            .ThrowsAsync(new attendance_monitoring.Exceptions.EntityServiceException("Instructor", "GetSectionsWithStudentsByInstructor", "Service error"));
+
+        // Act
+        var result = await _instructorController.GetMySectionsWithStudents();
+
+        // Assert
+        var statusCodeResult = Assert.IsType<ObjectResult>(result.Result);
+        Assert.Equal(500, statusCodeResult.StatusCode);
+        Assert.Equal("An error occurred while retrieving sections", statusCodeResult.Value);
+        _mockInstructorService.Verify(s => s.GetSectionsWithStudentsByInstructorAsync(It.IsAny<ClaimsPrincipal>()), Times.Once);
+    }
+
+    #endregion
 }
