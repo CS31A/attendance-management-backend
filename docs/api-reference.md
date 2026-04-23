@@ -221,10 +221,15 @@ Get current instructor's profile (requires Teacher role).
 ### GET /api/instructors/{instructorId}/subjects
 Get all subjects assigned to an instructor.
 
+### GET /api/instructors/me/schedules
+Get the schedules handled by the authenticated privileged user.
+
+**Authorization:** Requires `PrivilegedPolicy` (Admin or Instructor role)
+
 ### GET /api/instructors/me/sections-with-students
 Get all sections with enrolled students for the authenticated instructor.
 
-**Authorization:** Requires `PrivilegedPolicy` (Instructor role)
+**Authorization:** Requires `PrivilegedPolicy` (Admin or Instructor role)
 
 **Response:**
 ```json
@@ -279,6 +284,33 @@ Get all sections with enrolled students for the authenticated instructor.
 - Irregular students are those enrolled via `StudentEnrollment` for specific subjects
 - Soft-deleted students are excluded from the response
 - Inactive enrollments are excluded from the response
+
+### GET /api/instructors/me/sections
+Get an overview of sections handled by the authenticated privileged user.
+
+**Authorization:** Requires `PrivilegedPolicy` (Admin or Instructor role)
+
+**Response fields:**
+- `handledClassCount` - number of distinct subjects handled in the section
+- `uniqueStudentCount` - number of unique regular and active irregular students associated with those handled classes
+
+### GET /api/instructors/me/sections/{sectionId}
+Get detailed section information for a handled section, including handled classes and home-section roster.
+
+**Authorization:** Requires `PrivilegedPolicy` (Admin or Instructor role)
+
+**Error responses:**
+- `404 Not Found` if the instructor profile or section is missing
+- `403 Forbidden` if the authenticated user does not handle the requested section
+
+### GET /api/instructors/me/students/{studentId}
+Get detailed student information visible to the authenticated privileged user.
+
+**Authorization:** Requires `PrivilegedPolicy` (Admin or Instructor role)
+
+**Error responses:**
+- `404 Not Found` if the instructor profile or student is missing
+- `403 Forbidden` if the authenticated user is not allowed to view the requested student
 
 ### PATCH /api/instructors/{id}
 Update instructor information.
