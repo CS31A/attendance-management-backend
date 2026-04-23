@@ -302,6 +302,61 @@ public class ScheduleServiceTest : IDisposable
         _mockScheduleRepository.Verify(r => r.AddScheduleAsync(It.IsAny<Schedules>()), Times.Once);
     }
 
+    [Fact]
+    public async Task CreateScheduleAsync_UuidReferences_NormalizesToIntIdentifiers()
+    {
+        var createSchedule = new CreateSchedule
+        {
+            TimeIn = TimeOnly.FromTimeSpan(TimeSpan.FromHours(8)),
+            TimeOut = TimeOnly.FromTimeSpan(TimeSpan.FromHours(10)),
+            DayOfWeek = "Monday",
+            SubjectUuid = _context.Subjects.Single().Uuid,
+            ClassroomUuid = _context.Classrooms.Single().Uuid,
+            SectionUuid = _context.Sections.Single().Uuid,
+            InstructorUuid = _context.Instructors.Single().Uuid,
+        };
+
+        _mockScheduleRepository
+            .Setup(r => r.AddScheduleAsync(It.IsAny<Schedules>()))
+            .ReturnsAsync((Schedules schedule) => schedule);
+
+        var result = await _service.CreateScheduleAsync(createSchedule);
+
+        Assert.Equal(1, result.SubjectId);
+        Assert.Equal(1, result.ClassroomId);
+        Assert.Equal(1, result.SectionId);
+        Assert.Equal(1, result.InstructorId);
+    }
+
+    [Fact]
+    public async Task GetScheduleByUuidAsync_ReturnsMappedSchedule_WhenFound()
+    {
+        var scheduleUuid = Guid.NewGuid();
+        var schedule = new Schedules
+        {
+            Id = 1,
+            Uuid = scheduleUuid,
+            TimeIn = TimeOnly.FromTimeSpan(TimeSpan.FromHours(8)),
+            TimeOut = TimeOnly.FromTimeSpan(TimeSpan.FromHours(10)),
+            DayOfWeek = "Monday",
+            SubjectId = 1,
+            Subject = new Subject { Id = 1, Name = "Mathematics", Code = "MATH101", Uuid = Guid.NewGuid() },
+            ClassroomId = 1,
+            Classroom = new Classroom { Id = 1, Name = "Room 101", Uuid = Guid.NewGuid() },
+            SectionId = 1,
+            Section = new Section { Id = 1, Name = "CS-3A", CourseId = 1, Uuid = Guid.NewGuid() },
+            InstructorId = 1,
+            Instructor = new Instructor { Id = 1, Firstname = "Ada", Lastname = "Lovelace", UserId = "instructor-1", Uuid = Guid.NewGuid() },
+        };
+
+        _mockScheduleRepository.Setup(r => r.GetScheduleByUuidAsync(scheduleUuid)).ReturnsAsync(schedule);
+
+        var result = await _service.GetScheduleByUuidAsync(scheduleUuid);
+
+        Assert.Equal(schedule.Id, result.Id);
+        Assert.Equal(schedule.DayOfWeek, result.DayOfWeek);
+    }
+
     #endregion
 
     #region UpdateScheduleAsync Tests

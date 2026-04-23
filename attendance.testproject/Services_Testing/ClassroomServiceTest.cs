@@ -115,6 +115,34 @@ public class ClassroomServiceTest
         Assert.Same(expectedException, exception.InnerException);
     }
 
+    [Fact]
+    public async Task GetClassroomByUuidAsync_ReturnsClassroom_WhenFound()
+    {
+        var classroomUuid = Guid.NewGuid();
+        var classroom = new Classroom { Id = 7, Uuid = classroomUuid, Name = "Room 207" };
+        _mockClassroomRepository
+            .Setup(repository => repository.GetClassroomByUuidAsync(classroomUuid))
+            .ReturnsAsync(classroom);
+
+        var result = await _service.GetClassroomByUuidAsync(classroomUuid);
+
+        Assert.Same(classroom, result);
+    }
+
+    [Fact]
+    public async Task GetClassroomByUuidAsync_ThrowsEntityNotFoundException_WhenMissing()
+    {
+        var classroomUuid = Guid.NewGuid();
+        _mockClassroomRepository
+            .Setup(repository => repository.GetClassroomByUuidAsync(classroomUuid))
+            .ReturnsAsync((Classroom?)null);
+
+        var exception = await Assert.ThrowsAsync<EntityNotFoundException<Guid>>(() => _service.GetClassroomByUuidAsync(classroomUuid));
+
+        Assert.Equal("Classroom", exception.EntityName);
+        Assert.Equal(classroomUuid, exception.Key);
+    }
+
     [Theory]
     [InlineData(null)]
     [InlineData("")]
