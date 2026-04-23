@@ -128,6 +128,35 @@ public class SectionControllerTest
     }
 
     [Fact]
+    public async Task GetSectionByUuid_ReturnsNotFound_WhenSectionDoesNotExist()
+    {
+        var sectionUuid = Guid.NewGuid();
+        _mockSectionService
+            .Setup(service => service.GetSectionByUuidAsync(sectionUuid))
+            .ThrowsAsync(new EntityNotFoundException<Guid>("Section", sectionUuid));
+
+        var result = await _controller.GetSectionByUuid(sectionUuid);
+
+        var notFoundResult = Assert.IsType<NotFoundObjectResult>(result.Result);
+        Assert.Equal($"Section with UUID {sectionUuid} not found", notFoundResult.Value);
+    }
+
+    [Fact]
+    public async Task GetSectionByUuid_ReturnsServerError_WhenServiceThrowsException()
+    {
+        var sectionUuid = Guid.NewGuid();
+        _mockSectionService
+            .Setup(service => service.GetSectionByUuidAsync(sectionUuid))
+            .ThrowsAsync(new EntityServiceException("Section", $"GetSectionByUuid: {sectionUuid}", "Lookup failed"));
+
+        var result = await _controller.GetSectionByUuid(sectionUuid);
+
+        var objectResult = Assert.IsType<ObjectResult>(result.Result);
+        Assert.Equal(StatusCodes.Status500InternalServerError, objectResult.StatusCode);
+        Assert.Equal("An error occurred while retrieving the section", objectResult.Value);
+    }
+
+    [Fact]
     public async Task GetSection_ReturnsNotFound_WhenSectionDoesNotExist()
     {
         // Arrange
@@ -320,6 +349,72 @@ public class SectionControllerTest
         var dto = Assert.IsType<SectionResponseDto>(okResult.Value);
         Assert.Equal(sectionUuid, dto.Uuid);
         Assert.Equal(courseUuid, dto.CourseUuid);
+    }
+
+    [Fact]
+    public async Task UpdateSectionByUuid_ReturnsNotFound_WhenSectionDoesNotExist()
+    {
+        var sectionUuid = Guid.NewGuid();
+        var courseUuid = Guid.NewGuid();
+        var request = new CreateSection
+        {
+            Name = "Updated Section",
+            CourseUuid = courseUuid
+        };
+
+        _mockCourseService
+            .Setup(service => service.GetCourseByUuidAsync(courseUuid))
+            .ReturnsAsync(new Course { Id = 99, Uuid = courseUuid, Name = "BSIT" });
+
+        _mockSectionService
+            .Setup(service => service.UpdateSectionByUuidAsync(sectionUuid, It.IsAny<Section>()))
+            .ThrowsAsync(new EntityNotFoundException<Guid>("Section", sectionUuid));
+
+        var result = await _controller.UpdateSectionByUuid(sectionUuid, request);
+
+        var notFoundResult = Assert.IsType<NotFoundObjectResult>(result.Result);
+        Assert.NotNull(notFoundResult.Value);
+    }
+
+    [Fact]
+    public async Task UpdateSectionByUuid_ReturnsBadRequest_WhenServiceException()
+    {
+        var sectionUuid = Guid.NewGuid();
+        var courseUuid = Guid.NewGuid();
+        var request = new CreateSection
+        {
+            Name = "Updated Section",
+            CourseUuid = courseUuid
+        };
+        const string errorMessage = "Unable to update section";
+
+        _mockCourseService
+            .Setup(service => service.GetCourseByUuidAsync(courseUuid))
+            .ReturnsAsync(new Course { Id = 99, Uuid = courseUuid, Name = "BSIT" });
+
+        _mockSectionService
+            .Setup(service => service.UpdateSectionByUuidAsync(sectionUuid, It.IsAny<Section>()))
+            .ThrowsAsync(new EntityServiceException("Section", $"UpdateSectionByUuid: {sectionUuid}", errorMessage));
+
+        var result = await _controller.UpdateSectionByUuid(sectionUuid, request);
+
+        var badRequestResult = Assert.IsType<BadRequestObjectResult>(result.Result);
+        Assert.Equal(errorMessage, badRequestResult.Value);
+    }
+
+    [Fact]
+    public async Task UpdateSectionByUuid_ReturnsBadRequest_WhenValidationFails()
+    {
+        var sectionUuid = Guid.NewGuid();
+        var request = new CreateSection
+        {
+            Name = "Updated Section"
+        };
+
+        var result = await _controller.UpdateSectionByUuid(sectionUuid, request);
+
+        var badRequestResult = Assert.IsType<BadRequestObjectResult>(result.Result);
+        Assert.NotNull(badRequestResult.Value);
     }
 
     [Fact]
@@ -657,6 +752,51 @@ public class SectionControllerTest
 
         Assert.IsType<NoContentResult>(result);
         _mockSectionService.Verify(service => service.DeleteSectionByUuidAsync(sectionUuid), Times.Once);
+    }
+
+    [Fact]
+    public async Task DeleteSectionByUuid_ReturnsNotFound_WhenSectionDoesNotExist()
+    {
+        var sectionUuid = Guid.NewGuid();
+        _mockSectionService
+            .Setup(service => service.DeleteSectionByUuidAsync(sectionUuid))
+            .ThrowsAsync(new EntityNotFoundException<Guid>("Section", sectionUuid));
+
+        var result = await _controller.DeleteSectionByUuid(sectionUuid);
+
+        var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
+        Assert.NotNull(notFoundResult.Value);
+    }
+
+    [Fact]
+    public async Task DeleteSectionByUuid_ReturnsConflict_WhenBlockedByDependencies()
+    {
+        var sectionUuid = Guid.NewGuid();
+        const string conflictMessage = "Cannot delete: Section has schedules assigned. Remove schedules first.";
+        _mockSectionService
+            .Setup(service => service.DeleteSectionByUuidAsync(sectionUuid))
+            .ThrowsAsync(new EntityConflictException("Section", "schedules", conflictMessage));
+
+        var result = await _controller.DeleteSectionByUuid(sectionUuid);
+
+        var conflictResult = Assert.IsType<ConflictObjectResult>(result);
+        var errorResponse = Assert.IsType<ErrorResponseDto>(conflictResult.Value);
+        Assert.Equal(conflictMessage, errorResponse.Message);
+    }
+
+    [Fact]
+    public async Task DeleteSectionByUuid_ReturnsServerError_ForUnexpectedServiceException()
+    {
+        var sectionUuid = Guid.NewGuid();
+        _mockSectionService
+            .Setup(service => service.DeleteSectionByUuidAsync(sectionUuid))
+            .ThrowsAsync(new EntityServiceException("Section", $"DeleteSectionByUuid: {sectionUuid}", "Database connection failed"));
+
+        var result = await _controller.DeleteSectionByUuid(sectionUuid);
+
+        var objectResult = Assert.IsType<ObjectResult>(result);
+        Assert.Equal(StatusCodes.Status500InternalServerError, objectResult.StatusCode);
+        Assert.Equal("An error occurred while deleting the section", objectResult.Value);
     }
 
     [Fact]

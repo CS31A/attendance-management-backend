@@ -164,6 +164,25 @@ public class StudentEnrollmentControllerTest
     }
 
     [Fact]
+    public async Task EnrollStudent_StudentUuidNotFound_ReturnsNotFound()
+    {
+        var request = new CreateStudentEnrollment
+        {
+            StudentUuid = Guid.NewGuid(),
+            SectionId = 2,
+            SubjectId = 3
+        };
+
+        _mockService.Setup(s => s.EnrollStudentAsync(request))
+            .ThrowsAsync(new EntityNotFoundException<Guid>("Student", request.StudentUuid!.Value));
+
+        var result = await _controller.EnrollStudent(request);
+
+        var notFoundResult = Assert.IsType<NotFoundObjectResult>(result.Result);
+        Assert.NotNull(notFoundResult.Value);
+    }
+
+    [Fact]
     public async Task EnrollStudent_DuplicateEnrollment_ReturnsConflict()
     {
         // Arrange
@@ -517,6 +536,19 @@ public class StudentEnrollmentControllerTest
     }
 
     [Fact]
+    public async Task DropStudentByUuid_ServiceThrowsEntityNotFoundException_ReturnsNotFound()
+    {
+        var enrollmentUuid = Guid.NewGuid();
+        _mockService.Setup(s => s.DropStudentFromSubjectAsync(enrollmentUuid))
+            .ThrowsAsync(new EntityNotFoundException<Guid>("Enrollment", enrollmentUuid));
+
+        var result = await _controller.DropStudentByUuid(enrollmentUuid);
+
+        var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
+        Assert.NotNull(notFoundResult.Value);
+    }
+
+    [Fact]
     public async Task DropStudent_EnrollmentNotFound_ReturnsNotFound()
     {
         // Arrange
@@ -581,6 +613,19 @@ public class StudentEnrollmentControllerTest
         var okResult = Assert.IsType<OkObjectResult>(result);
         Assert.NotNull(okResult.Value);
         _mockService.Verify(s => s.ReenrollStudentAsync(enrollmentUuid), Times.Once);
+    }
+
+    [Fact]
+    public async Task ReenrollStudentByUuid_ServiceThrowsEntityNotFoundException_ReturnsNotFound()
+    {
+        var enrollmentUuid = Guid.NewGuid();
+        _mockService.Setup(s => s.ReenrollStudentAsync(enrollmentUuid))
+            .ThrowsAsync(new EntityNotFoundException<Guid>("Enrollment", enrollmentUuid));
+
+        var result = await _controller.ReenrollStudentByUuid(enrollmentUuid);
+
+        var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
+        Assert.NotNull(notFoundResult.Value);
     }
 
     [Fact]

@@ -78,6 +78,22 @@ public class SubjectControllerTest
     }
 
     [Fact]
+    public async Task GetSubjectByUuid_ReturnsNotFound_WhenSubjectDoesNotExist()
+    {
+        var subjectUuid = Guid.NewGuid();
+
+        _mockSubjectService
+            .Setup(s => s.GetSubjectByUuidAsync(subjectUuid))
+            .ThrowsAsync(new EntityNotFoundException<Guid>("Subject", subjectUuid));
+
+        var result = await _controller.GetSubjectByUuid(subjectUuid);
+
+        var notFoundResult = Assert.IsType<NotFoundObjectResult>(result.Result);
+        Assert.NotNull(notFoundResult.Value);
+        _mockSubjectService.Verify(s => s.GetSubjectByUuidAsync(subjectUuid), Times.Once);
+    }
+
+    [Fact]
     public async Task UpdateSubjectByUuid_ReturnsOkResult_WhenUpdateSucceeds()
     {
         var subjectUuid = Guid.NewGuid();

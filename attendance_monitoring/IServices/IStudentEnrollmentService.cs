@@ -15,6 +15,7 @@ public interface IStudentEnrollmentService
     Task<bool> ReenrollStudentAsync(Guid enrollmentUuid);
     Task<StudentEnrollment> GetEnrollmentByUuidAsync(Guid enrollmentUuid);
     Task<IEnumerable<StudentEnrollment>> GetStudentEnrollmentsAsync(int studentId);
+    Task<IEnumerable<StudentEnrollment>> GetStudentEnrollmentsByStudentUuidAsync(Guid studentUuid);
     Task<IEnumerable<StudentEnrollment>> GetActiveStudentEnrollmentsAsync(int studentId);
     Task<IEnumerable<Section>> GetStudentSectionsAsync(int studentId);
     Task<IEnumerable<Subject>> GetStudentSubjectsAsync(int studentId);
@@ -23,5 +24,7 @@ public interface IStudentEnrollmentService
     Task<IEnumerable<Student>> GetStudentsInSubjectAsync(int subjectId);
     Task<IEnumerable<StudentEnrollment>> GetSectionEnrollmentsAsync(int sectionId);
     Task<IEnumerable<StudentEnrollment>> GetActiveSectionEnrollmentsAsync(int sectionId);
+    Task<IEnumerable<StudentEnrollment>> GetActiveSectionEnrollmentsBySectionUuidAsync(Guid sectionUuid);
     Task<StudentEnrollment?> GetSpecificEnrollmentAsync(int studentId, int sectionId, int subjectId);
+    Task<bool> IsStudentEnrolledInSectionSubjectByUuidAsync(Guid studentUuid, Guid sectionUuid, Guid subjectUuid);
 }

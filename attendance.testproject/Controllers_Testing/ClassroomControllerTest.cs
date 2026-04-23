@@ -100,6 +100,22 @@ public class ClassroomControllerTest
     }
 
     [Fact]
+    public async Task GetClassroomByUuid_ReturnsNotFound_WhenClassroomDoesNotExist()
+    {
+        var classroomUuid = Guid.NewGuid();
+
+        _mockClassroomService
+            .Setup(s => s.GetClassroomByUuidAsync(classroomUuid))
+            .ThrowsAsync(new EntityNotFoundException<Guid>("Classroom", classroomUuid));
+
+        var result = await _controller.GetClassroomByUuid(classroomUuid);
+
+        var notFoundResult = Assert.IsType<NotFoundObjectResult>(result.Result);
+        Assert.NotNull(notFoundResult.Value);
+        _mockClassroomService.Verify(s => s.GetClassroomByUuidAsync(classroomUuid), Times.Once);
+    }
+
+    [Fact]
     public async Task GetClassroom_ReturnsNotFound_WhenClassroomDoesNotExist()
     {
         // Arrange

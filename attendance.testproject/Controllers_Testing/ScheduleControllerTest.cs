@@ -98,6 +98,22 @@ public class ScheduleControllerTest
         Assert.Equal(sectionUuid, schedule.Section.Uuid);
     }
 
+    [Fact]
+    public async Task GetScheduleByUuid_ReturnsNotFound_WhenScheduleDoesNotExist()
+    {
+        var scheduleUuid = Guid.NewGuid();
+
+        _mockScheduleService
+            .Setup(s => s.GetScheduleByUuidAsync(scheduleUuid))
+            .ThrowsAsync(new EntityNotFoundException<Guid>("Schedule", scheduleUuid));
+
+        var result = await _scheduleController.GetScheduleByUuid(scheduleUuid);
+
+        var notFoundResult = Assert.IsType<NotFoundObjectResult>(result.Result);
+        Assert.NotNull(notFoundResult.Value);
+        _mockScheduleService.Verify(s => s.GetScheduleByUuidAsync(scheduleUuid), Times.Once);
+    }
+
     #endregion
 
     #region Dependency Check Tests
