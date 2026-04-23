@@ -453,7 +453,7 @@ public class InstructorControllerTest
     }
 
     [Fact]
-    public async Task GetMySectionDetail_ReturnsUnauthorized_WhenNotAuthorized()
+    public async Task GetMySectionDetail_ReturnsForbidden_WhenNotAuthorized()
     {
         // Arrange
         var sectionId = 1;
@@ -465,8 +465,9 @@ public class InstructorControllerTest
         var result = await _instructorController.GetMySectionDetail(sectionId);
 
         // Assert
-        var unauthorizedResult = Assert.IsType<UnauthorizedObjectResult>(result.Result);
-        Assert.Equal("You are not authorized to view this section", unauthorizedResult.Value);
+        var forbiddenResult = Assert.IsType<ObjectResult>(result.Result);
+        Assert.Equal(403, forbiddenResult.StatusCode);
+        Assert.Equal("You are not authorized to view this section", forbiddenResult.Value);
     }
 
     [Fact]
@@ -580,7 +581,7 @@ public class InstructorControllerTest
     }
 
     [Fact]
-    public async Task GetMyStudentDetail_ReturnsUnauthorized_WhenNotAuthorized()
+    public async Task GetMyStudentDetail_ReturnsForbidden_WhenNotAuthorized()
     {
         // Arrange
         var studentId = 1;
@@ -592,8 +593,9 @@ public class InstructorControllerTest
         var result = await _instructorController.GetMyStudentDetail(studentId);
 
         // Assert
-        var unauthorizedResult = Assert.IsType<UnauthorizedObjectResult>(result.Result);
-        Assert.Equal("You are not authorized to view this student", unauthorizedResult.Value);
+        var forbiddenResult = Assert.IsType<ObjectResult>(result.Result);
+        Assert.Equal(403, forbiddenResult.StatusCode);
+        Assert.Equal("You are not authorized to view this student", forbiddenResult.Value);
     }
 
     [Fact]

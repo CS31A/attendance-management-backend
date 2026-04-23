@@ -695,8 +695,8 @@ namespace attendance_monitoring.Services
                     {
                         InstructorId = instructor.Id,
                         InstructorUuid = instructor.Uuid,
-                        InstructorFirstname = instructor.Firstname,
-                        InstructorLastname = instructor.Lastname,
+                        InstructorFirstname = instructor.Firstname ?? string.Empty,
+                        InstructorLastname = instructor.Lastname ?? string.Empty,
                         Sections = new List<SectionWithStudentsDto>()
                     };
                 }
@@ -736,17 +736,17 @@ namespace attendance_monitoring.Services
                             var irregularStudents = section.StudentEnrollments
                                 .Where(se => se.SubjectId == schedule.SubjectId 
                                     && !se.Student.IsDeleted
-                                    && se.IsActive)
+                                    && se.IsActive
+                                    && se.Student.SectionId != section.Id)
                                 .Select(se => new StudentDto
                                 {
                                     StudentId = se.Student.Id,
                                     StudentUuid = se.Student.Uuid,
                                     Firstname = se.Student.Firstname,
                                     Lastname = se.Student.Lastname,
-                                    IsRegular = se.Student.SectionId == section.Id,
-                                    EnrollmentType = se.Student.SectionId == section.Id ? "Regular" : se.EnrollmentType
+                                    IsRegular = false,
+                                    EnrollmentType = se.EnrollmentType
                                 })
-                                .Where(student => !student.IsRegular)
                                 .ToList();
 
                             var enrolledStudents = regularStudents
@@ -793,8 +793,8 @@ namespace attendance_monitoring.Services
                 {
                     InstructorId = instructor.Id,
                     InstructorUuid = instructor.Uuid,
-                    InstructorFirstname = instructor.Firstname,
-                    InstructorLastname = instructor.Lastname,
+                    InstructorFirstname = instructor.Firstname ?? string.Empty,
+                    InstructorLastname = instructor.Lastname ?? string.Empty,
                     Sections = sectionDtos.OrderBy(s => s.SectionName).ToList()
                 };
 
@@ -855,10 +855,31 @@ namespace attendance_monitoring.Services
                 foreach (var section in sectionList)
                 {
                     var schedules = await _instructorRepository.GetHandledClassesBySectionAndInstructorAsync(section.Id, instructor.Id).ConfigureAwait(false);
-                    var handledClassCount = schedules.Select(s => s.SubjectId).Distinct().Count();
+                    var schedulesList = schedules.ToList();
+                    var handledSubjectIds = schedulesList
+                        .Select(schedule => schedule.SubjectId)
+                        .Distinct()
+                        .ToHashSet();
+                    var handledClassCount = handledSubjectIds.Count;
 
-                    var regularStudents = await _instructorRepository.GetRegularStudentsBySectionIdAsync(section.Id).ConfigureAwait(false);
-                    var uniqueStudentCount = regularStudents.Count();
+                    var uniqueStudentCount = 0;
+                    if (handledClassCount > 0)
+                    {
+                        var regularStudents = await _instructorRepository.GetRegularStudentsBySectionIdAsync(section.Id).ConfigureAwait(false);
+                        var regularStudentIds = regularStudents.Select(student => student.Id);
+                        var sectionWithEnrollments = schedulesList.First().Section;
+                        var irregularStudentIds = sectionWithEnrollments.StudentEnrollments
+                            .Where(enrollment => handledSubjectIds.Contains(enrollment.SubjectId)
+                                && enrollment.IsActive
+                                && !enrollment.Student.IsDeleted
+                                && enrollment.Student.SectionId != section.Id)
+                            .Select(enrollment => enrollment.StudentId);
+
+                        uniqueStudentCount = regularStudentIds
+                            .Concat(irregularStudentIds)
+                            .Distinct()
+                            .Count();
+                    }
 
                     overviewDtos.Add(new InstructorSectionOverviewDto
                     {
@@ -945,35 +966,36 @@ namespace attendance_monitoring.Services
                 }
 
                 var handledClasses = new List<InstructorHandledClassDto>();
+                var regularStudents = (await _instructorRepository.GetRegularStudentsBySectionIdAsync(sectionId).ConfigureAwait(false))
+                    .Select(student => new InstructorHandledClassStudentDto
+                    {
+                        StudentId = student.Id,
+                        StudentUuid = student.Uuid,
+                        Firstname = student.Firstname,
+                        Lastname = student.Lastname,
+                        IsRegular = true,
+                        EnrollmentType = EnrollmentTypeConstants.Regular
+                    })
+                    .ToList();
 
                 foreach (var scheduleGroup in schedulesList.GroupBy(s => s.SubjectId))
                 {
                     var schedule = scheduleGroup.First();
 
-                    var regularStudents = (await _instructorRepository.GetRegularStudentsBySectionIdAsync(sectionId).ConfigureAwait(false))
-                        .Select(student => new InstructorHandledClassStudentDto
-                        {
-                            StudentId = student.Id,
-                            StudentUuid = student.Uuid,
-                            Firstname = student.Firstname,
-                            Lastname = student.Lastname,
-                            IsRegular = true,
-                            EnrollmentType = EnrollmentTypeConstants.Regular
-                        })
-                        .ToList();
-
                     var irregularStudents = section.StudentEnrollments
-                        .Where(se => se.SubjectId == schedule.SubjectId && !se.Student.IsDeleted && se.IsActive)
+                        .Where(se => se.SubjectId == schedule.SubjectId
+                            && !se.Student.IsDeleted
+                            && se.IsActive
+                            && se.Student.SectionId != sectionId)
                         .Select(se => new InstructorHandledClassStudentDto
                         {
                             StudentId = se.Student.Id,
                             StudentUuid = se.Student.Uuid,
                             Firstname = se.Student.Firstname,
                             Lastname = se.Student.Lastname,
-                            IsRegular = se.Student.SectionId == sectionId,
-                            EnrollmentType = se.Student.SectionId == sectionId ? EnrollmentTypeConstants.Regular : se.EnrollmentType
+                            IsRegular = false,
+                            EnrollmentType = se.EnrollmentType
                         })
-                        .Where(student => !student.IsRegular)
                         .ToList();
 
                     var allStudents = regularStudents

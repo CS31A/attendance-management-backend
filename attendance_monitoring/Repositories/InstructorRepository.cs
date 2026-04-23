@@ -202,6 +202,7 @@ public class InstructorRepository(ApplicationDbContext context) : IInstructorRep
     {
         return await context.Schedules
             .AsNoTracking()
+            .AsSplitQuery()
             .Where(s => s.InstructorId == instructorId)
             .Include(s => s.Section)
                 .ThenInclude(sec => sec.Course)

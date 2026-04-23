@@ -238,7 +238,7 @@ public class InstructorController(IInstructorService instructorService, ILogger<
         catch (EntityUnauthorizedException ex)
         {
             logger.LogWarning(ex, "User not authorized to view section with ID {SectionId}", sectionId);
-            return Unauthorized(ex.Message);
+            return StatusCode(StatusCodes.Status403Forbidden, ex.Message);
         }
         catch (EntityServiceException ex)
         {
@@ -272,7 +272,7 @@ public class InstructorController(IInstructorService instructorService, ILogger<
         catch (EntityUnauthorizedException ex)
         {
             logger.LogWarning(ex, "User not authorized to view student with ID {StudentId}", studentId);
-            return Unauthorized(ex.Message);
+            return StatusCode(StatusCodes.Status403Forbidden, ex.Message);
         }
         catch (EntityServiceException ex)
         {
@@ -337,7 +337,7 @@ public class InstructorController(IInstructorService instructorService, ILogger<
         catch (EntityUnauthorizedException ex)
         {
             logger.LogWarning(ex, "User not authorized to update instructor with ID {Id}", id);
-            return Unauthorized(ex.Message);
+            return StatusCode(StatusCodes.Status403Forbidden, ex.Message);
         }
         catch (EntityServiceException ex)
         {
@@ -378,7 +378,7 @@ public class InstructorController(IInstructorService instructorService, ILogger<
         catch (EntityUnauthorizedException ex)
         {
             logger.LogWarning(ex, "User not authorized to delete instructor with ID {Id}", id);
-            return Unauthorized(new SoftDeleteResponse
+            return StatusCode(StatusCodes.Status403Forbidden, new SoftDeleteResponse
             {
                 Success = false,
                 Message = ex.Message
