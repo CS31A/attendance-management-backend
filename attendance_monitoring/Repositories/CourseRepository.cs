@@ -23,6 +23,20 @@ public class CourseRepository(ApplicationDbContext context) : ICourseRepository
     }
     #endregion
 
+    #region GetCourseByUuidAsync
+    public async Task<Course?> GetCourseByUuidAsync(Guid uuid)
+    {
+        return await context.Courses.AsNoTracking().FirstOrDefaultAsync(c => c.Uuid == uuid).ConfigureAwait(false);
+    }
+    #endregion
+
+    #region GetCourseByUuidTrackedAsync
+    public async Task<Course?> GetCourseByUuidTrackedAsync(Guid uuid)
+    {
+        return await context.Courses.FirstOrDefaultAsync(c => c.Uuid == uuid).ConfigureAwait(false);
+    }
+    #endregion
+
     #endregion
 
     #region Write Operations

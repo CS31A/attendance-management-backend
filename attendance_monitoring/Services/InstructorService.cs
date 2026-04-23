@@ -186,7 +186,7 @@ namespace attendance_monitoring.Services
 
                 // Get schedules for instructor
                 var schedules = await _scheduleRepository.GetSchedulesByInstructorIdAsync(instructor.Id).ConfigureAwait(false);
-                var scheduleDtos = schedules.Select(ScheduleService.MapToResponseDto).ToList();
+                var scheduleDtos = schedules.Select(ScheduleServiceSupport.MapToResponseDto).ToList();
 
                 _logger.LogInformation("Successfully retrieved {Count} schedules for instructor ID: {InstructorId}",
                     scheduleDtos.Count, instructor.Id);

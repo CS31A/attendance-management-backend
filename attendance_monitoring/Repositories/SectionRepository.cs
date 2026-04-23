@@ -14,6 +14,16 @@ namespace attendance_monitoring.Repositories
             => await context.Sections.AsNoTracking().FirstOrDefaultAsync(s => s.Id == sectionId).ConfigureAwait(false);
         #endregion
 
+        #region GetSectionByUuidAsync
+        public async Task<Section?> GetSectionByUuidAsync(Guid uuid)
+            => await context.Sections.AsNoTracking().FirstOrDefaultAsync(s => s.Uuid == uuid).ConfigureAwait(false);
+        #endregion
+
+        #region GetSectionByUuidTrackedAsync
+        public async Task<Section?> GetSectionByUuidTrackedAsync(Guid uuid)
+            => await context.Sections.FirstOrDefaultAsync(s => s.Uuid == uuid).ConfigureAwait(false);
+        #endregion
+
         #region GetAllSectionsAsync
         public async Task<IEnumerable<Section>> GetAllSectionsAsync()
             => await context.Sections.AsNoTracking().ToListAsync().ConfigureAwait(false);

@@ -34,19 +34,27 @@ namespace attendance_monitoring.Models.DTO.Request
         /// </summary>
         public int? SubjectId { get; set; }
 
+        public Guid? SubjectUuid { get; set; }
+
         /// <summary>
         /// The ID of the classroom where the schedule takes place.
         /// </summary>
         public int? ClassroomId { get; set; }
+
+        public Guid? ClassroomUuid { get; set; }
 
         /// <summary>
         /// The ID of the section assigned to this schedule.
         /// </summary>
         public int? SectionId { get; set; }
 
+        public Guid? SectionUuid { get; set; }
+
         /// <summary>
         /// The ID of the instructor assigned to this schedule.
         /// </summary>
         public int? InstructorId { get; set; }
+
+        public Guid? InstructorUuid { get; set; }
     }
 }

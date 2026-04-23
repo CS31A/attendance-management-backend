@@ -84,6 +84,34 @@ public class ClassroomService : IClassroomService
     }
     #endregion
 
+    #region GetClassroomByUuidAsync
+    public async Task<Classroom?> GetClassroomByUuidAsync(Guid uuid)
+    {
+        _logger.LogInformation("Retrieving classroom by UUID: {Uuid}", uuid);
+        try
+        {
+            var classroom = await _classroomRepository.GetClassroomByUuidAsync(uuid).ConfigureAwait(false);
+            if (classroom == null)
+            {
+                _logger.LogWarning("Classroom with UUID {Uuid} not found", uuid);
+                throw new EntityNotFoundException<Guid>("Classroom", uuid);
+            }
+
+            _logger.LogInformation("Successfully retrieved classroom with UUID: {Uuid}", uuid);
+            return classroom;
+        }
+        catch (EntityNotFoundException<Guid>)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error occurred while retrieving classroom with UUID {Uuid}", uuid);
+            throw new EntityServiceException("Classroom", $"GetClassroomByUuid: {uuid}", "An error occurred while retrieving the classroom", ex);
+        }
+    }
+    #endregion
+
     #region CreateClassroomAsync
     /// <summary>
     /// Creates a new classroom record
@@ -232,6 +260,14 @@ public class ClassroomService : IClassroomService
     }
     #endregion
 
+    #region UpdateClassroomByUuidAsync
+    public async Task<Classroom> UpdateClassroomByUuidAsync(Guid uuid, UpdateClassroom updateClassroom)
+    {
+        var existingClassroom = await GetClassroomByUuidAsync(uuid).ConfigureAwait(false);
+        return await UpdateClassroomAsync(existingClassroom!.Id, updateClassroom).ConfigureAwait(false);
+    }
+    #endregion
+
     #region Dependency Check Operations
     public async Task<bool> HasSchedulesInClassroomAsync(int id)
     {
@@ -322,6 +358,14 @@ public class ClassroomService : IClassroomService
             _logger.LogError(ex, "Error occurred while deleting classroom with ID {Id}", id);
             throw ExceptionHandlingHelper.CreateServiceException("Classroom", $"DeleteClassroom: {id}", ex);
         }
+    }
+    #endregion
+
+    #region DeleteClassroomByUuidAsync
+    public async Task DeleteClassroomByUuidAsync(Guid uuid)
+    {
+        var existingClassroom = await GetClassroomByUuidAsync(uuid).ConfigureAwait(false);
+        await DeleteClassroomAsync(existingClassroom!.Id).ConfigureAwait(false);
     }
     #endregion
 

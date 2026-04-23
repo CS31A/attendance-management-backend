@@ -23,6 +23,20 @@ public class ClassroomRepository(ApplicationDbContext context) : IClassroomRepos
     }
     #endregion
 
+    #region GetClassroomByUuidAsync
+    public async Task<Classroom?> GetClassroomByUuidAsync(Guid uuid)
+    {
+        return await context.Classrooms.AsNoTracking().FirstOrDefaultAsync(c => c.Uuid == uuid).ConfigureAwait(false);
+    }
+    #endregion
+
+    #region GetClassroomByUuidTrackedAsync
+    public async Task<Classroom?> GetClassroomByUuidTrackedAsync(Guid uuid)
+    {
+        return await context.Classrooms.FirstOrDefaultAsync(c => c.Uuid == uuid).ConfigureAwait(false);
+    }
+    #endregion
+
     #region GetClassroomByNameAsync
     public async Task<Classroom?> GetClassroomByNameAsync(string name)
     {

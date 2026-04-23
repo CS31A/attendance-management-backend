@@ -46,6 +46,31 @@ namespace attendance_monitoring.Services
             }
         }
 
+        public async Task<Section> GetSectionByUuidAsync(Guid uuid)
+        {
+            try
+            {
+                var section = await sectionRepository.GetSectionByUuidAsync(uuid).ConfigureAwait(false);
+                if (section == null)
+                {
+                    logger.LogWarning("Section with UUID {SectionUuid} not found", uuid);
+                    throw new EntityNotFoundException<Guid>("Section", uuid);
+                }
+
+                logger.LogInformation("Successfully retrieved section with UUID: {SectionUuid}", uuid);
+                return section;
+            }
+            catch (EntityNotFoundException<Guid>)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "An error occurred while retrieving section with UUID {SectionUuid} from repository.", uuid);
+                throw new EntityServiceException("Section", $"GetSectionByUuid: {uuid}", "An error occurred while retrieving the section", ex);
+            }
+        }
+
         /// <summary>
         /// Retrieves all sections
         /// </summary>
@@ -161,6 +186,12 @@ namespace attendance_monitoring.Services
             }
         }
 
+        public async Task<SectionResponseDto> UpdateSectionByUuidAsync(Guid uuid, Section section)
+        {
+            var existingSection = await GetSectionByUuidAsync(uuid).ConfigureAwait(false);
+            return await UpdateSectionAsync(existingSection.Id, section).ConfigureAwait(false);
+        }
+
         #endregion
 
         #region Delete Operations
@@ -203,6 +234,12 @@ namespace attendance_monitoring.Services
                 logger.LogError(ex, "An error occurred while deleting section with ID {SectionId} from repository.", id);
                 throw new EntityServiceException("Section", $"DeleteSection: {id}", "An error occurred while deleting the section", ex);
             }
+        }
+
+        public async Task DeleteSectionByUuidAsync(Guid uuid)
+        {
+            var existingSection = await GetSectionByUuidAsync(uuid).ConfigureAwait(false);
+            await DeleteSectionAsync(existingSection.Id).ConfigureAwait(false);
         }
 
         /// <summary>

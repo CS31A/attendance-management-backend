@@ -82,6 +82,32 @@ public class SubjectService : ISubjectService
         }
     }
 
+    public async Task<Subject?> GetSubjectByUuidAsync(Guid uuid)
+    {
+        _logger.LogInformation("Retrieving subject by UUID: {Uuid}", uuid);
+        try
+        {
+            var subject = await _subjectRepository.GetSubjectByUuidAsync(uuid).ConfigureAwait(false);
+            if (subject == null)
+            {
+                _logger.LogWarning("Subject with UUID {Uuid} not found", uuid);
+                throw new EntityNotFoundException<Guid>("Subject", uuid);
+            }
+
+            _logger.LogInformation("Successfully retrieved subject with UUID: {Uuid}", uuid);
+            return subject;
+        }
+        catch (EntityNotFoundException<Guid>)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error occurred while retrieving subject with UUID {Uuid}", uuid);
+            throw new EntityServiceException("Subject", $"GetSubjectByUuid: {uuid}", "An error occurred while retrieving the subject", ex);
+        }
+    }
+
     #endregion
 
     #region Create Operations
@@ -247,6 +273,12 @@ public class SubjectService : ISubjectService
         }
     }
 
+    public async Task<Subject> UpdateSubjectByUuidAsync(Guid uuid, UpdateSubject updateSubject)
+    {
+        var existingSubject = await GetSubjectByUuidAsync(uuid).ConfigureAwait(false);
+        return await UpdateSubjectAsync(existingSubject!.Id, updateSubject).ConfigureAwait(false);
+    }
+
     #endregion
 
     #region Dependency Check Operations
@@ -340,6 +372,12 @@ public class SubjectService : ISubjectService
             _logger.LogError(ex, "Error occurred while deleting subject with ID {Id}", id);
             throw ExceptionHandlingHelper.CreateServiceException("Subject", $"DeleteSubject: {id}", ex);
         }
+    }
+
+    public async Task DeleteSubjectByUuidAsync(Guid uuid)
+    {
+        var existingSubject = await GetSubjectByUuidAsync(uuid).ConfigureAwait(false);
+        await DeleteSubjectAsync(existingSubject!.Id).ConfigureAwait(false);
     }
 
     #endregion

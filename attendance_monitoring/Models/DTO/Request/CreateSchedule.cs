@@ -17,13 +17,21 @@ namespace attendance_monitoring.Models.DTO.Request
         [Required]
         public int SubjectId { get; set; }
 
+        public Guid? SubjectUuid { get; set; }
+
         [Required]
         public int ClassroomId { get; set; }
+
+        public Guid? ClassroomUuid { get; set; }
 
         [Required]
         public int SectionId { get; set; }
 
+        public Guid? SectionUuid { get; set; }
+
         [Required]
         public int InstructorId { get; set; }
+
+        public Guid? InstructorUuid { get; set; }
     }
 }

@@ -55,6 +55,36 @@ namespace attendance_monitoring.Repositories
         }
         #endregion
 
+        #region GetScheduleByUuidAsync
+        public async Task<Schedules?> GetScheduleByUuidAsync(Guid uuid)
+        {
+            var scheduleId = await context.Schedules
+                .AsNoTracking()
+                .Where(s => s.Uuid == uuid)
+                .Select(s => (int?)s.Id)
+                .SingleOrDefaultAsync();
+
+            return scheduleId.HasValue
+                ? await GetScheduleByIdAsync(scheduleId.Value)
+                : null;
+        }
+        #endregion
+
+        #region GetScheduleByUuidTrackedAsync
+        public async Task<Schedules?> GetScheduleByUuidTrackedAsync(Guid uuid)
+        {
+            var scheduleId = await context.Schedules
+                .AsNoTracking()
+                .Where(s => s.Uuid == uuid)
+                .Select(s => (int?)s.Id)
+                .SingleOrDefaultAsync();
+
+            return scheduleId.HasValue
+                ? await GetScheduleByIdTrackedAsync(scheduleId.Value)
+                : null;
+        }
+        #endregion
+
         #region GetSchedulesByInstructorIdAsync
         public async Task<IEnumerable<Schedules>> GetSchedulesByInstructorIdAsync(int instructorId)
         {

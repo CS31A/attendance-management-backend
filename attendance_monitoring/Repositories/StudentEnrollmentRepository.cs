@@ -46,6 +46,32 @@ public class StudentEnrollmentRepository : IStudentEnrollmentRepository
             .FirstOrDefaultAsync(se => se.Id == id);
     }
 
+    public async Task<StudentEnrollment?> GetByUuidAsync(Guid uuid)
+    {
+        var enrollmentId = await _context.StudentEnrollments
+            .AsNoTracking()
+            .Where(se => se.Uuid == uuid)
+            .Select(se => (int?)se.Id)
+            .SingleOrDefaultAsync();
+
+        return enrollmentId.HasValue
+            ? await GetByIdAsync(enrollmentId.Value)
+            : null;
+    }
+
+    public async Task<StudentEnrollment?> GetByUuidTrackedAsync(Guid uuid)
+    {
+        var enrollmentId = await _context.StudentEnrollments
+            .AsNoTracking()
+            .Where(se => se.Uuid == uuid)
+            .Select(se => (int?)se.Id)
+            .SingleOrDefaultAsync();
+
+        return enrollmentId.HasValue
+            ? await GetByIdTrackedAsync(enrollmentId.Value)
+            : null;
+    }
+
     public async Task<StudentEnrollment> CreateAsync(StudentEnrollment enrollment)
     {
         enrollment.CreatedAt = DateTime.UtcNow;
