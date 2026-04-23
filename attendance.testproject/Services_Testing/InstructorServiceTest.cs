@@ -1152,6 +1152,8 @@ public class InstructorServiceTest
         _mockInstructorRepository.Setup(r => r.GetInstructorByUserIdAsync(userId)).ReturnsAsync(instructor);
         _mockInstructorRepository.Setup(r => r.GetSchedulesWithRelatedDataByInstructorIdAsync(instructorId))
             .ReturnsAsync(schedules);
+        _mockInstructorRepository.Setup(r => r.GetRegularStudentsBySectionIdAsync(section.Id))
+            .ReturnsAsync(new List<Student> { student1 });
 
         // Act
         var result = await _service.GetSectionsWithStudentsByInstructorAsync(_testUserPrincipal);
@@ -1290,6 +1292,8 @@ public class InstructorServiceTest
         _mockInstructorRepository.Setup(r => r.GetInstructorByUserIdAsync(userId)).ReturnsAsync(instructor);
         _mockInstructorRepository.Setup(r => r.GetSchedulesWithRelatedDataByInstructorIdAsync(instructorId))
             .ReturnsAsync(new List<Schedules> { schedule });
+        _mockInstructorRepository.Setup(r => r.GetRegularStudentsBySectionIdAsync(section.Id))
+            .ReturnsAsync(new List<Student> { regularStudent });
 
         // Act
         var result = await _service.GetSectionsWithStudentsByInstructorAsync(_testUserPrincipal);
@@ -1453,6 +1457,8 @@ public class InstructorServiceTest
         _mockInstructorRepository.Setup(r => r.GetInstructorByUserIdAsync(userId)).ReturnsAsync(instructor);
         _mockInstructorRepository.Setup(r => r.GetSchedulesWithRelatedDataByInstructorIdAsync(instructorId))
             .ReturnsAsync(new List<Schedules> { schedule });
+        _mockInstructorRepository.Setup(r => r.GetRegularStudentsBySectionIdAsync(section.Id))
+            .ReturnsAsync(new List<Student> { activeStudent });
 
         // Act
         var result = await _service.GetSectionsWithStudentsByInstructorAsync(_testUserPrincipal);
@@ -1558,6 +1564,8 @@ public class InstructorServiceTest
         _mockInstructorRepository.Setup(r => r.GetInstructorByUserIdAsync(userId)).ReturnsAsync(instructor);
         _mockInstructorRepository.Setup(r => r.GetSchedulesWithRelatedDataByInstructorIdAsync(instructorId))
             .ReturnsAsync(new List<Schedules> { schedule1, schedule2 });
+        _mockInstructorRepository.Setup(r => r.GetRegularStudentsBySectionIdAsync(section.Id))
+            .ReturnsAsync(new List<Student> { student });
 
         // Act
         var result = await _service.GetSectionsWithStudentsByInstructorAsync(_testUserPrincipal);
@@ -1599,6 +1607,73 @@ public class InstructorServiceTest
         Assert.Equal("Instructor", exception.EntityName);
         Assert.Equal("GetSectionsWithStudentsByInstructor", exception.Operation);
         Assert.Same(expectedException, exception.InnerException);
+    }
+
+    [Fact]
+    public async Task GetSectionsWithStudentsByInstructorAsync_PrimarySectionStudentsWithoutEnrollmentRows_AreIncluded()
+    {
+        // Arrange
+        const string userId = "test-user-id";
+        const int instructorId = 1;
+
+        var instructor = new Instructor { Id = instructorId, Uuid = Guid.NewGuid(), Firstname = "John", Lastname = "Doe", UserId = userId };
+        var course = new Course { Id = 1, Uuid = Guid.NewGuid(), Name = "Computer Science" };
+        var section = new Section
+        {
+            Id = 1,
+            Uuid = Guid.NewGuid(),
+            Name = "CS-3A",
+            CourseId = 1,
+            Course = course,
+            StudentEnrollments = new List<StudentEnrollment>()
+        };
+
+        var subject = new Subject { Id = 1, Uuid = Guid.NewGuid(), Name = "Mathematics", Code = "MATH101" };
+        var classroom = new Classroom { Id = 1, Uuid = Guid.NewGuid(), Name = "Room 101" };
+
+        var regularStudent = new Student
+        {
+            Id = 1,
+            Uuid = Guid.NewGuid(),
+            Firstname = "Regular",
+            Lastname = "Student",
+            SectionId = 1,
+            IsDeleted = false
+        };
+
+        var schedule = new Schedules
+        {
+            Id = 1,
+            Uuid = Guid.NewGuid(),
+            InstructorId = instructorId,
+            SectionId = 1,
+            SubjectId = 1,
+            ClassroomId = 1,
+            DayOfWeek = "Monday",
+            TimeIn = TimeOnly.FromTimeSpan(TimeSpan.FromHours(8)),
+            TimeOut = TimeOnly.FromTimeSpan(TimeSpan.FromHours(10)),
+            Section = section,
+            Subject = subject,
+            Classroom = classroom,
+            Instructor = instructor
+        };
+
+        _mockUserContextService.Setup(s => s.GetUserIdAsync(_testUserPrincipal)).ReturnsAsync(userId);
+        _mockInstructorRepository.Setup(r => r.GetInstructorByUserIdAsync(userId)).ReturnsAsync(instructor);
+        _mockInstructorRepository.Setup(r => r.GetSchedulesWithRelatedDataByInstructorIdAsync(instructorId))
+            .ReturnsAsync(new List<Schedules> { schedule });
+        _mockInstructorRepository.Setup(r => r.GetRegularStudentsBySectionIdAsync(section.Id))
+            .ReturnsAsync(new List<Student> { regularStudent });
+
+        // Act
+        var result = await _service.GetSectionsWithStudentsByInstructorAsync(_testUserPrincipal);
+
+        // Assert
+        var students = result.Sections.First().Subjects.First().Students;
+        var returnedStudent = Assert.Single(students);
+        Assert.Equal(regularStudent.Id, returnedStudent.StudentId);
+        Assert.True(returnedStudent.IsRegular);
+        Assert.Equal(EnrollmentTypeConstants.Regular, returnedStudent.EnrollmentType);
     }
 
     #endregion

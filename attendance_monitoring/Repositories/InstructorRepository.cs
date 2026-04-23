@@ -214,6 +214,23 @@ public class InstructorRepository(ApplicationDbContext context) : IInstructorRep
     }
     #endregion
 
+    #region GetRegularStudentsBySectionIdAsync
+    /// <summary>
+    /// Retrieves regular students whose primary section matches the supplied section.
+    /// Soft-deleted students are excluded.
+    /// </summary>
+    public async Task<IEnumerable<Student>> GetRegularStudentsBySectionIdAsync(int sectionId)
+    {
+        return await context.Students
+            .AsNoTracking()
+            .Where(student => student.SectionId == sectionId && !student.IsDeleted)
+            .OrderBy(student => student.Lastname)
+            .ThenBy(student => student.Firstname)
+            .ToListAsync()
+            .ConfigureAwait(false);
+    }
+    #endregion
+
     #endregion
 
     #region Utility Operations

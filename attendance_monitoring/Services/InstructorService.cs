@@ -712,6 +712,17 @@ namespace attendance_monitoring.Services
                 {
                     var firstSchedule = sectionGroup.First();
                     var section = firstSchedule.Section;
+                    var regularStudents = (await _instructorRepository.GetRegularStudentsBySectionIdAsync(section.Id).ConfigureAwait(false))
+                        .Select(student => new StudentDto
+                        {
+                            StudentId = student.Id,
+                            StudentUuid = student.Uuid,
+                            Firstname = student.Firstname,
+                            Lastname = student.Lastname,
+                            IsRegular = true,
+                            EnrollmentType = EnrollmentTypeConstants.Regular
+                        })
+                        .ToList();
 
                     // Group schedules by subject within this section
                     var subjectSchedules = sectionGroup
@@ -719,10 +730,10 @@ namespace attendance_monitoring.Services
                         .Select(subjectGroup =>
                         {
                             var schedule = subjectGroup.First();
-                            
-                            // Get all students enrolled in this section through StudentEnrollments
-                            // This includes both regular and irregular students for this specific subject
-                            var enrolledStudents = section.StudentEnrollments
+
+                            // Regular students come from primary section membership.
+                            // Irregular and retake students come from explicit additional enrollments.
+                            var irregularStudents = section.StudentEnrollments
                                 .Where(se => se.SubjectId == schedule.SubjectId 
                                     && !se.Student.IsDeleted
                                     && se.IsActive)
@@ -735,6 +746,11 @@ namespace attendance_monitoring.Services
                                     IsRegular = se.Student.SectionId == section.Id,
                                     EnrollmentType = se.Student.SectionId == section.Id ? "Regular" : se.EnrollmentType
                                 })
+                                .Where(student => !student.IsRegular)
+                                .ToList();
+
+                            var enrolledStudents = regularStudents
+                                .Concat(irregularStudents)
                                 .GroupBy(s => s.StudentId)
                                 .Select(g => g.First())
                                 .OrderBy(s => s.Lastname)

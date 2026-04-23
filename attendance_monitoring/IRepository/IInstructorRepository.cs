@@ -97,4 +97,11 @@ public interface IInstructorRepository : ISaveableRepository
     /// <returns>A collection of schedules with eagerly loaded related entities.</returns>
     Task<IEnumerable<Schedules>> GetSchedulesWithRelatedDataByInstructorIdAsync(int instructorId);
 
+    /// <summary>
+    /// Retrieves regular students whose primary section matches the supplied section.
+    /// </summary>
+    /// <param name="sectionId">The section ID.</param>
+    /// <returns>A collection of regular students in the section.</returns>
+    Task<IEnumerable<Student>> GetRegularStudentsBySectionIdAsync(int sectionId);
+
 }

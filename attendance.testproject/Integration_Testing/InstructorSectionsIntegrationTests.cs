@@ -54,6 +54,8 @@ public sealed class InstructorSectionsIntegrationTests
         Assert.False(string.IsNullOrEmpty(firstSubject.SubjectCode));
         Assert.True(firstSubject.ScheduleId > 0);
         Assert.NotNull(firstSubject.Students);
+        Assert.NotEmpty(firstSubject.Students);
+        Assert.Contains(firstSubject.Students, student => student.IsRegular);
     }
 
     [RequiresEnvironmentVariableFact("RUN_INTEGRATION_TESTS")]
