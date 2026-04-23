@@ -83,6 +83,23 @@ namespace attendance_monitoring.Controllers
             // No generic catch - global handler will manage unexpected errors
         }
 
+        [HttpGet("uuid/{uuid:guid}")]
+        public async Task<ActionResult<ScheduleResponseDto>> GetScheduleByUuid(Guid uuid)
+        {
+            logger.LogInformation("Getting schedule with UUID: {Uuid}", uuid);
+            try
+            {
+                var schedule = await scheduleService.GetScheduleByUuidAsync(uuid);
+                logger.LogInformation("Successfully retrieved schedule with UUID: {Uuid}", uuid);
+                return Ok(schedule);
+            }
+            catch (EntityNotFoundException<Guid> ex)
+            {
+                logger.LogWarning(ex, "Schedule with UUID {Uuid} not found", uuid);
+                return NotFound(new { message = ex.Message });
+            }
+        }
+
         /// <summary>
         /// Get all schedules assigned to a specific instructor
         /// </summary>
@@ -209,6 +226,23 @@ namespace attendance_monitoring.Controllers
             // Exceptions are handled by global exception handler
         }
 
+        [HttpPatch("uuid/{uuid:guid}")]
+        [Authorize(Policy = "AdminPolicy")]
+        public async Task<ActionResult<Schedules>> UpdateScheduleByUuid(Guid uuid, UpdateSchedule updateSchedule)
+        {
+            logger.LogInformation("Updating schedule with UUID: {Uuid}", uuid);
+            if (!ModelState.IsValid)
+            {
+                logger.LogWarning("Schedule update failed due to invalid model state for schedule UUID: {Uuid}", uuid);
+                return BadRequest(ModelState);
+            }
+
+            var schedule = await scheduleService.UpdateScheduleByUuidAsync(uuid, updateSchedule);
+
+            logger.LogInformation("Successfully updated schedule with UUID: {Uuid}", uuid);
+            return Ok(schedule);
+        }
+
         #endregion
 
         #region Delete Operations
@@ -233,6 +267,18 @@ namespace attendance_monitoring.Controllers
             logger.LogInformation("Successfully deleted schedule with ID: {Id}", id);
             return NoContent();
             // Exceptions are handled by global exception handler
+        }
+
+        [HttpDelete("uuid/{uuid:guid}")]
+        [Authorize(Policy = "AdminPolicy")]
+        public async Task<ActionResult> DeleteScheduleByUuid(Guid uuid)
+        {
+            logger.LogInformation("Deleting schedule with UUID: {Uuid}", uuid);
+
+            await scheduleService.DeleteScheduleByUuidAsync(uuid, User);
+
+            logger.LogInformation("Successfully deleted schedule with UUID: {Uuid}", uuid);
+            return NoContent();
         }
 
         #endregion

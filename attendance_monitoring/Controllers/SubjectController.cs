@@ -62,6 +62,23 @@ public class SubjectController(ISubjectService subjectService, ILogger<SubjectCo
         // No generic catch - global handler will manage unexpected errors
     }
 
+    [HttpGet("uuid/{uuid:guid}")]
+    public async Task<ActionResult<Subject>> GetSubjectByUuid(Guid uuid)
+    {
+        logger.LogInformation("Getting subject with UUID: {Uuid}", uuid);
+        try
+        {
+            var subject = await subjectService.GetSubjectByUuidAsync(uuid);
+            logger.LogInformation("Successfully retrieved subject with UUID: {Uuid}", uuid);
+            return Ok(subject);
+        }
+        catch (EntityNotFoundException<Guid> ex)
+        {
+            logger.LogWarning(ex, "Subject with UUID {Uuid} not found", uuid);
+            return NotFound(new { message = ex.Message });
+        }
+    }
+
     #endregion
 
     #region Create Operations
@@ -129,6 +146,23 @@ public class SubjectController(ISubjectService subjectService, ILogger<SubjectCo
         // Exceptions are handled by global exception handler
     }
 
+    [HttpPatch("uuid/{uuid:guid}")]
+    [Authorize(Policy = "AdminPolicy")]
+    public async Task<ActionResult<Subject>> UpdateSubjectByUuid(Guid uuid, UpdateSubject updateSubject)
+    {
+        logger.LogInformation("Updating subject with UUID: {Uuid}", uuid);
+        if (!ModelState.IsValid)
+        {
+            logger.LogWarning("Subject update failed due to invalid model state for subject UUID: {Uuid}", uuid);
+            return BadRequest(ModelState);
+        }
+
+        var subject = await subjectService.UpdateSubjectByUuidAsync(uuid, updateSubject);
+
+        logger.LogInformation("Successfully updated subject with UUID: {Uuid}", uuid);
+        return Ok(subject);
+    }
+
     #endregion
 
     #region Delete Operations
@@ -154,6 +188,18 @@ public class SubjectController(ISubjectService subjectService, ILogger<SubjectCo
         logger.LogInformation("Successfully deleted subject with ID: {Id}", id);
         return NoContent();
         // Exceptions are handled by global exception handler
+    }
+
+    [HttpDelete("uuid/{uuid:guid}")]
+    [Authorize(Policy = "AdminPolicy")]
+    public async Task<ActionResult> DeleteSubjectByUuid(Guid uuid)
+    {
+        logger.LogInformation("Deleting subject with UUID: {Uuid}", uuid);
+
+        await subjectService.DeleteSubjectByUuidAsync(uuid);
+
+        logger.LogInformation("Successfully deleted subject with UUID: {Uuid}", uuid);
+        return NoContent();
     }
 
     [Authorize(Policy = "PrivilegedPolicy")]
