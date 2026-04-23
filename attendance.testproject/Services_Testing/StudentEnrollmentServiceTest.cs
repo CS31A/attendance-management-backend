@@ -1,4 +1,5 @@
 using attendance_monitoring.Classes;
+using attendance_monitoring.Constants;
 using attendance_monitoring.Exceptions;
 using attendance_monitoring.IRepository;
 using attendance_monitoring.Services;
@@ -120,6 +121,46 @@ public class StudentEnrollmentServiceTest
         Assert.Equal(enrollmentType, result.EnrollmentType);
         Assert.Equal(academicYear, result.AcademicYear);
         Assert.Equal(semester, result.Semester);
+    }
+
+    [Theory]
+    [InlineData("Regular")]
+    [InlineData("Irregular")]
+    [InlineData("Retake")]
+    [InlineData("regular")]
+    public async Task EnrollStudentAsync_KnownEnrollmentTypes_AcceptsAndNormalizes(string enrollmentType)
+    {
+        // Arrange
+        var studentId = 1;
+        var sectionId = 2;
+        var subjectId = 3;
+        var student = new Student { Id = studentId, SectionId = 5, IsDeleted = false };
+        var section = new Section { Id = sectionId };
+        var subject = new Subject { Id = subjectId };
+
+        _mockStudentRepo.Setup(r => r.GetStudentByIdAsync(studentId)).ReturnsAsync(student);
+        _mockSectionRepo.Setup(r => r.GetSectionByIdAsync(sectionId)).ReturnsAsync(section);
+        _mockSubjectRepo.Setup(r => r.GetSubjectByIdAsync(subjectId)).ReturnsAsync(subject);
+        _mockEnrollmentRepo.Setup(r => r.GetEnrollmentAsync(studentId, sectionId, subjectId))
+            .ReturnsAsync((StudentEnrollment?)null);
+        _mockEnrollmentRepo.Setup(r => r.CreateAsync(It.IsAny<StudentEnrollment>()))
+            .ReturnsAsync((StudentEnrollment e) => e);
+
+        // Act
+        var result = await _service.EnrollStudentAsync(studentId, sectionId, subjectId, enrollmentType);
+
+        // Assert
+        Assert.Equal(EnrollmentTypeConstants.Normalize(enrollmentType), result.EnrollmentType);
+    }
+
+    [Fact]
+    public async Task EnrollStudentAsync_UnknownEnrollmentType_ThrowsValidationException()
+    {
+        // Act & Assert
+        var exception = await Assert.ThrowsAsync<ValidationException>(
+            () => _service.EnrollStudentAsync(1, 2, 3, "Elective"));
+
+        Assert.Equal("Enrollment type must be one of: Regular, Irregular, Retake", exception.Message);
     }
 
     [Fact]

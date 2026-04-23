@@ -1,11 +1,13 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
+using System.ComponentModel.DataAnnotations;
 using attendance_monitoring.Controllers;
 using attendance_monitoring.IServices;
 using attendance_monitoring.Classes;
 using attendance_monitoring.Models.DTO.Request;
 using attendance_monitoring.Models.DTO.Response;
 using attendance_monitoring.Exceptions;
+using AppValidationException = attendance_monitoring.Exceptions.ValidationException;
 
 namespace attendance.testproject.Controllers_Testing;
 
@@ -219,6 +221,56 @@ public class StudentEnrollmentControllerTest
         // Assert
         var conflictResult = Assert.IsType<ConflictObjectResult>(result.Result);
         Assert.NotNull(conflictResult.Value);
+    }
+
+    [Fact]
+    public async Task EnrollStudent_InvalidEnrollmentTypeFromService_ReturnsBadRequest()
+    {
+        // Arrange
+        var request = new CreateStudentEnrollment
+        {
+            StudentId = 1,
+            SectionId = 2,
+            SubjectId = 3,
+            EnrollmentType = "Elective"
+        };
+
+        _mockService.Setup(s => s.EnrollStudentAsync(
+            request.StudentId,
+            request.SectionId,
+            request.SubjectId,
+            request.EnrollmentType,
+            request.AcademicYear,
+            request.Semester))
+            .ThrowsAsync(new AppValidationException("Enrollment type must be one of: Regular, Irregular, Retake"));
+
+        // Act
+        var result = await _controller.EnrollStudent(request);
+
+        // Assert
+        var badRequestResult = Assert.IsType<BadRequestObjectResult>(result.Result);
+        Assert.NotNull(badRequestResult.Value);
+    }
+
+    [Fact]
+    public void CreateStudentEnrollment_InvalidEnrollmentType_FailsValidation()
+    {
+        // Arrange
+        var request = new CreateStudentEnrollment
+        {
+            StudentId = 1,
+            SectionId = 2,
+            SubjectId = 3,
+            EnrollmentType = "Elective"
+        };
+        var validationResults = new List<ValidationResult>();
+
+        // Act
+        var isValid = Validator.TryValidateObject(request, new ValidationContext(request), validationResults, true);
+
+        // Assert
+        Assert.False(isValid);
+        Assert.Contains(validationResults, result => result.ErrorMessage == "Enrollment type must be one of: Regular, Irregular, Retake");
     }
 
     #endregion
