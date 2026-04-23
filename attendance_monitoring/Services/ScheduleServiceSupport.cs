@@ -1,6 +1,7 @@
 using attendance_monitoring.Classes;
 using attendance_monitoring.Data;
 using attendance_monitoring.Exceptions;
+using attendance_monitoring.Helpers;
 using attendance_monitoring.Models.DTO.Response;
 using Microsoft.EntityFrameworkCore;
 
@@ -9,7 +10,7 @@ namespace attendance_monitoring.Services;
 internal static class ScheduleServiceSupport
 {
     public static Task<int> ResolveSubjectIdAsync(ApplicationDbContext context, int? subjectId, Guid? subjectUuid)
-        => ResolveEntityIdAsync(
+        => EntityIdResolutionHelper.ResolveEntityIdAsync(
             subjectId,
             subjectUuid,
             "Subject",
@@ -17,7 +18,7 @@ internal static class ScheduleServiceSupport
             async uuid => await context.Subjects.AsNoTracking().Where(s => s.Uuid == uuid).Select(s => (int?)s.Id).SingleOrDefaultAsync().ConfigureAwait(false));
 
     public static Task<int> ResolveClassroomIdAsync(ApplicationDbContext context, int? classroomId, Guid? classroomUuid)
-        => ResolveEntityIdAsync(
+        => EntityIdResolutionHelper.ResolveEntityIdAsync(
             classroomId,
             classroomUuid,
             "Classroom",
@@ -25,7 +26,7 @@ internal static class ScheduleServiceSupport
             async uuid => await context.Classrooms.AsNoTracking().Where(c => c.Uuid == uuid).Select(c => (int?)c.Id).SingleOrDefaultAsync().ConfigureAwait(false));
 
     public static Task<int> ResolveSectionIdAsync(ApplicationDbContext context, int? sectionId, Guid? sectionUuid)
-        => ResolveEntityIdAsync(
+        => EntityIdResolutionHelper.ResolveEntityIdAsync(
             sectionId,
             sectionUuid,
             "Section",
@@ -33,7 +34,7 @@ internal static class ScheduleServiceSupport
             async uuid => await context.Sections.AsNoTracking().Where(s => s.Uuid == uuid).Select(s => (int?)s.Id).SingleOrDefaultAsync().ConfigureAwait(false));
 
     public static Task<int> ResolveInstructorIdAsync(ApplicationDbContext context, int? instructorId, Guid? instructorUuid)
-        => ResolveEntityIdAsync(
+        => EntityIdResolutionHelper.ResolveEntityIdAsync(
             instructorId,
             instructorUuid,
             "Instructor",
@@ -81,50 +82,5 @@ internal static class ScheduleServiceSupport
             CreatedAt = schedule.CreatedAt,
             UpdatedAt = schedule.UpdatedAt,
         };
-    }
-
-    private static bool IsProvided(Guid? uuid) => uuid.HasValue && uuid.Value != Guid.Empty;
-
-    private static async Task<int> ResolveEntityIdAsync(
-        int? id,
-        Guid? uuid,
-        string entityName,
-        Func<int, Task<int?>> getByIdAsync,
-        Func<Guid, Task<int?>> getByUuidAsync)
-    {
-        var hasId = id.HasValue && id.Value > 0;
-        var hasUuid = IsProvided(uuid);
-
-        if (!hasId && !hasUuid)
-        {
-            throw new ValidationException($"{entityName} reference is required.");
-        }
-
-        int? idFromId = null;
-        if (hasId)
-        {
-            idFromId = await getByIdAsync(id!.Value).ConfigureAwait(false);
-            if (!idFromId.HasValue)
-            {
-                throw new EntityNotFoundException<int>(entityName, id.Value);
-            }
-        }
-
-        int? idFromUuid = null;
-        if (hasUuid)
-        {
-            idFromUuid = await getByUuidAsync(uuid!.Value).ConfigureAwait(false);
-            if (!idFromUuid.HasValue)
-            {
-                throw new EntityNotFoundException<Guid>(entityName, uuid.Value);
-            }
-        }
-
-        if (idFromId.HasValue && idFromUuid.HasValue && idFromId.Value != idFromUuid.Value)
-        {
-            throw new ValidationException($"Conflicting {entityName} identifiers were provided.");
-        }
-
-        return idFromId ?? idFromUuid!.Value;
     }
 }

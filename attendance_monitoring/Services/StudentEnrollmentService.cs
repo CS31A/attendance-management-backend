@@ -3,6 +3,7 @@ using attendance_monitoring.Constants;
 using attendance_monitoring.IRepository;
 using attendance_monitoring.IServices;
 using attendance_monitoring.Exceptions;
+using attendance_monitoring.Helpers;
 using attendance_monitoring.Models.DTO.Request;
 
 namespace attendance_monitoring.Services;
@@ -214,7 +215,7 @@ public class StudentEnrollmentService : IStudentEnrollmentService
 
     private async Task<int> ResolveStudentIdAsync(int? studentId, Guid? studentUuid)
     {
-        return await ResolveEntityIdAsync(
+        return await EntityIdResolutionHelper.ResolveEntityIdAsync(
             studentId,
             studentUuid,
             "Student",
@@ -224,7 +225,7 @@ public class StudentEnrollmentService : IStudentEnrollmentService
 
     private async Task<int> ResolveSectionIdAsync(int? sectionId, Guid? sectionUuid)
     {
-        return await ResolveEntityIdAsync(
+        return await EntityIdResolutionHelper.ResolveEntityIdAsync(
             sectionId,
             sectionUuid,
             "Section",
@@ -234,7 +235,7 @@ public class StudentEnrollmentService : IStudentEnrollmentService
 
     private async Task<int> ResolveSubjectIdAsync(int? subjectId, Guid? subjectUuid)
     {
-        return await ResolveEntityIdAsync(
+        return await EntityIdResolutionHelper.ResolveEntityIdAsync(
             subjectId,
             subjectUuid,
             "Subject",
@@ -245,50 +246,5 @@ public class StudentEnrollmentService : IStudentEnrollmentService
     private async Task<Student?> _mockableStudentByIdAsync(int studentId)
     {
         return await _studentRepository.GetStudentByIdAsync(studentId).ConfigureAwait(false);
-    }
-
-    private static bool IsProvided(Guid? uuid) => uuid.HasValue && uuid.Value != Guid.Empty;
-
-    private static async Task<int> ResolveEntityIdAsync(
-        int? id,
-        Guid? uuid,
-        string entityName,
-        Func<int, Task<int?>> getByIdAsync,
-        Func<Guid, Task<int?>> getByUuidAsync)
-    {
-        var hasId = id.HasValue && id.Value > 0;
-        var hasUuid = IsProvided(uuid);
-
-        if (!hasId && !hasUuid)
-        {
-            throw new ValidationException($"{entityName} reference is required.");
-        }
-
-        int? idFromId = null;
-        if (hasId)
-        {
-            idFromId = await getByIdAsync(id!.Value).ConfigureAwait(false);
-            if (!idFromId.HasValue)
-            {
-                throw new EntityNotFoundException<int>(entityName, id.Value);
-            }
-        }
-
-        int? idFromUuid = null;
-        if (hasUuid)
-        {
-            idFromUuid = await getByUuidAsync(uuid!.Value).ConfigureAwait(false);
-            if (!idFromUuid.HasValue)
-            {
-                throw new EntityNotFoundException<Guid>(entityName, uuid.Value);
-            }
-        }
-
-        if (idFromId.HasValue && idFromUuid.HasValue && idFromId.Value != idFromUuid.Value)
-        {
-            throw new ValidationException($"Conflicting {entityName} identifiers were provided.");
-        }
-
-        return idFromId ?? idFromUuid!.Value;
     }
 }
