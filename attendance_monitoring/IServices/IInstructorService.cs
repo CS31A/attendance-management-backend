@@ -13,6 +13,9 @@ public interface IInstructorService
     Task<IEnumerable<ScheduleResponseDto>> GetSchedulesByInstructorAsync(ClaimsPrincipal user);
     Task<InstructorProfileResponseDto?> GetInstructorProfileAsync(ClaimsPrincipal user);
     Task<InstructorSectionsWithStudentsResponseDto> GetSectionsWithStudentsByInstructorAsync(ClaimsPrincipal user);
+    Task<List<InstructorSectionOverviewDto>> GetInstructorSectionsOverviewAsync(ClaimsPrincipal user);
+    Task<InstructorSectionDetailDto> GetInstructorSectionDetailAsync(ClaimsPrincipal user, int sectionId);
+    Task<InstructorStudentDetailDto> GetInstructorStudentDetailAsync(ClaimsPrincipal user, int studentId);
     Task<Instructor> CreateInstructorAsync(CreateInstructor createInstructor, ClaimsPrincipal user);
     Task<Instructor> UpdateInstructorAsync(int id, UpdateInstructor updateInstructor, ClaimsPrincipal user);
     Task SoftDeleteInstructorAsync(int id, ClaimsPrincipal user);

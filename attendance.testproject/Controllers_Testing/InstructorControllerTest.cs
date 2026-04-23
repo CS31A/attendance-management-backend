@@ -262,4 +262,357 @@ public class InstructorControllerTest
     }
 
     #endregion
+
+    #region GetMySectionsOverview Tests
+
+    [Fact]
+    public async Task GetMySectionsOverview_ReturnsOkResult_WithSectionsOverviewList()
+    {
+        // Arrange
+        var expectedSections = new List<InstructorSectionOverviewDto>
+        {
+            new InstructorSectionOverviewDto
+            {
+                SectionId = 1,
+                SectionUuid = Guid.NewGuid(),
+                SectionName = "BSCS 3A",
+                CourseId = 1,
+                CourseUuid = Guid.NewGuid(),
+                CourseName = "Computer Science",
+                HandledClassCount = 2,
+                UniqueStudentCount = 30
+            },
+            new InstructorSectionOverviewDto
+            {
+                SectionId = 2,
+                SectionUuid = Guid.NewGuid(),
+                SectionName = "BSCS 3B",
+                CourseId = 1,
+                CourseUuid = Guid.NewGuid(),
+                CourseName = "Computer Science",
+                HandledClassCount = 1,
+                UniqueStudentCount = 25
+            }
+        };
+        _mockInstructorService
+            .Setup(s => s.GetInstructorSectionsOverviewAsync(It.IsAny<ClaimsPrincipal>()))
+            .ReturnsAsync(expectedSections);
+
+        // Act
+        var result = await _instructorController.GetMySectionsOverview();
+
+        // Assert
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        var sections = Assert.IsAssignableFrom<List<InstructorSectionOverviewDto>>(okResult.Value);
+        Assert.Equal(2, sections.Count);
+        _mockInstructorService.Verify(s => s.GetInstructorSectionsOverviewAsync(It.IsAny<ClaimsPrincipal>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task GetMySectionsOverview_ReturnsOkResult_WithEmptyList_WhenNoSections()
+    {
+        // Arrange
+        var expectedSections = new List<InstructorSectionOverviewDto>();
+        _mockInstructorService
+            .Setup(s => s.GetInstructorSectionsOverviewAsync(It.IsAny<ClaimsPrincipal>()))
+            .ReturnsAsync(expectedSections);
+
+        // Act
+        var result = await _instructorController.GetMySectionsOverview();
+
+        // Assert
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        var sections = Assert.IsAssignableFrom<List<InstructorSectionOverviewDto>>(okResult.Value);
+        Assert.Empty(sections);
+        _mockInstructorService.Verify(s => s.GetInstructorSectionsOverviewAsync(It.IsAny<ClaimsPrincipal>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task GetMySectionsOverview_ReturnsNotFound_WhenInstructorNotFound()
+    {
+        // Arrange
+        _mockInstructorService
+            .Setup(s => s.GetInstructorSectionsOverviewAsync(It.IsAny<ClaimsPrincipal>()))
+            .ThrowsAsync(new attendance_monitoring.Exceptions.EntityNotFoundException<string>("Instructor", "UserId: 1"));
+
+        // Act
+        var result = await _instructorController.GetMySectionsOverview();
+
+        // Assert
+        var notFoundResult = Assert.IsType<NotFoundObjectResult>(result.Result);
+        Assert.Equal("No instructor record found for the current user", notFoundResult.Value);
+        _mockInstructorService.Verify(s => s.GetInstructorSectionsOverviewAsync(It.IsAny<ClaimsPrincipal>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task GetMySectionsOverview_ReturnsInternalServerError_WhenServiceExceptionOccurs()
+    {
+        // Arrange
+        _mockInstructorService
+            .Setup(s => s.GetInstructorSectionsOverviewAsync(It.IsAny<ClaimsPrincipal>()))
+            .ThrowsAsync(new attendance_monitoring.Exceptions.EntityServiceException("Instructor", "GetInstructorSectionsOverview", "Service error"));
+
+        // Act
+        var result = await _instructorController.GetMySectionsOverview();
+
+        // Assert
+        var statusCodeResult = Assert.IsType<ObjectResult>(result.Result);
+        Assert.Equal(500, statusCodeResult.StatusCode);
+        Assert.Equal("An error occurred while retrieving sections overview", statusCodeResult.Value);
+        _mockInstructorService.Verify(s => s.GetInstructorSectionsOverviewAsync(It.IsAny<ClaimsPrincipal>()), Times.Once);
+    }
+
+    #endregion
+
+    #region GetMySectionDetail Tests
+
+    [Fact]
+    public async Task GetMySectionDetail_ReturnsOkResult_WithSectionDetail()
+    {
+        // Arrange
+        var sectionId = 1;
+        var expectedDetail = new InstructorSectionDetailDto
+        {
+            SectionId = sectionId,
+            SectionUuid = Guid.NewGuid(),
+            SectionName = "BSCS 3A",
+            CourseId = 1,
+            CourseUuid = Guid.NewGuid(),
+            CourseName = "Computer Science",
+            HandledClassCount = 2,
+            HomeSectionStudentCount = 30,
+            HandledClasses = new List<InstructorHandledClassDto>
+            {
+                new InstructorHandledClassDto
+                {
+                    SubjectId = 1,
+                    SubjectUuid = Guid.NewGuid(),
+                    SubjectName = "Data Structures",
+                    SubjectCode = "CS301",
+                    ScheduleId = 1,
+                    ScheduleUuid = Guid.NewGuid(),
+                    DayOfWeek = "Monday",
+                    TimeIn = new TimeOnly(8, 0),
+                    TimeOut = new TimeOnly(10, 0),
+                    ClassroomId = 1,
+                    ClassroomUuid = Guid.NewGuid(),
+                    ClassroomName = "Room 101",
+                    StudentCount = 30,
+                    Students = new List<InstructorHandledClassStudentDto>()
+                }
+            },
+            HomeSectionStudents = new List<InstructorHomeSectionStudentDto>()
+        };
+        _mockInstructorService
+            .Setup(s => s.GetInstructorSectionDetailAsync(It.IsAny<ClaimsPrincipal>(), sectionId))
+            .ReturnsAsync(expectedDetail);
+
+        // Act
+        var result = await _instructorController.GetMySectionDetail(sectionId);
+
+        // Assert
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        var detail = Assert.IsType<InstructorSectionDetailDto>(okResult.Value);
+        Assert.Equal(sectionId, detail.SectionId);
+        Assert.Equal("BSCS 3A", detail.SectionName);
+        _mockInstructorService.Verify(s => s.GetInstructorSectionDetailAsync(It.IsAny<ClaimsPrincipal>(), sectionId), Times.Once);
+    }
+
+    [Fact]
+    public async Task GetMySectionDetail_ReturnsNotFound_WhenInstructorNotFound()
+    {
+        // Arrange
+        var sectionId = 1;
+        _mockInstructorService
+            .Setup(s => s.GetInstructorSectionDetailAsync(It.IsAny<ClaimsPrincipal>(), sectionId))
+            .ThrowsAsync(new attendance_monitoring.Exceptions.EntityNotFoundException<string>("Instructor", "UserId: 1"));
+
+        // Act
+        var result = await _instructorController.GetMySectionDetail(sectionId);
+
+        // Assert
+        var notFoundResult = Assert.IsType<NotFoundObjectResult>(result.Result);
+        Assert.Equal("No instructor record found for the current user", notFoundResult.Value);
+    }
+
+    [Fact]
+    public async Task GetMySectionDetail_ReturnsNotFound_WhenSectionNotFound()
+    {
+        // Arrange
+        var sectionId = 999;
+        _mockInstructorService
+            .Setup(s => s.GetInstructorSectionDetailAsync(It.IsAny<ClaimsPrincipal>(), sectionId))
+            .ThrowsAsync(new attendance_monitoring.Exceptions.EntityNotFoundException<int>("Section", sectionId));
+
+        // Act
+        var result = await _instructorController.GetMySectionDetail(sectionId);
+
+        // Assert
+        var notFoundResult = Assert.IsType<NotFoundObjectResult>(result.Result);
+        Assert.Equal($"Section with ID {sectionId} not found", notFoundResult.Value);
+    }
+
+    [Fact]
+    public async Task GetMySectionDetail_ReturnsUnauthorized_WhenNotAuthorized()
+    {
+        // Arrange
+        var sectionId = 1;
+        _mockInstructorService
+            .Setup(s => s.GetInstructorSectionDetailAsync(It.IsAny<ClaimsPrincipal>(), sectionId))
+            .ThrowsAsync(new attendance_monitoring.Exceptions.EntityUnauthorizedException("Section", "View section", "1", "You are not authorized to view this section"));
+
+        // Act
+        var result = await _instructorController.GetMySectionDetail(sectionId);
+
+        // Assert
+        var unauthorizedResult = Assert.IsType<UnauthorizedObjectResult>(result.Result);
+        Assert.Equal("You are not authorized to view this section", unauthorizedResult.Value);
+    }
+
+    [Fact]
+    public async Task GetMySectionDetail_ReturnsInternalServerError_WhenServiceExceptionOccurs()
+    {
+        // Arrange
+        var sectionId = 1;
+        _mockInstructorService
+            .Setup(s => s.GetInstructorSectionDetailAsync(It.IsAny<ClaimsPrincipal>(), sectionId))
+            .ThrowsAsync(new attendance_monitoring.Exceptions.EntityServiceException("Instructor", "GetInstructorSectionDetail", "Service error"));
+
+        // Act
+        var result = await _instructorController.GetMySectionDetail(sectionId);
+
+        // Assert
+        var statusCodeResult = Assert.IsType<ObjectResult>(result.Result);
+        Assert.Equal(500, statusCodeResult.StatusCode);
+        Assert.Equal("An error occurred while retrieving section detail", statusCodeResult.Value);
+    }
+
+    #endregion
+
+    #region GetMyStudentDetail Tests
+
+    [Fact]
+    public async Task GetMyStudentDetail_ReturnsOkResult_WithStudentDetail()
+    {
+        // Arrange
+        var studentId = 1;
+        var expectedDetail = new InstructorStudentDetailDto
+        {
+            StudentId = studentId,
+            StudentUuid = Guid.NewGuid(),
+            Firstname = "Alice",
+            Lastname = "Smith",
+            SectionId = 1,
+            SectionName = "BSCS 3A",
+            CourseId = 1,
+            CourseName = "Computer Science",
+            IsRegular = true,
+            EnrollmentType = "Regular",
+            Enrollments = new List<InstructorStudentEnrollmentDto>
+            {
+                new InstructorStudentEnrollmentDto
+                {
+                    SubjectId = 1,
+                    SubjectName = "Data Structures",
+                    SubjectCode = "CS301",
+                    SectionId = 1,
+                    SectionName = "BSCS 3A",
+                    EnrollmentType = "Regular"
+                }
+            },
+            AttendanceSummary = new InstructorStudentAttendanceSummaryDto
+            {
+                TotalSessions = 10,
+                PresentCount = 8,
+                AbsentCount = 1,
+                LateCount = 1,
+                AttendanceRate = 90.0
+            }
+        };
+        _mockInstructorService
+            .Setup(s => s.GetInstructorStudentDetailAsync(It.IsAny<ClaimsPrincipal>(), studentId))
+            .ReturnsAsync(expectedDetail);
+
+        // Act
+        var result = await _instructorController.GetMyStudentDetail(studentId);
+
+        // Assert
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        var detail = Assert.IsType<InstructorStudentDetailDto>(okResult.Value);
+        Assert.Equal(studentId, detail.StudentId);
+        Assert.Equal("Alice", detail.Firstname);
+        Assert.Equal("Smith", detail.Lastname);
+        _mockInstructorService.Verify(s => s.GetInstructorStudentDetailAsync(It.IsAny<ClaimsPrincipal>(), studentId), Times.Once);
+    }
+
+    [Fact]
+    public async Task GetMyStudentDetail_ReturnsNotFound_WhenInstructorNotFound()
+    {
+        // Arrange
+        var studentId = 1;
+        _mockInstructorService
+            .Setup(s => s.GetInstructorStudentDetailAsync(It.IsAny<ClaimsPrincipal>(), studentId))
+            .ThrowsAsync(new attendance_monitoring.Exceptions.EntityNotFoundException<string>("Instructor", "UserId: 1"));
+
+        // Act
+        var result = await _instructorController.GetMyStudentDetail(studentId);
+
+        // Assert
+        var notFoundResult = Assert.IsType<NotFoundObjectResult>(result.Result);
+        Assert.Equal("No instructor record found for the current user", notFoundResult.Value);
+    }
+
+    [Fact]
+    public async Task GetMyStudentDetail_ReturnsNotFound_WhenStudentNotFound()
+    {
+        // Arrange
+        var studentId = 999;
+        _mockInstructorService
+            .Setup(s => s.GetInstructorStudentDetailAsync(It.IsAny<ClaimsPrincipal>(), studentId))
+            .ThrowsAsync(new attendance_monitoring.Exceptions.EntityNotFoundException<int>("Student", studentId));
+
+        // Act
+        var result = await _instructorController.GetMyStudentDetail(studentId);
+
+        // Assert
+        var notFoundResult = Assert.IsType<NotFoundObjectResult>(result.Result);
+        Assert.Equal($"Student with ID {studentId} not found", notFoundResult.Value);
+    }
+
+    [Fact]
+    public async Task GetMyStudentDetail_ReturnsUnauthorized_WhenNotAuthorized()
+    {
+        // Arrange
+        var studentId = 1;
+        _mockInstructorService
+            .Setup(s => s.GetInstructorStudentDetailAsync(It.IsAny<ClaimsPrincipal>(), studentId))
+            .ThrowsAsync(new attendance_monitoring.Exceptions.EntityUnauthorizedException("Student", "View student", "1", "You are not authorized to view this student"));
+
+        // Act
+        var result = await _instructorController.GetMyStudentDetail(studentId);
+
+        // Assert
+        var unauthorizedResult = Assert.IsType<UnauthorizedObjectResult>(result.Result);
+        Assert.Equal("You are not authorized to view this student", unauthorizedResult.Value);
+    }
+
+    [Fact]
+    public async Task GetMyStudentDetail_ReturnsInternalServerError_WhenServiceExceptionOccurs()
+    {
+        // Arrange
+        var studentId = 1;
+        _mockInstructorService
+            .Setup(s => s.GetInstructorStudentDetailAsync(It.IsAny<ClaimsPrincipal>(), studentId))
+            .ThrowsAsync(new attendance_monitoring.Exceptions.EntityServiceException("Instructor", "GetInstructorStudentDetail", "Service error"));
+
+        // Act
+        var result = await _instructorController.GetMyStudentDetail(studentId);
+
+        // Assert
+        var statusCodeResult = Assert.IsType<ObjectResult>(result.Result);
+        Assert.Equal(500, statusCodeResult.StatusCode);
+        Assert.Equal("An error occurred while retrieving student detail", statusCodeResult.Value);
+    }
+
+    #endregion
 }

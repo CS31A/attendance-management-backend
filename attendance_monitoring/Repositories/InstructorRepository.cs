@@ -231,6 +231,117 @@ public class InstructorRepository(ApplicationDbContext context) : IInstructorRep
     }
     #endregion
 
+    #region GetHandledSectionsByInstructorIdAsync
+    /// <summary>
+    /// Retrieves all sections handled by the instructor, including course data.
+    /// Performance: Single query with course eager loading.
+    /// </summary>
+    public async Task<IEnumerable<Section>> GetHandledSectionsByInstructorIdAsync(int instructorId)
+    {
+        return await context.Sections
+            .AsNoTracking()
+            .Include(section => section.Course)
+            .Where(section => context.Schedules.Any(schedule => schedule.InstructorId == instructorId && schedule.SectionId == section.Id))
+            .OrderBy(section => section.Name)
+            .ToListAsync()
+            .ConfigureAwait(false);
+    }
+    #endregion
+
+    #region GetHandledClassesBySectionAndInstructorAsync
+    /// <summary>
+    /// Retrieves handled classes for a specific section and instructor with related data.
+    /// Uses eager loading to prevent N+1 queries for subject, classroom, section, and enrolled students.
+    /// </summary>
+    public async Task<IEnumerable<Schedules>> GetHandledClassesBySectionAndInstructorAsync(int sectionId, int instructorId)
+    {
+        return await context.Schedules
+            .AsNoTracking()
+            .AsSplitQuery()
+            .Where(schedule => schedule.SectionId == sectionId && schedule.InstructorId == instructorId)
+            .Include(schedule => schedule.Subject)
+            .Include(schedule => schedule.Classroom)
+            .Include(schedule => schedule.Section)
+                .ThenInclude(section => section.StudentEnrollments.Where(studentEnrollment => studentEnrollment.IsActive))
+                    .ThenInclude(studentEnrollment => studentEnrollment.Student)
+            .OrderBy(schedule => schedule.DayOfWeek)
+            .ThenBy(schedule => schedule.TimeIn)
+            .ToListAsync()
+            .ConfigureAwait(false);
+    }
+    #endregion
+
+    #region GetHomeSectionStudentsAsync
+    /// <summary>
+    /// Retrieves all non-deleted students whose home section matches the supplied section.
+    /// </summary>
+    public async Task<IEnumerable<Student>> GetHomeSectionStudentsAsync(int sectionId)
+    {
+        return await context.Students
+            .AsNoTracking()
+            .Where(student => student.SectionId == sectionId && !student.IsDeleted)
+            .OrderBy(student => student.Lastname)
+            .ThenBy(student => student.Firstname)
+            .ToListAsync()
+            .ConfigureAwait(false);
+    }
+    #endregion
+
+    #region IsInstructorHandlingSectionAsync
+    /// <summary>
+    /// Determines whether the instructor handles the supplied section.
+    /// Performance: Uses an existence check without loading entities.
+    /// </summary>
+    public async Task<bool> IsInstructorHandlingSectionAsync(int instructorId, int sectionId)
+    {
+        return await context.Schedules
+            .AsNoTracking()
+            .AnyAsync(schedule => schedule.InstructorId == instructorId && schedule.SectionId == sectionId)
+            .ConfigureAwait(false);
+    }
+    #endregion
+
+    #region GetStudentWithDetailsAsync
+    /// <summary>
+    /// Retrieves a student with related section, course, and active enrollment data.
+    /// Uses split query execution to avoid cartesian explosion when loading multiple navigations.
+    /// </summary>
+    public async Task<Student?> GetStudentWithDetailsAsync(int studentId)
+    {
+        return await context.Students
+            .AsNoTracking()
+            .AsSplitQuery()
+            .Include(student => student.Section)
+                .ThenInclude(section => section.Course)
+            .Include(student => student.AdditionalEnrollments.Where(studentEnrollment => studentEnrollment.IsActive))
+                .ThenInclude(studentEnrollment => studentEnrollment.Section)
+            .Include(student => student.AdditionalEnrollments.Where(studentEnrollment => studentEnrollment.IsActive))
+                .ThenInclude(studentEnrollment => studentEnrollment.Subject)
+            .FirstOrDefaultAsync(student => student.Id == studentId && !student.IsDeleted)
+            .ConfigureAwait(false);
+    }
+    #endregion
+
+    #region GetStudentAttendanceForInstructorSubjectsAsync
+    /// <summary>
+    /// Retrieves attendance records for a student in sessions taught by the supplied instructor.
+    /// Uses eager loading for session and schedule data commonly needed by higher layers.
+    /// </summary>
+    public async Task<IEnumerable<AttendanceRecord>> GetStudentAttendanceForInstructorSubjectsAsync(int studentId, int instructorId)
+    {
+        return await context.AttendanceRecords
+            .AsNoTracking()
+            .AsSplitQuery()
+            .Where(attendanceRecord => attendanceRecord.StudentId == studentId && attendanceRecord.Session.Schedule.InstructorId == instructorId)
+            .Include(attendanceRecord => attendanceRecord.Session)
+                .ThenInclude(session => session.Schedule)
+                    .ThenInclude(schedule => schedule.Subject)
+            .OrderByDescending(attendanceRecord => attendanceRecord.CheckInTime)
+            .ToListAsync()
+            .ConfigureAwait(false);
+    }
+    #endregion
+
     #endregion
 
     #region Utility Operations
