@@ -21,6 +21,20 @@ public interface IClassroomRepository : ISaveableRepository
     Task<Classroom?> GetClassroomByIdAsync(int id);
 
     /// <summary>
+    /// Retrieves a classroom by its UUID.
+    /// </summary>
+    /// <param name="uuid">The classroom UUID.</param>
+    /// <returns>The classroom if found; otherwise, null.</returns>
+    Task<Classroom?> GetClassroomByUuidAsync(Guid uuid);
+
+    /// <summary>
+    /// Retrieves a classroom by its UUID with change tracking enabled for updates.
+    /// </summary>
+    /// <param name="uuid">The classroom UUID.</param>
+    /// <returns>The classroom if found; otherwise, null.</returns>
+    Task<Classroom?> GetClassroomByUuidTrackedAsync(Guid uuid);
+
+    /// <summary>
     /// Creates a new classroom.
     /// </summary>
     /// <param name="classroom">The classroom to create.</param>

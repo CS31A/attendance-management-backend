@@ -15,6 +15,20 @@ namespace attendance_monitoring.IRepository
         Task<Section?> GetSectionByIdAsync(int sectionId);
 
         /// <summary>
+        /// Retrieves a section by its UUID.
+        /// </summary>
+        /// <param name="uuid">The section UUID.</param>
+        /// <returns>The section if found; otherwise, null.</returns>
+        Task<Section?> GetSectionByUuidAsync(Guid uuid);
+
+        /// <summary>
+        /// Retrieves a section by its UUID with change tracking enabled for updates.
+        /// </summary>
+        /// <param name="uuid">The section UUID.</param>
+        /// <returns>The section if found; otherwise, null.</returns>
+        Task<Section?> GetSectionByUuidTrackedAsync(Guid uuid);
+
+        /// <summary>
         /// Retrieves all sections.
         /// </summary>
         /// <returns>A collection of all sections.</returns>

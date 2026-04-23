@@ -21,6 +21,20 @@ public interface ICourseRepository : ISaveableRepository
     Task<Course?> GetCourseByIdAsync(int id);
 
     /// <summary>
+    /// Retrieves a course by its UUID.
+    /// </summary>
+    /// <param name="uuid">The course UUID.</param>
+    /// <returns>The course if found; otherwise, null.</returns>
+    Task<Course?> GetCourseByUuidAsync(Guid uuid);
+
+    /// <summary>
+    /// Retrieves a course by its UUID with change tracking enabled for updates.
+    /// </summary>
+    /// <param name="uuid">The course UUID.</param>
+    /// <returns>The course if found; otherwise, null.</returns>
+    Task<Course?> GetCourseByUuidTrackedAsync(Guid uuid);
+
+    /// <summary>
     /// Creates a new course.
     /// </summary>
     /// <param name="course">The course to create.</param>
