@@ -71,6 +71,8 @@ internal sealed class ApiIntegrationHost : IAsyncDisposable
 
     public AdminUserManagementScenarioContext? AdminUserManagementScenario { get; private set; }
 
+    public InstructorScenarioContext? InstructorScenario { get; private set; }
+
     public IServiceProvider Services => _app.Services;
 
     public ReliabilityTelemetryCollector Telemetry => _telemetryCollector
@@ -448,6 +450,86 @@ internal sealed class ApiIntegrationHost : IAsyncDisposable
         return host;
     }
 
+    public static async Task<ApiIntegrationHost> CreateInstructorSectionsAsync(
+        CancellationToken cancellationToken = default)
+    {
+        var connectionString = $"Data Source=file:instructor-sections-{Guid.NewGuid():N}?mode=memory&cache=shared";
+        var connection = new SqliteConnection(connectionString);
+        await connection.OpenAsync(cancellationToken);
+
+        var builder = WebApplication.CreateBuilder(new WebApplicationOptions
+        {
+            EnvironmentName = Environments.Production
+        });
+
+        builder.WebHost.UseTestServer();
+        builder.Services.AddLogging();
+        builder.Services.AddRouting();
+        builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["CookieSettings:AccessTokenExpirationMinutes"] = "15",
+            ["CookieSettings:RefreshTokenExpirationDays"] = "7",
+            ["CorsSettings:AllowedOrigins"] = "https://localhost",
+            ["Jwt:Token"] = "test-secret-key-for-integration-testing-minimum-32-characters",
+            ["Jwt:Issuer"] = "test-issuer",
+            ["Jwt:Audience"] = "test-audience",
+            ["TimeZoneSettings:TimeZoneId"] = TimeZoneInfo.Local.Id
+        });
+
+        builder.Services.AddDbContext<ApplicationDbContext>(options => options.UseSqlite(connectionString));
+        builder.Services.AddIdentity<IdentityUser, IdentityRole>(options =>
+        {
+            options.Password.RequireDigit = true;
+            options.Password.RequiredLength = 8;
+            options.Password.RequireNonAlphanumeric = true;
+            options.Password.RequireUppercase = true;
+            options.Password.RequireLowercase = true;
+        })
+            .AddEntityFrameworkStores<ApplicationDbContext>()
+            .AddDefaultTokenProviders();
+        builder.Services
+            .AddAuthentication(options =>
+            {
+                options.DefaultAuthenticateScheme = AuthenticationScheme;
+                options.DefaultChallengeScheme = AuthenticationScheme;
+                options.DefaultScheme = AuthenticationScheme;
+            })
+            .AddScheme<AuthenticationSchemeOptions, TestAuthenticationHandler>(AuthenticationScheme, _ => { });
+        builder.Services.ConfigureApplicationCookie(options =>
+        {
+            options.LoginPath = PathString.Empty;
+            options.AccessDeniedPath = PathString.Empty;
+        });
+        builder.Services.AddAuthorizationPolicies();
+        builder.Services.AddResponseHandling();
+        builder.Services.AddCorsPolicy(builder.Configuration);
+        builder.Services.AddSignalRServices();
+        builder.Services.AddRepositories();
+        builder.Services.AddApplicationServices();
+        builder.Services.AddControllers()
+            .ConfigureApplicationPartManager(manager =>
+            {
+                manager.ApplicationParts.Clear();
+                manager.ApplicationParts.Add(new AssemblyPart(typeof(InstructorController).Assembly));
+            });
+
+        var app = builder.Build();
+        app.UseRouting();
+        app.UseAuthentication();
+        app.UseAuthorization();
+        app.UseGlobalExceptionHandler();
+        app.MapControllers();
+
+        await app.StartAsync(cancellationToken);
+
+        var client = app.GetTestClient();
+        client.BaseAddress = new Uri("https://localhost");
+
+        var host = new ApiIntegrationHost(app, client, sqliteConnection: connection);
+        await host.LoadInstructorScenarioAsync(cancellationToken);
+        return host;
+    }
+
     public void AuthenticateAs(
         string userId = "integration-user",
         string username = "integration-admin",
@@ -555,6 +637,15 @@ internal sealed class ApiIntegrationHost : IAsyncDisposable
             roleManager,
             cancellationToken);
         return AdminUserManagementScenario;
+    }
+
+    public async Task<InstructorScenarioContext> LoadInstructorScenarioAsync(
+        CancellationToken cancellationToken = default)
+    {
+        await using var scope = _app.Services.CreateAsyncScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        InstructorScenario = await InstructorSeedData.SeedScenarioAsync(dbContext, cancellationToken);
+        return InstructorScenario;
     }
 
     public async Task<TResult> ExecuteDbContextAsync<TResult>(

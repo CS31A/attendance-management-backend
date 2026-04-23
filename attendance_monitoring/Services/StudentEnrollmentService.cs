@@ -1,4 +1,5 @@
 using attendance_monitoring.Classes;
+using attendance_monitoring.Constants;
 using attendance_monitoring.IRepository;
 using attendance_monitoring.IServices;
 using attendance_monitoring.Exceptions;
@@ -31,6 +32,13 @@ public class StudentEnrollmentService : IStudentEnrollmentService
     {
         try
         {
+            if (!EnrollmentTypeConstants.IsValid(enrollmentType))
+            {
+                throw new ValidationException($"Enrollment type must be one of: {string.Join(", ", EnrollmentTypeConstants.All)}");
+            }
+
+            var normalizedEnrollmentType = EnrollmentTypeConstants.Normalize(enrollmentType);
+
             // Validate student exists
             var student = await _studentRepository.GetStudentByIdAsync(studentId);
             if (student == null || student.IsDeleted)
@@ -73,7 +81,7 @@ public class StudentEnrollmentService : IStudentEnrollmentService
                 StudentId = studentId,
                 SectionId = sectionId,
                 SubjectId = subjectId,
-                EnrollmentType = enrollmentType,
+                EnrollmentType = normalizedEnrollmentType,
                 AcademicYear = academicYear,
                 Semester = semester,
                 IsActive = true
@@ -81,7 +89,7 @@ public class StudentEnrollmentService : IStudentEnrollmentService
 
             return await _enrollmentRepository.CreateAsync(enrollment);
         }
-        catch (Exception ex) when (ex is not EntityNotFoundException<int> and not EntityAlreadyExistsException<string>)
+        catch (Exception ex) when (ex is not ValidationException and not EntityNotFoundException<int> and not EntityAlreadyExistsException<string>)
         {
             _logger.LogError(ex,
                 "Enrollment operation failed for student {StudentId}, section {SectionId}, subject {SubjectId}",

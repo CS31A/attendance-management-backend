@@ -19,6 +19,7 @@ namespace attendance_monitoring.Services
     public class InstructorService : IInstructorService
     {
         private readonly IInstructorRepository _instructorRepository;
+        private readonly ISectionRepository _sectionRepository;
         private readonly IScheduleRepository _scheduleRepository;
         private readonly IUserContextService _userContextService;
         private readonly ILogger<InstructorService> _logger;
@@ -27,12 +28,14 @@ namespace attendance_monitoring.Services
         /// Initializes a new instance of the InstructorService class
         /// </summary>
         /// <param name="instructorRepository">Repository for instructor data operations</param>
+        /// <param name="sectionRepository">Repository for section data operations</param>
         /// <param name="scheduleRepository">Repository for schedule data operations</param>
         /// <param name="userContextService">Service for managing user context and authorization</param>
         /// <param name="logger">Logger for logging operations</param>
-        public InstructorService(IInstructorRepository instructorRepository, IScheduleRepository scheduleRepository, IUserContextService userContextService, ILogger<InstructorService> logger)
+        public InstructorService(IInstructorRepository instructorRepository, ISectionRepository sectionRepository, IScheduleRepository scheduleRepository, IUserContextService userContextService, ILogger<InstructorService> logger)
         {
             _instructorRepository = instructorRepository ?? throw new ArgumentNullException(nameof(instructorRepository));
+            _sectionRepository = sectionRepository ?? throw new ArgumentNullException(nameof(sectionRepository));
             _scheduleRepository = scheduleRepository ?? throw new ArgumentNullException(nameof(scheduleRepository));
             _userContextService = userContextService ?? throw new ArgumentNullException(nameof(userContextService));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -649,6 +652,592 @@ namespace attendance_monitoring.Services
                 _logger.LogError(ex, "Error occurred while restoring instructor with ID: {Id}", id);
                 throw ExceptionHandlingHelper.CreateServiceException("Instructor", $"RestoreInstructor: {id}", ex);
             }
+        }
+        #endregion
+
+        #region GetSectionsWithStudentsByInstructorAsync
+        /// <summary>
+        /// Retrieves all sections with students for the current authenticated instructor
+        /// </summary>
+        /// <param name="userPrincipal">The claims principal of the current user</param>
+        /// <returns>Instructor sections with students response DTO</returns>
+        /// <exception cref="T:attendance_monitoring.Exceptions.EntityNotFoundException{System.String}">Thrown when the instructor is not found</exception>
+        /// <exception cref="EntityServiceException">Thrown when an error occurs during retrieval</exception>
+        public async Task<InstructorSectionsWithStudentsResponseDto> GetSectionsWithStudentsByInstructorAsync(ClaimsPrincipal userPrincipal)
+        {
+            try
+            {
+                _logger.LogInformation("Retrieving sections with students for authenticated instructor");
+
+                // Extract user ID from JWT claims
+                var userId = await _userContextService.GetUserIdAsync(userPrincipal).ConfigureAwait(false);
+                if (string.IsNullOrEmpty(userId))
+                {
+                    _logger.LogWarning("User ID not found in JWT claims");
+                    throw new EntityNotFoundException<string>("User", userId ?? "null");
+                }
+
+                // Get instructor by user ID
+                var instructor = await _instructorRepository.GetInstructorByUserIdAsync(userId).ConfigureAwait(false);
+                if (instructor == null)
+                {
+                    _logger.LogWarning("No instructor record found for user ID: {UserId}", userId);
+                    throw new EntityNotFoundException<string>("Instructor", $"UserId: {userId}");
+                }
+
+                _logger.LogInformation("Getting sections with students for instructor ID: {InstructorId}", instructor.Id);
+
+                // Get schedules with related data from repository
+                var schedules = await _instructorRepository.GetSchedulesWithRelatedDataByInstructorIdAsync(instructor.Id).ConfigureAwait(false);
+                var schedulesList = schedules.ToList();
+
+                if (schedulesList.Count == 0)
+                {
+                    _logger.LogInformation("No schedules found for instructor ID: {InstructorId}", instructor.Id);
+                    return new InstructorSectionsWithStudentsResponseDto
+                    {
+                        InstructorId = instructor.Id,
+                        InstructorUuid = instructor.Uuid,
+                        InstructorFirstname = instructor.Firstname ?? string.Empty,
+                        InstructorLastname = instructor.Lastname ?? string.Empty,
+                        Sections = new List<SectionWithStudentsDto>()
+                    };
+                }
+
+                // Group schedules by section
+                var sectionGroups = schedulesList
+                    .GroupBy(s => s.SectionId)
+                    .ToList();
+
+                var sectionDtos = new List<SectionWithStudentsDto>();
+
+                foreach (var sectionGroup in sectionGroups)
+                {
+                    var firstSchedule = sectionGroup.First();
+                    var section = firstSchedule.Section;
+                    var regularStudents = (await _instructorRepository.GetRegularStudentsBySectionIdAsync(section.Id).ConfigureAwait(false))
+                        .Select(student => new StudentDto
+                        {
+                            StudentId = student.Id,
+                            StudentUuid = student.Uuid,
+                            Firstname = student.Firstname,
+                            Lastname = student.Lastname,
+                            IsRegular = true,
+                            EnrollmentType = EnrollmentTypeConstants.Regular
+                        })
+                        .ToList();
+
+                    // Group schedules by subject within this section
+                    var subjectSchedules = sectionGroup
+                        .GroupBy(s => s.SubjectId)
+                        .Select(subjectGroup =>
+                        {
+                            var schedule = subjectGroup.First();
+
+                            // Regular students come from primary section membership.
+                            // Irregular and retake students come from explicit additional enrollments.
+                            var irregularStudents = section.StudentEnrollments
+                                .Where(se => se.SubjectId == schedule.SubjectId 
+                                    && !se.Student.IsDeleted
+                                    && se.IsActive
+                                    && se.Student.SectionId != section.Id)
+                                .Select(se => new StudentDto
+                                {
+                                    StudentId = se.Student.Id,
+                                    StudentUuid = se.Student.Uuid,
+                                    Firstname = se.Student.Firstname,
+                                    Lastname = se.Student.Lastname,
+                                    IsRegular = false,
+                                    EnrollmentType = se.EnrollmentType
+                                })
+                                .ToList();
+
+                            var enrolledStudents = regularStudents
+                                .Concat(irregularStudents)
+                                .GroupBy(s => s.StudentId)
+                                .Select(g => g.First())
+                                .OrderBy(s => s.Lastname)
+                                .ThenBy(s => s.Firstname)
+                                .ToList();
+
+                            return new SubjectScheduleDto
+                            {
+                                SubjectId = schedule.Subject.Id,
+                                SubjectUuid = schedule.Subject.Uuid,
+                                SubjectName = schedule.Subject.Name,
+                                SubjectCode = schedule.Subject.Code,
+                                ScheduleId = schedule.Id,
+                                ScheduleUuid = schedule.Uuid,
+                                DayOfWeek = schedule.DayOfWeek,
+                                TimeIn = schedule.TimeIn,
+                                TimeOut = schedule.TimeOut,
+                                ClassroomId = schedule.Classroom.Id,
+                                ClassroomUuid = schedule.Classroom.Uuid,
+                                ClassroomName = schedule.Classroom.Name,
+                                Students = enrolledStudents
+                            };
+                        })
+                        .OrderBy(s => s.SubjectName)
+                        .ToList();
+
+                    sectionDtos.Add(new SectionWithStudentsDto
+                    {
+                        SectionId = section.Id,
+                        SectionUuid = section.Uuid,
+                        SectionName = section.Name,
+                        CourseId = section.Course.Id,
+                        CourseUuid = section.Course.Uuid,
+                        CourseName = section.Course.Name,
+                        Subjects = subjectSchedules
+                    });
+                }
+
+                var response = new InstructorSectionsWithStudentsResponseDto
+                {
+                    InstructorId = instructor.Id,
+                    InstructorUuid = instructor.Uuid,
+                    InstructorFirstname = instructor.Firstname ?? string.Empty,
+                    InstructorLastname = instructor.Lastname ?? string.Empty,
+                    Sections = sectionDtos.OrderBy(s => s.SectionName).ToList()
+                };
+
+                _logger.LogInformation("Successfully retrieved {SectionCount} sections with students for instructor ID: {InstructorId}",
+                    sectionDtos.Count, instructor.Id);
+
+                return response;
+            }
+            catch (EntityNotFoundException<string>)
+            {
+                // Re-throw EntityNotFoundException as-is
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error occurred while retrieving sections with students for authenticated instructor");
+                throw new EntityServiceException("Instructor", "GetSectionsWithStudentsByInstructor",
+                    "An error occurred while retrieving sections with students", ex);
+            }
+        }
+        #endregion
+
+        #region GetInstructorSectionsOverviewAsync
+        /// <summary>
+        /// Retrieves a high-level overview of all sections handled by the authenticated instructor.
+        /// </summary>
+        /// <param name="userPrincipal">The claims principal of the current user</param>
+        /// <returns>A list of section overviews with class counts and student counts</returns>
+        /// <exception cref="T:attendance_monitoring.Exceptions.EntityNotFoundException{System.String}">Thrown when the instructor is not found</exception>
+        /// <exception cref="EntityServiceException">Thrown when an error occurs during retrieval</exception>
+        public async Task<List<InstructorSectionOverviewDto>> GetInstructorSectionsOverviewAsync(ClaimsPrincipal userPrincipal)
+        {
+            try
+            {
+                _logger.LogInformation("Retrieving sections overview for authenticated instructor");
+
+                var userId = await _userContextService.GetUserIdAsync(userPrincipal).ConfigureAwait(false);
+                if (string.IsNullOrEmpty(userId))
+                {
+                    _logger.LogWarning("User ID not found in JWT claims");
+                    throw new EntityNotFoundException<string>("User", userId ?? "null");
+                }
+
+                var instructor = await _instructorRepository.GetInstructorByUserIdAsync(userId).ConfigureAwait(false);
+                if (instructor == null)
+                {
+                    _logger.LogWarning("No instructor record found for user ID: {UserId}", userId);
+                    throw new EntityNotFoundException<string>("Instructor", $"UserId: {userId}");
+                }
+
+                _logger.LogInformation("Getting handled sections for instructor ID: {InstructorId}", instructor.Id);
+
+                var sections = await _instructorRepository.GetHandledSectionsByInstructorIdAsync(instructor.Id).ConfigureAwait(false);
+                var sectionList = sections.ToList();
+
+                var overviewDtos = new List<InstructorSectionOverviewDto>();
+
+                foreach (var section in sectionList)
+                {
+                    var schedules = await _instructorRepository.GetHandledClassesBySectionAndInstructorAsync(section.Id, instructor.Id).ConfigureAwait(false);
+                    var schedulesList = schedules.ToList();
+                    var handledSubjectIds = schedulesList
+                        .Select(schedule => schedule.SubjectId)
+                        .Distinct()
+                        .ToHashSet();
+                    var handledClassCount = handledSubjectIds.Count;
+
+                    var uniqueStudentCount = 0;
+                    if (handledClassCount > 0)
+                    {
+                        var regularStudents = await _instructorRepository.GetRegularStudentsBySectionIdAsync(section.Id).ConfigureAwait(false);
+                        var regularStudentIds = regularStudents.Select(student => student.Id);
+                        var sectionWithEnrollments = schedulesList.First().Section;
+                        var irregularStudentIds = sectionWithEnrollments.StudentEnrollments
+                            .Where(enrollment => handledSubjectIds.Contains(enrollment.SubjectId)
+                                && enrollment.IsActive
+                                && !enrollment.Student.IsDeleted
+                                && enrollment.Student.SectionId != section.Id)
+                            .Select(enrollment => enrollment.StudentId);
+
+                        uniqueStudentCount = regularStudentIds
+                            .Concat(irregularStudentIds)
+                            .Distinct()
+                            .Count();
+                    }
+
+                    overviewDtos.Add(new InstructorSectionOverviewDto
+                    {
+                        SectionId = section.Id,
+                        SectionUuid = section.Uuid,
+                        SectionName = section.Name,
+                        CourseId = section.Course.Id,
+                        CourseUuid = section.Course.Uuid,
+                        CourseName = section.Course.Name,
+                        HandledClassCount = handledClassCount,
+                        UniqueStudentCount = uniqueStudentCount
+                    });
+                }
+
+                _logger.LogInformation("Successfully retrieved {SectionCount} section overviews for instructor ID: {InstructorId}",
+                    overviewDtos.Count, instructor.Id);
+
+                return overviewDtos.OrderBy(s => s.SectionName).ToList();
+            }
+            catch (EntityNotFoundException<string>)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error occurred while retrieving sections overview for authenticated instructor");
+                throw new EntityServiceException("Instructor", "GetInstructorSectionsOverview",
+                    "An error occurred while retrieving sections overview", ex);
+            }
+        }
+        #endregion
+
+        #region GetInstructorSectionDetailAsync
+        /// <summary>
+        /// Retrieves detailed information about a specific section handled by the authenticated instructor.
+        /// </summary>
+        /// <param name="userPrincipal">The claims principal of the current user</param>
+        /// <param name="sectionId">The section ID to retrieve details for</param>
+        /// <returns>Detailed section information including handled classes and home section students</returns>
+        /// <exception cref="T:attendance_monitoring.Exceptions.EntityNotFoundException{System.String}">Thrown when the instructor is not found</exception>
+        /// <exception cref="EntityUnauthorizedException">Thrown when the instructor is not authorized to view the section</exception>
+        /// <exception cref="EntityServiceException">Thrown when an error occurs during retrieval</exception>
+        public async Task<InstructorSectionDetailDto> GetInstructorSectionDetailAsync(ClaimsPrincipal userPrincipal, int sectionId)
+        {
+            try
+            {
+                _logger.LogInformation("Retrieving section detail for section ID: {SectionId}", sectionId);
+
+                var userId = await _userContextService.GetUserIdAsync(userPrincipal).ConfigureAwait(false);
+                if (string.IsNullOrEmpty(userId))
+                {
+                    _logger.LogWarning("User ID not found in JWT claims");
+                    throw new EntityNotFoundException<string>("User", userId ?? "null");
+                }
+
+                var instructor = await _instructorRepository.GetInstructorByUserIdAsync(userId).ConfigureAwait(false);
+                if (instructor == null)
+                {
+                    _logger.LogWarning("No instructor record found for user ID: {UserId}", userId);
+                    throw new EntityNotFoundException<string>("Instructor", $"UserId: {userId}");
+                }
+
+                var sectionExists = await _sectionRepository.GetSectionByIdAsync(sectionId).ConfigureAwait(false);
+                if (sectionExists == null)
+                {
+                    _logger.LogWarning("Section with ID {SectionId} not found", sectionId);
+                    throw new EntityNotFoundException<int>("Section", sectionId);
+                }
+
+                var isHandlingSection = await _instructorRepository.IsInstructorHandlingSectionAsync(instructor.Id, sectionId).ConfigureAwait(false);
+                if (!isHandlingSection)
+                {
+                    _logger.LogWarning("Instructor ID {InstructorId} is not authorized to view section ID: {SectionId}", instructor.Id, sectionId);
+                    throw new EntityUnauthorizedException("Section", $"View section with ID {sectionId}", userId, "You are not authorized to view this section");
+                }
+
+                var schedules = await _instructorRepository.GetHandledClassesBySectionAndInstructorAsync(sectionId, instructor.Id).ConfigureAwait(false);
+                var schedulesList = schedules.ToList();
+
+                var section = schedulesList.FirstOrDefault()?.Section;
+                if (section == null)
+                {
+                    var handledSections = await _instructorRepository.GetHandledSectionsByInstructorIdAsync(instructor.Id).ConfigureAwait(false);
+                    section = handledSections.FirstOrDefault(s => s.Id == sectionId);
+                }
+
+                if (section == null)
+                {
+                    _logger.LogWarning("Section with ID {SectionId} not found", sectionId);
+                    throw new EntityNotFoundException<int>("Section", sectionId);
+                }
+
+                var handledClasses = new List<InstructorHandledClassDto>();
+                var regularStudents = (await _instructorRepository.GetRegularStudentsBySectionIdAsync(sectionId).ConfigureAwait(false))
+                    .Select(student => new InstructorHandledClassStudentDto
+                    {
+                        StudentId = student.Id,
+                        StudentUuid = student.Uuid,
+                        Firstname = student.Firstname,
+                        Lastname = student.Lastname,
+                        IsRegular = true,
+                        EnrollmentType = EnrollmentTypeConstants.Regular
+                    })
+                    .ToList();
+
+                foreach (var scheduleGroup in schedulesList.GroupBy(s => s.SubjectId))
+                {
+                    var schedule = scheduleGroup.First();
+
+                    var irregularStudents = section.StudentEnrollments
+                        .Where(se => se.SubjectId == schedule.SubjectId
+                            && !se.Student.IsDeleted
+                            && se.IsActive
+                            && se.Student.SectionId != sectionId)
+                        .Select(se => new InstructorHandledClassStudentDto
+                        {
+                            StudentId = se.Student.Id,
+                            StudentUuid = se.Student.Uuid,
+                            Firstname = se.Student.Firstname,
+                            Lastname = se.Student.Lastname,
+                            IsRegular = false,
+                            EnrollmentType = se.EnrollmentType
+                        })
+                        .ToList();
+
+                    var allStudents = regularStudents
+                        .Concat(irregularStudents)
+                        .GroupBy(s => s.StudentId)
+                        .Select(g => g.First())
+                        .OrderBy(s => s.Lastname)
+                        .ThenBy(s => s.Firstname)
+                        .ToList();
+
+                    handledClasses.Add(new InstructorHandledClassDto
+                    {
+                        SubjectId = schedule.Subject.Id,
+                        SubjectUuid = schedule.Subject.Uuid,
+                        SubjectName = schedule.Subject.Name,
+                        SubjectCode = schedule.Subject.Code,
+                        ScheduleId = schedule.Id,
+                        ScheduleUuid = schedule.Uuid,
+                        DayOfWeek = schedule.DayOfWeek,
+                        TimeIn = schedule.TimeIn,
+                        TimeOut = schedule.TimeOut,
+                        ClassroomId = schedule.Classroom.Id,
+                        ClassroomUuid = schedule.Classroom.Uuid,
+                        ClassroomName = schedule.Classroom.Name,
+                        StudentCount = allStudents.Count,
+                        Students = allStudents
+                    });
+                }
+
+                var homeSectionStudents = await _instructorRepository.GetHomeSectionStudentsAsync(sectionId).ConfigureAwait(false);
+                var homeSectionStudentDtos = homeSectionStudents.Select(student => new InstructorHomeSectionStudentDto
+                {
+                    StudentId = student.Id,
+                    StudentUuid = student.Uuid,
+                    Firstname = student.Firstname,
+                    Lastname = student.Lastname,
+                    IsRegular = student.SectionId == sectionId,
+                    EnrollmentType = student.SectionId == sectionId ? EnrollmentTypeConstants.Regular : EnrollmentTypeConstants.Irregular
+                }).ToList();
+
+                var detailDto = new InstructorSectionDetailDto
+                {
+                    SectionId = section.Id,
+                    SectionUuid = section.Uuid,
+                    SectionName = section.Name,
+                    CourseId = section.Course.Id,
+                    CourseUuid = section.Course.Uuid,
+                    CourseName = section.Course.Name,
+                    HandledClassCount = handledClasses.Count,
+                    HomeSectionStudentCount = homeSectionStudentDtos.Count,
+                    HandledClasses = handledClasses.OrderBy(h => h.SubjectName).ToList(),
+                    HomeSectionStudents = homeSectionStudentDtos.OrderBy(s => s.Lastname).ThenBy(s => s.Firstname).ToList()
+                };
+
+                _logger.LogInformation("Successfully retrieved section detail for section ID: {SectionId}, instructor ID: {InstructorId}",
+                    sectionId, instructor.Id);
+
+                return detailDto;
+            }
+            catch (EntityNotFoundException<string>)
+            {
+                throw;
+            }
+            catch (EntityNotFoundException<int>)
+            {
+                throw;
+            }
+            catch (EntityUnauthorizedException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error occurred while retrieving section detail for section ID: {SectionId}", sectionId);
+                throw new EntityServiceException("Instructor", $"GetInstructorSectionDetail: {sectionId}",
+                    "An error occurred while retrieving section detail", ex);
+            }
+        }
+        #endregion
+
+        #region GetInstructorStudentDetailAsync
+        /// <summary>
+        /// Retrieves detailed information about a specific student visible to the authenticated instructor.
+        /// </summary>
+        /// <param name="userPrincipal">The claims principal of the current user</param>
+        /// <param name="studentId">The student ID to retrieve details for</param>
+        /// <returns>Detailed student information including enrollments and attendance summary</returns>
+        /// <exception cref="T:attendance_monitoring.Exceptions.EntityNotFoundException{System.String}">Thrown when the instructor is not found</exception>
+        /// <exception cref="T:attendance_monitoring.Exceptions.EntityNotFoundException{System.Int32}">Thrown when the student is not found</exception>
+        /// <exception cref="EntityUnauthorizedException">Thrown when the instructor is not authorized to view the student</exception>
+        /// <exception cref="EntityServiceException">Thrown when an error occurs during retrieval</exception>
+        public async Task<InstructorStudentDetailDto> GetInstructorStudentDetailAsync(ClaimsPrincipal userPrincipal, int studentId)
+        {
+            try
+            {
+                _logger.LogInformation("Retrieving student detail for student ID: {StudentId}", studentId);
+
+                var userId = await _userContextService.GetUserIdAsync(userPrincipal).ConfigureAwait(false);
+                if (string.IsNullOrEmpty(userId))
+                {
+                    _logger.LogWarning("User ID not found in JWT claims");
+                    throw new EntityNotFoundException<string>("User", userId ?? "null");
+                }
+
+                var instructor = await _instructorRepository.GetInstructorByUserIdAsync(userId).ConfigureAwait(false);
+                if (instructor == null)
+                {
+                    _logger.LogWarning("No instructor record found for user ID: {UserId}", userId);
+                    throw new EntityNotFoundException<string>("Instructor", $"UserId: {userId}");
+                }
+
+                var student = await _instructorRepository.GetStudentWithDetailsAsync(studentId).ConfigureAwait(false);
+                if (student == null)
+                {
+                    _logger.LogWarning("Student with ID {StudentId} not found", studentId);
+                    throw new EntityNotFoundException<int>("Student", studentId);
+                }
+
+                var isStudentVisible = await IsStudentVisibleToInstructorAsync(instructor.Id, student).ConfigureAwait(false);
+                if (!isStudentVisible)
+                {
+                    _logger.LogWarning("Instructor ID {InstructorId} is not authorized to view student ID: {StudentId}", instructor.Id, studentId);
+                    throw new EntityUnauthorizedException("Student", $"View student with ID {studentId}", userId, "You are not authorized to view this student");
+                }
+
+                // Build home-section enrollments from schedules taught by this instructor
+                var instructorSchedules = await _instructorRepository
+                    .GetHandledClassesBySectionAndInstructorAsync(student.SectionId, instructor.Id)
+                    .ConfigureAwait(false);
+
+                var homeSectionEnrollments = instructorSchedules
+                    .GroupBy(schedule => schedule.SubjectId)
+                    .Select(group => group.First())
+                    .Select(schedule => new InstructorStudentEnrollmentDto
+                    {
+                        SubjectId = schedule.SubjectId,
+                        SubjectName = schedule.Subject.Name,
+                        SubjectCode = schedule.Subject.Code,
+                        SectionId = schedule.SectionId,
+                        SectionName = schedule.Section.Name,
+                        EnrollmentType = EnrollmentTypeConstants.Regular
+                    });
+
+                var additionalEnrollments = student.AdditionalEnrollments
+                    .Where(se => se.IsActive)
+                    .Select(se => new InstructorStudentEnrollmentDto
+                    {
+                        SubjectId = se.SubjectId,
+                        SubjectName = se.Subject.Name,
+                        SubjectCode = se.Subject.Code,
+                        SectionId = se.SectionId,
+                        SectionName = se.Section.Name,
+                        EnrollmentType = se.EnrollmentType
+                    });
+
+                var enrollments = homeSectionEnrollments
+                    .Concat(additionalEnrollments)
+                    .ToList();
+
+                var attendanceRecords = await _instructorRepository.GetStudentAttendanceForInstructorSubjectsAsync(studentId, instructor.Id).ConfigureAwait(false);
+                var attendanceList = attendanceRecords.ToList();
+
+                var totalSessions = attendanceList.Count;
+                var presentCount = attendanceList.Count(ar => ar.Status == "Present");
+                var absentCount = attendanceList.Count(ar => ar.Status == "Absent");
+                var lateCount = attendanceList.Count(ar => ar.Status == "Late");
+                var attendanceRate = totalSessions > 0 ? (double)(presentCount + lateCount) / totalSessions * 100 : 0;
+
+                var detailDto = new InstructorStudentDetailDto
+                {
+                    StudentId = student.Id,
+                    StudentUuid = student.Uuid,
+                    Firstname = student.Firstname,
+                    Lastname = student.Lastname,
+                    SectionId = student.SectionId,
+                    SectionName = student.Section?.Name,
+                    CourseId = student.Section?.CourseId,
+                    CourseName = student.Section?.Course?.Name,
+                    IsRegular = student.IsRegular,
+                    EnrollmentType = student.IsRegular ? EnrollmentTypeConstants.Regular : EnrollmentTypeConstants.Irregular,
+                    Enrollments = enrollments,
+                    AttendanceSummary = new InstructorStudentAttendanceSummaryDto
+                    {
+                        TotalSessions = totalSessions,
+                        PresentCount = presentCount,
+                        AbsentCount = absentCount,
+                        LateCount = lateCount,
+                        AttendanceRate = Math.Round(attendanceRate, 2)
+                    }
+                };
+
+                _logger.LogInformation("Successfully retrieved student detail for student ID: {StudentId}, instructor ID: {InstructorId}",
+                    studentId, instructor.Id);
+
+                return detailDto;
+            }
+            catch (EntityNotFoundException<string>)
+            {
+                throw;
+            }
+            catch (EntityNotFoundException<int>)
+            {
+                throw;
+            }
+            catch (EntityUnauthorizedException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error occurred while retrieving student detail for student ID: {StudentId}", studentId);
+                throw new EntityServiceException("Instructor", $"GetInstructorStudentDetail: {studentId}",
+                    "An error occurred while retrieving student detail", ex);
+            }
+        }
+
+        private async Task<bool> IsStudentVisibleToInstructorAsync(int instructorId, Student student)
+        {
+            var isHandlingStudentSection = await _instructorRepository.IsInstructorHandlingSectionAsync(instructorId, student.SectionId).ConfigureAwait(false);
+            if (isHandlingStudentSection)
+            {
+                return true;
+            }
+
+            var instructorSchedules = await _scheduleRepository.GetSchedulesByInstructorIdAsync(instructorId).ConfigureAwait(false);
+            var handledSectionSubjectPairs = instructorSchedules
+                .Select(schedule => (schedule.SectionId, schedule.SubjectId))
+                .ToHashSet();
+
+            return student.AdditionalEnrollments.Any(studentEnrollment =>
+                studentEnrollment.IsActive
+                && handledSectionSubjectPairs.Contains((studentEnrollment.SectionId, studentEnrollment.SubjectId)));
         }
         #endregion
 

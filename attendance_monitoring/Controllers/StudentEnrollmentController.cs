@@ -83,6 +83,11 @@ public class StudentEnrollmentController : ControllerBase
             _logger.LogWarning(ex, "Duplicate enrollment attempt for student {StudentId}", request.StudentId);
             return Conflict(new { message = ex.Message });
         }
+        catch (ValidationException ex)
+        {
+            _logger.LogWarning(ex, "Invalid enrollment request for student {StudentId}", request.StudentId);
+            return BadRequest(new { message = ex.Message });
+        }
         // No generic catch - let global exception handler handle unexpected errors
     }
 

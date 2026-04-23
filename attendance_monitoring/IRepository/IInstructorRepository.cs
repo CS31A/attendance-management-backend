@@ -90,4 +90,63 @@ public interface IInstructorRepository : ISaveableRepository
     /// <returns>True if the instructor was restored; otherwise, false.</returns>
     Task<bool> RestoreInstructorAsync(int id);
 
+    /// <summary>
+    /// Retrieves all schedules with related data (Section, Course, Subject, Classroom, Students, StudentEnrollments) for a specific instructor.
+    /// </summary>
+    /// <param name="instructorId">The instructor ID.</param>
+    /// <returns>A collection of schedules with eagerly loaded related entities.</returns>
+    Task<IEnumerable<Schedules>> GetSchedulesWithRelatedDataByInstructorIdAsync(int instructorId);
+
+    /// <summary>
+    /// Retrieves regular students whose primary section matches the supplied section.
+    /// </summary>
+    /// <param name="sectionId">The section ID.</param>
+    /// <returns>A collection of regular students in the section.</returns>
+    Task<IEnumerable<Student>> GetRegularStudentsBySectionIdAsync(int sectionId);
+
+    /// <summary>
+    /// Retrieves all sections handled by the instructor, including course data.
+    /// </summary>
+    /// <param name="instructorId">The instructor ID.</param>
+    /// <returns>A collection of sections handled by the instructor.</returns>
+    Task<IEnumerable<Section>> GetHandledSectionsByInstructorIdAsync(int instructorId);
+
+    /// <summary>
+    /// Retrieves handled classes for a specific section and instructor with related data.
+    /// </summary>
+    /// <param name="sectionId">The section ID.</param>
+    /// <param name="instructorId">The instructor ID.</param>
+    /// <returns>A collection of schedules for the supplied section and instructor.</returns>
+    Task<IEnumerable<Schedules>> GetHandledClassesBySectionAndInstructorAsync(int sectionId, int instructorId);
+
+    /// <summary>
+    /// Retrieves all non-deleted students whose home section matches the supplied section.
+    /// </summary>
+    /// <param name="sectionId">The section ID.</param>
+    /// <returns>A collection of home section students.</returns>
+    Task<IEnumerable<Student>> GetHomeSectionStudentsAsync(int sectionId);
+
+    /// <summary>
+    /// Determines whether the instructor handles the supplied section.
+    /// </summary>
+    /// <param name="instructorId">The instructor ID.</param>
+    /// <param name="sectionId">The section ID.</param>
+    /// <returns><c>true</c> if the instructor handles the section; otherwise, <c>false</c>.</returns>
+    Task<bool> IsInstructorHandlingSectionAsync(int instructorId, int sectionId);
+
+    /// <summary>
+    /// Retrieves a student with related section, course, and enrollment data.
+    /// </summary>
+    /// <param name="studentId">The student ID.</param>
+    /// <returns>The student with related details if found; otherwise, null.</returns>
+    Task<Student?> GetStudentWithDetailsAsync(int studentId);
+
+    /// <summary>
+    /// Retrieves attendance records for a student in sessions taught by the supplied instructor.
+    /// </summary>
+    /// <param name="studentId">The student ID.</param>
+    /// <param name="instructorId">The instructor ID.</param>
+    /// <returns>A collection of attendance records for instructor-taught subjects.</returns>
+    Task<IEnumerable<AttendanceRecord>> GetStudentAttendanceForInstructorSubjectsAsync(int studentId, int instructorId);
+
 }

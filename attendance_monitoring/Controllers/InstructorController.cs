@@ -165,6 +165,122 @@ public class InstructorController(IInstructorService instructorService, ILogger<
         }
     }
 
+    // GET: api/instructors/me/sections-with-students
+    [HttpGet("me/sections-with-students")]
+    [Authorize(Policy = "PrivilegedPolicy")]
+    public async Task<ActionResult<InstructorSectionsWithStudentsResponseDto>> GetMySectionsWithStudents()
+    {
+        try
+        {
+            logger.LogInformation("Getting sections with students for authenticated instructor");
+            var response = await instructorService.GetSectionsWithStudentsByInstructorAsync(User);
+            logger.LogInformation("Successfully retrieved sections with students for instructor ID: {InstructorId}", response.InstructorId);
+            return Ok(response);
+        }
+        catch (EntityNotFoundException<string> ex)
+        {
+            logger.LogWarning(ex, "Instructor not found for authenticated user");
+            return NotFound("No instructor record found for the current user");
+        }
+        catch (EntityServiceException ex)
+        {
+            logger.LogError(ex, "Service error occurred while retrieving sections with students");
+            return StatusCode(500, "An error occurred while retrieving sections");
+        }
+    }
+
+    // GET: api/instructors/me/sections
+    [HttpGet("me/sections")]
+    [Authorize(Policy = "PrivilegedPolicy")]
+    public async Task<ActionResult<List<InstructorSectionOverviewDto>>> GetMySectionsOverview()
+    {
+        try
+        {
+            logger.LogInformation("Getting sections overview for authenticated instructor");
+            var sections = await instructorService.GetInstructorSectionsOverviewAsync(User);
+            logger.LogInformation("Successfully retrieved {Count} section overviews for authenticated instructor", sections.Count);
+            return Ok(sections);
+        }
+        catch (EntityNotFoundException<string> ex)
+        {
+            logger.LogWarning(ex, "Instructor not found for authenticated user");
+            return NotFound("No instructor record found for the current user");
+        }
+        catch (EntityServiceException ex)
+        {
+            logger.LogError(ex, "Service error occurred while retrieving sections overview");
+            return StatusCode(500, "An error occurred while retrieving sections overview");
+        }
+    }
+
+    // GET: api/instructors/me/sections/{sectionId:int}
+    [HttpGet("me/sections/{sectionId:int}")]
+    [Authorize(Policy = "PrivilegedPolicy")]
+    public async Task<ActionResult<InstructorSectionDetailDto>> GetMySectionDetail(int sectionId)
+    {
+        try
+        {
+            logger.LogInformation("Getting section detail for section ID: {SectionId}", sectionId);
+            var sectionDetail = await instructorService.GetInstructorSectionDetailAsync(User, sectionId);
+            logger.LogInformation("Successfully retrieved section detail for section ID: {SectionId}", sectionId);
+            return Ok(sectionDetail);
+        }
+        catch (EntityNotFoundException<string> ex)
+        {
+            logger.LogWarning(ex, "Instructor not found for authenticated user");
+            return NotFound("No instructor record found for the current user");
+        }
+        catch (EntityNotFoundException<int> ex)
+        {
+            logger.LogWarning(ex, "Section with ID {SectionId} not found", sectionId);
+            return NotFound($"Section with ID {sectionId} not found");
+        }
+        catch (EntityUnauthorizedException ex)
+        {
+            logger.LogWarning(ex, "User not authorized to view section with ID {SectionId}", sectionId);
+            return StatusCode(StatusCodes.Status403Forbidden, ex.Message);
+        }
+        catch (EntityServiceException ex)
+        {
+            logger.LogError(ex, "Service error occurred while retrieving section detail for section ID: {SectionId}", sectionId);
+            return StatusCode(500, "An error occurred while retrieving section detail");
+        }
+    }
+
+    // GET: api/instructors/me/students/{studentId:int}
+    [HttpGet("me/students/{studentId:int}")]
+    [Authorize(Policy = "PrivilegedPolicy")]
+    public async Task<ActionResult<InstructorStudentDetailDto>> GetMyStudentDetail(int studentId)
+    {
+        try
+        {
+            logger.LogInformation("Getting student detail for student ID: {StudentId}", studentId);
+            var studentDetail = await instructorService.GetInstructorStudentDetailAsync(User, studentId);
+            logger.LogInformation("Successfully retrieved student detail for student ID: {StudentId}", studentId);
+            return Ok(studentDetail);
+        }
+        catch (EntityNotFoundException<string> ex)
+        {
+            logger.LogWarning(ex, "Instructor not found for authenticated user");
+            return NotFound("No instructor record found for the current user");
+        }
+        catch (EntityNotFoundException<int> ex)
+        {
+            logger.LogWarning(ex, "Student with ID {StudentId} not found", studentId);
+            return NotFound($"Student with ID {studentId} not found");
+        }
+        catch (EntityUnauthorizedException ex)
+        {
+            logger.LogWarning(ex, "User not authorized to view student with ID {StudentId}", studentId);
+            return StatusCode(StatusCodes.Status403Forbidden, ex.Message);
+        }
+        catch (EntityServiceException ex)
+        {
+            logger.LogError(ex, "Service error occurred while retrieving student detail for student ID: {StudentId}", studentId);
+            return StatusCode(500, "An error occurred while retrieving student detail");
+        }
+    }
+
     #endregion
 
     #region Update Operations
@@ -221,7 +337,7 @@ public class InstructorController(IInstructorService instructorService, ILogger<
         catch (EntityUnauthorizedException ex)
         {
             logger.LogWarning(ex, "User not authorized to update instructor with ID {Id}", id);
-            return Unauthorized(ex.Message);
+            return StatusCode(StatusCodes.Status403Forbidden, ex.Message);
         }
         catch (EntityServiceException ex)
         {
@@ -262,7 +378,7 @@ public class InstructorController(IInstructorService instructorService, ILogger<
         catch (EntityUnauthorizedException ex)
         {
             logger.LogWarning(ex, "User not authorized to delete instructor with ID {Id}", id);
-            return Unauthorized(new SoftDeleteResponse
+            return StatusCode(StatusCodes.Status403Forbidden, new SoftDeleteResponse
             {
                 Success = false,
                 Message = ex.Message

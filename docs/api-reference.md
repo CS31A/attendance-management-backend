@@ -221,6 +221,97 @@ Get current instructor's profile (requires Teacher role).
 ### GET /api/instructors/{instructorId}/subjects
 Get all subjects assigned to an instructor.
 
+### GET /api/instructors/me/schedules
+Get the schedules handled by the authenticated privileged user.
+
+**Authorization:** Requires `PrivilegedPolicy` (Admin or Instructor role)
+
+### GET /api/instructors/me/sections-with-students
+Get all sections with enrolled students for the authenticated instructor.
+
+**Authorization:** Requires `PrivilegedPolicy` (Admin or Instructor role)
+
+**Response:**
+```json
+{
+  "instructorId": 1,
+  "instructorUuid": "guid",
+  "instructorFirstname": "John",
+  "instructorLastname": "Doe",
+  "sections": [
+    {
+      "sectionId": 1,
+      "sectionUuid": "guid",
+      "sectionName": "BSCS 3A",
+      "courseId": 1,
+      "courseUuid": "guid",
+      "courseName": "Bachelor of Science in Computer Science",
+      "subjects": [
+        {
+          "subjectId": 1,
+          "subjectUuid": "guid",
+          "subjectName": "Data Structures",
+          "subjectCode": "CS301",
+          "scheduleId": 1,
+          "scheduleUuid": "guid",
+          "dayOfWeek": "Monday",
+          "timeIn": "08:00:00",
+          "timeOut": "10:00:00",
+          "classroomId": 1,
+          "classroomUuid": "guid",
+          "classroomName": "Room 101",
+          "students": [
+            {
+              "studentId": 1,
+              "studentUuid": "guid",
+              "firstname": "Alice",
+              "lastname": "Smith",
+              "isRegular": true,
+              "enrollmentType": "Regular"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
+```
+
+**Notes:**
+- Returns empty sections array if instructor has no schedules
+- Includes both regular and irregular students enrolled via StudentEnrollments
+- Regular students are those where `Student.SectionId` matches the section
+- Irregular students are those enrolled via `StudentEnrollment` for specific subjects
+- Soft-deleted students are excluded from the response
+- Inactive enrollments are excluded from the response
+
+### GET /api/instructors/me/sections
+Get an overview of sections handled by the authenticated privileged user.
+
+**Authorization:** Requires `PrivilegedPolicy` (Admin or Instructor role)
+
+**Response fields:**
+- `handledClassCount` - number of distinct subjects handled in the section
+- `uniqueStudentCount` - number of unique regular and active irregular students associated with those handled classes
+
+### GET /api/instructors/me/sections/{sectionId}
+Get detailed section information for a handled section, including handled classes and home-section roster.
+
+**Authorization:** Requires `PrivilegedPolicy` (Admin or Instructor role)
+
+**Error responses:**
+- `404 Not Found` if the instructor profile or section is missing
+- `403 Forbidden` if the authenticated user does not handle the requested section
+
+### GET /api/instructors/me/students/{studentId}
+Get detailed student information visible to the authenticated privileged user.
+
+**Authorization:** Requires `PrivilegedPolicy` (Admin or Instructor role)
+
+**Error responses:**
+- `404 Not Found` if the instructor profile or student is missing
+- `403 Forbidden` if the authenticated user is not allowed to view the requested student
+
 ### PATCH /api/instructors/{id}
 Update instructor information.
 

@@ -13,6 +13,7 @@ public class CreateStudentEnrollment
     [Required(ErrorMessage = "Subject ID is required")]
     public int SubjectId { get; set; }
 
+    [RegularExpression("(?i)^(Regular|Irregular|Retake)$", ErrorMessage = "Enrollment type must be one of: Regular, Irregular, Retake")]
     [StringLength(20, ErrorMessage = "Enrollment type must not exceed 20 characters")]
     public string EnrollmentType { get; set; } = "Regular";
 
