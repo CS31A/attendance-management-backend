@@ -15,7 +15,9 @@ internal sealed class AdminUserManagementScenarioContext
     public required string OrphanedUserId { get; init; }
     public required string OrphanedUserEmail { get; init; }
     public required int PrimarySectionId { get; init; }
+    public required Guid PrimarySectionUuid { get; init; }
     public required int AlternateSectionId { get; init; }
+    public required Guid AlternateSectionUuid { get; init; }
     public required int ActiveStudentRefreshTokenId { get; init; }
     public required int ControlRefreshTokenId { get; init; }
 }
