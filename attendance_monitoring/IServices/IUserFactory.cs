@@ -38,8 +38,8 @@ namespace attendance_monitoring.IServices
         /// <param name="role">The role to assign to the user (Student, Instructor, or Admin)</param>
         /// <param name="firstName">The first name of the user (optional)</param>
         /// <param name="lastName">The last name of the user (optional)</param>
-        /// <param name="sectionId">The section ID for students (required when role is Student)</param>
+        /// <param name="sectionId">The section UUID for students (required when role is Student)</param>
         /// <returns>A UserCreationResult indicating success or failure with any error messages</returns>
-        Task<UserCreationResult> CreateUserAsync(string username, string email, string password, string role, string? firstName = null, string? lastName = null, int? sectionId = null);
+        Task<UserCreationResult> CreateUserAsync(string username, string email, string password, string role, string? firstName = null, string? lastName = null, Guid? sectionId = null);
     }
 }

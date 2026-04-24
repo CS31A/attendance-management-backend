@@ -174,7 +174,7 @@ internal sealed class AdminService : IAdminService
                     Section? section;
                     try
                     {
-                        section = await _sectionRepository.GetSectionByIdAsync(adminUpdateDto.SectionId.Value).ConfigureAwait(false);
+                        section = await _sectionRepository.GetSectionByUuidAsync(adminUpdateDto.SectionId.Value).ConfigureAwait(false);
                     }
                     catch (Exception ex)
                     {
@@ -188,9 +188,9 @@ internal sealed class AdminService : IAdminService
                     if (section == null)
                     {
                         _logger.LogWarning("Admin profile update failed: Section {SectionId} does not exist", adminUpdateDto.SectionId.Value);
-                        throw new EntityNotFoundException<int>("Section", adminUpdateDto.SectionId.Value);
+                        throw new EntityNotFoundException<Guid>("Section", adminUpdateDto.SectionId.Value);
                     }
-                    student.SectionId = adminUpdateDto.SectionId.Value;
+                    student.SectionId = section.Id;
                 }
                 if (adminUpdateDto.IsRegular.HasValue)
                 {

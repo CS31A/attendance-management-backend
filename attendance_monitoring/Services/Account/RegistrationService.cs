@@ -39,7 +39,7 @@ internal sealed class RegistrationService : IRegistrationService
     /// <returns>The registration response.</returns>
     /// <exception cref="ValidationException">Thrown when validation fails.</exception>
     /// <exception cref="EntityAlreadyExistsException{String}">Thrown when username or email already exists.</exception>
-    /// <exception cref="EntityNotFoundException{Int32}">Thrown when the specified section does not exist.</exception>
+    /// <exception cref="EntityNotFoundException{Guid}">Thrown when the specified section does not exist.</exception>
     /// <exception cref="EntityServiceException">Thrown when user creation fails.</exception>
     public async Task<RegisterResponseDto> RegisterAsync(RegisterDto registerDto)
     {
@@ -99,7 +99,7 @@ internal sealed class RegistrationService : IRegistrationService
             Section? section;
             try
             {
-                section = await _sectionRepository.GetSectionByIdAsync(registerDto.SectionId.Value).ConfigureAwait(false);
+                section = await _sectionRepository.GetSectionByUuidAsync(registerDto.SectionId.Value).ConfigureAwait(false);
             }
             catch (Exception ex)
             {
@@ -113,7 +113,7 @@ internal sealed class RegistrationService : IRegistrationService
             if (section == null)
             {
                 _logger.LogWarning("Student registration failed for username {Username}: SectionId {SectionId} does not exist", registerDto.Username, registerDto.SectionId);
-                throw new EntityNotFoundException<int>("Section", registerDto.SectionId.Value, "The specified section does not exist");
+                throw new EntityNotFoundException<Guid>("Section", registerDto.SectionId.Value, "The specified section does not exist");
             }
 
             // Validate that Firstname is provided for students

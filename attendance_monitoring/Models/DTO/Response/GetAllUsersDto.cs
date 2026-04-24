@@ -19,14 +19,13 @@ public class GetAllUsersDto
 /// </summary>
 public class StudentProfileDto
 {
-    public int Id { get; set; }
-    public Guid Uuid { get; set; }
+    public Guid Id { get; set; }
     public string Firstname { get; set; } = string.Empty;
     public string Lastname { get; set; } = string.Empty;
     public bool IsRegular { get; set; }
-    public int SectionId { get; set; }
+    public Guid SectionId { get; set; }
     public string? SectionName { get; set; }
-    public int? CourseId { get; set; }
+    public Guid? CourseId { get; set; }
     public string? CourseName { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
@@ -39,8 +38,7 @@ public class StudentProfileDto
 /// </summary>
 public class InstructorProfileDto
 {
-    public int Id { get; set; }
-    public Guid Uuid { get; set; }
+    public Guid Id { get; set; }
     public string? Firstname { get; set; }
     public string? Lastname { get; set; }
     public string? Department { get; set; }
@@ -55,8 +53,7 @@ public class InstructorProfileDto
 /// </summary>
 public class AdminProfileDto
 {
-    public int Id { get; set; }
-    public Guid Uuid { get; set; }
+    public Guid Id { get; set; }
     public string? Firstname { get; set; }
     public string? Lastname { get; set; }
     public DateTime CreatedAt { get; set; }

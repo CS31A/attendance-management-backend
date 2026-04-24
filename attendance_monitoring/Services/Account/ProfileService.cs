@@ -89,14 +89,13 @@ internal sealed class ProfileService : IProfileService
             {
                 profile.StudentProfile = new StudentProfileInfo
                 {
-                    Id = student.Id,
-                    Uuid = student.Uuid,
+                    Id = student.Uuid,
                     Firstname = student.Firstname,
                     Lastname = student.Lastname,
                     IsRegular = student.IsRegular,
-                    SectionId = student.SectionId,
+                    SectionId = student.Section?.Uuid ?? Guid.Empty,
                     SectionName = student.Section?.Name ?? string.Empty,
-                    CourseId = student.Section?.CourseId ?? 0,
+                    CourseId = student.Section?.Course?.Uuid ?? Guid.Empty,
                     CourseName = student.Section?.Course?.Name ?? string.Empty,
                     CreatedAt = student.CreatedAt,
                     UpdatedAt = student.UpdatedAt
@@ -112,8 +111,7 @@ internal sealed class ProfileService : IProfileService
             {
                 profile.InstructorProfile = new InstructorProfileInfo
                 {
-                    Id = instructor.Id,
-                    Uuid = instructor.Uuid,
+                    Id = instructor.Uuid,
                     Firstname = instructor.Firstname,
                     Lastname = instructor.Lastname,
                     Department = instructor.Department,
@@ -132,8 +130,7 @@ internal sealed class ProfileService : IProfileService
             {
                 profile.AdminProfile = new AdminProfileInfo
                 {
-                    Id = admin.Id,
-                    Uuid = admin.Uuid,
+                    Id = admin.Uuid,
                     Firstname = admin.Firstname,
                     Lastname = admin.Lastname,
                     CreatedAt = admin.CreatedAt,
@@ -289,7 +286,7 @@ internal sealed class ProfileService : IProfileService
                         Section? section;
                         try
                         {
-                            section = await _sectionRepository.GetSectionByIdAsync(updateProfileDto.SectionId.Value).ConfigureAwait(false);
+                            section = await _sectionRepository.GetSectionByUuidAsync(updateProfileDto.SectionId.Value).ConfigureAwait(false);
                         }
                         catch (Exception ex)
                         {
@@ -303,9 +300,9 @@ internal sealed class ProfileService : IProfileService
                         if (section == null)
                         {
                             _logger.LogWarning("Profile update failed: Section {SectionId} does not exist", updateProfileDto.SectionId.Value);
-                            throw new EntityNotFoundException<int>("Section", updateProfileDto.SectionId.Value);
+                            throw new EntityNotFoundException<Guid>("Section", updateProfileDto.SectionId.Value);
                         }
-                        student.SectionId = updateProfileDto.SectionId.Value;
+                        student.SectionId = section.Id;
                     }
                     if (updateProfileDto.IsRegular.HasValue)
                     {

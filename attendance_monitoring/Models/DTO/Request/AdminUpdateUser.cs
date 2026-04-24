@@ -40,9 +40,9 @@ public class AdminUpdateUser
     public string? NewPassword { get; set; }
 
     /// <summary>
-    /// For students: Section ID (optional)
+    /// For students: Section ID (UUID value serialized as a string in the public API)
     /// </summary>
-    public int? SectionId { get; set; }
+    public Guid? SectionId { get; set; }
 
     /// <summary>
     /// For students: Regular/Irregular status (optional)

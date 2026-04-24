@@ -469,7 +469,7 @@ public sealed class AdminDataService : IAdminDataService
             Password = row.Values.GetValueOrDefault("temporarypassword") ?? string.Empty,
             RepeatedPassword = row.Values.GetValueOrDefault("temporarypassword") ?? string.Empty,
             Role = role,
-            SectionId = role == RoleConstants.Student && !string.IsNullOrWhiteSpace(sectionName) && lookup.SectionIdsByName.TryGetValue(sectionName, out var sectionId)
+            SectionId = role == RoleConstants.Student && !string.IsNullOrWhiteSpace(sectionName) && lookup.SectionUuidsByName.TryGetValue(sectionName, out var sectionId)
                 ? sectionId
                 : null,
         };
@@ -631,11 +631,11 @@ public sealed class AdminDataService : IAdminDataService
     {
         var role = NormalizeRole(values.GetValueOrDefault("role"));
         var sectionName = values.GetValueOrDefault("sectionname");
-        int? sectionId = null;
+        Guid? sectionId = null;
 
         if (role == RoleConstants.Student && !string.IsNullOrWhiteSpace(sectionName))
         {
-            if (lookup.SectionIdsByName.TryGetValue(sectionName, out var cachedSectionId))
+            if (lookup.SectionUuidsByName.TryGetValue(sectionName, out var cachedSectionId))
             {
                 sectionId = cachedSectionId;
             }
@@ -849,6 +849,7 @@ public sealed class AdminDataService : IAdminDataService
     {
         var courses = await _context.Courses.AsNoTracking().ToDictionaryAsync(course => course.Name, course => course.Id, StringComparer.OrdinalIgnoreCase, cancellationToken).ConfigureAwait(false);
         var sections = await _context.Sections.AsNoTracking().ToDictionaryAsync(section => section.Name, section => section.Id, StringComparer.OrdinalIgnoreCase, cancellationToken).ConfigureAwait(false);
+        var sectionUuids = await _context.Sections.AsNoTracking().ToDictionaryAsync(section => section.Name, section => section.Uuid, StringComparer.OrdinalIgnoreCase, cancellationToken).ConfigureAwait(false);
         var subjects = await _context.Subjects.AsNoTracking().ToDictionaryAsync(subject => subject.Code, subject => subject.Id, StringComparer.OrdinalIgnoreCase, cancellationToken).ConfigureAwait(false);
         var classrooms = await _context.Classrooms.AsNoTracking().ToDictionaryAsync(classroom => classroom.Name, classroom => classroom.Id, StringComparer.OrdinalIgnoreCase, cancellationToken).ConfigureAwait(false);
         var instructors = await _context.Instructors.AsNoTracking().Include(instructor => instructor.User).Where(instructor => !instructor.IsDeleted && instructor.User.Email != null).ToDictionaryAsync(instructor => instructor.User.Email!, instructor => instructor.Id, StringComparer.OrdinalIgnoreCase, cancellationToken).ConfigureAwait(false);
@@ -859,6 +860,7 @@ public sealed class AdminDataService : IAdminDataService
         return new LookupCache(
             courses,
             sections,
+            sectionUuids,
             subjects,
             classrooms,
             instructors,
@@ -1385,6 +1387,7 @@ public sealed class AdminDataService : IAdminDataService
     private sealed record LookupCache(
         IReadOnlyDictionary<string, int> CourseIdsByName,
         IReadOnlyDictionary<string, int> SectionIdsByName,
+        IReadOnlyDictionary<string, Guid> SectionUuidsByName,
         IReadOnlyDictionary<string, int> SubjectIdsByCode,
         IReadOnlyDictionary<string, int> ClassroomIdsByName,
         IReadOnlyDictionary<string, int> InstructorIdsByEmail,
