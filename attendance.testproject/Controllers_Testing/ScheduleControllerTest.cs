@@ -114,6 +114,18 @@ public class ScheduleControllerTest
         _mockScheduleService.Verify(s => s.GetScheduleByUuidAsync(scheduleUuid), Times.Once);
     }
 
+    [Fact]
+    public async Task GetScheduleByUuid_ThrowsException_WhenUnexpectedExceptionOccurs()
+    {
+        var scheduleUuid = Guid.NewGuid();
+
+        _mockScheduleService
+            .Setup(s => s.GetScheduleByUuidAsync(scheduleUuid))
+            .ThrowsAsync(new Exception("Database error"));
+
+        await Assert.ThrowsAsync<Exception>(() => _scheduleController.GetScheduleByUuid(scheduleUuid));
+    }
+
     #endregion
 
     #region Dependency Check Tests
@@ -372,6 +384,41 @@ public class ScheduleControllerTest
     }
 
     [Fact]
+    public async Task UpdateScheduleByUuid_ReturnsBadRequest_WhenModelStateIsInvalid()
+    {
+        var scheduleUuid = Guid.NewGuid();
+        var updateSchedule = new UpdateSchedule
+        {
+            DayOfWeek = "Wednesday"
+        };
+
+        _scheduleController.ModelState.AddModelError("DayOfWeek", "Required");
+
+        var result = await _scheduleController.UpdateScheduleByUuid(scheduleUuid, updateSchedule);
+
+        var badRequestResult = Assert.IsType<BadRequestObjectResult>(result.Result);
+        Assert.IsType<SerializableError>(badRequestResult.Value);
+        _mockScheduleService.Verify(s => s.UpdateScheduleByUuidAsync(It.IsAny<Guid>(), It.IsAny<UpdateSchedule>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task UpdateScheduleByUuid_ThrowsValidationException_WhenServiceThrowsError()
+    {
+        var scheduleUuid = Guid.NewGuid();
+        var updateSchedule = new UpdateSchedule
+        {
+            DayOfWeek = "Wednesday"
+        };
+
+        _mockScheduleService
+            .Setup(s => s.UpdateScheduleByUuidAsync(scheduleUuid, updateSchedule))
+            .ThrowsAsync(new ValidationException("Schedule conflict detected"));
+
+        var exception = await Assert.ThrowsAsync<ValidationException>(() => _scheduleController.UpdateScheduleByUuid(scheduleUuid, updateSchedule));
+        Assert.Equal("Schedule conflict detected", exception.Message);
+    }
+
+    [Fact]
     public async Task UpdateSchedule_ReturnsOkResult_WithPartialUpdate()
     {
         // Arrange - Test PATCH endpoint with only TimeIn field provided
@@ -559,6 +606,19 @@ public class ScheduleControllerTest
 
         Assert.IsType<NoContentResult>(result);
         _mockScheduleService.Verify(s => s.DeleteScheduleByUuidAsync(scheduleUuid, It.IsAny<ClaimsPrincipal>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task DeleteScheduleByUuid_ThrowsValidationException_WhenServiceThrowsError()
+    {
+        var scheduleUuid = Guid.NewGuid();
+
+        _mockScheduleService
+            .Setup(s => s.DeleteScheduleByUuidAsync(scheduleUuid, It.IsAny<ClaimsPrincipal>()))
+            .ThrowsAsync(new ValidationException("Cannot delete schedule with existing dependencies"));
+
+        var exception = await Assert.ThrowsAsync<ValidationException>(() => _scheduleController.DeleteScheduleByUuid(scheduleUuid));
+        Assert.Equal("Cannot delete schedule with existing dependencies", exception.Message);
     }
 
     [Fact]

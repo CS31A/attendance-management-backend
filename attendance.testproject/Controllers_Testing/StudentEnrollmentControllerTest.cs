@@ -364,6 +364,23 @@ public class StudentEnrollmentControllerTest
     }
 
     [Fact]
+    public async Task GetStudentEnrollmentsByUuid_NoEnrollments_ReturnsOkWithEmptyList()
+    {
+        var studentUuid = Guid.NewGuid();
+
+        _mockService.Setup(s => s.GetStudentEnrollmentsByStudentUuidAsync(studentUuid))
+            .ReturnsAsync(new List<StudentEnrollment>());
+
+        var result = await _controller.GetStudentEnrollmentsByUuid(studentUuid);
+
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        var response = Assert.IsType<StudentSectionsResponseDto>(okResult.Value);
+        Assert.Equal(studentUuid, response.StudentUuid);
+        Assert.Equal(0, response.StudentId);
+        Assert.Empty(response.Enrollments);
+    }
+
+    [Fact]
     public async Task GetStudentEnrollments_NoEnrollments_ReturnsOkWithEmptyList()
     {
         // Arrange
@@ -482,6 +499,21 @@ public class StudentEnrollmentControllerTest
     }
 
     [Fact]
+    public async Task GetSectionStudentsByUuid_NoEnrollments_ReturnsOkWithEmptyList()
+    {
+        var sectionUuid = Guid.NewGuid();
+
+        _mockService.Setup(s => s.GetActiveSectionEnrollmentsBySectionUuidAsync(sectionUuid))
+            .ReturnsAsync(new List<StudentEnrollment>());
+
+        var result = await _controller.GetSectionStudentsByUuid(sectionUuid);
+
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        var response = Assert.IsAssignableFrom<IEnumerable<StudentEnrollmentResponseDto>>(okResult.Value);
+        Assert.Empty(response);
+    }
+
+    [Fact]
     public async Task GetSectionStudents_NoEnrollments_ReturnsOkWithEmptyList()
     {
         // Arrange
@@ -541,6 +573,19 @@ public class StudentEnrollmentControllerTest
         var enrollmentUuid = Guid.NewGuid();
         _mockService.Setup(s => s.DropStudentFromSubjectAsync(enrollmentUuid))
             .ThrowsAsync(new EntityNotFoundException<Guid>("Enrollment", enrollmentUuid));
+
+        var result = await _controller.DropStudentByUuid(enrollmentUuid);
+
+        var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
+        Assert.NotNull(notFoundResult.Value);
+    }
+
+    [Fact]
+    public async Task DropStudentByUuid_EnrollmentNotFound_ReturnsNotFound()
+    {
+        var enrollmentUuid = Guid.NewGuid();
+        _mockService.Setup(s => s.DropStudentFromSubjectAsync(enrollmentUuid))
+            .ReturnsAsync(false);
 
         var result = await _controller.DropStudentByUuid(enrollmentUuid);
 
@@ -621,6 +666,19 @@ public class StudentEnrollmentControllerTest
         var enrollmentUuid = Guid.NewGuid();
         _mockService.Setup(s => s.ReenrollStudentAsync(enrollmentUuid))
             .ThrowsAsync(new EntityNotFoundException<Guid>("Enrollment", enrollmentUuid));
+
+        var result = await _controller.ReenrollStudentByUuid(enrollmentUuid);
+
+        var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
+        Assert.NotNull(notFoundResult.Value);
+    }
+
+    [Fact]
+    public async Task ReenrollStudentByUuid_EnrollmentNotFound_ReturnsNotFound()
+    {
+        var enrollmentUuid = Guid.NewGuid();
+        _mockService.Setup(s => s.ReenrollStudentAsync(enrollmentUuid))
+            .ReturnsAsync(false);
 
         var result = await _controller.ReenrollStudentByUuid(enrollmentUuid);
 
@@ -731,6 +789,25 @@ public class StudentEnrollmentControllerTest
         var isEnrolledProperty = responseType.GetProperty("isEnrolled");
         Assert.NotNull(isEnrolledProperty);
         Assert.True((bool)isEnrolledProperty.GetValue(okResult.Value)!);
+    }
+
+    [Fact]
+    public async Task CheckEnrollmentByUuid_StudentNotEnrolled_ReturnsOkWithFalse()
+    {
+        var studentUuid = Guid.NewGuid();
+        var sectionUuid = Guid.NewGuid();
+        var subjectUuid = Guid.NewGuid();
+
+        _mockService.Setup(s => s.IsStudentEnrolledInSectionSubjectByUuidAsync(studentUuid, sectionUuid, subjectUuid))
+            .ReturnsAsync(false);
+
+        var result = await _controller.CheckEnrollmentByUuid(studentUuid, sectionUuid, subjectUuid);
+
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        var responseType = okResult.Value!.GetType();
+        var isEnrolledProperty = responseType.GetProperty("isEnrolled");
+        Assert.NotNull(isEnrolledProperty);
+        Assert.False((bool)isEnrolledProperty.GetValue(okResult.Value)!);
     }
 
     #endregion

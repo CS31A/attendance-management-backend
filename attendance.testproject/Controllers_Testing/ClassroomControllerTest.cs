@@ -250,6 +250,41 @@ public class ClassroomControllerTest
     }
 
     [Fact]
+    public async Task UpdateClassroomByUuid_ReturnsBadRequest_WhenInvalidModelState()
+    {
+        var classroomUuid = Guid.NewGuid();
+        var updateClassroom = new UpdateClassroom
+        {
+            Name = "A"
+        };
+        _controller.ModelState.AddModelError("Name", "Classroom name must be between 2 and 100 characters");
+
+        var result = await _controller.UpdateClassroomByUuid(classroomUuid, updateClassroom);
+
+        var badRequestResult = Assert.IsType<BadRequestObjectResult>(result.Result);
+        Assert.IsType<SerializableError>(badRequestResult.Value);
+        _mockClassroomService.Verify(s => s.UpdateClassroomByUuidAsync(It.IsAny<Guid>(), It.IsAny<UpdateClassroom>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task UpdateClassroomByUuid_PropagatesEntityNotFoundException_WhenClassroomDoesNotExist()
+    {
+        var classroomUuid = Guid.NewGuid();
+        var updateClassroom = new UpdateClassroom
+        {
+            Name = "Updated Room 204"
+        };
+
+        _mockClassroomService
+            .Setup(s => s.UpdateClassroomByUuidAsync(classroomUuid, updateClassroom))
+            .ThrowsAsync(new EntityNotFoundException<Guid>("Classroom", classroomUuid));
+
+        var exception = await Assert.ThrowsAsync<EntityNotFoundException<Guid>>(() => _controller.UpdateClassroomByUuid(classroomUuid, updateClassroom));
+
+        Assert.Equal($"Classroom with ID {classroomUuid} was not found.", exception.Message);
+    }
+
+    [Fact]
     public async Task UpdateClassroom_ReturnsBadRequest_WhenInvalidModelState()
     {
         // Arrange
@@ -299,6 +334,21 @@ public class ClassroomControllerTest
         var result = await _controller.DeleteClassroomByUuid(classroomUuid);
 
         Assert.IsType<NoContentResult>(result);
+        _mockClassroomService.Verify(s => s.DeleteClassroomByUuidAsync(classroomUuid), Times.Once);
+    }
+
+    [Fact]
+    public async Task DeleteClassroomByUuid_PropagatesEntityNotFoundException_WhenClassroomDoesNotExist()
+    {
+        var classroomUuid = Guid.NewGuid();
+
+        _mockClassroomService
+            .Setup(s => s.DeleteClassroomByUuidAsync(classroomUuid))
+            .ThrowsAsync(new EntityNotFoundException<Guid>("Classroom", classroomUuid));
+
+        var exception = await Assert.ThrowsAsync<EntityNotFoundException<Guid>>(() => _controller.DeleteClassroomByUuid(classroomUuid));
+
+        Assert.Equal($"Classroom with ID {classroomUuid} was not found.", exception.Message);
         _mockClassroomService.Verify(s => s.DeleteClassroomByUuidAsync(classroomUuid), Times.Once);
     }
 

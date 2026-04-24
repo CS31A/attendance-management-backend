@@ -112,6 +112,35 @@ public class SubjectControllerTest
     }
 
     [Fact]
+    public async Task UpdateSubjectByUuid_ReturnsBadRequest_WhenInvalidModelState()
+    {
+        var subjectUuid = Guid.NewGuid();
+        var updateSubject = new UpdateSubject { Name = string.Empty };
+        _controller.ModelState.AddModelError("Name", "Subject name is required");
+
+        var result = await _controller.UpdateSubjectByUuid(subjectUuid, updateSubject);
+
+        var badRequestResult = Assert.IsType<BadRequestObjectResult>(result.Result);
+        Assert.IsType<SerializableError>(badRequestResult.Value);
+        _mockSubjectService.Verify(s => s.UpdateSubjectByUuidAsync(It.IsAny<Guid>(), It.IsAny<UpdateSubject>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task UpdateSubjectByUuid_PropagatesEntityNotFoundException_WhenSubjectDoesNotExist()
+    {
+        var subjectUuid = Guid.NewGuid();
+        var updateSubject = new UpdateSubject { Name = "Advanced Physics" };
+
+        _mockSubjectService
+            .Setup(s => s.UpdateSubjectByUuidAsync(subjectUuid, updateSubject))
+            .ThrowsAsync(new EntityNotFoundException<Guid>("Subject", subjectUuid));
+
+        var exception = await Assert.ThrowsAsync<EntityNotFoundException<Guid>>(() => _controller.UpdateSubjectByUuid(subjectUuid, updateSubject));
+
+        Assert.Equal($"Subject with ID {subjectUuid} was not found.", exception.Message);
+    }
+
+    [Fact]
     public async Task DeleteSubjectByUuid_ReturnsNoContent_WhenDeletionSucceeds()
     {
         var subjectUuid = Guid.NewGuid();
@@ -123,6 +152,21 @@ public class SubjectControllerTest
         var result = await _controller.DeleteSubjectByUuid(subjectUuid);
 
         Assert.IsType<NoContentResult>(result);
+        _mockSubjectService.Verify(s => s.DeleteSubjectByUuidAsync(subjectUuid), Times.Once);
+    }
+
+    [Fact]
+    public async Task DeleteSubjectByUuid_PropagatesEntityNotFoundException_WhenSubjectDoesNotExist()
+    {
+        var subjectUuid = Guid.NewGuid();
+
+        _mockSubjectService
+            .Setup(s => s.DeleteSubjectByUuidAsync(subjectUuid))
+            .ThrowsAsync(new EntityNotFoundException<Guid>("Subject", subjectUuid));
+
+        var exception = await Assert.ThrowsAsync<EntityNotFoundException<Guid>>(() => _controller.DeleteSubjectByUuid(subjectUuid));
+
+        Assert.Equal($"Subject with ID {subjectUuid} was not found.", exception.Message);
         _mockSubjectService.Verify(s => s.DeleteSubjectByUuidAsync(subjectUuid), Times.Once);
     }
 
