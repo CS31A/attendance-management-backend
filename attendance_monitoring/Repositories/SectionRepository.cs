@@ -11,22 +11,37 @@ namespace attendance_monitoring.Repositories
 
         #region GetSectionByIdAsync
         public async Task<Section?> GetSectionByIdAsync(int sectionId)
-            => await context.Sections.AsNoTracking().FirstOrDefaultAsync(s => s.Id == sectionId).ConfigureAwait(false);
+            => await context.Sections
+                .AsNoTracking()
+                .Include(section => section.Course)
+                .FirstOrDefaultAsync(s => s.Id == sectionId)
+                .ConfigureAwait(false);
         #endregion
 
         #region GetSectionByUuidAsync
         public async Task<Section?> GetSectionByUuidAsync(Guid uuid)
-            => await context.Sections.AsNoTracking().FirstOrDefaultAsync(s => s.Uuid == uuid).ConfigureAwait(false);
+            => await context.Sections
+                .AsNoTracking()
+                .Include(section => section.Course)
+                .FirstOrDefaultAsync(s => s.Uuid == uuid)
+                .ConfigureAwait(false);
         #endregion
 
         #region GetSectionByUuidTrackedAsync
         public async Task<Section?> GetSectionByUuidTrackedAsync(Guid uuid)
-            => await context.Sections.FirstOrDefaultAsync(s => s.Uuid == uuid).ConfigureAwait(false);
+            => await context.Sections
+                .Include(section => section.Course)
+                .FirstOrDefaultAsync(s => s.Uuid == uuid)
+                .ConfigureAwait(false);
         #endregion
 
         #region GetAllSectionsAsync
         public async Task<IEnumerable<Section>> GetAllSectionsAsync()
-            => await context.Sections.AsNoTracking().ToListAsync().ConfigureAwait(false);
+            => await context.Sections
+                .AsNoTracking()
+                .Include(section => section.Course)
+                .ToListAsync()
+                .ConfigureAwait(false);
         #endregion
 
         #region GetActiveStudentsBySectionIdAsync
