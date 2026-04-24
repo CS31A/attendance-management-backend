@@ -518,6 +518,12 @@ public sealed class FingerprintServiceConcurrencyIntegrationTest : IDisposable
         public Task<AttendanceRecord?> GetByIdTrackedAsync(int id)
             => _inner.GetByIdTrackedAsync(id);
 
+        public Task<AttendanceRecord?> GetAttendanceByUuidAsync(Guid uuid)
+            => _inner.GetAttendanceByUuidAsync(uuid);
+
+        public Task<AttendanceRecord?> GetAttendanceByUuidTrackedAsync(Guid uuid)
+            => _inner.GetAttendanceByUuidTrackedAsync(uuid);
+
         public Task<List<AttendanceRecord>> GetAllAsync(int pageNumber = 1, int pageSize = 50)
             => _inner.GetAllAsync(pageNumber, pageSize);
 

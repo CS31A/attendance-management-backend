@@ -52,6 +52,7 @@ public class QrCodeBoundaryLoggingTests
             qrCodeRepository.Object,
             Mock.Of<INotificationService>(),
             CreateAuthorizationService(sessionId: 42),
+            Mock.Of<ISessionRepository>(),
             logger);
         var user = CreateUserPrincipal("user-1");
         var expectedException = new InvalidOperationException("Create failed");
@@ -82,6 +83,7 @@ public class QrCodeBoundaryLoggingTests
             qrCodeRepository.Object,
             Mock.Of<INotificationService>(),
             CreateAuthorizationService(sessionId: 42),
+            Mock.Of<ISessionRepository>(),
             logger);
         var user = CreateUserPrincipal("user-1");
         var expectedException = new InvalidOperationException("Generate failed");

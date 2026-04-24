@@ -164,6 +164,51 @@ public class SessionRepositoryTest : IDisposable
         Assert.Equal(newerSession.Id, reportRow.SessionId);
     }
 
+    [Fact]
+    public async Task SessionRepository_GetSessionByUuidAsync_ReturnsReadOnlyAndTrackedSession()
+    {
+        // Arrange
+        await SeedReportDataAsync();
+        _context.ChangeTracker.Clear();
+
+        var sessionUuid = await _context.Sessions
+            .AsNoTracking()
+            .Where(session => session.Id == 11)
+            .Select(session => session.Uuid)
+            .SingleAsync();
+
+        // Act
+        var readOnlySession = await _repository.GetSessionByUuidAsync(sessionUuid);
+        var trackedSession = await _repository.GetSessionByUuidTrackedAsync(sessionUuid);
+
+        // Assert
+        Assert.NotNull(readOnlySession);
+        Assert.Equal(11, readOnlySession.Id);
+        Assert.NotNull(readOnlySession.Schedule);
+        Assert.NotNull(readOnlySession.Schedule.Subject);
+        Assert.NotNull(readOnlySession.Schedule.Section);
+        Assert.NotNull(readOnlySession.Schedule.Classroom);
+        Assert.NotNull(readOnlySession.Schedule.Instructor);
+        Assert.NotNull(trackedSession);
+        Assert.Equal(EntityState.Unchanged, _context.Entry(trackedSession).State);
+    }
+
+    [Fact]
+    public async Task SessionRepository_GetSessionByUuidAsync_ReturnsNull_WhenNotFound()
+    {
+        // Arrange
+        await SeedReportDataAsync();
+        var missingUuid = Guid.NewGuid();
+
+        // Act
+        var readOnlySession = await _repository.GetSessionByUuidAsync(missingUuid);
+        var trackedSession = await _repository.GetSessionByUuidTrackedAsync(missingUuid);
+
+        // Assert
+        Assert.Null(readOnlySession);
+        Assert.Null(trackedSession);
+    }
+
     private async Task SeedReportDataAsync()
     {
         var user = new IdentityUser
