@@ -66,6 +66,7 @@ namespace attendance_monitoring.Controllers
         /// <response code="404"> not found</response>
         /// <response code="500">Internal server error</response>
         [HttpGet("{id:int}")]
+        [ApiExplorerSettings(IgnoreApi = true)]
         public async Task<ActionResult<ScheduleResponseDto>> GetSchedule(int id)
         {
             logger.LogInformation("Getting schedule with ID: {Id}", id);
@@ -83,8 +84,8 @@ namespace attendance_monitoring.Controllers
             // No generic catch - global handler will manage unexpected errors
         }
 
-        [HttpGet("uuid/{uuid:guid}")]
-        public async Task<ActionResult<ScheduleResponseDto>> GetScheduleByUuid(Guid uuid)
+        [HttpGet("{id:guid}")]
+        public async Task<ActionResult<ScheduleResponseDto>> GetScheduleByUuid([FromRoute(Name = "id")] Guid uuid)
         {
             logger.LogInformation("Getting schedule with UUID: {Uuid}", uuid);
             try
@@ -209,6 +210,7 @@ namespace attendance_monitoring.Controllers
         /// <response code="401">Not authorized to update this schedule</response>
         /// <response code="500">Internal server error</response>
         [HttpPatch("{id:int}")]
+        [ApiExplorerSettings(IgnoreApi = true)]
         [Authorize(Policy = "AdminPolicy")]
         public async Task<ActionResult<Schedules>> UpdateSchedule(int id, UpdateSchedule updateSchedule)
         {
@@ -226,9 +228,9 @@ namespace attendance_monitoring.Controllers
             // Exceptions are handled by global exception handler
         }
 
-        [HttpPatch("uuid/{uuid:guid}")]
+        [HttpPatch("{id:guid}")]
         [Authorize(Policy = "AdminPolicy")]
-        public async Task<ActionResult<Schedules>> UpdateScheduleByUuid(Guid uuid, UpdateSchedule updateSchedule)
+        public async Task<ActionResult<Schedules>> UpdateScheduleByUuid([FromRoute(Name = "id")] Guid uuid, UpdateSchedule updateSchedule)
         {
             logger.LogInformation("Updating schedule with UUID: {Uuid}", uuid);
             if (!ModelState.IsValid)
@@ -257,6 +259,7 @@ namespace attendance_monitoring.Controllers
         /// <response code="401">Not authorized to delete schedules</response>
         /// <response code="500">Internal server error</response>
         [HttpDelete("{id:int}")]
+        [ApiExplorerSettings(IgnoreApi = true)]
         [Authorize(Policy = "AdminPolicy")]
         public async Task<ActionResult> DeleteSchedule(int id)
         {
@@ -269,9 +272,9 @@ namespace attendance_monitoring.Controllers
             // Exceptions are handled by global exception handler
         }
 
-        [HttpDelete("uuid/{uuid:guid}")]
+        [HttpDelete("{id:guid}")]
         [Authorize(Policy = "AdminPolicy")]
-        public async Task<ActionResult> DeleteScheduleByUuid(Guid uuid)
+        public async Task<ActionResult> DeleteScheduleByUuid([FromRoute(Name = "id")] Guid uuid)
         {
             logger.LogInformation("Deleting schedule with UUID: {Uuid}", uuid);
 

@@ -26,6 +26,7 @@ namespace attendance_monitoring.Controllers
         }
 
         [HttpGet("{id:int}")]
+        [ApiExplorerSettings(IgnoreApi = true)]
         public async Task<ActionResult<SectionResponseDto>> GetSection(int id)
         {
             try
@@ -45,8 +46,8 @@ namespace attendance_monitoring.Controllers
             }
         }
 
-        [HttpGet("uuid/{uuid:guid}")]
-        public async Task<ActionResult<SectionResponseDto>> GetSectionByUuid(Guid uuid)
+        [HttpGet("{id:guid}")]
+        public async Task<ActionResult<SectionResponseDto>> GetSectionByUuid([FromRoute(Name = "id")] Guid uuid)
         {
             try
             {
@@ -120,6 +121,7 @@ namespace attendance_monitoring.Controllers
 
         [Authorize(Policy = "AdminPolicy")]
         [HttpPut("{id:int}")]
+        [ApiExplorerSettings(IgnoreApi = true)]
         public async Task<ActionResult<SectionResponseDto>> UpdateSection(int id, [FromBody] CreateSection updateSection)
         {
             try
@@ -161,8 +163,8 @@ namespace attendance_monitoring.Controllers
         }
 
         [Authorize(Policy = "AdminPolicy")]
-        [HttpPut("uuid/{uuid:guid}")]
-        public async Task<ActionResult<SectionResponseDto>> UpdateSectionByUuid(Guid uuid, [FromBody] CreateSection updateSection)
+        [HttpPut("{id:guid}")]
+        public async Task<ActionResult<SectionResponseDto>> UpdateSectionByUuid([FromRoute(Name = "id")] Guid uuid, [FromBody] CreateSection updateSection)
         {
             try
             {
@@ -199,6 +201,7 @@ namespace attendance_monitoring.Controllers
 
         [Authorize(Policy = "AdminPolicy")]
         [HttpDelete("{id:int}")]
+        [ApiExplorerSettings(IgnoreApi = true)]
         public async Task<ActionResult> DeleteSection(int id)
         {
             try
@@ -224,8 +227,8 @@ namespace attendance_monitoring.Controllers
         }
 
         [Authorize(Policy = "AdminPolicy")]
-        [HttpDelete("uuid/{uuid:guid}")]
-        public async Task<ActionResult> DeleteSectionByUuid(Guid uuid)
+        [HttpDelete("{id:guid}")]
+        public async Task<ActionResult> DeleteSectionByUuid([FromRoute(Name = "id")] Guid uuid)
         {
             try
             {

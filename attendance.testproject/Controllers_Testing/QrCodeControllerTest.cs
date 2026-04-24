@@ -589,20 +589,20 @@ public class QrCodeControllerTest
     {
         Assert.Equal("{id:int}", GetHttpTemplate(nameof(QrCodeController.GetQrCodeById)));
         Assert.Equal("hash/{qrHash}", GetHttpTemplate(nameof(QrCodeController.GetQrCodeByHash)));
-        Assert.Equal("uuid/{uuid:guid}", GetHttpTemplate(nameof(QrCodeController.GetQrCodeByUuid)));
+        Assert.Equal("{id:guid}", GetHttpTemplate(nameof(QrCodeController.GetQrCodeByUuid)));
         Assert.Equal("{id:int}/image", GetHttpTemplate(nameof(QrCodeController.GetQrCodeImage)));
-        Assert.Equal("uuid/{uuid:guid}/image", GetHttpTemplate(nameof(QrCodeController.GetQrCodeImageByUuid)));
+        Assert.Equal("{id:guid}/image", GetHttpTemplate(nameof(QrCodeController.GetQrCodeImageByUuid)));
         Assert.Equal("{id:int}/revoke", GetHttpTemplate(nameof(QrCodeController.RevokeQrCode)));
         Assert.Equal("hash/{qrHash}/revoke", GetHttpTemplate(nameof(QrCodeController.RevokeQrCodeByHash)));
-        Assert.Equal("uuid/{uuid:guid}/revoke", GetHttpTemplate(nameof(QrCodeController.RevokeQrCodeByUuid)));
+        Assert.Equal("{id:guid}/revoke", GetHttpTemplate(nameof(QrCodeController.RevokeQrCodeByUuid)));
         Assert.Equal("{id:int}/reactivate", GetHttpTemplate(nameof(QrCodeController.ReactivateQrCode)));
         Assert.Equal("hash/{qrHash}/reactivate", GetHttpTemplate(nameof(QrCodeController.ReactivateQrCodeByHash)));
-        Assert.Equal("uuid/{uuid:guid}/reactivate", GetHttpTemplate(nameof(QrCodeController.ReactivateQrCodeByUuid)));
+        Assert.Equal("{id:guid}/reactivate", GetHttpTemplate(nameof(QrCodeController.ReactivateQrCodeByUuid)));
         Assert.Equal("session/{sessionId:int}", GetHttpTemplate(nameof(QrCodeController.GetQrCodesBySessionId)));
-        Assert.Equal("session/uuid/{sessionUuid:guid}", GetHttpTemplate(nameof(QrCodeController.GetQrCodesBySessionUuid)));
+        Assert.Equal("session/{id:guid}", GetHttpTemplate(nameof(QrCodeController.GetQrCodesBySessionUuid)));
         Assert.Equal("{id:int}/scan-history", GetHttpTemplate(nameof(QrCodeController.GetScanHistory)));
         Assert.Equal("hash/{qrHash}/scan-history", GetHttpTemplate(nameof(QrCodeController.GetScanHistoryByHash)));
-        Assert.Equal("uuid/{uuid:guid}/scan-history", GetHttpTemplate(nameof(QrCodeController.GetScanHistoryByUuid)));
+        Assert.Equal("{id:guid}/scan-history", GetHttpTemplate(nameof(QrCodeController.GetScanHistoryByUuid)));
     }
 
     private static string? GetHttpTemplate(string methodName)

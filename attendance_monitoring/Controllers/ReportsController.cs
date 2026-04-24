@@ -52,13 +52,13 @@ public class ReportsController(IReportsService reportsService, ILogger<ReportsCo
     /// Returns attendance history and statistics for a specific student.
     /// Accessible to Admin, Instructors, and Students (students can only view their own data).
     /// </summary>
-    [HttpGet("student-attendance/{studentId:int}")]
+    [HttpGet("student-attendance/{id:guid}")]
     [ProducesResponseType(typeof(StudentAttendanceHistoryDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<ActionResult<StudentAttendanceHistoryDto>> GetStudentAttendanceReport(int studentId)
+    public async Task<ActionResult<StudentAttendanceHistoryDto>> GetStudentAttendanceReport([FromRoute(Name = "id")] Guid studentId)
     {
         logger.LogInformation("Getting student attendance report for StudentId: {StudentId}", studentId);
         try
@@ -66,7 +66,7 @@ public class ReportsController(IReportsService reportsService, ILogger<ReportsCo
             var result = await reportsService.GetStudentAttendanceReportAsync(studentId, User);
             return Ok(result);
         }
-        catch (EntityNotFoundException<int> ex)
+        catch (EntityNotFoundException<Guid> ex)
         {
             logger.LogWarning(ex, "Student {StudentId} not found", studentId);
             return NotFound(new { message = ex.Message });
@@ -82,14 +82,14 @@ public class ReportsController(IReportsService reportsService, ILogger<ReportsCo
     /// Returns full attendance overview for a specific session.
     /// Instructors can only view their own sessions.
     /// </summary>
-    [HttpGet("session-attendance/{sessionId:int}")]
+    [HttpGet("session-attendance/{id:guid}")]
     [Authorize(Policy = "PrivilegedPolicy")]
     [ProducesResponseType(typeof(SessionAttendanceDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<ActionResult<SessionAttendanceDto>> GetSessionAttendanceReport(int sessionId)
+    public async Task<ActionResult<SessionAttendanceDto>> GetSessionAttendanceReport([FromRoute(Name = "id")] Guid sessionId)
     {
         logger.LogInformation("Getting session attendance report for SessionId: {SessionId}", sessionId);
         try
@@ -97,7 +97,7 @@ public class ReportsController(IReportsService reportsService, ILogger<ReportsCo
             var result = await reportsService.GetSessionAttendanceReportAsync(sessionId, User);
             return Ok(result);
         }
-        catch (EntityNotFoundException<int> ex)
+        catch (EntityNotFoundException<Guid> ex)
         {
             logger.LogWarning(ex, "Session {SessionId} not found", sessionId);
             return NotFound(new { message = ex.Message });
@@ -113,14 +113,14 @@ public class ReportsController(IReportsService reportsService, ILogger<ReportsCo
     /// Returns section-level attendance summary with per-session breakdown.
     /// Accepts optional filters: startDate, endDate.
     /// </summary>
-    [HttpGet("class-attendance/{sectionId:int}")]
+    [HttpGet("class-attendance/{id:guid}")]
     [Authorize(Policy = "PrivilegedPolicy")]
     [ProducesResponseType(typeof(ClassAttendanceSummaryDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<ActionResult<ClassAttendanceSummaryDto>> GetClassAttendanceReport(
-        int sectionId, [FromQuery] AttendanceFilterRequest filter)
+        [FromRoute(Name = "id")] Guid sectionId, [FromQuery] AttendanceFilterRequest filter)
     {
         logger.LogInformation("Getting class attendance report for SectionId: {SectionId}", sectionId);
         try
@@ -128,7 +128,7 @@ public class ReportsController(IReportsService reportsService, ILogger<ReportsCo
             var result = await reportsService.GetClassAttendanceReportAsync(sectionId, filter, User);
             return Ok(result);
         }
-        catch (EntityNotFoundException<int> ex)
+        catch (EntityNotFoundException<Guid> ex)
         {
             logger.LogWarning(ex, "Section {SectionId} not found", sectionId);
             return NotFound(new { message = ex.Message });
@@ -149,14 +149,14 @@ public class ReportsController(IReportsService reportsService, ILogger<ReportsCo
     /// Returns session list with per-session attendance counts for a specific instructor.
     /// Accepts optional filters: startDate, endDate.
     /// </summary>
-    [HttpGet("instructor-sessions/{instructorId:int}")]
+    [HttpGet("instructor-sessions/{id:guid}")]
     [Authorize(Policy = "PrivilegedPolicy")]
     [ProducesResponseType(typeof(InstructorSessionsReportDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<ActionResult<InstructorSessionsReportDto>> GetInstructorSessionsReport(
-        int instructorId, [FromQuery] AttendanceFilterRequest filter)
+        [FromRoute(Name = "id")] Guid instructorId, [FromQuery] AttendanceFilterRequest filter)
     {
         logger.LogInformation("Getting instructor sessions report for InstructorId: {InstructorId}", instructorId);
         try
@@ -164,7 +164,7 @@ public class ReportsController(IReportsService reportsService, ILogger<ReportsCo
             var result = await reportsService.GetInstructorSessionsReportAsync(instructorId, filter, User);
             return Ok(result);
         }
-        catch (EntityNotFoundException<int> ex)
+        catch (EntityNotFoundException<Guid> ex)
         {
             logger.LogWarning(ex, "Instructor {InstructorId} not found", instructorId);
             return NotFound(new { message = ex.Message });

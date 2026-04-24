@@ -73,6 +73,7 @@ public class StudentEnrollmentController : ControllerBase
     /// Get all enrollments for a specific student
     /// </summary>
     [HttpGet("student/{studentId:int}")]
+    [ApiExplorerSettings(IgnoreApi = true)]
     [Authorize(Roles = "Admin,Instructor,Student")]
     public async Task<ActionResult<StudentSectionsResponseDto>> GetStudentEnrollments(int studentId)
     {
@@ -87,9 +88,9 @@ public class StudentEnrollmentController : ControllerBase
         return Ok(response);
     }
 
-    [HttpGet("student/uuid/{studentUuid:guid}")]
+    [HttpGet("student/{id:guid}")]
     [Authorize(Roles = "Admin,Instructor,Student")]
-    public async Task<ActionResult<StudentSectionsResponseDto>> GetStudentEnrollmentsByUuid(Guid studentUuid)
+    public async Task<ActionResult<StudentSectionsResponseDto>> GetStudentEnrollmentsByUuid([FromRoute(Name = "id")] Guid studentUuid)
     {
         _logger.LogInformation("Retrieving enrollments for student UUID {StudentUuid}", studentUuid);
 
@@ -106,6 +107,7 @@ public class StudentEnrollmentController : ControllerBase
     /// Get all active students enrolled in a specific section
     /// </summary>
     [HttpGet("section/{sectionId:int}/students")]
+    [ApiExplorerSettings(IgnoreApi = true)]
     [Authorize(Roles = "Admin,Instructor")]
     public async Task<ActionResult<IEnumerable<StudentEnrollmentResponseDto>>> GetSectionStudents(int sectionId)
     {
@@ -118,9 +120,9 @@ public class StudentEnrollmentController : ControllerBase
         return Ok(response);
     }
 
-    [HttpGet("section/uuid/{sectionUuid:guid}/students")]
+    [HttpGet("section/{id:guid}/students")]
     [Authorize(Roles = "Admin,Instructor")]
-    public async Task<ActionResult<IEnumerable<StudentEnrollmentResponseDto>>> GetSectionStudentsByUuid(Guid sectionUuid)
+    public async Task<ActionResult<IEnumerable<StudentEnrollmentResponseDto>>> GetSectionStudentsByUuid([FromRoute(Name = "id")] Guid sectionUuid)
     {
         _logger.LogInformation("Retrieving active students for section UUID {SectionUuid}", sectionUuid);
 
@@ -135,6 +137,7 @@ public class StudentEnrollmentController : ControllerBase
     /// Drop a student from a specific enrollment (deactivate)
     /// </summary>
     [HttpPatch("{enrollmentId:int}/drop")]
+    [ApiExplorerSettings(IgnoreApi = true)]
     [Authorize(Roles = "Admin")]
     public async Task<ActionResult> DropStudent(int enrollmentId)
     {
@@ -159,9 +162,9 @@ public class StudentEnrollmentController : ControllerBase
         }
     }
 
-    [HttpPatch("uuid/{uuid:guid}/drop")]
+    [HttpPatch("{id:guid}/drop")]
     [Authorize(Roles = "Admin")]
-    public async Task<ActionResult> DropStudentByUuid(Guid uuid)
+    public async Task<ActionResult> DropStudentByUuid([FromRoute(Name = "id")] Guid uuid)
     {
         try
         {
@@ -188,6 +191,7 @@ public class StudentEnrollmentController : ControllerBase
     /// Re-enroll a student (reactivate enrollment)
     /// </summary>
     [HttpPatch("{enrollmentId:int}/reenroll")]
+    [ApiExplorerSettings(IgnoreApi = true)]
     [Authorize(Roles = "Admin")]
     public async Task<ActionResult> ReenrollStudent(int enrollmentId)
     {
@@ -212,9 +216,9 @@ public class StudentEnrollmentController : ControllerBase
         }
     }
 
-    [HttpPatch("uuid/{uuid:guid}/reenroll")]
+    [HttpPatch("{id:guid}/reenroll")]
     [Authorize(Roles = "Admin")]
-    public async Task<ActionResult> ReenrollStudentByUuid(Guid uuid)
+    public async Task<ActionResult> ReenrollStudentByUuid([FromRoute(Name = "id")] Guid uuid)
     {
         try
         {

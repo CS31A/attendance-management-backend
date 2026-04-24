@@ -88,6 +88,7 @@ public class AttendanceController(IAttendanceService attendanceService, ILogger<
     /// <response code="404">Attendance record not found</response>
     /// <response code="500">Internal server error</response>
     [HttpGet("{id:int}")]
+    [ApiExplorerSettings(IgnoreApi = true)]
     public async Task<ActionResult<AttendanceRecordResponseDto>> GetAttendance(int id)
     {
         logger.LogInformation("Getting attendance record with ID: {Id}", id);
@@ -110,8 +111,8 @@ public class AttendanceController(IAttendanceService attendanceService, ILogger<
         }
     }
 
-    [HttpGet("uuid/{uuid:guid}")]
-    public async Task<ActionResult<AttendanceRecordResponseDto>> GetAttendanceByUuid(Guid uuid)
+    [HttpGet("{id:guid}")]
+    public async Task<ActionResult<AttendanceRecordResponseDto>> GetAttendanceByUuid([FromRoute(Name = "id")] Guid uuid)
     {
         logger.LogInformation("Getting attendance record with UUID: {Uuid}", uuid);
 
@@ -165,6 +166,7 @@ public class AttendanceController(IAttendanceService attendanceService, ILogger<
     /// <response code="404">Student not found</response>
     /// <response code="500">Internal server error</response>
     [HttpGet("student/{studentId:int}")]
+    [ApiExplorerSettings(IgnoreApi = true)]
     public async Task<ActionResult<StudentAttendanceHistoryDto>> GetStudentAttendanceHistory(int studentId)
     {
         logger.LogInformation("Getting attendance history for StudentId: {StudentId}", studentId);
@@ -187,8 +189,8 @@ public class AttendanceController(IAttendanceService attendanceService, ILogger<
         }
     }
 
-    [HttpGet("student/uuid/{studentUuid:guid}")]
-    public async Task<ActionResult<StudentAttendanceHistoryDto>> GetStudentAttendanceHistoryByUuid(Guid studentUuid)
+    [HttpGet("student/{id:guid}")]
+    public async Task<ActionResult<StudentAttendanceHistoryDto>> GetStudentAttendanceHistoryByUuid([FromRoute(Name = "id")] Guid studentUuid)
     {
         logger.LogInformation("Getting attendance history for StudentUuid: {StudentUuid}", studentUuid);
 
@@ -222,6 +224,7 @@ public class AttendanceController(IAttendanceService attendanceService, ILogger<
     /// <response code="404">Session not found</response>
     /// <response code="500">Internal server error</response>
     [HttpGet("session/{sessionId:int}")]
+    [ApiExplorerSettings(IgnoreApi = true)]
     [Authorize(Policy = "PrivilegedPolicy")]
     public async Task<ActionResult<SessionAttendanceDto>> GetSessionAttendance(int sessionId)
     {
@@ -245,9 +248,9 @@ public class AttendanceController(IAttendanceService attendanceService, ILogger<
         }
     }
 
-    [HttpGet("session/uuid/{sessionUuid:guid}")]
+    [HttpGet("session/{id:guid}")]
     [Authorize(Policy = "PrivilegedPolicy")]
-    public async Task<ActionResult<SessionAttendanceDto>> GetSessionAttendanceByUuid(Guid sessionUuid)
+    public async Task<ActionResult<SessionAttendanceDto>> GetSessionAttendanceByUuid([FromRoute(Name = "id")] Guid sessionUuid)
     {
         logger.LogInformation("Getting session attendance for SessionUuid: {SessionUuid}", sessionUuid);
 
@@ -307,6 +310,7 @@ public class AttendanceController(IAttendanceService attendanceService, ILogger<
     /// <response code="404">Attendance record not found</response>
     /// <response code="500">Internal server error</response>
     [HttpPut("{id:int}")]
+    [ApiExplorerSettings(IgnoreApi = true)]
     [Authorize(Policy = "PrivilegedPolicy")]
     public async Task<ActionResult<AttendanceRecordResponseDto>> UpdateAttendance(int id, [FromBody] UpdateAttendanceRequest request)
     {
@@ -330,9 +334,9 @@ public class AttendanceController(IAttendanceService attendanceService, ILogger<
         }
     }
 
-    [HttpPut("uuid/{uuid:guid}")]
+    [HttpPut("{id:guid}")]
     [Authorize(Policy = "PrivilegedPolicy")]
-    public async Task<ActionResult<AttendanceRecordResponseDto>> UpdateAttendanceByUuid(Guid uuid, [FromBody] UpdateAttendanceRequest request)
+    public async Task<ActionResult<AttendanceRecordResponseDto>> UpdateAttendanceByUuid([FromRoute(Name = "id")] Guid uuid, [FromBody] UpdateAttendanceRequest request)
     {
         logger.LogInformation("Updating attendance record with UUID: {Uuid}", uuid);
 
@@ -370,6 +374,7 @@ public class AttendanceController(IAttendanceService attendanceService, ILogger<
     /// <response code="404">Attendance record not found</response>
     /// <response code="500">Internal server error</response>
     [HttpDelete("{id:int}")]
+    [ApiExplorerSettings(IgnoreApi = true)]
     [Authorize(Policy = "PrivilegedPolicy")]
     public async Task<IActionResult> DeleteAttendance(int id)
     {
@@ -399,9 +404,9 @@ public class AttendanceController(IAttendanceService attendanceService, ILogger<
         }
     }
 
-    [HttpDelete("uuid/{uuid:guid}")]
+    [HttpDelete("{id:guid}")]
     [Authorize(Policy = "PrivilegedPolicy")]
-    public async Task<IActionResult> DeleteAttendanceByUuid(Guid uuid)
+    public async Task<IActionResult> DeleteAttendanceByUuid([FromRoute(Name = "id")] Guid uuid)
     {
         logger.LogInformation("Deleting attendance record with UUID: {Uuid}", uuid);
 

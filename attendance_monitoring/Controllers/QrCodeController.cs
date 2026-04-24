@@ -90,6 +90,7 @@ public class QrCodeController(
     /// <param name="request">Optional revocation reason.</param>
     /// <returns>NoContent if successful, error otherwise.</returns>
     [HttpPatch("{id:int}/revoke")]
+    [ApiExplorerSettings(IgnoreApi = true)]
     [Authorize(Policy = "PrivilegedPolicy")]
     public async Task<ActionResult> RevokeQrCode(int id, [FromBody] RevokeQrCode? request)
     {
@@ -101,9 +102,9 @@ public class QrCodeController(
         return NoContent();
     }
 
-    [HttpPatch("uuid/{uuid:guid}/revoke")]
+    [HttpPatch("{id:guid}/revoke")]
     [Authorize(Policy = "PrivilegedPolicy")]
-    public async Task<ActionResult> RevokeQrCodeByUuid(Guid uuid, [FromBody] RevokeQrCode? request)
+    public async Task<ActionResult> RevokeQrCodeByUuid([FromRoute(Name = "id")] Guid uuid, [FromBody] RevokeQrCode? request)
     {
         logger.LogInformation("Revoking QR code with UUID: {QrCodeUuid}", uuid);
 
@@ -137,6 +138,7 @@ public class QrCodeController(
     /// <param name="id">The QR code ID to reactivate.</param>
     /// <returns>NoContent if successful, error otherwise.</returns>
     [HttpPatch("{id:int}/reactivate")]
+    [ApiExplorerSettings(IgnoreApi = true)]
     [Authorize(Policy = "PrivilegedPolicy")]
     public async Task<ActionResult> ReactivateQrCode(int id)
     {
@@ -148,9 +150,9 @@ public class QrCodeController(
         return NoContent();
     }
 
-    [HttpPatch("uuid/{uuid:guid}/reactivate")]
+    [HttpPatch("{id:guid}/reactivate")]
     [Authorize(Policy = "PrivilegedPolicy")]
-    public async Task<ActionResult> ReactivateQrCodeByUuid(Guid uuid)
+    public async Task<ActionResult> ReactivateQrCodeByUuid([FromRoute(Name = "id")] Guid uuid)
     {
         logger.LogInformation("Reactivating QR code with UUID: {QrCodeUuid}", uuid);
 
@@ -183,6 +185,7 @@ public class QrCodeController(
     /// <param name="id">The QR code ID.</param>
     /// <returns>QR code details if found.</returns>
     [HttpGet("{id:int}")]
+    [ApiExplorerSettings(IgnoreApi = true)]
     [Authorize(Policy = "PrivilegedPolicy")]
     public async Task<ActionResult> GetQrCodeById(int id)
     {
@@ -201,9 +204,9 @@ public class QrCodeController(
         // No try-catch - global handler will catch any unexpected errors
     }
 
-    [HttpGet("uuid/{uuid:guid}")]
+    [HttpGet("{id:guid}")]
     [Authorize(Policy = "PrivilegedPolicy")]
-    public async Task<ActionResult> GetQrCodeByUuid(Guid uuid)
+    public async Task<ActionResult> GetQrCodeByUuid([FromRoute(Name = "id")] Guid uuid)
     {
         logger.LogInformation("Retrieving QR code with UUID: {QrCodeUuid}", uuid);
 
@@ -226,6 +229,7 @@ public class QrCodeController(
     /// <param name="id">The QR code ID.</param>
     /// <returns>QR code image as PNG file.</returns>
     [HttpGet("{id:int}/image")]
+    [ApiExplorerSettings(IgnoreApi = true)]
     [Authorize(Policy = "PrivilegedPolicy")]
     public async Task<IActionResult> GetQrCodeImage(int id)
     {
@@ -251,9 +255,9 @@ public class QrCodeController(
         return File(imageBytes, "image/png");
     }
 
-    [HttpGet("uuid/{uuid:guid}/image")]
+    [HttpGet("{id:guid}/image")]
     [Authorize(Policy = "PrivilegedPolicy")]
-    public async Task<IActionResult> GetQrCodeImageByUuid(Guid uuid)
+    public async Task<IActionResult> GetQrCodeImageByUuid([FromRoute(Name = "id")] Guid uuid)
     {
         logger.LogInformation("Retrieving QR code image for UUID: {QrCodeUuid}", uuid);
 
@@ -304,6 +308,7 @@ public class QrCodeController(
     /// <param name="sessionId">The session ID.</param>
     /// <returns>List of QR codes for the session.</returns>
     [HttpGet("session/{sessionId:int}")]
+    [ApiExplorerSettings(IgnoreApi = true)]
     [Authorize(Policy = "PrivilegedPolicy")]
     public async Task<ActionResult> GetQrCodesBySessionId(int sessionId)
     {
@@ -364,9 +369,9 @@ public class QrCodeController(
         }
     }
 
-    [HttpGet("session/uuid/{sessionUuid:guid}")]
+    [HttpGet("session/{id:guid}")]
     [Authorize(Policy = "PrivilegedPolicy")]
-    public async Task<ActionResult> GetQrCodesBySessionUuid(Guid sessionUuid)
+    public async Task<ActionResult> GetQrCodesBySessionUuid([FromRoute(Name = "id")] Guid sessionUuid)
     {
         logger.LogInformation("Retrieving QR codes for session UUID: {SessionUuid}", sessionUuid);
 
@@ -482,6 +487,7 @@ public class QrCodeController(
     /// <param name="pageSize">Page size (default: 50, max: 100)</param>
     /// <returns>Paginated scan history with statistics</returns>
     [HttpGet("{id:int}/scan-history")]
+    [ApiExplorerSettings(IgnoreApi = true)]
     [Authorize(Policy = "PrivilegedPolicy")]
     [ProducesResponseType(typeof(attendance_monitoring.Models.DTO.Response.QrCodeScanHistoryResponseDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -535,14 +541,14 @@ public class QrCodeController(
         }
     }
 
-    [HttpGet("uuid/{uuid:guid}/scan-history")]
+    [HttpGet("{id:guid}/scan-history")]
     [Authorize(Policy = "PrivilegedPolicy")]
     [ProducesResponseType(typeof(attendance_monitoring.Models.DTO.Response.QrCodeScanHistoryResponseDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult> GetScanHistoryByUuid(
-        Guid uuid,
+        [FromRoute(Name = "id")] Guid uuid,
         [FromQuery] int pageNumber = 1,
         [FromQuery] int pageSize = 50)
     {

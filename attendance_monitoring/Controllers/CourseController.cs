@@ -49,6 +49,7 @@ public class CourseController(ICourseService courseService, ILogger<CourseContro
     /// <response code="500">Internal server error</response>
     // GET: api/Course/5
     [HttpGet("{id:int}")]
+    [ApiExplorerSettings(IgnoreApi = true)]
     public async Task<ActionResult<Course>> GetCourse(int id)
     {
         try
@@ -70,8 +71,8 @@ public class CourseController(ICourseService courseService, ILogger<CourseContro
         }
     }
 
-    [HttpGet("uuid/{uuid:guid}")]
-    public async Task<ActionResult<Course>> GetCourseByUuid(Guid uuid)
+    [HttpGet("{id:guid}")]
+    public async Task<ActionResult<Course>> GetCourseByUuid([FromRoute(Name = "id")] Guid uuid)
     {
         try
         {
@@ -139,6 +140,7 @@ public class CourseController(ICourseService courseService, ILogger<CourseContro
     /// <response code="500">Internal server error</response>
     // PUT: api/Course/5
     [HttpPut("{id:int}")]
+    [ApiExplorerSettings(IgnoreApi = true)]
     [Authorize(Policy = "AdminPolicy")]
     public async Task<ActionResult<Course>> UpdateCourse(int id, UpdateCourse updateCourse)
     {
@@ -167,9 +169,9 @@ public class CourseController(ICourseService courseService, ILogger<CourseContro
         }
     }
 
-    [HttpPut("uuid/{uuid:guid}")]
+    [HttpPut("{id:guid}")]
     [Authorize(Policy = "AdminPolicy")]
-    public async Task<ActionResult<Course>> UpdateCourseByUuid(Guid uuid, UpdateCourse updateCourse)
+    public async Task<ActionResult<Course>> UpdateCourseByUuid([FromRoute(Name = "id")] Guid uuid, UpdateCourse updateCourse)
     {
         try
         {
@@ -207,6 +209,7 @@ public class CourseController(ICourseService courseService, ILogger<CourseContro
     /// <response code="500">Internal server error</response>
     // DELETE: api/Course/5
     [HttpDelete("{id:int}")]
+    [ApiExplorerSettings(IgnoreApi = true)]
     [Authorize(Policy = "AdminPolicy")]
     public async Task<ActionResult> DeleteCourse(int id)
     {
@@ -229,9 +232,9 @@ public class CourseController(ICourseService courseService, ILogger<CourseContro
         }
     }
 
-    [HttpDelete("uuid/{uuid:guid}")]
+    [HttpDelete("{id:guid}")]
     [Authorize(Policy = "AdminPolicy")]
-    public async Task<ActionResult> DeleteCourseByUuid(Guid uuid)
+    public async Task<ActionResult> DeleteCourseByUuid([FromRoute(Name = "id")] Guid uuid)
     {
         try
         {

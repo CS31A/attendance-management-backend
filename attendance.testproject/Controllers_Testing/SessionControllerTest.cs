@@ -889,17 +889,17 @@ public class SessionControllerTest
     public void SliceBRouteTemplates_SeparateIntAndUuidRoutes()
     {
         Assert.Equal("{id:int}", GetHttpTemplate(nameof(SessionController.GetSession)));
-        Assert.Equal("uuid/{uuid:guid}", GetHttpTemplate(nameof(SessionController.GetSessionByUuid)));
+        Assert.Equal("{id:guid}", GetHttpTemplate(nameof(SessionController.GetSessionByUuid)));
         Assert.Equal("schedule/{scheduleId:int}", GetHttpTemplate(nameof(SessionController.GetSessionsBySchedule)));
-        Assert.Equal("schedule/uuid/{scheduleUuid:guid}", GetHttpTemplate(nameof(SessionController.GetSessionsByScheduleUuid)));
+        Assert.Equal("schedule/{id:guid}", GetHttpTemplate(nameof(SessionController.GetSessionsByScheduleUuid)));
         Assert.Equal("{id:int}/room", GetHttpTemplate(nameof(SessionController.UpdateSessionRoom)));
-        Assert.Equal("uuid/{uuid:guid}/room", GetHttpTemplate(nameof(SessionController.UpdateSessionRoomByUuid)));
+        Assert.Equal("{id:guid}/room", GetHttpTemplate(nameof(SessionController.UpdateSessionRoomByUuid)));
         Assert.Equal("{id:int}/start", GetHttpTemplate(nameof(SessionController.StartSession)));
-        Assert.Equal("uuid/{uuid:guid}/start", GetHttpTemplate(nameof(SessionController.StartSessionByUuid)));
+        Assert.Equal("{id:guid}/start", GetHttpTemplate(nameof(SessionController.StartSessionByUuid)));
         Assert.Equal("{id:int}/end", GetHttpTemplate(nameof(SessionController.EndSession)));
-        Assert.Equal("uuid/{uuid:guid}/end", GetHttpTemplate(nameof(SessionController.EndSessionByUuid)));
+        Assert.Equal("{id:guid}/end", GetHttpTemplate(nameof(SessionController.EndSessionByUuid)));
         Assert.Equal("{id:int}", GetHttpTemplate(nameof(SessionController.CancelSession)));
-        Assert.Equal("uuid/{uuid:guid}", GetHttpTemplate(nameof(SessionController.CancelSessionByUuid)));
+        Assert.Equal("{id:guid}", GetHttpTemplate(nameof(SessionController.CancelSessionByUuid)));
     }
 
     #endregion

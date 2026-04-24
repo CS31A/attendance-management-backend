@@ -273,15 +273,15 @@ public class AttendanceControllerTest
     public void SliceBRouteTemplates_SeparateIntAndUuidRoutes()
     {
         Assert.Equal("{id:int}", GetHttpTemplate(nameof(AttendanceController.GetAttendance)));
-        Assert.Equal("uuid/{uuid:guid}", GetHttpTemplate(nameof(AttendanceController.GetAttendanceByUuid)));
+        Assert.Equal("{id:guid}", GetHttpTemplate(nameof(AttendanceController.GetAttendanceByUuid)));
         Assert.Equal("{id:int}", GetHttpTemplate(nameof(AttendanceController.UpdateAttendance)));
-        Assert.Equal("uuid/{uuid:guid}", GetHttpTemplate(nameof(AttendanceController.UpdateAttendanceByUuid)));
+        Assert.Equal("{id:guid}", GetHttpTemplate(nameof(AttendanceController.UpdateAttendanceByUuid)));
         Assert.Equal("{id:int}", GetHttpTemplate(nameof(AttendanceController.DeleteAttendance)));
-        Assert.Equal("uuid/{uuid:guid}", GetHttpTemplate(nameof(AttendanceController.DeleteAttendanceByUuid)));
+        Assert.Equal("{id:guid}", GetHttpTemplate(nameof(AttendanceController.DeleteAttendanceByUuid)));
         Assert.Equal("student/{studentId:int}", GetHttpTemplate(nameof(AttendanceController.GetStudentAttendanceHistory)));
-        Assert.Equal("student/uuid/{studentUuid:guid}", GetHttpTemplate(nameof(AttendanceController.GetStudentAttendanceHistoryByUuid)));
+        Assert.Equal("student/{id:guid}", GetHttpTemplate(nameof(AttendanceController.GetStudentAttendanceHistoryByUuid)));
         Assert.Equal("session/{sessionId:int}", GetHttpTemplate(nameof(AttendanceController.GetSessionAttendance)));
-        Assert.Equal("session/uuid/{sessionUuid:guid}", GetHttpTemplate(nameof(AttendanceController.GetSessionAttendanceByUuid)));
+        Assert.Equal("session/{id:guid}", GetHttpTemplate(nameof(AttendanceController.GetSessionAttendanceByUuid)));
     }
 
     private static string? GetHttpTemplate(string methodName)

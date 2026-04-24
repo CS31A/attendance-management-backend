@@ -35,7 +35,7 @@ public class ReportsControllerTest
     public async Task GetInstructorSessionsReport_ReturnsForbid_WhenServiceRejectsCrossInstructorAccess()
     {
         // Arrange
-        const int instructorId = 10;
+        var instructorId = Guid.NewGuid();
         var filter = new AttendanceFilterRequest();
 
         _reportsService
