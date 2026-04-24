@@ -308,14 +308,16 @@ public class AttendanceConcurrencyTests
         var user = CreateInstructorUser("instructor-1");
         DateTime capturedCheckInTime = default;
         const int createdId = 100;
+        var studentId = request.StudentId!.Value;
+        var sessionId = request.SessionId!.Value;
 
         _mockUserManager.Setup(um => um.FindByIdAsync("instructor-1"))
             .ReturnsAsync(new IdentityUser { Id = "instructor-1" });
 
-        _mockSessionRepository.Setup(r => r.GetSessionByIdAsync(request.SessionId))
+        _mockSessionRepository.Setup(r => r.GetSessionByIdAsync(sessionId))
             .ReturnsAsync(new Session
             {
-                Id = request.SessionId,
+                Id = sessionId,
                 Schedule = new Schedules
                 {
                     InstructorId = 10,
@@ -324,13 +326,13 @@ public class AttendanceConcurrencyTests
                 }
             });
 
-        _mockStudentRepository.Setup(r => r.GetStudentByIdAsync(request.StudentId))
-            .ReturnsAsync(new Student { Id = request.StudentId, SectionId = 100 });
+        _mockStudentRepository.Setup(r => r.GetStudentByIdAsync(studentId))
+            .ReturnsAsync(new Student { Id = studentId, SectionId = 100 });
 
-        _mockStudentEnrollmentRepository.Setup(r => r.GetStudentEnrollmentsAsync(request.StudentId))
+        _mockStudentEnrollmentRepository.Setup(r => r.GetStudentEnrollmentsAsync(studentId))
             .ReturnsAsync(new List<StudentEnrollment>
             {
-                new StudentEnrollment { StudentId = request.StudentId, SectionId = 100 }
+                new StudentEnrollment { StudentId = studentId, SectionId = 100 }
             });
 
         _mockAttendanceRepository.Setup(r => r.CreateAsync(It.IsAny<AttendanceRecord>()))
@@ -343,7 +345,7 @@ public class AttendanceConcurrencyTests
         _mockAttendanceRepository.Setup(r => r.GetByIdAsync(createdId))
             .ReturnsAsync(() =>
             {
-                var record = CreateExistingAttendanceRecord(request.StudentId, request.SessionId);
+                var record = CreateExistingAttendanceRecord(studentId, sessionId);
                 record.Id = createdId;
                 record.CheckInTime = capturedCheckInTime;
                 record.Status = request.Status;
