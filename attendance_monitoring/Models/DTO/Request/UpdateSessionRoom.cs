@@ -16,6 +16,11 @@ public class UpdateSessionRoom
     public int ActualRoomId { get; set; }
 
     /// <summary>
+    /// The UUID of the new classroom for the session.
+    /// </summary>
+    public Guid? ActualRoomUuid { get; set; }
+
+    /// <summary>
     /// Optimistic concurrency token for the current session row.
     /// Serialized as base64 over JSON.
     /// </summary>

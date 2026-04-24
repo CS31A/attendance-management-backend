@@ -15,6 +15,11 @@ public class CreateSession
     public int ScheduleId { get; set; }
 
     /// <summary>
+    /// The UUID of the schedule for which this session is being created.
+    /// </summary>
+    public Guid? ScheduleUuid { get; set; }
+
+    /// <summary>
     /// The date when the session will take place.
     /// If not provided, defaults to the current date.
     /// </summary>

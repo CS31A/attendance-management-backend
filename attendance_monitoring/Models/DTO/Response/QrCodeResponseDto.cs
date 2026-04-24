@@ -6,6 +6,7 @@ namespace attendance_monitoring.Models.DTO.Response;
 public class QrCodeResponseDto
 {
     public int Id { get; set; }
+    public Guid Uuid { get; set; }
     public int SessionId { get; set; }
     public string QrHash { get; set; } = string.Empty;
     public DateTime GeneratedAt { get; set; }

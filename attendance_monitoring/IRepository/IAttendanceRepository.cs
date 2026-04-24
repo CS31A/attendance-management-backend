@@ -38,6 +38,21 @@ public interface IAttendanceRepository : ISaveableRepository
     Task<AttendanceRecord?> GetByIdTrackedAsync(int id);
 
     /// <summary>
+    /// Retrieves an attendance record by its UUID with all navigation properties loaded.
+    /// </summary>
+    /// <param name="uuid">The attendance record UUID</param>
+    /// <returns>The attendance record if found, null otherwise</returns>
+    Task<AttendanceRecord?> GetAttendanceByUuidAsync(Guid uuid);
+
+    /// <summary>
+    /// Retrieves an attendance record by its UUID with all navigation properties loaded, with change tracking enabled.
+    /// Use for update operations where the entity needs to be tracked for changes.
+    /// </summary>
+    /// <param name="uuid">The attendance record UUID</param>
+    /// <returns>The attendance record if found, null otherwise</returns>
+    Task<AttendanceRecord?> GetAttendanceByUuidTrackedAsync(Guid uuid);
+
+    /// <summary>
     /// Retrieves all attendance records with pagination support.
     /// </summary>
     /// <param name="pageNumber">The page number (1-based)</param>

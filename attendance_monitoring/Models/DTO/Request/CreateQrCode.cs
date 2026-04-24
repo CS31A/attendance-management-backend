@@ -10,8 +10,12 @@ public class CreateQrCode
     /// <summary>
     /// The session ID this QR code belongs to
     /// </summary>
-    [Required]
     public int SessionId { get; set; }
+
+    /// <summary>
+    /// The session UUID this QR code belongs to (alternative to SessionId)
+    /// </summary>
+    public Guid? SessionUuid { get; set; }
 
     /// <summary>
     /// The QR code hash value

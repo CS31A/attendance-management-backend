@@ -11,8 +11,12 @@ public class QrCodeRequest
     /// The session ID this QR code belongs to.
     /// Session must be in 'active' status.
     /// </summary>
-    [Required]
     public int SessionId { get; set; }
+
+    /// <summary>
+    /// The session UUID this QR code belongs to (alternative to SessionId)
+    /// </summary>
+    public Guid? SessionUuid { get; set; }
 
     /// <summary>
     /// How many minutes until the QR code expires (1-1440 minutes / 24 hours)
