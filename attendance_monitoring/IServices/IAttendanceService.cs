@@ -94,12 +94,28 @@ public interface IAttendanceService
     Task<StudentAttendanceHistoryDto> GetStudentAttendanceHistoryAsync(int studentId, ClaimsPrincipal user);
 
     /// <summary>
+    /// Retrieves attendance history for a specific student UUID.
+    /// </summary>
+    /// <param name="studentUuid">The student UUID</param>
+    /// <param name="user">The current user principal for authorization</param>
+    /// <returns>Student attendance history with statistics</returns>
+    Task<StudentAttendanceHistoryDto> GetStudentAttendanceHistoryByUuidAsync(Guid studentUuid, ClaimsPrincipal user);
+
+    /// <summary>
     /// Retrieves attendance information for a specific session.
     /// </summary>
     /// <param name="sessionId">The session ID</param>
     /// <param name="user">The current user principal for authorization</param>
     /// <returns>Session attendance overview</returns>
     Task<SessionAttendanceDto> GetSessionAttendanceAsync(int sessionId, ClaimsPrincipal user);
+
+    /// <summary>
+    /// Retrieves attendance information for a specific session UUID.
+    /// </summary>
+    /// <param name="sessionUuid">The session UUID</param>
+    /// <param name="user">The current user principal for authorization</param>
+    /// <returns>Session attendance overview</returns>
+    Task<SessionAttendanceDto> GetSessionAttendanceByUuidAsync(Guid sessionUuid, ClaimsPrincipal user);
 
     /// <summary>
     /// Retrieves attendance summary statistics.

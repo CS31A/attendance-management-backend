@@ -82,6 +82,24 @@ public class SessionController(ISessionService sessionService, ILogger<SessionCo
         }
     }
 
+    [HttpGet("uuid/{uuid:guid}")]
+    public async Task<ActionResult<SessionResponseDto>> GetSessionByUuid(Guid uuid)
+    {
+        logger.LogInformation("Getting session with UUID: {Uuid}", uuid);
+
+        try
+        {
+            var session = await sessionService.GetSessionByUuidAsync(uuid);
+            logger.LogInformation("Successfully retrieved session with UUID: {Uuid}", uuid);
+            return Ok(session);
+        }
+        catch (EntityNotFoundException<Guid> ex)
+        {
+            logger.LogWarning(ex, "Session with UUID {Uuid} not found", uuid);
+            return NotFound(new { message = ex.Message });
+        }
+    }
+
     /// <summary>
     /// Get sessions for a specific schedule.
     /// </summary>
@@ -98,6 +116,17 @@ public class SessionController(ISessionService sessionService, ILogger<SessionCo
         var sessions = await sessionService.GetSessionsByScheduleIdAsync(scheduleId);
         logger.LogInformation("Successfully retrieved {Count} sessions for schedule ID: {ScheduleId}",
             sessions.Count(), scheduleId);
+        return Ok(sessions);
+    }
+
+    [HttpGet("schedule/uuid/{scheduleUuid:guid}")]
+    public async Task<ActionResult<IEnumerable<SessionResponseDto>>> GetSessionsByScheduleUuid(Guid scheduleUuid)
+    {
+        logger.LogInformation("Getting sessions for schedule UUID: {ScheduleUuid}", scheduleUuid);
+
+        var sessions = await sessionService.GetSessionsByScheduleUuidAsync(scheduleUuid);
+        logger.LogInformation("Successfully retrieved {Count} sessions for schedule UUID: {ScheduleUuid}",
+            sessions.Count(), scheduleUuid);
         return Ok(sessions);
     }
 
@@ -187,6 +216,23 @@ public class SessionController(ISessionService sessionService, ILogger<SessionCo
         // Exceptions are handled by global exception handler
     }
 
+    [HttpPatch("uuid/{uuid:guid}/room")]
+    [Authorize(Policy = "InstructorPolicy")]
+    public async Task<ActionResult<SessionResponseDto>> UpdateSessionRoomByUuid(Guid uuid, UpdateSessionRoom updateRequest)
+    {
+        logger.LogInformation("Updating room for session UUID: {SessionUuid}", uuid);
+
+        if (!ModelState.IsValid)
+        {
+            logger.LogWarning("Session room update failed due to invalid model state for session UUID: {SessionUuid}", uuid);
+            return BadRequest(ModelState);
+        }
+
+        var session = await sessionService.UpdateSessionRoomByUuidAsync(uuid, updateRequest);
+        logger.LogInformation("Successfully updated room for session UUID: {SessionUuid}", uuid);
+        return Ok(session);
+    }
+
     #endregion
 
     #region Lifecycle Management Operations
@@ -251,6 +297,23 @@ public class SessionController(ISessionService sessionService, ILogger<SessionCo
         // Exceptions are handled by global exception handler
     }
 
+    [HttpPatch("uuid/{uuid:guid}/start")]
+    [Authorize(Policy = "InstructorPolicy")]
+    public async Task<ActionResult<SessionResponseDto>> StartSessionByUuid(Guid uuid, [FromBody] StartSession request)
+    {
+        logger.LogInformation("Starting session UUID: {SessionUuid}", uuid);
+
+        if (!ModelState.IsValid)
+        {
+            logger.LogWarning("Session start failed due to invalid model state for session UUID: {SessionUuid}", uuid);
+            return BadRequest(ModelState);
+        }
+
+        var session = await sessionService.StartSessionByUuidAsync(uuid, request);
+        logger.LogInformation("Successfully started session UUID: {SessionUuid}", uuid);
+        return Ok(session);
+    }
+
     /// <summary>
     /// End an active session.
     /// </summary>
@@ -281,6 +344,23 @@ public class SessionController(ISessionService sessionService, ILogger<SessionCo
         // Exceptions are handled by global exception handler
     }
 
+    [HttpPatch("uuid/{uuid:guid}/end")]
+    [Authorize(Policy = "InstructorPolicy")]
+    public async Task<ActionResult<SessionResponseDto>> EndSessionByUuid(Guid uuid, [FromBody] EndSession request)
+    {
+        logger.LogInformation("Ending session UUID: {SessionUuid}", uuid);
+
+        if (!ModelState.IsValid)
+        {
+            logger.LogWarning("Session end failed due to invalid model state for session UUID: {SessionUuid}", uuid);
+            return BadRequest(ModelState);
+        }
+
+        var session = await sessionService.EndSessionByUuidAsync(uuid, request);
+        logger.LogInformation("Successfully ended session UUID: {SessionUuid}", uuid);
+        return Ok(session);
+    }
+
     /// <summary>
     /// Cancel a session that has not started yet.
     /// </summary>
@@ -309,6 +389,23 @@ public class SessionController(ISessionService sessionService, ILogger<SessionCo
         logger.LogInformation("Successfully cancelled session ID: {SessionId}", id);
         return Ok(session);
         // Exceptions are handled by global exception handler
+    }
+
+    [HttpDelete("uuid/{uuid:guid}")]
+    [Authorize(Policy = "PrivilegedPolicy")]
+    public async Task<ActionResult<SessionResponseDto>> CancelSessionByUuid(Guid uuid, [FromBody] CancelSession request)
+    {
+        logger.LogInformation("Cancelling session UUID: {SessionUuid}", uuid);
+
+        if (!ModelState.IsValid)
+        {
+            logger.LogWarning("Session cancellation failed due to invalid model state for session UUID: {SessionUuid}", uuid);
+            return BadRequest(ModelState);
+        }
+
+        var session = await sessionService.CancelSessionByUuidAsync(uuid, request);
+        logger.LogInformation("Successfully cancelled session UUID: {SessionUuid}", uuid);
+        return Ok(session);
     }
 
     #endregion

@@ -8,12 +8,16 @@ internal interface IIdempotentAttendanceRetryResult;
 public class AttendanceRecordResponseDto
 {
     public int Id { get; set; }
+    public Guid Uuid { get; set; }
     public int StudentId { get; set; }
+    public Guid? StudentUuid { get; set; }
     public string StudentName { get; set; } = string.Empty;
     public string StudentNumber { get; set; } = string.Empty;
     public int SessionId { get; set; }
+    public Guid? SessionUuid { get; set; }
     public DateTime SessionDate { get; set; }
     public int? QrCodeId { get; set; }
+    public Guid? QrCodeUuid { get; set; }
     public DateTime CheckInTime { get; set; }
     public string Status { get; set; } = string.Empty;
     public string? Notes { get; set; }
@@ -24,6 +28,7 @@ public class AttendanceRecordResponseDto
 
     // Schedule and session details
     public int ScheduleId { get; set; }
+    public Guid? ScheduleUuid { get; set; }
     public string ScheduleTitle { get; set; } = string.Empty;
     public string SubjectName { get; set; } = string.Empty;
     public string SectionName { get; set; } = string.Empty;

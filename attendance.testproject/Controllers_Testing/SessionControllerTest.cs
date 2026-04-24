@@ -4,7 +4,9 @@ using attendance_monitoring.Exceptions;
 using attendance_monitoring.IServices;
 using attendance_monitoring.Models.DTO.Request;
 using attendance_monitoring.Models.DTO.Response;
+using System.Reflection;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Routing;
 using Microsoft.Extensions.Logging;
 
 namespace attendance.testproject.Controllers_Testing;
@@ -113,6 +115,25 @@ public class SessionControllerTest
         Assert.NotNull(notFoundResult.Value);
     }
 
+    [Fact]
+    public async Task GetSessionByUuid_ReturnsOkResult_WithSession()
+    {
+        var sessionUuid = Guid.NewGuid();
+        var expectedSession = CreateTestSessionResponseDto(1);
+        expectedSession.Uuid = sessionUuid;
+
+        _mockSessionService
+            .Setup(s => s.GetSessionByUuidAsync(sessionUuid))
+            .ReturnsAsync(expectedSession);
+
+        var result = await _sessionController.GetSessionByUuid(sessionUuid);
+
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        var session = Assert.IsType<SessionResponseDto>(okResult.Value);
+        Assert.Equal(sessionUuid, session.Uuid);
+        _mockSessionService.Verify(s => s.GetSessionByUuidAsync(sessionUuid), Times.Once);
+    }
+
     #endregion
 
     #region GetSessionsBySchedule Tests
@@ -140,6 +161,28 @@ public class SessionControllerTest
         var returnedSessions = Assert.IsAssignableFrom<IEnumerable<SessionResponseDto>>(okResult.Value);
         Assert.Equal(2, returnedSessions.Count());
         Assert.All(returnedSessions, s => Assert.Equal(scheduleId, s.ScheduleId));
+    }
+
+    [Fact]
+    public async Task GetSessionsByScheduleUuid_ReturnsOkResult_WithSessions()
+    {
+        var scheduleUuid = Guid.NewGuid();
+        var sessions = new List<SessionResponseDto>
+        {
+            CreateTestSessionResponseDto(1),
+            CreateTestSessionResponseDto(2)
+        };
+
+        _mockSessionService
+            .Setup(s => s.GetSessionsByScheduleUuidAsync(scheduleUuid))
+            .ReturnsAsync(sessions);
+
+        var result = await _sessionController.GetSessionsByScheduleUuid(scheduleUuid);
+
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        var returnedSessions = Assert.IsAssignableFrom<IEnumerable<SessionResponseDto>>(okResult.Value);
+        Assert.Equal(2, returnedSessions.Count());
+        _mockSessionService.Verify(s => s.GetSessionsByScheduleUuidAsync(scheduleUuid), Times.Once);
     }
 
     #endregion
@@ -485,6 +528,31 @@ public class SessionControllerTest
         Assert.Equal("Database error", exception.Message);
     }
 
+    [Fact]
+    public async Task StartSessionByUuid_ReturnsOkResult_WhenSuccessful()
+    {
+        var sessionUuid = Guid.NewGuid();
+        var request = new StartSession
+        {
+            ActualRoomUuid = Guid.NewGuid(),
+            AttendanceCutoffMinutes = 15
+        };
+
+        var startedSession = CreateTestSessionResponseDto(1, status: SessionStatusConstants.Active);
+        startedSession.Uuid = sessionUuid;
+
+        _mockSessionService
+            .Setup(s => s.StartSessionByUuidAsync(sessionUuid, request))
+            .ReturnsAsync(startedSession);
+
+        var result = await _sessionController.StartSessionByUuid(sessionUuid, request);
+
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        var session = Assert.IsType<SessionResponseDto>(okResult.Value);
+        Assert.Equal(sessionUuid, session.Uuid);
+        _mockSessionService.Verify(s => s.StartSessionByUuidAsync(sessionUuid, request), Times.Once);
+    }
+
     #endregion
 
     #region EndSession Tests
@@ -802,9 +870,36 @@ public class SessionControllerTest
             () => _sessionController.UpdateSessionRoom(sessionId, request));
     }
 
+    [Fact]
+    public void SliceBRouteTemplates_SeparateIntAndUuidRoutes()
+    {
+        Assert.Equal("{id:int}", GetHttpTemplate(nameof(SessionController.GetSession)));
+        Assert.Equal("uuid/{uuid:guid}", GetHttpTemplate(nameof(SessionController.GetSessionByUuid)));
+        Assert.Equal("schedule/{scheduleId:int}", GetHttpTemplate(nameof(SessionController.GetSessionsBySchedule)));
+        Assert.Equal("schedule/uuid/{scheduleUuid:guid}", GetHttpTemplate(nameof(SessionController.GetSessionsByScheduleUuid)));
+        Assert.Equal("{id:int}/room", GetHttpTemplate(nameof(SessionController.UpdateSessionRoom)));
+        Assert.Equal("uuid/{uuid:guid}/room", GetHttpTemplate(nameof(SessionController.UpdateSessionRoomByUuid)));
+        Assert.Equal("{id:int}/start", GetHttpTemplate(nameof(SessionController.StartSession)));
+        Assert.Equal("uuid/{uuid:guid}/start", GetHttpTemplate(nameof(SessionController.StartSessionByUuid)));
+        Assert.Equal("{id:int}/end", GetHttpTemplate(nameof(SessionController.EndSession)));
+        Assert.Equal("uuid/{uuid:guid}/end", GetHttpTemplate(nameof(SessionController.EndSessionByUuid)));
+        Assert.Equal("{id:int}", GetHttpTemplate(nameof(SessionController.CancelSession)));
+        Assert.Equal("uuid/{uuid:guid}", GetHttpTemplate(nameof(SessionController.CancelSessionByUuid)));
+    }
+
     #endregion
 
     #region Helper Methods
+
+    private static string? GetHttpTemplate(string methodName)
+    {
+        var method = typeof(SessionController).GetMethod(methodName, BindingFlags.Instance | BindingFlags.Public);
+        Assert.NotNull(method);
+        return method!.GetCustomAttributes()
+            .OfType<HttpMethodAttribute>()
+            .Single()
+            .Template;
+    }
 
     private SessionResponseDto CreateTestSessionResponseDto(
         int id,
@@ -816,10 +911,13 @@ public class SessionControllerTest
         return new SessionResponseDto
         {
             Id = id,
+            Uuid = Guid.NewGuid(),
             ScheduleId = scheduleId,
+            ScheduleUuid = Guid.NewGuid(),
             Status = status,
             SessionDate = sessionDate ?? DateTime.UtcNow.Date,
             ActualRoomId = actualRoomId,
+            ActualRoomUuid = actualRoomId.HasValue ? Guid.NewGuid() : null,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow,
             SubjectCode = "CS101",

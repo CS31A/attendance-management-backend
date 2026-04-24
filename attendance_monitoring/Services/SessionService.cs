@@ -136,6 +136,17 @@ public class SessionService : ISessionService
         }
     }
 
+    public async Task<IEnumerable<SessionResponseDto>> GetSessionsByScheduleUuidAsync(Guid scheduleUuid)
+    {
+        var schedule = await _scheduleRepository.GetScheduleByUuidAsync(scheduleUuid).ConfigureAwait(false);
+        if (schedule == null)
+        {
+            throw new EntityNotFoundException<Guid>("Schedule", scheduleUuid);
+        }
+
+        return await GetSessionsByScheduleIdAsync(schedule.Id).ConfigureAwait(false);
+    }
+
     /// <summary>
     /// Retrieves sessions by status.
     /// </summary>
@@ -574,11 +585,28 @@ public class SessionService : ISessionService
                 throw new ValidationException(errorMessage);
             }
 
+            Classroom? resolvedClassroom = null;
+            if (request.ActualRoomUuid.HasValue)
+            {
+                resolvedClassroom = await _classroomRepository.GetClassroomByUuidAsync(request.ActualRoomUuid.Value).ConfigureAwait(false);
+                if (resolvedClassroom == null)
+                {
+                    throw new EntityNotFoundException<Guid>("Classroom", request.ActualRoomUuid.Value);
+                }
+
+                if (request.ActualRoomId.HasValue && request.ActualRoomId.Value != resolvedClassroom.Id)
+                {
+                    throw new ValidationException("ActualRoomId and ActualRoomUuid must reference the same classroom.");
+                }
+
+                request.ActualRoomId = resolvedClassroom.Id;
+            }
+
             // If actualRoomId is provided, validate that the classroom exists
             int? actualRoomId = request.ActualRoomId ?? session.Schedule?.ClassroomId;
             if (actualRoomId.HasValue)
             {
-                var classroom = await _classroomRepository.GetClassroomByIdAsync(actualRoomId.Value).ConfigureAwait(false);
+                var classroom = resolvedClassroom ?? await _classroomRepository.GetClassroomByIdAsync(actualRoomId.Value).ConfigureAwait(false);
                 if (classroom == null)
                 {
                     var errorMessage = $"Classroom with ID {actualRoomId.Value} not found.";
@@ -939,7 +967,9 @@ public class SessionService : ISessionService
         return new SessionResponseDto
         {
             Id = session.Id,
+            Uuid = session.Uuid,
             ScheduleId = session.ScheduleId,
+            ScheduleUuid = session.Schedule?.Uuid,
             Status = session.Status,
             SessionDate = session.SessionDate,
             ActualStartTime = session.ActualStartTime,
@@ -947,12 +977,15 @@ public class SessionService : ISessionService
             AttendanceCutOff = session.AttendanceCutOff,
             Description = session.Description,
             ActualRoomId = session.ActualRoomId,
+            ActualRoomUuid = session.ActualRoom?.Uuid,
             ActualRoomName = session.ActualRoom?.Name,
             StartedBy = session.StartedBy,
+            StartedByUuid = session.InstructorWhoStarted?.Uuid,
             StartedByName = session.InstructorWhoStarted != null
                 ? $"{session.InstructorWhoStarted.Firstname} {session.InstructorWhoStarted.Lastname}"
                 : null,
             EndedBy = session.EndedBy,
+            EndedByUuid = session.InstructorWhoEnded?.Uuid,
             EndedByName = session.InstructorWhoEnded != null
                 ? $"{session.InstructorWhoEnded.Firstname} {session.InstructorWhoEnded.Lastname}"
                 : null,

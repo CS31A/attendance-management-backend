@@ -14,6 +14,11 @@ public class StartSession
     public int? ActualRoomId { get; set; }
 
     /// <summary>
+    /// The actual room UUID where the session is being held (if different from scheduled room).
+    /// </summary>
+    public Guid? ActualRoomUuid { get; set; }
+
+    /// <summary>
     /// The number of minutes after the scheduled start time before attendance is considered late.
     /// Defaults to 15 minutes if not specified.
     /// </summary>

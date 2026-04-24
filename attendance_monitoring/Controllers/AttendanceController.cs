@@ -110,6 +110,29 @@ public class AttendanceController(IAttendanceService attendanceService, ILogger<
         }
     }
 
+    [HttpGet("uuid/{uuid:guid}")]
+    public async Task<ActionResult<AttendanceRecordResponseDto>> GetAttendanceByUuid(Guid uuid)
+    {
+        logger.LogInformation("Getting attendance record with UUID: {Uuid}", uuid);
+
+        try
+        {
+            var attendance = await attendanceService.GetAttendanceByUuidAsync(uuid, User);
+            logger.LogInformation("Successfully retrieved attendance record with UUID: {Uuid}", uuid);
+            return Ok(attendance);
+        }
+        catch (EntityNotFoundException<Guid> ex)
+        {
+            logger.LogWarning(ex, "Attendance record with UUID {Uuid} not found", uuid);
+            return NotFound(new { message = ex.Message });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            logger.LogWarning(ex, "Unauthorized access to attendance record UUID {Uuid}", uuid);
+            return Forbid();
+        }
+    }
+
     /// <summary>
     /// Get all attendance records with optional filtering and pagination.
     /// Students can only view their own records. Instructors can view records for their sessions.
@@ -164,6 +187,29 @@ public class AttendanceController(IAttendanceService attendanceService, ILogger<
         }
     }
 
+    [HttpGet("student/uuid/{studentUuid:guid}")]
+    public async Task<ActionResult<StudentAttendanceHistoryDto>> GetStudentAttendanceHistoryByUuid(Guid studentUuid)
+    {
+        logger.LogInformation("Getting attendance history for StudentUuid: {StudentUuid}", studentUuid);
+
+        try
+        {
+            var history = await attendanceService.GetStudentAttendanceHistoryByUuidAsync(studentUuid, User);
+            logger.LogInformation("Successfully retrieved attendance history for StudentUuid: {StudentUuid}", studentUuid);
+            return Ok(history);
+        }
+        catch (EntityNotFoundException<Guid> ex)
+        {
+            logger.LogWarning(ex, "Student with UUID {StudentUuid} not found", studentUuid);
+            return NotFound(new { message = ex.Message });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            logger.LogWarning(ex, "Unauthorized access to student UUID {StudentUuid} attendance", studentUuid);
+            return Forbid();
+        }
+    }
+
     /// <summary>
     /// Get attendance overview for a specific session.
     /// Instructors can only view their own session attendance.
@@ -195,6 +241,30 @@ public class AttendanceController(IAttendanceService attendanceService, ILogger<
         catch (UnauthorizedAccessException ex)
         {
             logger.LogWarning(ex, "Unauthorized access to session {SessionId} attendance", sessionId);
+            return Forbid();
+        }
+    }
+
+    [HttpGet("session/uuid/{sessionUuid:guid}")]
+    [Authorize(Policy = "PrivilegedPolicy")]
+    public async Task<ActionResult<SessionAttendanceDto>> GetSessionAttendanceByUuid(Guid sessionUuid)
+    {
+        logger.LogInformation("Getting session attendance for SessionUuid: {SessionUuid}", sessionUuid);
+
+        try
+        {
+            var sessionAttendance = await attendanceService.GetSessionAttendanceByUuidAsync(sessionUuid, User);
+            logger.LogInformation("Successfully retrieved session attendance for SessionUuid: {SessionUuid}", sessionUuid);
+            return Ok(sessionAttendance);
+        }
+        catch (EntityNotFoundException<Guid> ex)
+        {
+            logger.LogWarning(ex, "Session with UUID {SessionUuid} not found", sessionUuid);
+            return NotFound(new { message = ex.Message });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            logger.LogWarning(ex, "Unauthorized access to session UUID {SessionUuid} attendance", sessionUuid);
             return Forbid();
         }
     }
@@ -260,6 +330,30 @@ public class AttendanceController(IAttendanceService attendanceService, ILogger<
         }
     }
 
+    [HttpPut("uuid/{uuid:guid}")]
+    [Authorize(Policy = "PrivilegedPolicy")]
+    public async Task<ActionResult<AttendanceRecordResponseDto>> UpdateAttendanceByUuid(Guid uuid, [FromBody] UpdateAttendanceRequest request)
+    {
+        logger.LogInformation("Updating attendance record with UUID: {Uuid}", uuid);
+
+        try
+        {
+            var updated = await attendanceService.UpdateAttendanceByUuidAsync(uuid, request, User);
+            logger.LogInformation("Successfully updated attendance record with UUID: {Uuid}", uuid);
+            return Ok(updated);
+        }
+        catch (EntityNotFoundException<Guid> ex)
+        {
+            logger.LogWarning(ex, "Attendance record with UUID {Uuid} not found", uuid);
+            return NotFound(new { message = ex.Message });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            logger.LogWarning(ex, "Unauthorized attempt to update attendance record UUID {Uuid}", uuid);
+            return Forbid();
+        }
+    }
+
     #endregion
 
     #region Delete Operations
@@ -301,6 +395,36 @@ public class AttendanceController(IAttendanceService attendanceService, ILogger<
         catch (UnauthorizedAccessException ex)
         {
             logger.LogWarning(ex, "Unauthorized attempt to delete attendance record {Id}", id);
+            return Forbid();
+        }
+    }
+
+    [HttpDelete("uuid/{uuid:guid}")]
+    [Authorize(Policy = "PrivilegedPolicy")]
+    public async Task<IActionResult> DeleteAttendanceByUuid(Guid uuid)
+    {
+        logger.LogInformation("Deleting attendance record with UUID: {Uuid}", uuid);
+
+        try
+        {
+            var deleted = await attendanceService.DeleteAttendanceByUuidAsync(uuid, User);
+            if (deleted)
+            {
+                logger.LogInformation("Successfully deleted attendance record with UUID: {Uuid}", uuid);
+                return NoContent();
+            }
+
+            logger.LogWarning("Failed to delete attendance record with UUID: {Uuid}", uuid);
+            return NotFound(new { message = "Attendance record not found" });
+        }
+        catch (EntityNotFoundException<Guid> ex)
+        {
+            logger.LogWarning(ex, "Attendance record with UUID {Uuid} not found", uuid);
+            return NotFound(new { message = ex.Message });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            logger.LogWarning(ex, "Unauthorized attempt to delete attendance record UUID {Uuid}", uuid);
             return Forbid();
         }
     }

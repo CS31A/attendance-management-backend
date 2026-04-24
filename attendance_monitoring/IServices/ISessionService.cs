@@ -38,6 +38,13 @@ public interface ISessionService
     Task<IEnumerable<SessionResponseDto>> GetSessionsByScheduleIdAsync(int scheduleId);
 
     /// <summary>
+    /// Retrieves sessions for a specific schedule UUID.
+    /// </summary>
+    /// <param name="scheduleUuid">The schedule UUID</param>
+    /// <returns>Collection of session response DTOs</returns>
+    Task<IEnumerable<SessionResponseDto>> GetSessionsByScheduleUuidAsync(Guid scheduleUuid);
+
+    /// <summary>
     /// Retrieves sessions by status.
     /// </summary>
     /// <param name="status">The session status</param>

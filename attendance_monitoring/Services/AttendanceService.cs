@@ -323,6 +323,7 @@ public class AttendanceService(
         return new StudentAttendanceHistoryDto
         {
             StudentId = studentId,
+            StudentUuid = student.Uuid,
             StudentName = $"{student.Firstname} {student.Lastname}",
             StudentNumber = student.Id.ToString(),
             TotalSessions = totalSessions,
@@ -333,6 +334,17 @@ public class AttendanceService(
             AttendancePercentage = attendancePercentage,
             AttendanceRecords = records.Select(record => MapToResponseDto(record)).ToList()
         };
+    }
+
+    public async Task<StudentAttendanceHistoryDto> GetStudentAttendanceHistoryByUuidAsync(Guid studentUuid, ClaimsPrincipal user)
+    {
+        var student = await studentRepository.GetStudentByUuidAsync(studentUuid).ConfigureAwait(false);
+        if (student == null)
+        {
+            throw new EntityNotFoundException<Guid>("Student", studentUuid);
+        }
+
+        return await GetStudentAttendanceHistoryAsync(student.Id, user).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -395,9 +407,11 @@ public class AttendanceService(
             studentAttendanceRecords.Add(new StudentAttendanceRecordDto
             {
                 StudentId = enrollment.Student.Id,
+                StudentUuid = enrollment.Student.Uuid,
                 StudentName = $"{enrollment.Student.Firstname} {enrollment.Student.Lastname}",
                 StudentNumber = enrollment.Student.Id.ToString(),
                 AttendanceRecordId = attendanceRecord?.Id,
+                AttendanceRecordUuid = attendanceRecord?.Uuid,
                 Status = attendanceRecord?.Status ?? "Absent",
                 CheckInTime = attendanceRecord?.CheckInTime,
                 IsManualEntry = attendanceRecord?.IsManualEntry ?? false
@@ -416,8 +430,10 @@ public class AttendanceService(
         return new SessionAttendanceDto
         {
             SessionId = sessionId,
+            SessionUuid = session.Uuid,
             SessionDate = session.SessionDate,
             ScheduleId = session.ScheduleId,
+            ScheduleUuid = session.Schedule.Uuid,
             ScheduleTitle = $"{session.Schedule.Subject.Name} - {session.Schedule.Section.Name}",
             SubjectName = session.Schedule.Subject.Name,
             SectionName = session.Schedule.Section.Name,
@@ -428,6 +444,17 @@ public class AttendanceService(
             AttendanceRate = attendanceRate,
             AttendanceRecords = studentAttendanceRecords
         };
+    }
+
+    public async Task<SessionAttendanceDto> GetSessionAttendanceByUuidAsync(Guid sessionUuid, ClaimsPrincipal user)
+    {
+        var session = await sessionRepository.GetSessionByUuidAsync(sessionUuid).ConfigureAwait(false);
+        if (session == null)
+        {
+            throw new EntityNotFoundException<Guid>("Session", sessionUuid);
+        }
+
+        return await GetSessionAttendanceAsync(session.Id, user).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -849,12 +876,16 @@ public class AttendanceService(
         var response = new AttendanceRecordResponseDto
         {
             Id = record.Id,
+            Uuid = record.Uuid,
             StudentId = record.StudentId,
+            StudentUuid = record.Student.Uuid,
             StudentName = $"{record.Student.Firstname} {record.Student.Lastname}",
             StudentNumber = record.Student.Id.ToString(),
             SessionId = record.SessionId,
+            SessionUuid = record.Session.Uuid,
             SessionDate = record.Session.SessionDate,
             QrCodeId = record.QrCodeId,
+            QrCodeUuid = record.QrCode?.Uuid,
             CheckInTime = record.CheckInTime,
             Status = record.Status,
             Notes = record.Notes,
@@ -863,6 +894,7 @@ public class AttendanceService(
             CreatedAt = record.CreatedAt,
             UpdatedAt = record.UpdatedAt,
             ScheduleId = record.Session.ScheduleId,
+            ScheduleUuid = record.Session.Schedule.Uuid,
             ScheduleTitle = $"{record.Session.Schedule.Subject.Name} - {record.Session.Schedule.Section.Name}",
             SubjectName = record.Session.Schedule.Subject.Name,
             SectionName = record.Session.Schedule.Section.Name,
@@ -880,12 +912,16 @@ public class AttendanceService(
         public IdempotentAttendanceRetryResponseDto(AttendanceRecordResponseDto source)
         {
             Id = source.Id;
+            Uuid = source.Uuid;
             StudentId = source.StudentId;
+            StudentUuid = source.StudentUuid;
             StudentName = source.StudentName;
             StudentNumber = source.StudentNumber;
             SessionId = source.SessionId;
+            SessionUuid = source.SessionUuid;
             SessionDate = source.SessionDate;
             QrCodeId = source.QrCodeId;
+            QrCodeUuid = source.QrCodeUuid;
             CheckInTime = source.CheckInTime;
             Status = source.Status;
             Notes = source.Notes;
@@ -894,6 +930,7 @@ public class AttendanceService(
             CreatedAt = source.CreatedAt;
             UpdatedAt = source.UpdatedAt;
             ScheduleId = source.ScheduleId;
+            ScheduleUuid = source.ScheduleUuid;
             ScheduleTitle = source.ScheduleTitle;
             SubjectName = source.SubjectName;
             SectionName = source.SectionName;

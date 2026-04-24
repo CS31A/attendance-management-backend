@@ -1,4 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
+using System.Reflection;
+using Microsoft.AspNetCore.Mvc.Routing;
 using attendance_monitoring.Controllers;
 using attendance_monitoring.Data;
 using attendance_monitoring.IRepository;
@@ -356,5 +358,89 @@ public class QrCodeControllerTest
         Assert.Equal(0x50, fileResult.FileContents[1]); // 'P'
         Assert.Equal(0x4E, fileResult.FileContents[2]); // 'N'
         Assert.Equal(0x47, fileResult.FileContents[3]); // 'G'
+    }
+
+    [Fact]
+    public async Task GetQrCodeByUuid_WithValidUuid_ReturnsOk()
+    {
+        var qrCodeUuid = Guid.NewGuid();
+        var qrCode = new attendance_monitoring.Models.DTO.Response.QrCodeResponseDto
+        {
+            Id = 3,
+            Uuid = qrCodeUuid,
+            SessionId = 9,
+            SessionUuid = Guid.NewGuid(),
+            QrHash = "uuid-route-hash",
+            GeneratedAt = DateTime.UtcNow,
+            ExpiresAt = DateTime.UtcNow.AddMinutes(20),
+            IsActive = true
+        };
+
+        _mockQrCodeService
+            .Setup(service => service.GetQrCodeByUuidAsync(qrCodeUuid))
+            .ReturnsAsync(qrCode);
+
+        var result = await _qrCodeController.GetQrCodeByUuid(qrCodeUuid);
+
+        var okResult = Assert.IsType<OkObjectResult>(result);
+        var response = Assert.IsType<attendance_monitoring.Models.DTO.Response.QrCodeResponseDto>(okResult.Value);
+        Assert.Equal(qrCodeUuid, response.Uuid);
+    }
+
+    [Fact]
+    public async Task GetQrCodeImageByUuid_WithValidUuid_ReturnsFileResult()
+    {
+        var qrCodeUuid = Guid.NewGuid();
+        var qrCode = new attendance_monitoring.Models.DTO.Response.QrCodeResponseDto
+        {
+            Id = 4,
+            Uuid = qrCodeUuid,
+            SessionId = 10,
+            QrHash = "uuid-image-hash",
+            GeneratedAt = DateTime.UtcNow,
+            ExpiresAt = DateTime.UtcNow.AddMinutes(20),
+            IsActive = true
+        };
+
+        _mockQrCodeService
+            .Setup(service => service.GetQrCodeByUuidAsync(qrCodeUuid))
+            .ReturnsAsync(qrCode);
+
+        var result = await _qrCodeController.GetQrCodeImageByUuid(qrCodeUuid);
+
+        var fileResult = Assert.IsType<FileContentResult>(result);
+        Assert.Equal("image/png", fileResult.ContentType);
+        Assert.NotEmpty(fileResult.FileContents);
+    }
+
+    [Fact]
+    public void SliceBRouteTemplates_SeparateHashIntAndUuidRoutes()
+    {
+        Assert.Equal("{id:int}", GetHttpTemplate(nameof(QrCodeController.GetQrCodeById)));
+        Assert.Equal("hash/{qrHash}", GetHttpTemplate(nameof(QrCodeController.GetQrCodeByHash)));
+        Assert.Equal("uuid/{uuid:guid}", GetHttpTemplate(nameof(QrCodeController.GetQrCodeByUuid)));
+        Assert.Equal("{id:int}/image", GetHttpTemplate(nameof(QrCodeController.GetQrCodeImage)));
+        Assert.Equal("uuid/{uuid:guid}/image", GetHttpTemplate(nameof(QrCodeController.GetQrCodeImageByUuid)));
+        Assert.Equal("{id:int}/revoke", GetHttpTemplate(nameof(QrCodeController.RevokeQrCode)));
+        Assert.Equal("hash/{qrHash}/revoke", GetHttpTemplate(nameof(QrCodeController.RevokeQrCodeByHash)));
+        Assert.Equal("uuid/{uuid:guid}/revoke", GetHttpTemplate(nameof(QrCodeController.RevokeQrCodeByUuid)));
+        Assert.Equal("{id:int}/reactivate", GetHttpTemplate(nameof(QrCodeController.ReactivateQrCode)));
+        Assert.Equal("hash/{qrHash}/reactivate", GetHttpTemplate(nameof(QrCodeController.ReactivateQrCodeByHash)));
+        Assert.Equal("uuid/{uuid:guid}/reactivate", GetHttpTemplate(nameof(QrCodeController.ReactivateQrCodeByUuid)));
+        Assert.Equal("session/{sessionId:int}", GetHttpTemplate(nameof(QrCodeController.GetQrCodesBySessionId)));
+        Assert.Equal("session/uuid/{sessionUuid:guid}", GetHttpTemplate(nameof(QrCodeController.GetQrCodesBySessionUuid)));
+        Assert.Equal("{id:int}/scan-history", GetHttpTemplate(nameof(QrCodeController.GetScanHistory)));
+        Assert.Equal("hash/{qrHash}/scan-history", GetHttpTemplate(nameof(QrCodeController.GetScanHistoryByHash)));
+        Assert.Equal("uuid/{uuid:guid}/scan-history", GetHttpTemplate(nameof(QrCodeController.GetScanHistoryByUuid)));
+    }
+
+    private static string? GetHttpTemplate(string methodName)
+    {
+        var method = typeof(QrCodeController).GetMethod(methodName, BindingFlags.Instance | BindingFlags.Public);
+        Assert.NotNull(method);
+        return method!.GetCustomAttributes()
+            .OfType<HttpMethodAttribute>()
+            .Single()
+            .Template;
     }
 }
