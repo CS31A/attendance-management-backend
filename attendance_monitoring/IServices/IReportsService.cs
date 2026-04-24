@@ -18,16 +18,19 @@ public interface IReportsService
     /// Returns attendance history and statistics for a specific student.
     /// </summary>
     Task<StudentAttendanceHistoryDto> GetStudentAttendanceReportAsync(int studentId, ClaimsPrincipal user);
+    Task<StudentAttendanceHistoryDto> GetStudentAttendanceReportAsync(Guid studentUuid, ClaimsPrincipal user);
 
     /// <summary>
     /// Returns full attendance overview for a specific session.
     /// </summary>
     Task<SessionAttendanceDto> GetSessionAttendanceReportAsync(int sessionId, ClaimsPrincipal user);
+    Task<SessionAttendanceDto> GetSessionAttendanceReportAsync(Guid sessionUuid, ClaimsPrincipal user);
 
     /// <summary>
     /// Returns section-level attendance summary with per-session breakdown.
     /// </summary>
     Task<ClassAttendanceSummaryDto> GetClassAttendanceReportAsync(int sectionId, AttendanceFilterRequest filter, ClaimsPrincipal user);
+    Task<ClassAttendanceSummaryDto> GetClassAttendanceReportAsync(Guid sectionUuid, AttendanceFilterRequest filter, ClaimsPrincipal user);
 
     /// <summary>
     /// Returns session list with attendance counts for a specific instructor.

@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace attendance_monitoring.Models.DTO.Response;
 
 /// <summary>
@@ -8,11 +10,13 @@ public class InstructorSectionsWithStudentsResponseDto
     /// <summary>
     /// Gets or sets the instructor's unique identifier.
     /// </summary>
+    [JsonIgnore]
     public int InstructorId { get; set; }
 
     /// <summary>
     /// Gets or sets the instructor's UUID.
     /// </summary>
+    [JsonPropertyName("instructorId")]
     public Guid InstructorUuid { get; set; }
 
     /// <summary>

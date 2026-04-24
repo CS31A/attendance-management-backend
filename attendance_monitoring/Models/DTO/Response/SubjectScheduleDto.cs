@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace attendance_monitoring.Models.DTO.Response;
 
 /// <summary>
@@ -8,11 +10,13 @@ public class SubjectScheduleDto
     /// <summary>
     /// Gets or sets the subject's unique identifier.
     /// </summary>
+    [JsonIgnore]
     public int SubjectId { get; set; }
 
     /// <summary>
     /// Gets or sets the subject's UUID.
     /// </summary>
+    [JsonPropertyName("subjectId")]
     public Guid SubjectUuid { get; set; }
 
     /// <summary>
@@ -28,11 +32,13 @@ public class SubjectScheduleDto
     /// <summary>
     /// Gets or sets the schedule's unique identifier.
     /// </summary>
+    [JsonIgnore]
     public int ScheduleId { get; set; }
 
     /// <summary>
     /// Gets or sets the schedule's UUID.
     /// </summary>
+    [JsonPropertyName("scheduleId")]
     public Guid ScheduleUuid { get; set; }
 
     /// <summary>
@@ -53,11 +59,13 @@ public class SubjectScheduleDto
     /// <summary>
     /// Gets or sets the classroom's unique identifier.
     /// </summary>
+    [JsonIgnore]
     public int ClassroomId { get; set; }
 
     /// <summary>
     /// Gets or sets the classroom's UUID.
     /// </summary>
+    [JsonPropertyName("classroomId")]
     public Guid ClassroomUuid { get; set; }
 
     /// <summary>

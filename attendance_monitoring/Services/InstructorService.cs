@@ -20,6 +20,7 @@ namespace attendance_monitoring.Services
     {
         private readonly IInstructorRepository _instructorRepository;
         private readonly ISectionRepository _sectionRepository;
+        private readonly IStudentRepository _studentRepository;
         private readonly IScheduleRepository _scheduleRepository;
         private readonly IUserContextService _userContextService;
         private readonly ILogger<InstructorService> _logger;
@@ -32,10 +33,11 @@ namespace attendance_monitoring.Services
         /// <param name="scheduleRepository">Repository for schedule data operations</param>
         /// <param name="userContextService">Service for managing user context and authorization</param>
         /// <param name="logger">Logger for logging operations</param>
-        public InstructorService(IInstructorRepository instructorRepository, ISectionRepository sectionRepository, IScheduleRepository scheduleRepository, IUserContextService userContextService, ILogger<InstructorService> logger)
+        public InstructorService(IInstructorRepository instructorRepository, ISectionRepository sectionRepository, IStudentRepository studentRepository, IScheduleRepository scheduleRepository, IUserContextService userContextService, ILogger<InstructorService> logger)
         {
             _instructorRepository = instructorRepository ?? throw new ArgumentNullException(nameof(instructorRepository));
             _sectionRepository = sectionRepository ?? throw new ArgumentNullException(nameof(sectionRepository));
+            _studentRepository = studentRepository ?? throw new ArgumentNullException(nameof(studentRepository));
             _scheduleRepository = scheduleRepository ?? throw new ArgumentNullException(nameof(scheduleRepository));
             _userContextService = userContextService ?? throw new ArgumentNullException(nameof(userContextService));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -1086,6 +1088,17 @@ namespace attendance_monitoring.Services
         }
         #endregion
 
+        public async Task<InstructorSectionDetailDto> GetInstructorSectionDetailByUuidAsync(ClaimsPrincipal userPrincipal, Guid sectionUuid)
+        {
+            var section = await _sectionRepository.GetSectionByUuidAsync(sectionUuid).ConfigureAwait(false);
+            if (section == null)
+            {
+                throw new EntityNotFoundException<Guid>("Section", sectionUuid);
+            }
+
+            return await GetInstructorSectionDetailAsync(userPrincipal, section.Id).ConfigureAwait(false);
+        }
+
         #region GetInstructorStudentDetailAsync
         /// <summary>
         /// Retrieves detailed information about a specific student visible to the authenticated instructor.
@@ -1240,6 +1253,17 @@ namespace attendance_monitoring.Services
                 && handledSectionSubjectPairs.Contains((studentEnrollment.SectionId, studentEnrollment.SubjectId)));
         }
         #endregion
+
+        public async Task<InstructorStudentDetailDto> GetInstructorStudentDetailByUuidAsync(ClaimsPrincipal userPrincipal, Guid studentUuid)
+        {
+            var student = await _studentRepository.GetStudentByUuidAsync(studentUuid).ConfigureAwait(false);
+            if (student == null)
+            {
+                throw new EntityNotFoundException<Guid>("Student", studentUuid);
+            }
+
+            return await GetInstructorStudentDetailAsync(userPrincipal, student.Id).ConfigureAwait(false);
+        }
 
         #region Helper Methods
 

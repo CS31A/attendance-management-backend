@@ -15,7 +15,9 @@ public interface IInstructorService
     Task<InstructorSectionsWithStudentsResponseDto> GetSectionsWithStudentsByInstructorAsync(ClaimsPrincipal user);
     Task<List<InstructorSectionOverviewDto>> GetInstructorSectionsOverviewAsync(ClaimsPrincipal user);
     Task<InstructorSectionDetailDto> GetInstructorSectionDetailAsync(ClaimsPrincipal user, int sectionId);
+    Task<InstructorSectionDetailDto> GetInstructorSectionDetailByUuidAsync(ClaimsPrincipal user, Guid sectionUuid);
     Task<InstructorStudentDetailDto> GetInstructorStudentDetailAsync(ClaimsPrincipal user, int studentId);
+    Task<InstructorStudentDetailDto> GetInstructorStudentDetailByUuidAsync(ClaimsPrincipal user, Guid studentUuid);
     Task<Instructor> CreateInstructorAsync(CreateInstructor createInstructor, ClaimsPrincipal user);
     Task<Instructor> UpdateInstructorAsync(int id, UpdateInstructor updateInstructor, ClaimsPrincipal user);
     Task SoftDeleteInstructorAsync(int id, ClaimsPrincipal user);
