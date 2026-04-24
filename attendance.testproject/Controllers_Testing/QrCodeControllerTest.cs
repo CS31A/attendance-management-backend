@@ -1,16 +1,14 @@
 using Microsoft.AspNetCore.Mvc;
 using System.Reflection;
+using System.Security.Claims;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.Routing;
 using attendance_monitoring.Controllers;
-using attendance_monitoring.Data;
+using attendance_monitoring.Constants;
 using attendance_monitoring.IRepository;
 using attendance_monitoring.IServices;
 using attendance_monitoring.Models.DTO.Request;
-using attendance_monitoring.Services;
-using Microsoft.AspNetCore.Identity;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using Moq;
 
 namespace attendance.testproject.Controllers_Testing;
@@ -23,7 +21,7 @@ public class QrCodeControllerTest
     private readonly Mock<IQrCodeService> _mockQrCodeService;
     private readonly Mock<ISessionRepository> _mockSessionRepository;
     private readonly Mock<ILogger<QrCodeController>> _mockLogger;
-    private readonly Mock<UserContextService> _mockUserContextService;
+    private readonly Mock<IUserContextService> _mockUserContextService;
     private readonly QrCodeController _qrCodeController;
 
     public QrCodeControllerTest()
@@ -31,26 +29,9 @@ public class QrCodeControllerTest
         _mockQrCodeService = new Mock<IQrCodeService>();
         _mockSessionRepository = new Mock<ISessionRepository>();
         _mockLogger = new Mock<ILogger<QrCodeController>>();
-
-        var mockUserStore = new Mock<IUserStore<IdentityUser>>();
-        var mockUserManager = new Mock<UserManager<IdentityUser>>(
-            mockUserStore.Object,
-            Options.Create(new IdentityOptions()),
-            new Mock<IPasswordHasher<IdentityUser>>().Object,
-            Array.Empty<IUserValidator<IdentityUser>>(),
-            Array.Empty<IPasswordValidator<IdentityUser>>(),
-            new Mock<ILookupNormalizer>().Object,
-            new Mock<IdentityErrorDescriber>().Object,
-            new Mock<IServiceProvider>().Object,
-            new Mock<ILogger<UserManager<IdentityUser>>>().Object);
-
-        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
-            .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
-            .Options;
-        var mockContext = new Mock<ApplicationDbContext>(options);
-
-        _mockUserContextService = new Mock<UserContextService>(mockUserManager.Object, mockContext.Object);
+        _mockUserContextService = new Mock<IUserContextService>();
         _qrCodeController = new QrCodeController(_mockQrCodeService.Object, _mockSessionRepository.Object, _mockUserContextService.Object, _mockLogger.Object);
+        SetUserContext();
     }
 
     [Fact]
@@ -388,6 +369,21 @@ public class QrCodeControllerTest
     }
 
     [Fact]
+    public async Task GetQrCodeByUuid_WithInvalidUuid_ReturnsNotFound()
+    {
+        var qrCodeUuid = Guid.NewGuid();
+
+        _mockQrCodeService
+            .Setup(service => service.GetQrCodeByUuidAsync(qrCodeUuid))
+            .ReturnsAsync((attendance_monitoring.Models.DTO.Response.QrCodeResponseDto?)null);
+
+        var result = await _qrCodeController.GetQrCodeByUuid(qrCodeUuid);
+
+        var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
+        Assert.NotNull(notFoundResult.Value);
+    }
+
+    [Fact]
     public async Task GetQrCodeImageByUuid_WithValidUuid_ReturnsFileResult()
     {
         var qrCodeUuid = Guid.NewGuid();
@@ -411,6 +407,181 @@ public class QrCodeControllerTest
         var fileResult = Assert.IsType<FileContentResult>(result);
         Assert.Equal("image/png", fileResult.ContentType);
         Assert.NotEmpty(fileResult.FileContents);
+    }
+
+    [Fact]
+    public async Task GetQrCodeImageByUuid_WithInvalidUuid_ReturnsNotFound()
+    {
+        var qrCodeUuid = Guid.NewGuid();
+
+        _mockQrCodeService
+            .Setup(service => service.GetQrCodeByUuidAsync(qrCodeUuid))
+            .ReturnsAsync((attendance_monitoring.Models.DTO.Response.QrCodeResponseDto?)null);
+
+        var result = await _qrCodeController.GetQrCodeImageByUuid(qrCodeUuid);
+
+        var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
+        Assert.NotNull(notFoundResult.Value);
+    }
+
+    [Fact]
+    public async Task GetQrCodesBySessionUuid_ReturnsForbidden_WhenUserIsNotInstructor()
+    {
+        var sessionUuid = Guid.NewGuid();
+        SetUserContext(role: RoleConstants.Student);
+
+        _mockUserContextService
+            .Setup(service => service.GetInstructorIdAsync(It.IsAny<ClaimsPrincipal>()))
+            .ReturnsAsync((int?)null);
+
+        var result = await _qrCodeController.GetQrCodesBySessionUuid(sessionUuid);
+
+        var forbiddenResult = Assert.IsType<ObjectResult>(result);
+        Assert.Equal(403, forbiddenResult.StatusCode);
+    }
+
+    [Fact]
+    public async Task GetQrCodesBySessionUuid_ReturnsNotFound_WhenSessionDoesNotExist()
+    {
+        var sessionUuid = Guid.NewGuid();
+        SetUserContext();
+
+        _mockUserContextService
+            .Setup(service => service.GetInstructorIdAsync(It.IsAny<ClaimsPrincipal>()))
+            .ReturnsAsync(7);
+        _mockSessionRepository
+            .Setup(repository => repository.GetSessionByUuidAsync(sessionUuid))
+            .ReturnsAsync((attendance_monitoring.Classes.Session?)null);
+
+        var result = await _qrCodeController.GetQrCodesBySessionUuid(sessionUuid);
+
+        var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
+        Assert.NotNull(notFoundResult.Value);
+    }
+
+    [Fact]
+    public async Task GetQrCodesBySessionUuid_ReturnsForbidden_WhenInstructorDoesNotOwnSession()
+    {
+        var sessionUuid = Guid.NewGuid();
+        SetUserContext();
+
+        _mockUserContextService
+            .Setup(service => service.GetInstructorIdAsync(It.IsAny<ClaimsPrincipal>()))
+            .ReturnsAsync(7);
+        _mockSessionRepository
+            .Setup(repository => repository.GetSessionByUuidAsync(sessionUuid))
+            .ReturnsAsync(new attendance_monitoring.Classes.Session
+            {
+                Id = 12,
+                Uuid = sessionUuid,
+                ScheduleId = 2,
+                RowVersion = [1, 2, 3, 4],
+                Schedule = new attendance_monitoring.Classes.Schedules
+                {
+                    Id = 2,
+                    Uuid = Guid.NewGuid(),
+                    InstructorId = 99,
+                    DayOfWeek = "Monday",
+                    TimeIn = new TimeOnly(8, 0),
+                    TimeOut = new TimeOnly(9, 0)
+                }
+            });
+
+        var result = await _qrCodeController.GetQrCodesBySessionUuid(sessionUuid);
+
+        var forbiddenResult = Assert.IsType<ObjectResult>(result);
+        Assert.Equal(403, forbiddenResult.StatusCode);
+    }
+
+    [Fact]
+    public async Task GetQrCodesBySessionUuid_ReturnsNotFound_WhenNoQrCodesExist()
+    {
+        var sessionUuid = Guid.NewGuid();
+        SetUserContext();
+
+        _mockUserContextService
+            .Setup(service => service.GetInstructorIdAsync(It.IsAny<ClaimsPrincipal>()))
+            .ReturnsAsync(7);
+        _mockSessionRepository
+            .Setup(repository => repository.GetSessionByUuidAsync(sessionUuid))
+            .ReturnsAsync(new attendance_monitoring.Classes.Session
+            {
+                Id = 12,
+                Uuid = sessionUuid,
+                ScheduleId = 2,
+                RowVersion = [1, 2, 3, 4],
+                Schedule = new attendance_monitoring.Classes.Schedules
+                {
+                    Id = 2,
+                    Uuid = Guid.NewGuid(),
+                    InstructorId = 7,
+                    DayOfWeek = "Monday",
+                    TimeIn = new TimeOnly(8, 0),
+                    TimeOut = new TimeOnly(9, 0)
+                }
+            });
+        _mockQrCodeService
+            .Setup(service => service.GetQrCodesBySessionUuidAsync(sessionUuid))
+            .ReturnsAsync([]);
+
+        var result = await _qrCodeController.GetQrCodesBySessionUuid(sessionUuid);
+
+        var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
+        Assert.NotNull(notFoundResult.Value);
+    }
+
+    [Fact]
+    public async Task GetScanHistoryByUuid_ReturnsForbidden_WhenUserIsNotInstructor()
+    {
+        var qrCodeUuid = Guid.NewGuid();
+        SetUserContext(role: RoleConstants.Student);
+
+        _mockUserContextService
+            .Setup(service => service.GetInstructorIdAsync(It.IsAny<ClaimsPrincipal>()))
+            .ReturnsAsync((int?)null);
+
+        var result = await _qrCodeController.GetScanHistoryByUuid(qrCodeUuid);
+
+        var forbiddenResult = Assert.IsType<ObjectResult>(result);
+        Assert.Equal(403, forbiddenResult.StatusCode);
+    }
+
+    [Fact]
+    public async Task GetScanHistoryByUuid_ReturnsNotFound_WhenQrCodeDoesNotExist()
+    {
+        var qrCodeUuid = Guid.NewGuid();
+        SetUserContext();
+
+        _mockUserContextService
+            .Setup(service => service.GetInstructorIdAsync(It.IsAny<ClaimsPrincipal>()))
+            .ReturnsAsync(7);
+        _mockQrCodeService
+            .Setup(service => service.GetScanHistoryByUuidAsync(qrCodeUuid, 7, RoleConstants.Instructor, 1, 50))
+            .ThrowsAsync(new attendance_monitoring.Exceptions.EntityNotFoundException<Guid>("QrCode", qrCodeUuid));
+
+        var result = await _qrCodeController.GetScanHistoryByUuid(qrCodeUuid);
+
+        var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
+        Assert.NotNull(notFoundResult.Value);
+    }
+
+    [Fact]
+    public async Task GetScanHistoryByUuid_ReturnsForbidden_WhenAccessIsUnauthorized()
+    {
+        var qrCodeUuid = Guid.NewGuid();
+        SetUserContext();
+
+        _mockUserContextService
+            .Setup(service => service.GetInstructorIdAsync(It.IsAny<ClaimsPrincipal>()))
+            .ReturnsAsync(7);
+        _mockQrCodeService
+            .Setup(service => service.GetScanHistoryByUuidAsync(qrCodeUuid, 7, RoleConstants.Instructor, 1, 50))
+            .ThrowsAsync(new attendance_monitoring.Exceptions.EntityUnauthorizedException("QrCode", "View scan history", "7"));
+
+        var result = await _qrCodeController.GetScanHistoryByUuid(qrCodeUuid);
+
+        var forbiddenResult = Assert.IsType<ObjectResult>(result);
+        Assert.Equal(403, forbiddenResult.StatusCode);
     }
 
     [Fact]
@@ -442,5 +613,20 @@ public class QrCodeControllerTest
             .OfType<HttpMethodAttribute>()
             .Single()
             .Template;
+    }
+
+    private void SetUserContext(string role = RoleConstants.Instructor, string userId = "user-1")
+    {
+        _qrCodeController.ControllerContext = new ControllerContext
+        {
+            HttpContext = new DefaultHttpContext
+            {
+                User = new ClaimsPrincipal(new ClaimsIdentity(
+                [
+                    new Claim(ClaimTypes.NameIdentifier, userId),
+                    new Claim(ClaimTypes.Role, role)
+                ], "TestAuth"))
+            }
+        };
     }
 }

@@ -67,6 +67,90 @@ public class AttendanceControllerTest
     }
 
     [Fact]
+    public async Task GetAttendanceByUuid_ReturnsNotFound_WhenAttendanceDoesNotExist()
+    {
+        var attendanceUuid = Guid.NewGuid();
+
+        _attendanceService
+            .Setup(service => service.GetAttendanceByUuidAsync(attendanceUuid, _controller.User))
+            .ThrowsAsync(new attendance_monitoring.Exceptions.EntityNotFoundException<Guid>("Attendance", attendanceUuid));
+
+        var result = await _controller.GetAttendanceByUuid(attendanceUuid);
+
+        Assert.IsType<NotFoundObjectResult>(result.Result);
+    }
+
+    [Fact]
+    public async Task GetAttendanceByUuid_ReturnsForbid_WhenAccessIsUnauthorized()
+    {
+        var attendanceUuid = Guid.NewGuid();
+
+        _attendanceService
+            .Setup(service => service.GetAttendanceByUuidAsync(attendanceUuid, _controller.User))
+            .ThrowsAsync(new UnauthorizedAccessException("Forbidden"));
+
+        var result = await _controller.GetAttendanceByUuid(attendanceUuid);
+
+        Assert.IsType<ForbidResult>(result.Result);
+    }
+
+    [Fact]
+    public async Task GetStudentAttendanceHistoryByUuid_ReturnsNotFound_WhenStudentDoesNotExist()
+    {
+        var studentUuid = Guid.NewGuid();
+
+        _attendanceService
+            .Setup(service => service.GetStudentAttendanceHistoryByUuidAsync(studentUuid, _controller.User))
+            .ThrowsAsync(new attendance_monitoring.Exceptions.EntityNotFoundException<Guid>("Student", studentUuid));
+
+        var result = await _controller.GetStudentAttendanceHistoryByUuid(studentUuid);
+
+        Assert.IsType<NotFoundObjectResult>(result.Result);
+    }
+
+    [Fact]
+    public async Task GetStudentAttendanceHistoryByUuid_ReturnsForbid_WhenAccessIsUnauthorized()
+    {
+        var studentUuid = Guid.NewGuid();
+
+        _attendanceService
+            .Setup(service => service.GetStudentAttendanceHistoryByUuidAsync(studentUuid, _controller.User))
+            .ThrowsAsync(new UnauthorizedAccessException("Forbidden"));
+
+        var result = await _controller.GetStudentAttendanceHistoryByUuid(studentUuid);
+
+        Assert.IsType<ForbidResult>(result.Result);
+    }
+
+    [Fact]
+    public async Task GetSessionAttendanceByUuid_ReturnsNotFound_WhenSessionDoesNotExist()
+    {
+        var sessionUuid = Guid.NewGuid();
+
+        _attendanceService
+            .Setup(service => service.GetSessionAttendanceByUuidAsync(sessionUuid, _controller.User))
+            .ThrowsAsync(new attendance_monitoring.Exceptions.EntityNotFoundException<Guid>("Session", sessionUuid));
+
+        var result = await _controller.GetSessionAttendanceByUuid(sessionUuid);
+
+        Assert.IsType<NotFoundObjectResult>(result.Result);
+    }
+
+    [Fact]
+    public async Task GetSessionAttendanceByUuid_ReturnsForbid_WhenAccessIsUnauthorized()
+    {
+        var sessionUuid = Guid.NewGuid();
+
+        _attendanceService
+            .Setup(service => service.GetSessionAttendanceByUuidAsync(sessionUuid, _controller.User))
+            .ThrowsAsync(new UnauthorizedAccessException("Forbidden"));
+
+        var result = await _controller.GetSessionAttendanceByUuid(sessionUuid);
+
+        Assert.IsType<ForbidResult>(result.Result);
+    }
+
+    [Fact]
     public async Task UpdateAttendanceByUuid_ReturnsOkResult()
     {
         var attendanceUuid = Guid.NewGuid();
@@ -100,6 +184,36 @@ public class AttendanceControllerTest
     }
 
     [Fact]
+    public async Task UpdateAttendanceByUuid_ReturnsNotFound_WhenAttendanceDoesNotExist()
+    {
+        var attendanceUuid = Guid.NewGuid();
+        var request = new UpdateAttendanceRequest { Status = "Late" };
+
+        _attendanceService
+            .Setup(service => service.UpdateAttendanceByUuidAsync(attendanceUuid, request, _controller.User))
+            .ThrowsAsync(new attendance_monitoring.Exceptions.EntityNotFoundException<Guid>("Attendance", attendanceUuid));
+
+        var result = await _controller.UpdateAttendanceByUuid(attendanceUuid, request);
+
+        Assert.IsType<NotFoundObjectResult>(result.Result);
+    }
+
+    [Fact]
+    public async Task UpdateAttendanceByUuid_ReturnsForbid_WhenAccessIsUnauthorized()
+    {
+        var attendanceUuid = Guid.NewGuid();
+        var request = new UpdateAttendanceRequest { Status = "Late" };
+
+        _attendanceService
+            .Setup(service => service.UpdateAttendanceByUuidAsync(attendanceUuid, request, _controller.User))
+            .ThrowsAsync(new UnauthorizedAccessException("Forbidden"));
+
+        var result = await _controller.UpdateAttendanceByUuid(attendanceUuid, request);
+
+        Assert.IsType<ForbidResult>(result.Result);
+    }
+
+    [Fact]
     public async Task DeleteAttendanceByUuid_ReturnsNoContent()
     {
         var attendanceUuid = Guid.NewGuid();
@@ -111,6 +225,48 @@ public class AttendanceControllerTest
         var result = await _controller.DeleteAttendanceByUuid(attendanceUuid);
 
         Assert.IsType<NoContentResult>(result);
+    }
+
+    [Fact]
+    public async Task DeleteAttendanceByUuid_ReturnsNotFound_WhenAttendanceDoesNotExist()
+    {
+        var attendanceUuid = Guid.NewGuid();
+
+        _attendanceService
+            .Setup(service => service.DeleteAttendanceByUuidAsync(attendanceUuid, _controller.User))
+            .ThrowsAsync(new attendance_monitoring.Exceptions.EntityNotFoundException<Guid>("Attendance", attendanceUuid));
+
+        var result = await _controller.DeleteAttendanceByUuid(attendanceUuid);
+
+        Assert.IsType<NotFoundObjectResult>(result);
+    }
+
+    [Fact]
+    public async Task DeleteAttendanceByUuid_ReturnsNotFound_WhenServiceReturnsFalse()
+    {
+        var attendanceUuid = Guid.NewGuid();
+
+        _attendanceService
+            .Setup(service => service.DeleteAttendanceByUuidAsync(attendanceUuid, _controller.User))
+            .ReturnsAsync(false);
+
+        var result = await _controller.DeleteAttendanceByUuid(attendanceUuid);
+
+        Assert.IsType<NotFoundObjectResult>(result);
+    }
+
+    [Fact]
+    public async Task DeleteAttendanceByUuid_ReturnsForbid_WhenAccessIsUnauthorized()
+    {
+        var attendanceUuid = Guid.NewGuid();
+
+        _attendanceService
+            .Setup(service => service.DeleteAttendanceByUuidAsync(attendanceUuid, _controller.User))
+            .ThrowsAsync(new UnauthorizedAccessException("Forbidden"));
+
+        var result = await _controller.DeleteAttendanceByUuid(attendanceUuid);
+
+        Assert.IsType<ForbidResult>(result);
     }
 
     [Fact]

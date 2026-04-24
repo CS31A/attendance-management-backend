@@ -134,6 +134,21 @@ public class SessionControllerTest
         _mockSessionService.Verify(s => s.GetSessionByUuidAsync(sessionUuid), Times.Once);
     }
 
+    [Fact]
+    public async Task GetSessionByUuid_ReturnsNotFound_WhenSessionDoesNotExist()
+    {
+        var sessionUuid = Guid.NewGuid();
+
+        _mockSessionService
+            .Setup(s => s.GetSessionByUuidAsync(sessionUuid))
+            .ThrowsAsync(new EntityNotFoundException<Guid>("Session", sessionUuid));
+
+        var result = await _sessionController.GetSessionByUuid(sessionUuid);
+
+        var notFoundResult = Assert.IsType<NotFoundObjectResult>(result.Result);
+        Assert.NotNull(notFoundResult.Value);
+    }
+
     #endregion
 
     #region GetSessionsBySchedule Tests
