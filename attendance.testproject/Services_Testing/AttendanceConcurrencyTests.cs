@@ -148,7 +148,7 @@ public class AttendanceConcurrencyTests
         Assert.True(result.IsManualEntry);
         Assert.NotEqual(Guid.Empty, existingRecord.Uuid);
         Assert.NotEqual(Guid.Empty, existingRecord.Session.Uuid);
-        Assert.Null(result.GetType().GetProperty("Uuid"));
+        Assert.Equal(existingRecord.Uuid, result.Uuid);
 
         // Verify warning log
         _mockLogger.Verify(
