@@ -32,6 +32,49 @@ public class QrCodeRepository(ApplicationDbContext context, ILogger<QrCodeReposi
     }
     #endregion
 
+    #region GetQrCodeByUuidAsync
+    public async Task<QrCode?> GetQrCodeByUuidAsync(Guid uuid)
+    {
+        return await context.QrCodes
+            .AsNoTracking()
+            .AsSplitQuery()
+            .Include(q => q.Session)
+                .ThenInclude(s => s.Schedule)
+                    .ThenInclude(sch => sch.Subject)
+            .Include(q => q.Session)
+                .ThenInclude(s => s.Schedule)
+                    .ThenInclude(sch => sch.Section)
+            .Include(q => q.Session)
+                .ThenInclude(s => s.Schedule)
+                    .ThenInclude(sch => sch.Instructor)
+            .Include(q => q.Session)
+                .ThenInclude(s => s.ActualRoom)
+            .FirstOrDefaultAsync(q => q.Uuid == uuid)
+            .ConfigureAwait(false);
+    }
+    #endregion
+
+    #region GetQrCodeByUuidTrackedAsync
+    public async Task<QrCode?> GetQrCodeByUuidTrackedAsync(Guid uuid)
+    {
+        return await context.QrCodes
+            .AsSplitQuery()
+            .Include(q => q.Session)
+                .ThenInclude(s => s.Schedule)
+                    .ThenInclude(sch => sch.Subject)
+            .Include(q => q.Session)
+                .ThenInclude(s => s.Schedule)
+                    .ThenInclude(sch => sch.Section)
+            .Include(q => q.Session)
+                .ThenInclude(s => s.Schedule)
+                    .ThenInclude(sch => sch.Instructor)
+            .Include(q => q.Session)
+                .ThenInclude(s => s.ActualRoom)
+            .FirstOrDefaultAsync(q => q.Uuid == uuid)
+            .ConfigureAwait(false);
+    }
+    #endregion
+
     #region GetQrCodeByHashAsync
     public async Task<QrCode?> GetQrCodeByHashAsync(string qrHash)
     {

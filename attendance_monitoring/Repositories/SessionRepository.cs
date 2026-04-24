@@ -39,6 +39,51 @@ public class SessionRepository(ApplicationDbContext context) : ISessionRepositor
     }
 
     /// <summary>
+    /// Retrieves a session by its UUID with all navigation properties loaded.
+    /// Performance: Single JOIN query (no split query for single record retrieval).
+    /// </summary>
+    public async Task<Session?> GetSessionByUuidAsync(Guid uuid)
+    {
+        return await context.Sessions
+            .AsNoTracking()
+            .Include(s => s.Schedule)
+                .ThenInclude(sch => sch.Subject)
+            .Include(s => s.Schedule)
+                .ThenInclude(sch => sch.Section)
+            .Include(s => s.Schedule)
+                .ThenInclude(sch => sch.Classroom)
+            .Include(s => s.Schedule)
+                .ThenInclude(sch => sch.Instructor)
+            .Include(s => s.ActualRoom)
+            .Include(s => s.InstructorWhoStarted)
+            .Include(s => s.InstructorWhoEnded)
+            .FirstOrDefaultAsync(s => s.Uuid == uuid)
+            .ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Retrieves a session by its UUID with all navigation properties loaded and tracking enabled.
+    /// Performance: Single JOIN query (no split query for single record retrieval).
+    /// </summary>
+    public async Task<Session?> GetSessionByUuidTrackedAsync(Guid uuid)
+    {
+        return await context.Sessions
+            .Include(s => s.Schedule)
+                .ThenInclude(sch => sch.Subject)
+            .Include(s => s.Schedule)
+                .ThenInclude(sch => sch.Section)
+            .Include(s => s.Schedule)
+                .ThenInclude(sch => sch.Classroom)
+            .Include(s => s.Schedule)
+                .ThenInclude(sch => sch.Instructor)
+            .Include(s => s.ActualRoom)
+            .Include(s => s.InstructorWhoStarted)
+            .Include(s => s.InstructorWhoEnded)
+            .FirstOrDefaultAsync(s => s.Uuid == uuid)
+            .ConfigureAwait(false);
+    }
+
+    /// <summary>
     /// Retrieves all sessions with navigation properties loaded.
     /// </summary>
     public async Task<IEnumerable<Session>> GetAllSessionsAsync()
