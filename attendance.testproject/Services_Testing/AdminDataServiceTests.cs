@@ -461,7 +461,8 @@ public class AdminDataServiceTests
     public async Task ImportAsync_UsersCsv_UsesLookupCacheForSectionId()
     {
         await using var context = CreateContext();
-        context.Sections.Add(new Section { Id = 12, Name = "BSCS-1A", CourseId = 4, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow });
+        var sectionUuid = Guid.Parse("aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee");
+        context.Sections.Add(new Section { Id = 12, Uuid = sectionUuid, Name = "BSCS-1A", CourseId = 4, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow });
         await context.SaveChangesAsync();
 
         var accountService = new Mock<IAccountService>();
@@ -483,7 +484,7 @@ public class AdminDataServiceTests
         var registerDto = accountService.Invocations
             .First(i => i.Method.Name == "RegisterAsync").Arguments[0] as RegisterDto;
         Assert.NotNull(registerDto);
-        Assert.Equal(12, registerDto.SectionId);
+        Assert.Equal(sectionUuid, registerDto.SectionId);
     }
 
     // === Atomicity tests (use SQLite for real transaction support) ===
