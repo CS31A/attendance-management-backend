@@ -16,6 +16,7 @@ internal static class QrCodeMapper
             Id = qrCode.Id,
             Uuid = qrCode.Uuid,
             SessionId = qrCode.SessionId,
+            SessionUuid = qrCode.Session?.Uuid,
             QrHash = qrCode.QrHash,
             GeneratedAt = qrCode.GeneratedAt,
             ExpiresAt = qrCode.ExpiresAt,
@@ -27,6 +28,7 @@ internal static class QrCodeMapper
 
             // Session information
             ScheduleId = qrCode.Session?.ScheduleId,
+            ScheduleUuid = qrCode.Session?.Schedule?.Uuid,
             SessionDate = qrCode.Session?.SessionDate,
             SessionStatus = qrCode.Session?.Status,
 

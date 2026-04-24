@@ -89,7 +89,7 @@ public class QrCodeController(
     /// <param name="id">The QR code ID to revoke.</param>
     /// <param name="request">Optional revocation reason.</param>
     /// <returns>NoContent if successful, error otherwise.</returns>
-    [HttpPatch("{id}/revoke")]
+    [HttpPatch("{id:int}/revoke")]
     [Authorize(Policy = "PrivilegedPolicy")]
     public async Task<ActionResult> RevokeQrCode(int id, [FromBody] RevokeQrCode? request)
     {
@@ -98,6 +98,18 @@ public class QrCodeController(
         await qrCodeService.RevokeQrCodeAsync(id, request?.Reason, User);
 
         logger.LogInformation("Successfully revoked QR code with ID: {QrCodeId}", id);
+        return NoContent();
+    }
+
+    [HttpPatch("uuid/{uuid:guid}/revoke")]
+    [Authorize(Policy = "PrivilegedPolicy")]
+    public async Task<ActionResult> RevokeQrCodeByUuid(Guid uuid, [FromBody] RevokeQrCode? request)
+    {
+        logger.LogInformation("Revoking QR code with UUID: {QrCodeUuid}", uuid);
+
+        await qrCodeService.RevokeQrCodeByUuidAsync(uuid, request?.Reason, User);
+
+        logger.LogInformation("Successfully revoked QR code with UUID: {QrCodeUuid}", uuid);
         return NoContent();
     }
 
@@ -124,7 +136,7 @@ public class QrCodeController(
     /// </summary>
     /// <param name="id">The QR code ID to reactivate.</param>
     /// <returns>NoContent if successful, error otherwise.</returns>
-    [HttpPatch("{id}/reactivate")]
+    [HttpPatch("{id:int}/reactivate")]
     [Authorize(Policy = "PrivilegedPolicy")]
     public async Task<ActionResult> ReactivateQrCode(int id)
     {
@@ -133,6 +145,18 @@ public class QrCodeController(
         await qrCodeService.ReactivateQrCodeAsync(id, User);
 
         logger.LogInformation("Successfully reactivated QR code with ID: {QrCodeId}", id);
+        return NoContent();
+    }
+
+    [HttpPatch("uuid/{uuid:guid}/reactivate")]
+    [Authorize(Policy = "PrivilegedPolicy")]
+    public async Task<ActionResult> ReactivateQrCodeByUuid(Guid uuid)
+    {
+        logger.LogInformation("Reactivating QR code with UUID: {QrCodeUuid}", uuid);
+
+        await qrCodeService.ReactivateQrCodeByUuidAsync(uuid, User);
+
+        logger.LogInformation("Successfully reactivated QR code with UUID: {QrCodeUuid}", uuid);
         return NoContent();
     }
 
@@ -158,7 +182,7 @@ public class QrCodeController(
     /// </summary>
     /// <param name="id">The QR code ID.</param>
     /// <returns>QR code details if found.</returns>
-    [HttpGet("{id}")]
+    [HttpGet("{id:int}")]
     [Authorize(Policy = "PrivilegedPolicy")]
     public async Task<ActionResult> GetQrCodeById(int id)
     {
@@ -177,13 +201,31 @@ public class QrCodeController(
         // No try-catch - global handler will catch any unexpected errors
     }
 
+    [HttpGet("uuid/{uuid:guid}")]
+    [Authorize(Policy = "PrivilegedPolicy")]
+    public async Task<ActionResult> GetQrCodeByUuid(Guid uuid)
+    {
+        logger.LogInformation("Retrieving QR code with UUID: {QrCodeUuid}", uuid);
+
+        var qrCode = await qrCodeService.GetQrCodeByUuidAsync(uuid);
+
+        if (qrCode == null)
+        {
+            logger.LogWarning("QR code with UUID {QrCodeUuid} not found", uuid);
+            return NotFound(new { message = $"QR code with UUID {uuid} not found" });
+        }
+
+        logger.LogInformation("Successfully retrieved QR code with UUID: {QrCodeUuid}", uuid);
+        return Ok(qrCode);
+    }
+
     /// <summary>
     /// Gets a QR code image by its ID.
     /// Regenerates the QR code image from the stored hash.
     /// </summary>
     /// <param name="id">The QR code ID.</param>
     /// <returns>QR code image as PNG file.</returns>
-    [HttpGet("{id}/image")]
+    [HttpGet("{id:int}/image")]
     [Authorize(Policy = "PrivilegedPolicy")]
     public async Task<IActionResult> GetQrCodeImage(int id)
     {
@@ -206,6 +248,29 @@ public class QrCodeController(
         byte[] imageBytes = qrCodeImage.GetGraphic(20);
 
         logger.LogInformation("Successfully generated image for QR code ID: {QrCodeId}", id);
+        return File(imageBytes, "image/png");
+    }
+
+    [HttpGet("uuid/{uuid:guid}/image")]
+    [Authorize(Policy = "PrivilegedPolicy")]
+    public async Task<IActionResult> GetQrCodeImageByUuid(Guid uuid)
+    {
+        logger.LogInformation("Retrieving QR code image for UUID: {QrCodeUuid}", uuid);
+
+        var qrCode = await qrCodeService.GetQrCodeByUuidAsync(uuid);
+
+        if (qrCode == null)
+        {
+            logger.LogWarning("QR code with UUID {QrCodeUuid} not found", uuid);
+            return NotFound(new { message = $"QR code with UUID {uuid} not found" });
+        }
+
+        using var qrGenerator = new QRCodeGenerator();
+        using var qrCodeData = qrGenerator.CreateQrCode(qrCode.QrHash, QRCodeGenerator.ECCLevel.Q);
+        var qrCodeImage = new PngByteQRCode(qrCodeData);
+        byte[] imageBytes = qrCodeImage.GetGraphic(20);
+
+        logger.LogInformation("Successfully generated image for QR code UUID: {QrCodeUuid}", uuid);
         return File(imageBytes, "image/png");
     }
 
@@ -238,7 +303,7 @@ public class QrCodeController(
     /// </summary>
     /// <param name="sessionId">The session ID.</param>
     /// <returns>List of QR codes for the session.</returns>
-    [HttpGet("session/{sessionId}")]
+    [HttpGet("session/{sessionId:int}")]
     [Authorize(Policy = "PrivilegedPolicy")]
     public async Task<ActionResult> GetQrCodesBySessionId(int sessionId)
     {
@@ -295,6 +360,64 @@ public class QrCodeController(
         catch (Exception ex)
         {
             logger.LogError(ex, "Error retrieving QR codes for session {SessionId}", sessionId);
+            return StatusCode(500, new { message = "An error occurred while retrieving QR codes", errorCode = "INTERNAL_ERROR" });
+        }
+    }
+
+    [HttpGet("session/uuid/{sessionUuid:guid}")]
+    [Authorize(Policy = "PrivilegedPolicy")]
+    public async Task<ActionResult> GetQrCodesBySessionUuid(Guid sessionUuid)
+    {
+        logger.LogInformation("Retrieving QR codes for session UUID: {SessionUuid}", sessionUuid);
+
+        try
+        {
+            var instructorId = await userContextService.GetInstructorIdAsync(User);
+            if (!instructorId.HasValue)
+            {
+                logger.LogWarning("Non-instructor user attempted to retrieve QR codes for session UUID {SessionUuid}", sessionUuid);
+                return StatusCode(StatusCodes.Status403Forbidden,
+                    new { message = "User is not an instructor", errorCode = "NOT_INSTRUCTOR" });
+            }
+
+            var userRole = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value ?? "Unknown";
+
+            if (userRole == RoleConstants.Instructor)
+            {
+                var session = await sessionRepository.GetSessionByUuidAsync(sessionUuid);
+
+                if (session == null)
+                {
+                    logger.LogWarning("Session UUID {SessionUuid} not found", sessionUuid);
+                    return NotFound(new { message = $"Session {sessionUuid} not found", errorCode = "SESSION_NOT_FOUND" });
+                }
+
+                if (session.Schedule.InstructorId != instructorId.Value)
+                {
+                    logger.LogWarning(
+                        "Instructor {InstructorId} attempted unauthorized access to QR codes for session UUID {SessionUuid} owned by instructor {OwnerId}",
+                        instructorId.Value, sessionUuid, session.Schedule.InstructorId);
+                    return StatusCode(StatusCodes.Status403Forbidden,
+                        new { message = "You do not have permission to view QR codes for this session", errorCode = "FORBIDDEN" });
+                }
+            }
+
+            var qrCodes = await qrCodeService.GetQrCodesBySessionUuidAsync(sessionUuid);
+            var qrCodesList = qrCodes.ToList();
+
+            if (!qrCodesList.Any())
+            {
+                logger.LogWarning("No QR codes found for session UUID {SessionUuid}", sessionUuid);
+                return NotFound(new { message = $"No QR codes found for session {sessionUuid}", errorCode = "NO_QRCODES_FOUND" });
+            }
+
+            logger.LogInformation("Successfully retrieved {Count} QR codes for session UUID: {SessionUuid}",
+                qrCodesList.Count, sessionUuid);
+            return Ok(qrCodesList);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error retrieving QR codes for session UUID {SessionUuid}", sessionUuid);
             return StatusCode(500, new { message = "An error occurred while retrieving QR codes", errorCode = "INTERNAL_ERROR" });
         }
     }
@@ -358,7 +481,7 @@ public class QrCodeController(
     /// <param name="pageNumber">Page number (default: 1)</param>
     /// <param name="pageSize">Page size (default: 50, max: 100)</param>
     /// <returns>Paginated scan history with statistics</returns>
-    [HttpGet("{id}/scan-history")]
+    [HttpGet("{id:int}/scan-history")]
     [Authorize(Policy = "PrivilegedPolicy")]
     [ProducesResponseType(typeof(attendance_monitoring.Models.DTO.Response.QrCodeScanHistoryResponseDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -408,6 +531,60 @@ public class QrCodeController(
         catch (Exception ex)
         {
             logger.LogError(ex, "Error retrieving scan history for QR code {Id}", id);
+            return StatusCode(500, new { message = "An error occurred while retrieving scan history" });
+        }
+    }
+
+    [HttpGet("uuid/{uuid:guid}/scan-history")]
+    [Authorize(Policy = "PrivilegedPolicy")]
+    [ProducesResponseType(typeof(attendance_monitoring.Models.DTO.Response.QrCodeScanHistoryResponseDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult> GetScanHistoryByUuid(
+        Guid uuid,
+        [FromQuery] int pageNumber = 1,
+        [FromQuery] int pageSize = 50)
+    {
+        try
+        {
+            var instructorId = await userContextService.GetInstructorIdAsync(User);
+            if (!instructorId.HasValue)
+            {
+                return StatusCode(StatusCodes.Status403Forbidden,
+                    new { message = "User is not an instructor", errorCode = "NOT_INSTRUCTOR" });
+            }
+
+            var userRole = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value ?? "Unknown";
+
+            logger.LogInformation(
+                "Instructor {InstructorId} ({UserRole}) requesting scan history for QR code UUID {QrCodeUuid}",
+                instructorId.Value, userRole, uuid);
+
+            var result = await qrCodeService.GetScanHistoryByUuidAsync(
+                uuid, instructorId.Value, userRole, pageNumber, pageSize);
+
+            return Ok(result);
+        }
+        catch (EntityNotFoundException<Guid> ex)
+        {
+            logger.LogWarning("QR code not found: {Message}", ex.Message);
+            return NotFound(new { message = ex.Message, errorCode = "QRCODE_NOT_FOUND" });
+        }
+        catch (EntityUnauthorizedException ex)
+        {
+            logger.LogWarning("Unauthorized access attempt: {Message}", ex.Message);
+            return StatusCode(StatusCodes.Status403Forbidden,
+                new { message = "You do not have permission to view this scan history", errorCode = "FORBIDDEN" });
+        }
+        catch (Exceptions.ValidationException ex)
+        {
+            logger.LogWarning("Validation error: {Message}", ex.Message);
+            return BadRequest(new { message = ex.Message, errorCode = "VALIDATION_ERROR" });
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error retrieving scan history for QR code UUID {QrCodeUuid}", uuid);
             return StatusCode(500, new { message = "An error occurred while retrieving scan history" });
         }
     }

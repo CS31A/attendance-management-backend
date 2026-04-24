@@ -49,6 +49,9 @@ public class QrCodeService : IQrCodeService
     public Task<IEnumerable<QrCodeResponseDto>> GetQrCodesBySessionIdAsync(int sessionId)
         => _queryService.GetQrCodesBySessionIdAsync(sessionId);
 
+    public Task<IEnumerable<QrCodeResponseDto>> GetQrCodesBySessionUuidAsync(Guid sessionUuid)
+        => _queryService.GetQrCodesBySessionUuidAsync(sessionUuid);
+
     public Task<IEnumerable<QrCodeResponseDto>> GetActiveQrCodesAsync()
         => _queryService.GetActiveQrCodesAsync();
 
@@ -59,6 +62,10 @@ public class QrCodeService : IQrCodeService
     public Task<QrCodeScanHistoryResponseDto> GetScanHistoryByHashAsync(
         string qrHash, int instructorId, string userRole, int pageNumber = 1, int pageSize = 50)
         => _queryService.GetScanHistoryByHashAsync(qrHash, instructorId, userRole, pageNumber, pageSize);
+
+    public Task<QrCodeScanHistoryResponseDto> GetScanHistoryByUuidAsync(
+        Guid uuid, int instructorId, string userRole, int pageNumber = 1, int pageSize = 50)
+        => _queryService.GetScanHistoryByUuidAsync(uuid, instructorId, userRole, pageNumber, pageSize);
 
     #endregion
 

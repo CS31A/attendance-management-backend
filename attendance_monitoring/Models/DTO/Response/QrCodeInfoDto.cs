@@ -9,6 +9,7 @@ public class QrCodeInfoDto
     /// QR Code ID
     /// </summary>
     public int Id { get; set; }
+    public Guid? Uuid { get; set; }
 
     /// <summary>
     /// QR code hash (unique identifier)
@@ -19,6 +20,7 @@ public class QrCodeInfoDto
     /// Associated session ID
     /// </summary>
     public int SessionId { get; set; }
+    public Guid? SessionUuid { get; set; }
 
     /// <summary>
     /// Session date and time

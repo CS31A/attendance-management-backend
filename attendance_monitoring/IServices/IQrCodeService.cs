@@ -57,6 +57,13 @@ public interface IQrCodeService
     Task<IEnumerable<QrCodeResponseDto>> GetQrCodesBySessionIdAsync(int sessionId);
 
     /// <summary>
+    /// Retrieves all QR codes for a specific session UUID.
+    /// </summary>
+    /// <param name="sessionUuid">The session UUID.</param>
+    /// <returns>A collection of QR code response DTOs for the specified session.</returns>
+    Task<IEnumerable<QrCodeResponseDto>> GetQrCodesBySessionUuidAsync(Guid sessionUuid);
+
+    /// <summary>
     /// Retrieves all active QR codes that have not expired.
     /// </summary>
     /// <returns>A collection of active, non-expired QR code response DTOs.</returns>
@@ -89,6 +96,22 @@ public interface IQrCodeService
     /// <returns>Complete scan history response with pagination and statistics</returns>
     Task<QrCodeScanHistoryResponseDto> GetScanHistoryByHashAsync(
         string qrHash,
+        int instructorId,
+        string userRole,
+        int pageNumber = 1,
+        int pageSize = 50);
+
+    /// <summary>
+    /// Get scan history for a QR code by UUID.
+    /// </summary>
+    /// <param name="uuid">The QR code UUID.</param>
+    /// <param name="instructorId">The authenticated instructor's ID.</param>
+    /// <param name="userRole">The authenticated user's role.</param>
+    /// <param name="pageNumber">Page number (default: 1).</param>
+    /// <param name="pageSize">Page size (default: 50, max: 100).</param>
+    /// <returns>Complete scan history response with pagination and statistics.</returns>
+    Task<QrCodeScanHistoryResponseDto> GetScanHistoryByUuidAsync(
+        Guid uuid,
         int instructorId,
         string userRole,
         int pageNumber = 1,

@@ -156,6 +156,23 @@ internal sealed class QrCodeQueryService
         }
     }
 
+    public async Task<IEnumerable<QrCodeResponseDto>> GetQrCodesBySessionUuidAsync(Guid sessionUuid)
+    {
+        var sessionId = await _context.Sessions
+            .AsNoTracking()
+            .Where(session => session.Uuid == sessionUuid)
+            .Select(session => (int?)session.Id)
+            .FirstOrDefaultAsync()
+            .ConfigureAwait(false);
+
+        if (!sessionId.HasValue)
+        {
+            throw new EntityNotFoundException<Guid>("Session", sessionUuid);
+        }
+
+        return await GetQrCodesBySessionIdAsync(sessionId.Value).ConfigureAwait(false);
+    }
+
     public async Task<IEnumerable<QrCodeResponseDto>> GetActiveQrCodesAsync()
     {
         try
@@ -231,8 +248,10 @@ internal sealed class QrCodeQueryService
             var qrCodeInfo = new QrCodeInfoDto
             {
                 Id = qrCode.Id,
+                Uuid = qrCode.Uuid,
                 Hash = qrCode.QrHash,
                 SessionId = qrCode.SessionId,
+                SessionUuid = session?.Uuid,
                 SessionDate = session?.SessionDate ?? DateTime.MinValue,
                 SessionSubject = session?.Schedule?.Subject?.Name ?? "Unknown",
                 GeneratedAt = qrCode.GeneratedAt,
@@ -275,12 +294,15 @@ internal sealed class QrCodeQueryService
             var scanItems = scanHistory.Items.Select(ar => new QrCodeScanHistoryItemDto
             {
                 AttendanceRecordId = ar.Id,
+                AttendanceRecordUuid = ar.Uuid,
                 StudentId = ar.StudentId,
+                StudentUuid = ar.Student?.Uuid,
                 StudentEmail = ar.Student?.User?.Email ?? "Unknown",
                 StudentName = $"{ar.Student?.Firstname} {ar.Student?.Lastname}".Trim(),
                 ScannedAt = ar.CheckInTime,
                 Status = ar.Status.ToString(),
                 SessionId = ar.SessionId,
+                SessionUuid = ar.Session?.Uuid,
                 SessionDate = ar.Session?.SessionDate ?? DateTime.MinValue,
                 SessionSubject = ar.Session?.Schedule?.Subject?.Name ?? "Unknown",
                 SessionSection = ar.Session?.Schedule?.Section?.Name ?? "Unknown"
@@ -322,6 +344,22 @@ internal sealed class QrCodeQueryService
             _logger.LogError(ex, "Error occurred while retrieving scan history for QR code {QrCodeId}", qrCodeId);
             throw new EntityServiceException("QrCode", "GetScanHistory", "An error occurred while retrieving scan history", ex);
         }
+    }
+
+    public async Task<QrCodeScanHistoryResponseDto> GetScanHistoryByUuidAsync(
+        Guid uuid,
+        int instructorId,
+        string userRole,
+        int pageNumber = 1,
+        int pageSize = 50)
+    {
+        var qrCode = await _qrCodeRepository.GetQrCodeByUuidAsync(uuid).ConfigureAwait(false);
+        if (qrCode == null)
+        {
+            throw new EntityNotFoundException<Guid>("QrCode", uuid);
+        }
+
+        return await GetScanHistoryAsync(qrCode.Id, instructorId, userRole, pageNumber, pageSize).ConfigureAwait(false);
     }
 
     public async Task<QrCodeScanHistoryResponseDto> GetScanHistoryByHashAsync(

@@ -8,6 +8,7 @@ public class QrCodeResponseDto
     public int Id { get; set; }
     public Guid Uuid { get; set; }
     public int SessionId { get; set; }
+    public Guid? SessionUuid { get; set; }
     public string QrHash { get; set; } = string.Empty;
     public DateTime GeneratedAt { get; set; }
     public DateTime ExpiresAt { get; set; }
@@ -19,6 +20,7 @@ public class QrCodeResponseDto
 
     // Session information (from Session entity)
     public int? ScheduleId { get; set; }
+    public Guid? ScheduleUuid { get; set; }
     public DateTime? SessionDate { get; set; }
     public string? SessionStatus { get; set; }
 

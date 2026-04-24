@@ -9,11 +9,13 @@ public class QrCodeScanHistoryItemDto
     /// Attendance record ID (primary key)
     /// </summary>
     public int AttendanceRecordId { get; set; }
+    public Guid? AttendanceRecordUuid { get; set; }
 
     /// <summary>
     /// Student ID who scanned the QR code
     /// </summary>
     public int StudentId { get; set; }
+    public Guid? StudentUuid { get; set; }
 
     /// <summary>
     /// Student email address
@@ -39,6 +41,7 @@ public class QrCodeScanHistoryItemDto
     /// Session ID associated with this scan
     /// </summary>
     public int SessionId { get; set; }
+    public Guid? SessionUuid { get; set; }
 
     /// <summary>
     /// Session date and time
