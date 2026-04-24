@@ -22,6 +22,7 @@ namespace attendance_monitoring.Repositories
                 .Include(s => s.Subject)
                 .Include(s => s.Classroom)
                 .Include(s => s.Section)
+                    .ThenInclude(section => section.Course)
                 .Include(s => s.Instructor)
                     .ThenInclude(i => i.User)
                 .ToListAsync();
@@ -36,6 +37,7 @@ namespace attendance_monitoring.Repositories
                 .Include(s => s.Subject)
                 .Include(s => s.Classroom)
                 .Include(s => s.Section)
+                    .ThenInclude(section => section.Course)
                 .Include(s => s.Instructor)
                     .ThenInclude(i => i.User)
                 .FirstOrDefaultAsync(s => s.Id == id);
@@ -49,6 +51,7 @@ namespace attendance_monitoring.Repositories
                 .Include(s => s.Subject)
                 .Include(s => s.Classroom)
                 .Include(s => s.Section)
+                    .ThenInclude(section => section.Course)
                 .Include(s => s.Instructor)
                     .ThenInclude(i => i.User)
                 .FirstOrDefaultAsync(s => s.Id == id);
@@ -93,6 +96,7 @@ namespace attendance_monitoring.Repositories
                 .Include(s => s.Subject)
                 .Include(s => s.Classroom)
                 .Include(s => s.Section)
+                    .ThenInclude(section => section.Course)
                 .Include(s => s.Instructor)
                     .ThenInclude(i => i.User)
                 .Where(s => s.InstructorId == instructorId)
@@ -108,6 +112,7 @@ namespace attendance_monitoring.Repositories
                 .Include(s => s.Subject)
                 .Include(s => s.Classroom)
                 .Include(s => s.Section)
+                    .ThenInclude(section => section.Course)
                 .Include(s => s.Instructor)
                     .ThenInclude(i => i.User)
                 .Where(s => s.SectionId == sectionId)
@@ -141,6 +146,7 @@ namespace attendance_monitoring.Repositories
                 .AsNoTracking()
                 .Include(s => s.Subject)
                 .Include(s => s.Section)
+                    .ThenInclude(section => section.Course)
                 .Include(s => s.Classroom)
                 .Include(s => s.Instructor)
                 .Where(s => sectionIds.Contains(s.SectionId) && subjectIds.Contains(s.SubjectId))
