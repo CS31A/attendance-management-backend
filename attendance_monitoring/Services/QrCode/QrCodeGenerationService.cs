@@ -22,17 +22,20 @@ internal sealed class QrCodeGenerationService
     private readonly IQrCodeRepository _qrCodeRepository;
     private readonly INotificationService _notificationService;
     private readonly QrCodeAuthorizationService _authorizationService;
+    private readonly ISessionRepository _sessionRepository;
     private readonly ILogger<QrCodeGenerationService> _logger;
 
     public QrCodeGenerationService(
         IQrCodeRepository qrCodeRepository,
         INotificationService notificationService,
         QrCodeAuthorizationService authorizationService,
+        ISessionRepository sessionRepository,
         ILogger<QrCodeGenerationService> logger)
     {
         _qrCodeRepository = qrCodeRepository ?? throw new ArgumentNullException(nameof(qrCodeRepository));
         _notificationService = notificationService ?? throw new ArgumentNullException(nameof(notificationService));
         _authorizationService = authorizationService ?? throw new ArgumentNullException(nameof(authorizationService));
+        _sessionRepository = sessionRepository ?? throw new ArgumentNullException(nameof(sessionRepository));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
@@ -42,6 +45,8 @@ internal sealed class QrCodeGenerationService
         {
             try
             {
+                await ResolveSessionIdAsync(createQrCode).ConfigureAwait(false);
+
                 _logger.LogInformation("Creating QR code for session ID: {SessionId} (Attempt {Attempt})",
                     createQrCode.SessionId, attempt);
 
@@ -114,6 +119,8 @@ internal sealed class QrCodeGenerationService
         {
             try
             {
+                await ResolveSessionIdAsync(qrCodeRequest).ConfigureAwait(false);
+
                 _logger.LogInformation("Generating QR code for session ID: {SessionId} (Attempt {Attempt})",
                     qrCodeRequest.SessionId, attempts + 1);
 
@@ -224,6 +231,32 @@ internal sealed class QrCodeGenerationService
         {
             _logger.LogError(ex, "Error occurred while checking if QR hash exists: {QrHash}", qrHash);
             throw new EntityServiceException("QrCode", $"QrHashExists: {qrHash}", "An error occurred while checking QR hash existence", ex);
+        }
+    }
+
+    private async Task ResolveSessionIdAsync(CreateQrCode createQrCode)
+    {
+        if (createQrCode.SessionUuid.HasValue && createQrCode.SessionUuid.Value != Guid.Empty)
+        {
+            var session = await _sessionRepository.GetSessionByUuidAsync(createQrCode.SessionUuid.Value).ConfigureAwait(false);
+            if (session == null)
+            {
+                throw new EntityNotFoundException<Guid>("Session", createQrCode.SessionUuid.Value);
+            }
+            createQrCode.SessionId = session.Id;
+        }
+    }
+
+    private async Task ResolveSessionIdAsync(QrCodeRequest qrCodeRequest)
+    {
+        if (qrCodeRequest.SessionUuid.HasValue && qrCodeRequest.SessionUuid.Value != Guid.Empty)
+        {
+            var session = await _sessionRepository.GetSessionByUuidAsync(qrCodeRequest.SessionUuid.Value).ConfigureAwait(false);
+            if (session == null)
+            {
+                throw new EntityNotFoundException<Guid>("Session", qrCodeRequest.SessionUuid.Value);
+            }
+            qrCodeRequest.SessionId = session.Id;
         }
     }
 

@@ -271,7 +271,7 @@ public class SessionControllerTest
             Description = "Test session"
         };
 
-        var createdSession = CreateTestSessionResponseDto(1, request.ScheduleId);
+        var createdSession = CreateTestSessionResponseDto(1, request.ScheduleId!.Value);
 
         _mockSessionService
             .Setup(s => s.CreateSessionAsync(request))
@@ -302,6 +302,49 @@ public class SessionControllerTest
         // Assert
         var badRequestResult = Assert.IsType<BadRequestObjectResult>(result.Result);
         Assert.IsType<SerializableError>(badRequestResult.Value);
+    }
+
+    [Fact]
+    public void CreateSession_WithScheduleUuidOnly_PassesValidation()
+    {
+        // Arrange
+        var request = new CreateSession
+        {
+            ScheduleUuid = Guid.NewGuid(),
+            SessionDate = DateTime.UtcNow.Date.AddDays(1)
+        };
+        var validationResults = new List<System.ComponentModel.DataAnnotations.ValidationResult>();
+
+        // Act
+        var isValid = System.ComponentModel.DataAnnotations.Validator.TryValidateObject(
+            request,
+            new System.ComponentModel.DataAnnotations.ValidationContext(request),
+            validationResults,
+            true);
+
+        // Assert
+        Assert.True(isValid);
+        Assert.Empty(validationResults);
+    }
+
+    [Fact]
+    public void CreateSession_WithoutScheduleIdOrUuid_FailsValidation()
+    {
+        // Arrange
+        var request = new CreateSession();
+        var validationResults = new List<System.ComponentModel.DataAnnotations.ValidationResult>();
+
+        // Act
+        var isValid = System.ComponentModel.DataAnnotations.Validator.TryValidateObject(
+            request,
+            new System.ComponentModel.DataAnnotations.ValidationContext(request),
+            validationResults,
+            true);
+
+        // Assert
+        Assert.False(isValid);
+        Assert.Contains(validationResults,
+            result => result.ErrorMessage == "Either ScheduleId or ScheduleUuid is required.");
     }
 
     [Fact]
@@ -678,6 +721,52 @@ public class SessionControllerTest
         // Assert
         var badRequestResult = Assert.IsType<BadRequestObjectResult>(result.Result);
         Assert.IsType<SerializableError>(badRequestResult.Value);
+    }
+
+    [Fact]
+    public void UpdateSessionRoom_WithActualRoomUuidOnly_PassesValidation()
+    {
+        // Arrange
+        var request = new UpdateSessionRoom
+        {
+            ActualRoomUuid = Guid.NewGuid(),
+            RowVersion = [1, 2, 3, 4]
+        };
+        var validationResults = new List<System.ComponentModel.DataAnnotations.ValidationResult>();
+
+        // Act
+        var isValid = System.ComponentModel.DataAnnotations.Validator.TryValidateObject(
+            request,
+            new System.ComponentModel.DataAnnotations.ValidationContext(request),
+            validationResults,
+            true);
+
+        // Assert
+        Assert.True(isValid);
+        Assert.Empty(validationResults);
+    }
+
+    [Fact]
+    public void UpdateSessionRoom_WithoutActualRoomIdOrUuid_FailsValidation()
+    {
+        // Arrange
+        var request = new UpdateSessionRoom
+        {
+            RowVersion = [1, 2, 3, 4]
+        };
+        var validationResults = new List<System.ComponentModel.DataAnnotations.ValidationResult>();
+
+        // Act
+        var isValid = System.ComponentModel.DataAnnotations.Validator.TryValidateObject(
+            request,
+            new System.ComponentModel.DataAnnotations.ValidationContext(request),
+            validationResults,
+            true);
+
+        // Assert
+        Assert.False(isValid);
+        Assert.Contains(validationResults,
+            result => result.ErrorMessage == "Either ActualRoomId or ActualRoomUuid is required.");
     }
 
     [Fact]

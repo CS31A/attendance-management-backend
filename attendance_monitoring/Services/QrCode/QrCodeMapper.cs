@@ -14,6 +14,7 @@ internal static class QrCodeMapper
         return new QrCodeResponseDto
         {
             Id = qrCode.Id,
+            Uuid = qrCode.Uuid,
             SessionId = qrCode.SessionId,
             QrHash = qrCode.QrHash,
             GeneratedAt = qrCode.GeneratedAt,

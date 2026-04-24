@@ -250,6 +250,29 @@ public class SessionService : ISessionService
     /// </summary>
     public async Task<SessionResponseDto> UpdateSessionRoomAsync(int sessionId, UpdateSessionRoom updateRequest)
     {
+        Classroom? resolvedClassroom = null;
+
+        if (updateRequest.ActualRoomUuid.HasValue)
+        {
+            resolvedClassroom = await _classroomRepository.GetClassroomByUuidAsync(updateRequest.ActualRoomUuid.Value).ConfigureAwait(false);
+            if (resolvedClassroom == null)
+            {
+                throw new EntityNotFoundException<Guid>("Classroom", updateRequest.ActualRoomUuid.Value);
+            }
+
+            if (updateRequest.ActualRoomId.HasValue && updateRequest.ActualRoomId.Value != resolvedClassroom.Id)
+            {
+                throw new ValidationException("ActualRoomId and ActualRoomUuid must reference the same classroom.");
+            }
+
+            updateRequest.ActualRoomId = resolvedClassroom.Id;
+        }
+
+        if (!updateRequest.ActualRoomId.HasValue)
+        {
+            throw new ValidationException("Either ActualRoomId or ActualRoomUuid is required.");
+        }
+
         _logger.LogInformation("Updating room for session ID: {SessionId} to classroom ID: {ClassroomId}",
             sessionId, updateRequest.ActualRoomId);
 
@@ -280,19 +303,19 @@ public class SessionService : ISessionService
             }
 
             // Validate that the new classroom exists
-            var classroom = await _classroomRepository.GetClassroomByIdAsync(updateRequest.ActualRoomId)
+            var classroom = resolvedClassroom ?? await _classroomRepository.GetClassroomByIdAsync(updateRequest.ActualRoomId.Value)
                 .ConfigureAwait(false);
 
             if (classroom == null)
             {
-                var errorMessage = $"Classroom with ID {updateRequest.ActualRoomId} not found.";
+                var errorMessage = $"Classroom with ID {updateRequest.ActualRoomId.Value} not found.";
                 _logger.LogWarning("Session room update failed: {ErrorMessage}", errorMessage);
-                throw new EntityNotFoundException<int>("Classroom", updateRequest.ActualRoomId);
+                throw new EntityNotFoundException<int>("Classroom", updateRequest.ActualRoomId.Value);
             }
 
             // Update the session's actual room
             EnsureRowVersion(updateRequest.RowVersion, "update the room for");
-            session.ActualRoomId = updateRequest.ActualRoomId;
+            session.ActualRoomId = updateRequest.ActualRoomId.Value;
             session.RowVersion = updateRequest.RowVersion!;
 
             await _sessionRepository.UpdateSessionAsync(session).ConfigureAwait(false);
@@ -341,6 +364,29 @@ public class SessionService : ISessionService
     /// </summary>
     public async Task<SessionResponseDto> CreateSessionAsync(CreateSession request)
     {
+        Classes.Schedules? resolvedSchedule = null;
+
+        if (request.ScheduleUuid.HasValue)
+        {
+            resolvedSchedule = await _scheduleRepository.GetScheduleByUuidAsync(request.ScheduleUuid.Value).ConfigureAwait(false);
+            if (resolvedSchedule == null)
+            {
+                throw new EntityNotFoundException<Guid>("Schedule", request.ScheduleUuid.Value);
+            }
+
+            if (request.ScheduleId.HasValue && request.ScheduleId.Value != resolvedSchedule.Id)
+            {
+                throw new ValidationException("ScheduleId and ScheduleUuid must reference the same schedule.");
+            }
+
+            request.ScheduleId = resolvedSchedule.Id;
+        }
+
+        if (!request.ScheduleId.HasValue)
+        {
+            throw new ValidationException("Either ScheduleId or ScheduleUuid is required.");
+        }
+
         // Use provided date or default to current date (using local time for session scheduling)
         var today = _clock.GetLocalNow().Date;
         var effectiveSessionDate = request.SessionDate ?? today;
@@ -351,23 +397,23 @@ public class SessionService : ISessionService
         try
         {
             // Validate that the schedule exists
-            var schedule = await _scheduleRepository.GetScheduleByIdAsync(request.ScheduleId).ConfigureAwait(false);
+            var schedule = resolvedSchedule ?? await _scheduleRepository.GetScheduleByIdAsync(request.ScheduleId.Value).ConfigureAwait(false);
             if (schedule == null)
             {
-                var errorMessage = $"Schedule with ID {request.ScheduleId} not found.";
+                var errorMessage = $"Schedule with ID {request.ScheduleId.Value} not found.";
                 _logger.LogWarning("Session creation failed: {ErrorMessage}", errorMessage);
-                throw new EntityNotFoundException<int>("Schedule", request.ScheduleId);
+                throw new EntityNotFoundException<int>("Schedule", request.ScheduleId.Value);
             }
 
             // Check if a session already exists for this schedule on this date
             var sessionExists = await _sessionRepository.SessionExistsForScheduleAndDateAsync(
-                request.ScheduleId, effectiveSessionDate).ConfigureAwait(false);
+                request.ScheduleId.Value, effectiveSessionDate).ConfigureAwait(false);
 
             if (sessionExists)
             {
-                var errorMessage = $"A session already exists for schedule ID {request.ScheduleId} on {effectiveSessionDate:yyyy-MM-dd}.";
+                var errorMessage = $"A session already exists for schedule ID {request.ScheduleId.Value} on {effectiveSessionDate:yyyy-MM-dd}.";
                 _logger.LogWarning("Session creation failed: {ErrorMessage}", errorMessage);
-                throw new EntityAlreadyExistsException<int>("Session", "ScheduleId", request.ScheduleId, errorMessage);
+                throw new EntityAlreadyExistsException<int>("Session", "ScheduleId", request.ScheduleId.Value, errorMessage);
             }
 
             // Validate that the session date matches the schedule's day of week
@@ -399,7 +445,7 @@ public class SessionService : ISessionService
 
                 _logger.LogInformation(
                     "Allowing off-schedule session creation for schedule ID {ScheduleId} on {SessionDate:yyyy-MM-dd}. Reason: {OffScheduleReason}",
-                    request.ScheduleId,
+                    request.ScheduleId.Value,
                     effectiveSessionDate,
                     trimmedReason);
             }
@@ -415,7 +461,7 @@ public class SessionService : ISessionService
             // Create the session entity
             var session = new Session
             {
-                ScheduleId = request.ScheduleId,
+                ScheduleId = request.ScheduleId.Value,
                 SessionDate = effectiveSessionDate.Date,
                 Status = SessionStatusConstants.NotStarted,
                 Description = request.Description
@@ -927,6 +973,60 @@ public class SessionService : ISessionService
         {
             throw new ValidationException($"A rowVersion is required to {operation} this session.");
         }
+    }
+
+    #endregion
+
+    #region UUID Entrypoints
+
+    public async Task<SessionResponseDto?> GetSessionByUuidAsync(Guid uuid)
+    {
+        var session = await _sessionRepository.GetSessionByUuidAsync(uuid).ConfigureAwait(false);
+        if (session == null)
+        {
+            throw new EntityNotFoundException<Guid>("Session", uuid);
+        }
+        return MapToResponseDto(session);
+    }
+
+    public async Task<SessionResponseDto> StartSessionByUuidAsync(Guid sessionUuid, StartSession request)
+    {
+        var session = await _sessionRepository.GetSessionByUuidAsync(sessionUuid).ConfigureAwait(false);
+        if (session == null)
+        {
+            throw new EntityNotFoundException<Guid>("Session", sessionUuid);
+        }
+        return await StartSessionAsync(session.Id, request).ConfigureAwait(false);
+    }
+
+    public async Task<SessionResponseDto> EndSessionByUuidAsync(Guid sessionUuid, EndSession request)
+    {
+        var session = await _sessionRepository.GetSessionByUuidAsync(sessionUuid).ConfigureAwait(false);
+        if (session == null)
+        {
+            throw new EntityNotFoundException<Guid>("Session", sessionUuid);
+        }
+        return await EndSessionAsync(session.Id, request).ConfigureAwait(false);
+    }
+
+    public async Task<SessionResponseDto> CancelSessionByUuidAsync(Guid sessionUuid, CancelSession request)
+    {
+        var session = await _sessionRepository.GetSessionByUuidAsync(sessionUuid).ConfigureAwait(false);
+        if (session == null)
+        {
+            throw new EntityNotFoundException<Guid>("Session", sessionUuid);
+        }
+        return await CancelSessionAsync(session.Id, request).ConfigureAwait(false);
+    }
+
+    public async Task<SessionResponseDto> UpdateSessionRoomByUuidAsync(Guid sessionUuid, UpdateSessionRoom request)
+    {
+        var session = await _sessionRepository.GetSessionByUuidAsync(sessionUuid).ConfigureAwait(false);
+        if (session == null)
+        {
+            throw new EntityNotFoundException<Guid>("Session", sessionUuid);
+        }
+        return await UpdateSessionRoomAsync(session.Id, request).ConfigureAwait(false);
     }
 
     #endregion

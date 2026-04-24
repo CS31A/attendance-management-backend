@@ -75,6 +75,30 @@ internal sealed class QrCodeQueryService
         }
     }
 
+    public async Task<QrCodeResponseDto?> GetQrCodeByUuidAsync(Guid uuid)
+    {
+        try
+        {
+            _logger.LogInformation("Retrieving QR code with UUID: {QrCodeUuid}", uuid);
+
+            var qrCode = await _qrCodeRepository.GetQrCodeByUuidAsync(uuid).ConfigureAwait(false);
+            if (qrCode == null)
+            {
+                _logger.LogWarning("QR code with UUID {QrCodeUuid} not found", uuid);
+                return null;
+            }
+
+            var responseDto = QrCodeMapper.MapToResponseDto(qrCode);
+            _logger.LogInformation("Successfully retrieved QR code with UUID: {QrCodeUuid}", uuid);
+            return responseDto;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error occurred while retrieving QR code with UUID: {QrCodeUuid}", uuid);
+            throw new EntityServiceException("QrCode", $"GetQrCodeByUuid: {uuid}", "An error occurred while retrieving the QR code", ex);
+        }
+    }
+
     public async Task<IEnumerable<QrCodeResponseDto>> GetQrCodesByScheduleIdAsync(int scheduleId)
     {
         try
