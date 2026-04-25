@@ -4,20 +4,14 @@ namespace attendance_monitoring.Models.DTO.Request;
 
 public class CreateStudentEnrollment
 {
-    [Required(ErrorMessage = "Student ID is required")]
-    public int StudentId { get; set; }
+    [Required(ErrorMessage = "StudentId is required")]
+    public Guid StudentId { get; set; }
 
-    public Guid? StudentUuid { get; set; }
+    [Required(ErrorMessage = "SectionId is required")]
+    public Guid SectionId { get; set; }
 
-    [Required(ErrorMessage = "Section ID is required")]
-    public int SectionId { get; set; }
-
-    public Guid? SectionUuid { get; set; }
-
-    [Required(ErrorMessage = "Subject ID is required")]
-    public int SubjectId { get; set; }
-
-    public Guid? SubjectUuid { get; set; }
+    [Required(ErrorMessage = "SubjectId is required")]
+    public Guid SubjectId { get; set; }
 
     [RegularExpression("(?i)^(Regular|Irregular|Retake)$", ErrorMessage = "Enrollment type must be one of: Regular, Irregular, Retake")]
     [StringLength(20, ErrorMessage = "Enrollment type must not exceed 20 characters")]

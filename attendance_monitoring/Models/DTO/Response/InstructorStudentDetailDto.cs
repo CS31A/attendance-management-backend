@@ -8,7 +8,7 @@ public class InstructorStudentEnrollmentDto
     /// <summary>
     /// Gets or sets the subject's unique identifier.
     /// </summary>
-    public int SubjectId { get; set; }
+    public Guid SubjectId { get; set; }
 
     /// <summary>
     /// Gets or sets the subject name.
@@ -23,7 +23,7 @@ public class InstructorStudentEnrollmentDto
     /// <summary>
     /// Gets or sets the section's unique identifier.
     /// </summary>
-    public int SectionId { get; set; }
+    public Guid SectionId { get; set; }
 
     /// <summary>
     /// Gets or sets the section name.
@@ -75,12 +75,7 @@ public class InstructorStudentDetailDto
     /// <summary>
     /// Gets or sets the student's unique identifier.
     /// </summary>
-    public int StudentId { get; set; }
-
-    /// <summary>
-    /// Gets or sets the student's UUID.
-    /// </summary>
-    public Guid StudentUuid { get; set; }
+    public Guid StudentId { get; set; }
 
     /// <summary>
     /// Gets or sets the student's first name.
@@ -95,7 +90,7 @@ public class InstructorStudentDetailDto
     /// <summary>
     /// Gets or sets the home section identifier, if available.
     /// </summary>
-    public int? SectionId { get; set; }
+    public Guid? SectionId { get; set; }
 
     /// <summary>
     /// Gets or sets the home section name, if available.
@@ -105,7 +100,7 @@ public class InstructorStudentDetailDto
     /// <summary>
     /// Gets or sets the course identifier, if available.
     /// </summary>
-    public int? CourseId { get; set; }
+    public Guid? CourseId { get; set; }
 
     /// <summary>
     /// Gets or sets the course name, if available.

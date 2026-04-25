@@ -41,9 +41,10 @@ public class ScheduleControllerTest
     {
         // Arrange
         int scheduleId = 1;
+        var expectedScheduleId = Guid.NewGuid();
         var expectedSchedule = new ScheduleResponseDto
         {
-            Id = scheduleId,
+            Id = expectedScheduleId,
             TimeIn = new TimeOnly(8, 0),
             TimeOut = new TimeOnly(9, 0),
             DayOfWeek = "Monday"
@@ -59,7 +60,7 @@ public class ScheduleControllerTest
         // Assert
         var okResult = Assert.IsType<OkObjectResult>(result.Result);
         var schedule = Assert.IsType<ScheduleResponseDto>(okResult.Value);
-        Assert.Equal(scheduleId, schedule.Id);
+        Assert.Equal(expectedScheduleId, schedule.Id);
 
         _mockScheduleService.Verify(s => s.GetScheduleByIdAsync(scheduleId), Times.Once);
     }
@@ -73,15 +74,14 @@ public class ScheduleControllerTest
         var sectionUuid = Guid.NewGuid();
         var expectedSchedule = new ScheduleResponseDto
         {
-            Id = 22,
-            Uuid = scheduleUuid,
+            Id = scheduleUuid,
             TimeIn = new TimeOnly(8, 0),
             TimeOut = new TimeOnly(9, 0),
             DayOfWeek = "Monday",
-            Subject = new SubjectResponseDto { Id = 1, Uuid = subjectUuid, Name = "Math", Code = "MATH101" },
-            Classroom = new ClassroomResponseDto { Id = 2, Uuid = classroomUuid, Name = "Room 301" },
-            Section = new SectionResponseDto { Id = 3, Uuid = sectionUuid, CourseId = 4, Name = "BSCS 3A" },
-            Instructor = new InstructorResponseDto { Id = 4, Firstname = "Ada", Lastname = "Lovelace" }
+            Subject = new SubjectResponseDto { Id = subjectUuid, Name = "Math", Code = "MATH101" },
+            Classroom = new ClassroomResponseDto { Id = classroomUuid, Name = "Room 301" },
+            Section = new SectionResponseDto { Id = sectionUuid, CourseId = Guid.NewGuid(), Name = "BSCS 3A" },
+            Instructor = new InstructorResponseDto { Id = Guid.NewGuid(), Firstname = "Ada", Lastname = "Lovelace" }
         };
 
         _mockScheduleService
@@ -92,10 +92,10 @@ public class ScheduleControllerTest
 
         var okResult = Assert.IsType<OkObjectResult>(result.Result);
         var schedule = Assert.IsType<ScheduleResponseDto>(okResult.Value);
-        Assert.Equal(scheduleUuid, schedule.Uuid);
-        Assert.Equal(subjectUuid, schedule.Subject.Uuid);
-        Assert.Equal(classroomUuid, schedule.Classroom.Uuid);
-        Assert.Equal(sectionUuid, schedule.Section.Uuid);
+        Assert.Equal(scheduleUuid, schedule.Id);
+        Assert.Equal(subjectUuid, schedule.Subject.Id);
+        Assert.Equal(classroomUuid, schedule.Classroom.Id);
+        Assert.Equal(sectionUuid, schedule.Section.Id);
     }
 
     [Fact]
@@ -182,10 +182,10 @@ public class ScheduleControllerTest
             TimeIn = new TimeOnly(8, 0),
             TimeOut = new TimeOnly(9, 0),
             DayOfWeek = "Monday",
-            SubjectId = 1,
-            ClassroomId = 1,
-            SectionId = 1,
-            InstructorId = 1
+            SubjectId = Guid.NewGuid(),
+            ClassroomId = Guid.NewGuid(),
+            SectionId = Guid.NewGuid(),
+            InstructorId = Guid.NewGuid()
         };
 
         var createdSchedule = new Schedules
@@ -221,10 +221,10 @@ public class ScheduleControllerTest
             TimeIn = new TimeOnly(8, 0),
             TimeOut = new TimeOnly(9, 0),
             DayOfWeek = "Monday",
-            SubjectId = 1,
-            ClassroomId = 1,
-            SectionId = 1,
-            InstructorId = 1
+            SubjectId = Guid.NewGuid(),
+            ClassroomId = Guid.NewGuid(),
+            SectionId = Guid.NewGuid(),
+            InstructorId = Guid.NewGuid()
         };
 
         _scheduleController.ModelState.AddModelError("DayOfWeek", "Required");
@@ -246,10 +246,10 @@ public class ScheduleControllerTest
             TimeIn = new TimeOnly(8, 0),
             TimeOut = new TimeOnly(9, 0),
             DayOfWeek = "Monday",
-            SubjectId = 1,
-            ClassroomId = 1,
-            SectionId = 1,
-            InstructorId = 1
+            SubjectId = Guid.NewGuid(),
+            ClassroomId = Guid.NewGuid(),
+            SectionId = Guid.NewGuid(),
+            InstructorId = Guid.NewGuid()
         };
 
         _mockScheduleService
@@ -271,10 +271,10 @@ public class ScheduleControllerTest
             TimeIn = new TimeOnly(8, 0),
             TimeOut = new TimeOnly(9, 0),
             DayOfWeek = "Monday",
-            SubjectId = 1,
-            ClassroomId = 1,
-            SectionId = 1,
-            InstructorId = 1
+            SubjectId = Guid.NewGuid(),
+            ClassroomId = Guid.NewGuid(),
+            SectionId = Guid.NewGuid(),
+            InstructorId = Guid.NewGuid()
         };
 
         _mockScheduleService
@@ -296,10 +296,10 @@ public class ScheduleControllerTest
             TimeIn = new TimeOnly(8, 0),
             TimeOut = new TimeOnly(9, 0),
             DayOfWeek = "Monday",
-            SubjectId = 1,
-            ClassroomId = 1,
-            SectionId = 1,
-            InstructorId = 1
+            SubjectId = Guid.NewGuid(),
+            ClassroomId = Guid.NewGuid(),
+            SectionId = Guid.NewGuid(),
+            InstructorId = Guid.NewGuid()
         };
 
         _mockScheduleService
@@ -325,10 +325,10 @@ public class ScheduleControllerTest
             TimeIn = new TimeOnly(9, 0),
             TimeOut = new TimeOnly(10, 0),
             DayOfWeek = "Tuesday",
-            SubjectId = 1,
-            ClassroomId = 1,
-            SectionId = 1,
-            InstructorId = 1
+            SubjectId = Guid.NewGuid(),
+            ClassroomId = Guid.NewGuid(),
+            SectionId = Guid.NewGuid(),
+            InstructorId = Guid.NewGuid()
         };
 
         var updatedSchedule = new Schedules
@@ -462,10 +462,10 @@ public class ScheduleControllerTest
             TimeIn = new TimeOnly(9, 0),
             TimeOut = new TimeOnly(10, 0),
             DayOfWeek = "Tuesday",
-            SubjectId = 1,
-            ClassroomId = 1,
-            SectionId = 1,
-            InstructorId = 1
+            SubjectId = Guid.NewGuid(),
+            ClassroomId = Guid.NewGuid(),
+            SectionId = Guid.NewGuid(),
+            InstructorId = Guid.NewGuid()
         };
 
         _scheduleController.ModelState.AddModelError("DayOfWeek", "Required");
@@ -488,10 +488,10 @@ public class ScheduleControllerTest
             TimeIn = new TimeOnly(9, 0),
             TimeOut = new TimeOnly(10, 0),
             DayOfWeek = "Tuesday",
-            SubjectId = 1,
-            ClassroomId = 1,
-            SectionId = 1,
-            InstructorId = 1
+            SubjectId = Guid.NewGuid(),
+            ClassroomId = Guid.NewGuid(),
+            SectionId = Guid.NewGuid(),
+            InstructorId = Guid.NewGuid()
         };
 
         _mockScheduleService
@@ -514,10 +514,10 @@ public class ScheduleControllerTest
             TimeIn = new TimeOnly(9, 0),
             TimeOut = new TimeOnly(10, 0),
             DayOfWeek = "Tuesday",
-            SubjectId = 1,
-            ClassroomId = 1,
-            SectionId = 1,
-            InstructorId = 1
+            SubjectId = Guid.NewGuid(),
+            ClassroomId = Guid.NewGuid(),
+            SectionId = Guid.NewGuid(),
+            InstructorId = Guid.NewGuid()
         };
 
         _mockScheduleService

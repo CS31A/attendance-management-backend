@@ -8,8 +8,6 @@ namespace attendance_monitoring.Models.DTO.Request
         [StringLength(100, ErrorMessage = "Section name must be between 1 and 100 characters", MinimumLength = 4)]
         public string Name { get; set; } = string.Empty;
 
-        public int? CourseId { get; set; }
-
-        public Guid? CourseUuid { get; set; }
+        public Guid? CourseId { get; set; }
     }
 }

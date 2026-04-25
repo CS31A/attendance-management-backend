@@ -10,14 +10,7 @@ public class InstructorSectionsWithStudentsResponseDto
     /// <summary>
     /// Gets or sets the instructor's unique identifier.
     /// </summary>
-    [JsonIgnore]
-    public int InstructorId { get; set; }
-
-    /// <summary>
-    /// Gets or sets the instructor's UUID.
-    /// </summary>
-    [JsonPropertyName("instructorId")]
-    public Guid InstructorUuid { get; set; }
+    public Guid InstructorId { get; set; }
 
     /// <summary>
     /// Gets or sets the instructor's first name.

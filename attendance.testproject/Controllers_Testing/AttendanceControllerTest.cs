@@ -37,17 +37,17 @@ public class AttendanceControllerTest
         var attendanceUuid = Guid.NewGuid();
         var dto = new AttendanceRecordResponseDto
         {
-            Id = 7,
-            Uuid = attendanceUuid,
-            StudentId = 11,
-            StudentUuid = Guid.NewGuid(),
-            SessionId = 12,
-            SessionUuid = Guid.NewGuid(),
-            ScheduleId = 13,
-            ScheduleUuid = Guid.NewGuid(),
+            Id = attendanceUuid,
+            StudentId = Guid.NewGuid(),
+            SessionId = Guid.NewGuid(),
+            ScheduleId = Guid.NewGuid(),
             Status = "Present",
             StudentName = "Ada Lovelace",
             StudentNumber = "11",
+            SessionDate = DateTime.UtcNow.Date,
+            CheckInTime = DateTime.UtcNow,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow,
             InstructorName = "Prof. Turing",
             SubjectName = "Algorithms",
             SectionName = "CS-3A",
@@ -63,7 +63,7 @@ public class AttendanceControllerTest
 
         var okResult = Assert.IsType<OkObjectResult>(result.Result);
         var response = Assert.IsType<AttendanceRecordResponseDto>(okResult.Value);
-        Assert.Equal(attendanceUuid, response.Uuid);
+        Assert.Equal(attendanceUuid, response.Id);
     }
 
     [Fact]
@@ -157,14 +157,17 @@ public class AttendanceControllerTest
         var request = new UpdateAttendanceRequest { Status = "Late" };
         var dto = new AttendanceRecordResponseDto
         {
-            Id = 7,
-            Uuid = attendanceUuid,
+            Id = attendanceUuid,
             Status = "Late",
-            StudentId = 11,
-            SessionId = 12,
-            ScheduleId = 13,
+            StudentId = Guid.NewGuid(),
+            SessionId = Guid.NewGuid(),
+            ScheduleId = Guid.NewGuid(),
             StudentName = "Ada Lovelace",
             StudentNumber = "11",
+            SessionDate = DateTime.UtcNow.Date,
+            CheckInTime = DateTime.UtcNow,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow,
             InstructorName = "Prof. Turing",
             SubjectName = "Algorithms",
             SectionName = "CS-3A",
@@ -180,7 +183,7 @@ public class AttendanceControllerTest
 
         var okResult = Assert.IsType<OkObjectResult>(result.Result);
         var response = Assert.IsType<AttendanceRecordResponseDto>(okResult.Value);
-        Assert.Equal(attendanceUuid, response.Uuid);
+        Assert.Equal(attendanceUuid, response.Id);
     }
 
     [Fact]

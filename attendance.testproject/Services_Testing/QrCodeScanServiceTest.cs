@@ -174,9 +174,9 @@ public class QrCodeScanServiceTest
             .Callback<int, int, int, DateTime>((_, _, _, checkInTime) => capturedCheckInTime = checkInTime)
             .ReturnsAsync(new AttendanceRecordResponseDto
             {
-                Id = 99,
-                StudentId = student.Id,
-                SessionId = session.Id,
+                Id = Guid.NewGuid(),
+                StudentId = student.Uuid,
+                SessionId = session.Uuid,
                 CheckInTime = DateTime.Now,
                 Status = "Present"
             });
@@ -298,9 +298,9 @@ public class QrCodeScanServiceTest
             .Setup(service => service.CreateAttendanceFromQrScanAsync(student.Id, session.Id, qrCode.Id, It.IsAny<DateTime>()))
             .ReturnsAsync(new AttendanceRecordResponseDto
             {
-                Id = 99,
-                StudentId = student.Id,
-                SessionId = session.Id,
+                Id = Guid.NewGuid(),
+                StudentId = student.Uuid,
+                SessionId = session.Uuid,
                 CheckInTime = DateTime.Now,
                 Status = "Present"
             });

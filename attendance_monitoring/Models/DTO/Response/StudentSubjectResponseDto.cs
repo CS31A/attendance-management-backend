@@ -31,7 +31,7 @@ public class StudentSubjectResponseDto
 /// </summary>
 public class StudentSubjectScheduleDto
 {
-    public int Id { get; set; }
+    public Guid Id { get; set; }
     public TimeOnly TimeIn { get; set; }
     public TimeOnly TimeOut { get; set; }
     public string DayOfWeek { get; set; } = string.Empty;

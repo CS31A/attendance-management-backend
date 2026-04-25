@@ -58,9 +58,14 @@ public class AttendanceController(IAttendanceService attendanceService, ILogger<
             }
 
             logger.LogInformation("Successfully created attendance record with ID: {Id}", attendance.Id);
-            return CreatedAtAction(nameof(GetAttendance), new { id = attendance.Id }, attendance);
+            return CreatedAtAction(nameof(GetAttendanceByUuid), new { id = attendance.Id }, attendance);
         }
         catch (EntityNotFoundException<int> ex)
+        {
+            logger.LogWarning(ex, "Entity not found while creating attendance");
+            return NotFound(new { message = ex.Message });
+        }
+        catch (EntityNotFoundException<Guid> ex)
         {
             logger.LogWarning(ex, "Entity not found while creating attendance");
             return NotFound(new { message = ex.Message });

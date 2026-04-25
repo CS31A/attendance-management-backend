@@ -43,28 +43,28 @@ public class SectionControllerTest
     }
 
     private static SectionResponseDto CreateSectionResponseDto(
-        int id = 1,
+        Guid? id = null,
         string name = "Section A",
-        int courseId = 10,
+        Guid? courseId = null,
         DateTime? createdAt = null,
         DateTime? updatedAt = null)
     {
         return new SectionResponseDto
         {
-            Id = id,
+            Id = id ?? Guid.NewGuid(),
             Name = name,
-            CourseId = courseId,
+            CourseId = courseId ?? Guid.NewGuid(),
             CreatedAt = createdAt ?? new DateTime(2024, 1, 1, 8, 0, 0, DateTimeKind.Utc),
             UpdatedAt = updatedAt ?? new DateTime(2024, 1, 2, 8, 0, 0, DateTimeKind.Utc)
         };
     }
 
-    private static CreateSection CreateSectionRequest(string name = "Section A", int courseId = 10)
+    private static CreateSection CreateSectionRequest(string name = "Section A", Guid? courseId = null)
     {
         return new CreateSection
         {
             Name = name,
-            CourseId = courseId
+            CourseId = courseId ?? Guid.NewGuid()
         };
     }
 
@@ -88,6 +88,8 @@ public class SectionControllerTest
         // Arrange
         const int sectionId = 3;
         var section = CreateSectionEntity(id: sectionId, name: "Section 3", courseId: 12);
+        section.Uuid = Guid.NewGuid();
+        section.Course = new Course { Id = section.CourseId, Uuid = Guid.NewGuid(), Name = "BSCS" };
         _mockSectionService
             .Setup(service => service.GetSectionByIdAsync(sectionId))
             .ReturnsAsync(section);
@@ -98,9 +100,9 @@ public class SectionControllerTest
         // Assert
         var okResult = Assert.IsType<OkObjectResult>(result.Result);
         var dto = Assert.IsType<SectionResponseDto>(okResult.Value);
-        Assert.Equal(section.Id, dto.Id);
+        Assert.Equal(section.Uuid, dto.Id);
         Assert.Equal(section.Name, dto.Name);
-        Assert.Equal(section.CourseId, dto.CourseId);
+        Assert.Equal(section.Course!.Uuid, dto.CourseId);
         Assert.Equal(section.CreatedAt, dto.CreatedAt);
         Assert.Equal(section.UpdatedAt, dto.UpdatedAt);
         _mockSectionService.Verify(service => service.GetSectionByIdAsync(sectionId), Times.Once);
@@ -123,8 +125,8 @@ public class SectionControllerTest
 
         var okResult = Assert.IsType<OkObjectResult>(result.Result);
         var dto = Assert.IsType<SectionResponseDto>(okResult.Value);
-        Assert.Equal(sectionUuid, dto.Uuid);
-        Assert.Equal(courseUuid, dto.CourseUuid);
+        Assert.Equal(sectionUuid, dto.Id);
+        Assert.Equal(courseUuid, dto.CourseId);
     }
 
     [Fact]
@@ -197,8 +199,8 @@ public class SectionControllerTest
         // Arrange
         var sections = new List<SectionResponseDto>
         {
-            CreateSectionResponseDto(id: 1, name: "Section A", courseId: 10),
-            CreateSectionResponseDto(id: 2, name: "Section B", courseId: 11)
+            CreateSectionResponseDto(name: "Section A"),
+            CreateSectionResponseDto(name: "Section B")
         };
         _mockSectionService
             .Setup(service => service.GetAllSectionsAsync())
@@ -235,13 +237,17 @@ public class SectionControllerTest
     public async Task CreateSection_ReturnsCreatedResult_WhenValidInput()
     {
         // Arrange
-        var request = CreateSectionRequest(name: "New Section", courseId: 13);
-        var createdSection = CreateSectionResponseDto(id: 8, name: request.Name, courseId: request.CourseId!.Value);
+        var request = CreateSectionRequest(name: "New Section");
+        var createdSection = CreateSectionResponseDto(name: request.Name, courseId: request.CourseId!.Value);
+
+        _mockCourseService
+            .Setup(service => service.GetCourseByUuidAsync(request.CourseId!.Value))
+            .ReturnsAsync(new Course { Id = 8, Uuid = request.CourseId.Value, Name = "BSCS" });
 
         _mockSectionService
             .Setup(service => service.CreateSectionAsync(It.Is<Section>(section =>
                 section.Name == request.Name &&
-                section.CourseId == request.CourseId!.Value)))
+                section.CourseId == 8)))
             .ReturnsAsync(createdSection);
 
         // Act
@@ -276,8 +282,11 @@ public class SectionControllerTest
     public async Task CreateSection_ReturnsBadRequest_WhenServiceException()
     {
         // Arrange
-        var request = CreateSectionRequest(name: "Duplicate Section", courseId: 10);
+        var request = CreateSectionRequest(name: "Duplicate Section");
         const string errorMessage = "Section already exists";
+        _mockCourseService
+            .Setup(service => service.GetCourseByUuidAsync(request.CourseId!.Value))
+            .ReturnsAsync(new Course { Id = 1, Uuid = request.CourseId.Value, Name = "BSCS" });
         _mockSectionService
             .Setup(service => service.CreateSectionAsync(It.IsAny<Section>()))
             .ThrowsAsync(new EntityServiceException("Section", "CreateSection", errorMessage));
@@ -295,13 +304,17 @@ public class SectionControllerTest
     {
         // Arrange
         const int sectionId = 15;
-        var request = CreateSectionRequest(name: "Updated Section", courseId: 99);
-        var updatedSection = CreateSectionResponseDto(id: sectionId, name: request.Name, courseId: request.CourseId!.Value);
+        var request = CreateSectionRequest(name: "Updated Section");
+        var updatedSection = CreateSectionResponseDto(name: request.Name, courseId: request.CourseId!.Value);
+
+        _mockCourseService
+            .Setup(service => service.GetCourseByUuidAsync(request.CourseId!.Value))
+            .ReturnsAsync(new Course { Id = 99, Uuid = request.CourseId.Value, Name = "BSIT" });
 
         _mockSectionService
             .Setup(service => service.UpdateSectionAsync(sectionId, It.Is<Section>(section =>
                 section.Name == request.Name &&
-                section.CourseId == request.CourseId!.Value)))
+                section.CourseId == 99)))
             .ReturnsAsync(updatedSection);
 
         // Act
@@ -310,7 +323,7 @@ public class SectionControllerTest
         // Assert
         var okResult = Assert.IsType<OkObjectResult>(result.Result);
         var dto = Assert.IsType<SectionResponseDto>(okResult.Value);
-        Assert.Equal(sectionId, dto.Id);
+        Assert.Equal(updatedSection.Id, dto.Id);
         Assert.Equal(request.Name, dto.Name);
         Assert.Equal(request.CourseId, dto.CourseId);
     }
@@ -323,7 +336,7 @@ public class SectionControllerTest
         var request = new CreateSection
         {
             Name = "Updated Section",
-            CourseUuid = courseUuid
+            CourseId = courseUuid
         };
 
         _mockCourseService
@@ -336,19 +349,17 @@ public class SectionControllerTest
                 section.CourseId == 99)))
             .ReturnsAsync(new SectionResponseDto
             {
-                Id = 15,
-                Uuid = sectionUuid,
+                Id = sectionUuid,
                 Name = request.Name,
-                CourseId = 99,
-                CourseUuid = courseUuid
+                CourseId = courseUuid
             });
 
         var result = await _controller.UpdateSectionByUuid(sectionUuid, request);
 
         var okResult = Assert.IsType<OkObjectResult>(result.Result);
         var dto = Assert.IsType<SectionResponseDto>(okResult.Value);
-        Assert.Equal(sectionUuid, dto.Uuid);
-        Assert.Equal(courseUuid, dto.CourseUuid);
+        Assert.Equal(sectionUuid, dto.Id);
+        Assert.Equal(courseUuid, dto.CourseId);
     }
 
     [Fact]
@@ -359,7 +370,7 @@ public class SectionControllerTest
         var request = new CreateSection
         {
             Name = "Updated Section",
-            CourseUuid = courseUuid
+            CourseId = courseUuid
         };
 
         _mockCourseService
@@ -384,7 +395,7 @@ public class SectionControllerTest
         var request = new CreateSection
         {
             Name = "Updated Section",
-            CourseUuid = courseUuid
+            CourseId = courseUuid
         };
         const string errorMessage = "Unable to update section";
 
@@ -423,6 +434,9 @@ public class SectionControllerTest
         // Arrange
         const int sectionId = 101;
         var request = CreateSectionRequest();
+        _mockCourseService
+            .Setup(service => service.GetCourseByUuidAsync(request.CourseId!.Value))
+            .ReturnsAsync(new Course { Id = 1, Uuid = request.CourseId.Value, Name = "BSCS" });
         _mockSectionService
             .Setup(service => service.UpdateSectionAsync(sectionId, It.IsAny<Section>()))
             .ThrowsAsync(new EntityNotFoundException<int>("Section", sectionId));
@@ -442,6 +456,9 @@ public class SectionControllerTest
         const int sectionId = 16;
         var request = CreateSectionRequest();
         const string errorMessage = "Unable to update section";
+        _mockCourseService
+            .Setup(service => service.GetCourseByUuidAsync(request.CourseId!.Value))
+            .ReturnsAsync(new Course { Id = 1, Uuid = request.CourseId.Value, Name = "BSCS" });
         _mockSectionService
             .Setup(service => service.UpdateSectionAsync(sectionId, It.IsAny<Section>()))
             .ThrowsAsync(new EntityServiceException("Section", $"UpdateSection: {sectionId}", errorMessage));

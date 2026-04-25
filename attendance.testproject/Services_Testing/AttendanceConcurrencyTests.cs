@@ -85,10 +85,12 @@ public class AttendanceConcurrencyTests
     public async Task CreateAttendanceAsync_ConcurrentDuplicate_ReturnsExistingAttendanceForEquivalentRetry()
     {
         // Arrange
+        var studentUuid = Guid.NewGuid();
+        var sessionUuid = Guid.NewGuid();
         var request = new CreateAttendanceRequest
         {
-            StudentId = 1,
-            SessionId = 1,
+            StudentId = studentUuid,
+            SessionId = sessionUuid,
             Status = "Late",
             Notes = "Retry with changed payload fields",
             CheckInTime = DateTime.UtcNow.AddMinutes(5)
@@ -102,6 +104,22 @@ public class AttendanceConcurrencyTests
 
         _mockInstructorRepository.Setup(r => r.GetInstructorByUserIdAsync("instructor-1"))
             .ReturnsAsync(new Instructor { Id = 10 });
+
+        _mockStudentRepository.Setup(r => r.GetStudentByUuidAsync(studentUuid))
+            .ReturnsAsync(new Student { Id = 1, Uuid = studentUuid, SectionId = 100 });
+
+        _mockSessionRepository.Setup(r => r.GetSessionByUuidAsync(sessionUuid))
+            .ReturnsAsync(new Session
+            {
+                Id = 1,
+                Uuid = sessionUuid,
+                Schedule = new Schedules
+                {
+                    InstructorId = 10,
+                    SectionId = 100,
+                    SubjectId = 200
+                }
+            });
 
         _mockSessionRepository.Setup(r => r.GetSessionByIdAsync(1))
             .ReturnsAsync(new Session
@@ -140,15 +158,14 @@ public class AttendanceConcurrencyTests
         var result = await _attendanceService.CreateAttendanceAsync(request, user);
 
         // Assert
-        Assert.Equal(existingRecord.Id, result.Id);
-        Assert.Equal(existingRecord.StudentId, result.StudentId);
-        Assert.Equal(existingRecord.SessionId, result.SessionId);
+        Assert.Equal(existingRecord.Uuid, result.Id);
+        Assert.Equal(existingRecord.Student.Uuid, result.StudentId);
+        Assert.Equal(existingRecord.Session.Uuid, result.SessionId);
         Assert.Equal(existingRecord.Status, result.Status);
         Assert.Equal(existingRecord.Notes, result.Notes);
         Assert.True(result.IsManualEntry);
         Assert.NotEqual(Guid.Empty, existingRecord.Uuid);
         Assert.NotEqual(Guid.Empty, existingRecord.Session.Uuid);
-        Assert.Equal(existingRecord.Uuid, result.Uuid);
 
         // Verify warning log
         _mockLogger.Verify(
@@ -297,10 +314,12 @@ public class AttendanceConcurrencyTests
     public async Task CreateAttendanceAsync_WithoutCheckInTime_DefaultsToLocalTime()
     {
         // Arrange
+        var studentUuid = Guid.NewGuid();
+        var sessionUuid = Guid.NewGuid();
         var request = new CreateAttendanceRequest
         {
-            StudentId = 1,
-            SessionId = 1,
+            StudentId = studentUuid,
+            SessionId = sessionUuid,
             Status = "Present",
             Notes = "Manual check-in without explicit timestamp"
         };
@@ -308,11 +327,27 @@ public class AttendanceConcurrencyTests
         var user = CreateInstructorUser("instructor-1");
         DateTime capturedCheckInTime = default;
         const int createdId = 100;
-        var studentId = request.StudentId!.Value;
-        var sessionId = request.SessionId!.Value;
+        const int studentId = 1;
+        const int sessionId = 1;
 
         _mockUserManager.Setup(um => um.FindByIdAsync("instructor-1"))
             .ReturnsAsync(new IdentityUser { Id = "instructor-1" });
+
+        _mockStudentRepository.Setup(r => r.GetStudentByUuidAsync(studentUuid))
+            .ReturnsAsync(new Student { Id = studentId, Uuid = studentUuid, SectionId = 100 });
+
+        _mockSessionRepository.Setup(r => r.GetSessionByUuidAsync(sessionUuid))
+            .ReturnsAsync(new Session
+            {
+                Id = sessionId,
+                Uuid = sessionUuid,
+                Schedule = new Schedules
+                {
+                    InstructorId = 10,
+                    SectionId = 100,
+                    SubjectId = 200
+                }
+            });
 
         _mockSessionRepository.Setup(r => r.GetSessionByIdAsync(sessionId))
             .ReturnsAsync(new Session

@@ -13,10 +13,8 @@ internal static class QrCodeMapper
     {
         return new QrCodeResponseDto
         {
-            Id = qrCode.Id,
-            Uuid = qrCode.Uuid,
-            SessionId = qrCode.SessionId,
-            SessionUuid = qrCode.Session?.Uuid,
+            Id = qrCode.Uuid,
+            SessionId = qrCode.Session?.Uuid ?? Guid.Empty,
             QrHash = qrCode.QrHash,
             GeneratedAt = qrCode.GeneratedAt,
             ExpiresAt = qrCode.ExpiresAt,
@@ -27,8 +25,7 @@ internal static class QrCodeMapper
             UpdatedAt = qrCode.UpdatedAt,
 
             // Session information
-            ScheduleId = qrCode.Session?.ScheduleId,
-            ScheduleUuid = qrCode.Session?.Schedule?.Uuid,
+            ScheduleId = qrCode.Session?.Schedule?.Uuid,
             SessionDate = qrCode.Session?.SessionDate,
             SessionStatus = qrCode.Session?.Status,
 

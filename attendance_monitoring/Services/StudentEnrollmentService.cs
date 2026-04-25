@@ -104,9 +104,9 @@ public class StudentEnrollmentService : IStudentEnrollmentService
 
     public async Task<StudentEnrollment> EnrollStudentAsync(CreateStudentEnrollment request)
     {
-        var studentId = await ResolveStudentIdAsync(request.StudentId, request.StudentUuid).ConfigureAwait(false);
-        var sectionId = await ResolveSectionIdAsync(request.SectionId, request.SectionUuid).ConfigureAwait(false);
-        var subjectId = await ResolveSubjectIdAsync(request.SubjectId, request.SubjectUuid).ConfigureAwait(false);
+        var studentId = await ResolveStudentIdAsync(request.StudentId).ConfigureAwait(false);
+        var sectionId = await ResolveSectionIdAsync(request.SectionId).ConfigureAwait(false);
+        var subjectId = await ResolveSubjectIdAsync(request.SubjectId).ConfigureAwait(false);
 
         return await EnrollStudentAsync(
             studentId,
@@ -166,7 +166,7 @@ public class StudentEnrollmentService : IStudentEnrollmentService
 
     public async Task<IEnumerable<StudentEnrollment>> GetStudentEnrollmentsByStudentUuidAsync(Guid studentUuid)
     {
-        var studentId = await ResolveStudentIdAsync(null, studentUuid).ConfigureAwait(false);
+        var studentId = await ResolveStudentIdAsync(studentUuid).ConfigureAwait(false);
         return await GetStudentEnrollmentsAsync(studentId).ConfigureAwait(false);
     }
 
@@ -192,9 +192,9 @@ public class StudentEnrollmentService : IStudentEnrollmentService
 
     public async Task<bool> IsStudentEnrolledInSectionSubjectByUuidAsync(Guid studentUuid, Guid sectionUuid, Guid subjectUuid)
     {
-        var studentId = await ResolveStudentIdAsync(null, studentUuid).ConfigureAwait(false);
-        var sectionId = await ResolveSectionIdAsync(null, sectionUuid).ConfigureAwait(false);
-        var subjectId = await ResolveSubjectIdAsync(null, subjectUuid).ConfigureAwait(false);
+        var studentId = await ResolveStudentIdAsync(studentUuid).ConfigureAwait(false);
+        var sectionId = await ResolveSectionIdAsync(sectionUuid).ConfigureAwait(false);
+        var subjectId = await ResolveSubjectIdAsync(subjectUuid).ConfigureAwait(false);
         return await IsStudentEnrolledInSectionSubjectAsync(studentId, sectionId, subjectId).ConfigureAwait(false);
     }
 
@@ -224,7 +224,7 @@ public class StudentEnrollmentService : IStudentEnrollmentService
 
     public async Task<IEnumerable<StudentEnrollment>> GetActiveSectionEnrollmentsBySectionUuidAsync(Guid sectionUuid)
     {
-        var sectionId = await ResolveSectionIdAsync(null, sectionUuid).ConfigureAwait(false);
+        var sectionId = await ResolveSectionIdAsync(sectionUuid).ConfigureAwait(false);
         return await GetActiveSectionEnrollmentsAsync(sectionId).ConfigureAwait(false);
     }
 
@@ -233,30 +233,30 @@ public class StudentEnrollmentService : IStudentEnrollmentService
         return await _enrollmentRepository.GetEnrollmentAsync(studentId, sectionId, subjectId);
     }
 
-    private async Task<int> ResolveStudentIdAsync(int? studentId, Guid? studentUuid)
+    private async Task<int> ResolveStudentIdAsync(Guid studentUuid)
     {
         return await EntityIdResolutionHelper.ResolveEntityIdAsync(
-            studentId,
+            null,
             studentUuid,
             "Student",
             async id => (await _mockableStudentByIdAsync(id).ConfigureAwait(false))?.Id,
             async uuid => (await _studentRepository.GetStudentByUuidAsync(uuid).ConfigureAwait(false))?.Id).ConfigureAwait(false);
     }
 
-    private async Task<int> ResolveSectionIdAsync(int? sectionId, Guid? sectionUuid)
+    private async Task<int> ResolveSectionIdAsync(Guid sectionUuid)
     {
         return await EntityIdResolutionHelper.ResolveEntityIdAsync(
-            sectionId,
+            null,
             sectionUuid,
             "Section",
             async id => (await _sectionRepository.GetSectionByIdAsync(id).ConfigureAwait(false))?.Id,
             async uuid => (await _sectionRepository.GetSectionByUuidAsync(uuid).ConfigureAwait(false))?.Id).ConfigureAwait(false);
     }
 
-    private async Task<int> ResolveSubjectIdAsync(int? subjectId, Guid? subjectUuid)
+    private async Task<int> ResolveSubjectIdAsync(Guid subjectUuid)
     {
         return await EntityIdResolutionHelper.ResolveEntityIdAsync(
-            subjectId,
+            null,
             subjectUuid,
             "Subject",
             async id => (await _subjectRepository.GetSubjectByIdAsync(id).ConfigureAwait(false))?.Id,

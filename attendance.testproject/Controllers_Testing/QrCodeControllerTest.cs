@@ -40,7 +40,7 @@ public class QrCodeControllerTest
         // Arrange
         var request = new QrCodeRequest
         {
-            SessionId = 1, // Now uses SessionId instead of ScheduleId/SectionId/ActualRoomId
+            SessionId = Guid.NewGuid(),
             ExpirationMinutes = 30,
             UniqueHash = "test-unique-hash"
         };
@@ -116,7 +116,7 @@ public class QrCodeControllerTest
         // Arrange
         var request = new QrCodeRequest
         {
-            SessionId = 4, // Now uses SessionId
+            SessionId = Guid.NewGuid(),
             ExpirationMinutes = 15,
             UniqueHash = "minimal-unique-hash"
         };
@@ -173,7 +173,7 @@ public class QrCodeControllerTest
         // Arrange
         var request = new QrCodeRequest
         {
-            SessionId = 8,
+            SessionId = Guid.NewGuid(),
             ExpirationMinutes = 20,
             UniqueHash = "slice-b-uuid-shape"
         };
@@ -206,7 +206,7 @@ public class QrCodeControllerTest
         // Arrange
         var request = new QrCodeRequest
         {
-            SessionId = 7, // Now uses SessionId
+            SessionId = Guid.NewGuid(),
             ExpirationMinutes = 60,
             UniqueHash = "log-test-unique-hash"
         };
@@ -243,9 +243,9 @@ public class QrCodeControllerTest
         var qrCodeId = 1;
         var mockQrCode = new attendance_monitoring.Models.DTO.Response.QrCodeResponseDto
         {
-            Id = qrCodeId,
+            Id = Guid.NewGuid(),
             QrHash = "test-hash-123",
-            SessionId = 1,
+            SessionId = Guid.NewGuid(),
             GeneratedAt = DateTime.UtcNow,
             ExpiresAt = DateTime.UtcNow.AddMinutes(30),
             IsActive = true
@@ -316,9 +316,9 @@ public class QrCodeControllerTest
         var qrCodeId = 5;
         var mockQrCode = new attendance_monitoring.Models.DTO.Response.QrCodeResponseDto
         {
-            Id = qrCodeId,
+            Id = Guid.NewGuid(),
             QrHash = "valid-hash-for-image-test",
-            SessionId = 1,
+            SessionId = Guid.NewGuid(),
             GeneratedAt = DateTime.UtcNow,
             ExpiresAt = DateTime.UtcNow.AddMinutes(30),
             IsActive = true
@@ -347,10 +347,8 @@ public class QrCodeControllerTest
         var qrCodeUuid = Guid.NewGuid();
         var qrCode = new attendance_monitoring.Models.DTO.Response.QrCodeResponseDto
         {
-            Id = 3,
-            Uuid = qrCodeUuid,
-            SessionId = 9,
-            SessionUuid = Guid.NewGuid(),
+            Id = qrCodeUuid,
+            SessionId = Guid.NewGuid(),
             QrHash = "uuid-route-hash",
             GeneratedAt = DateTime.UtcNow,
             ExpiresAt = DateTime.UtcNow.AddMinutes(20),
@@ -365,7 +363,7 @@ public class QrCodeControllerTest
 
         var okResult = Assert.IsType<OkObjectResult>(result);
         var response = Assert.IsType<attendance_monitoring.Models.DTO.Response.QrCodeResponseDto>(okResult.Value);
-        Assert.Equal(qrCodeUuid, response.Uuid);
+        Assert.Equal(qrCodeUuid, response.Id);
     }
 
     [Fact]
@@ -389,9 +387,8 @@ public class QrCodeControllerTest
         var qrCodeUuid = Guid.NewGuid();
         var qrCode = new attendance_monitoring.Models.DTO.Response.QrCodeResponseDto
         {
-            Id = 4,
-            Uuid = qrCodeUuid,
-            SessionId = 10,
+            Id = qrCodeUuid,
+            SessionId = Guid.NewGuid(),
             QrHash = "uuid-image-hash",
             GeneratedAt = DateTime.UtcNow,
             ExpiresAt = DateTime.UtcNow.AddMinutes(20),

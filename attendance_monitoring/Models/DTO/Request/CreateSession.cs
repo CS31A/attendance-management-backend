@@ -8,14 +8,9 @@ namespace attendance_monitoring.Models.DTO.Request;
 public class CreateSession : IValidatableObject
 {
     /// <summary>
-    /// The ID of the schedule for which this session is being created.
-    /// </summary>
-    public int? ScheduleId { get; set; }
-
-    /// <summary>
     /// The UUID of the schedule for which this session is being created.
     /// </summary>
-    public Guid? ScheduleUuid { get; set; }
+    public Guid? ScheduleId { get; set; }
 
     /// <summary>
     /// The date when the session will take place.
@@ -44,17 +39,10 @@ public class CreateSession : IValidatableObject
 
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
     {
-        if (!ScheduleId.HasValue && !ScheduleUuid.HasValue)
+        if (!ScheduleId.HasValue)
         {
             yield return new ValidationResult(
-                "Either ScheduleId or ScheduleUuid is required.",
-                [nameof(ScheduleId), nameof(ScheduleUuid)]);
-        }
-
-        if (ScheduleId.HasValue && ScheduleId.Value <= 0)
-        {
-            yield return new ValidationResult(
-                "Schedule ID must be a positive integer.",
+                "ScheduleId is required.",
                 [nameof(ScheduleId)]);
         }
     }

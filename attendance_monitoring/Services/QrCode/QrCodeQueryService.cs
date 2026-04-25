@@ -247,11 +247,9 @@ internal sealed class QrCodeQueryService
 
             var qrCodeInfo = new QrCodeInfoDto
             {
-                Id = qrCode.Id,
-                Uuid = qrCode.Uuid,
+                Id = qrCode.Uuid,
                 Hash = qrCode.QrHash,
-                SessionId = qrCode.SessionId,
-                SessionUuid = session?.Uuid,
+                SessionId = session?.Uuid ?? Guid.Empty,
                 SessionDate = session?.SessionDate ?? DateTime.MinValue,
                 SessionSubject = session?.Schedule?.Subject?.Name ?? "Unknown",
                 GeneratedAt = qrCode.GeneratedAt,
@@ -293,16 +291,13 @@ internal sealed class QrCodeQueryService
 
             var scanItems = scanHistory.Items.Select(ar => new QrCodeScanHistoryItemDto
             {
-                AttendanceRecordId = ar.Id,
-                AttendanceRecordUuid = ar.Uuid,
-                StudentId = ar.StudentId,
-                StudentUuid = ar.Student?.Uuid,
+                AttendanceRecordId = ar.Uuid,
+                StudentId = ar.Student?.Uuid ?? Guid.Empty,
                 StudentEmail = ar.Student?.User?.Email ?? "Unknown",
                 StudentName = $"{ar.Student?.Firstname} {ar.Student?.Lastname}".Trim(),
                 ScannedAt = ar.CheckInTime,
                 Status = ar.Status.ToString(),
-                SessionId = ar.SessionId,
-                SessionUuid = ar.Session?.Uuid,
+                SessionId = ar.Session?.Uuid ?? Guid.Empty,
                 SessionDate = ar.Session?.SessionDate ?? DateTime.MinValue,
                 SessionSubject = ar.Session?.Schedule?.Subject?.Name ?? "Unknown",
                 SessionSection = ar.Session?.Schedule?.Section?.Name ?? "Unknown"

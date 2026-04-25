@@ -109,7 +109,7 @@ namespace attendance_monitoring.Controllers
             }
             catch (EntityNotFoundException<Guid> ex)
             {
-                logger.LogWarning(ex, "Referenced course UUID {CourseUuid} was not found while creating section", createSection.CourseUuid);
+                logger.LogWarning(ex, "Referenced course ID {CourseId} was not found while creating section", createSection.CourseId);
                 return NotFound(new { message = ex.Message });
             }
             catch (ValidationException ex)
@@ -152,7 +152,7 @@ namespace attendance_monitoring.Controllers
             }
             catch (EntityNotFoundException<Guid> ex)
             {
-                logger.LogWarning(ex, "Referenced course UUID {CourseUuid} was not found while updating section ID {SectionId}", updateSection.CourseUuid, id);
+                logger.LogWarning(ex, "Referenced course ID {CourseId} was not found while updating section ID {SectionId}", updateSection.CourseId, id);
                 return NotFound(new { message = ex.Message });
             }
             catch (ValidationException ex)
@@ -364,28 +364,15 @@ namespace attendance_monitoring.Controllers
 
         private async Task<int> ResolveCourseIdAsync(CreateSection request)
         {
-            var hasCourseId = request.CourseId.HasValue && request.CourseId.Value > 0;
-            var hasCourseUuid = request.CourseUuid.HasValue && request.CourseUuid.Value != Guid.Empty;
-
-            if (!hasCourseId && !hasCourseUuid)
+            if (!request.CourseId.HasValue || request.CourseId.Value == Guid.Empty)
             {
                 throw new ValidationException("Course reference is required.");
             }
 
-            if (!hasCourseUuid)
+            var course = await courseService.GetCourseByUuidAsync(request.CourseId.Value).ConfigureAwait(false);
+            if (course == null)
             {
-                return request.CourseId!.Value;
-            }
-
-            var course = await courseService.GetCourseByUuidAsync(request.CourseUuid!.Value).ConfigureAwait(false);
-            if (!hasCourseId)
-            {
-                return course.Id;
-            }
-
-            if (request.CourseId!.Value != course.Id)
-            {
-                throw new ValidationException("Conflicting Course identifiers were provided.");
+                throw new EntityNotFoundException<Guid>("Course", request.CourseId.Value);
             }
 
             return course.Id;
@@ -395,11 +382,9 @@ namespace attendance_monitoring.Controllers
         {
             return new SectionResponseDto
             {
-                Id = section.Id,
-                Uuid = section.Uuid,
+                Id = section.Uuid,
                 Name = section.Name,
-                CourseId = section.CourseId,
-                CourseUuid = section.Course?.Uuid,
+                CourseId = section.Course?.Uuid ?? Guid.Empty,
                 CreatedAt = section.CreatedAt,
                 UpdatedAt = section.UpdatedAt
             };

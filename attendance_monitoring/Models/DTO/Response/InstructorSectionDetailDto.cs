@@ -10,14 +10,7 @@ public class InstructorSectionDetailDto
     /// <summary>
     /// Gets or sets the section's unique identifier.
     /// </summary>
-    [JsonIgnore]
-    public int SectionId { get; set; }
-
-    /// <summary>
-    /// Gets or sets the section's UUID.
-    /// </summary>
-    [JsonPropertyName("sectionId")]
-    public Guid SectionUuid { get; set; }
+    public Guid SectionId { get; set; }
 
     /// <summary>
     /// Gets or sets the section name.
@@ -27,14 +20,7 @@ public class InstructorSectionDetailDto
     /// <summary>
     /// Gets or sets the course's unique identifier.
     /// </summary>
-    [JsonIgnore]
-    public int CourseId { get; set; }
-
-    /// <summary>
-    /// Gets or sets the course's UUID.
-    /// </summary>
-    [JsonPropertyName("courseId")]
-    public Guid CourseUuid { get; set; }
+    public Guid CourseId { get; set; }
 
     /// <summary>
     /// Gets or sets the course name.

@@ -45,7 +45,7 @@ internal sealed class QrCodeGenerationService
         {
             try
             {
-                await ResolveSessionIdAsync(createQrCode).ConfigureAwait(false);
+                var sessionId = await ResolveSessionIdAsync(createQrCode).ConfigureAwait(false);
 
                 _logger.LogInformation("Creating QR code for session ID: {SessionId} (Attempt {Attempt})",
                     createQrCode.SessionId, attempt);
@@ -66,11 +66,11 @@ internal sealed class QrCodeGenerationService
                     throw new EntityUnauthorizedException("QrCode", "Create", userId);
                 }
 
-                await _authorizationService.ValidateSessionExistsOrThrowAsync(createQrCode.SessionId).ConfigureAwait(false);
+                await _authorizationService.ValidateSessionExistsOrThrowAsync(sessionId).ConfigureAwait(false);
 
                 var qrCode = new QrCodeEntity
                 {
-                    SessionId = createQrCode.SessionId,
+                    SessionId = sessionId,
                     QrHash = createQrCode.QrHash,
                     ExpiresAt = createQrCode.ExpiresAt,
                     MaxUsage = createQrCode.MaxUsage
@@ -119,7 +119,7 @@ internal sealed class QrCodeGenerationService
         {
             try
             {
-                await ResolveSessionIdAsync(qrCodeRequest).ConfigureAwait(false);
+                var sessionId = await ResolveSessionIdAsync(qrCodeRequest).ConfigureAwait(false);
 
                 _logger.LogInformation("Generating QR code for session ID: {SessionId} (Attempt {Attempt})",
                     qrCodeRequest.SessionId, attempts + 1);
@@ -140,7 +140,7 @@ internal sealed class QrCodeGenerationService
                     return new QrCodeGenerationResponseDto { Success = false, Message = "You are not authorized to generate QR codes" };
                 }
 
-                var validationError = await _authorizationService.ValidateSessionExistsAsync(qrCodeRequest.SessionId).ConfigureAwait(false);
+                var validationError = await _authorizationService.ValidateSessionExistsAsync(sessionId).ConfigureAwait(false);
                 if (validationError != null)
                 {
                     return new QrCodeGenerationResponseDto { Success = false, Message = validationError };
@@ -151,7 +151,7 @@ internal sealed class QrCodeGenerationService
 
                 var qrCode = new QrCodeEntity
                 {
-                    SessionId = qrCodeRequest.SessionId,
+                    SessionId = sessionId,
                     QrHash = qrHash,
                     ExpiresAt = expiresAt,
                     MaxUsage = qrCodeRequest.MaxUsage
@@ -234,30 +234,24 @@ internal sealed class QrCodeGenerationService
         }
     }
 
-    private async Task ResolveSessionIdAsync(CreateQrCode createQrCode)
+    private async Task<int> ResolveSessionIdAsync(CreateQrCode createQrCode)
     {
-        if (createQrCode.SessionUuid.HasValue && createQrCode.SessionUuid.Value != Guid.Empty)
+        var session = await _sessionRepository.GetSessionByUuidAsync(createQrCode.SessionId).ConfigureAwait(false);
+        if (session == null)
         {
-            var session = await _sessionRepository.GetSessionByUuidAsync(createQrCode.SessionUuid.Value).ConfigureAwait(false);
-            if (session == null)
-            {
-                throw new EntityNotFoundException<Guid>("Session", createQrCode.SessionUuid.Value);
-            }
-            createQrCode.SessionId = session.Id;
+            throw new EntityNotFoundException<Guid>("Session", createQrCode.SessionId);
         }
+        return session.Id;
     }
 
-    private async Task ResolveSessionIdAsync(QrCodeRequest qrCodeRequest)
+    private async Task<int> ResolveSessionIdAsync(QrCodeRequest qrCodeRequest)
     {
-        if (qrCodeRequest.SessionUuid.HasValue && qrCodeRequest.SessionUuid.Value != Guid.Empty)
+        var session = await _sessionRepository.GetSessionByUuidAsync(qrCodeRequest.SessionId).ConfigureAwait(false);
+        if (session == null)
         {
-            var session = await _sessionRepository.GetSessionByUuidAsync(qrCodeRequest.SessionUuid.Value).ConfigureAwait(false);
-            if (session == null)
-            {
-                throw new EntityNotFoundException<Guid>("Session", qrCodeRequest.SessionUuid.Value);
-            }
-            qrCodeRequest.SessionId = session.Id;
+            throw new EntityNotFoundException<Guid>("Session", qrCodeRequest.SessionId);
         }
+        return session.Id;
     }
 
     private static string GenerateQrHash(string? clientHash = null)

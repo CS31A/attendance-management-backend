@@ -15,23 +15,15 @@ namespace attendance_monitoring.Models.DTO.Request
         public string DayOfWeek { get; set; } = string.Empty;
 
         [Required]
-        public int SubjectId { get; set; }
-
-        public Guid? SubjectUuid { get; set; }
+        public Guid SubjectId { get; set; }
 
         [Required]
-        public int ClassroomId { get; set; }
-
-        public Guid? ClassroomUuid { get; set; }
+        public Guid ClassroomId { get; set; }
 
         [Required]
-        public int SectionId { get; set; }
-
-        public Guid? SectionUuid { get; set; }
+        public Guid SectionId { get; set; }
 
         [Required]
-        public int InstructorId { get; set; }
-
-        public Guid? InstructorUuid { get; set; }
+        public Guid InstructorId { get; set; }
     }
 }

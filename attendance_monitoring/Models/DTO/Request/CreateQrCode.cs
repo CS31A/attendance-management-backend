@@ -8,14 +8,9 @@ namespace attendance_monitoring.Models.DTO.Request;
 public class CreateQrCode
 {
     /// <summary>
-    /// The session ID this QR code belongs to
+    /// The session UUID this QR code belongs to
     /// </summary>
-    public int SessionId { get; set; }
-
-    /// <summary>
-    /// The session UUID this QR code belongs to (alternative to SessionId)
-    /// </summary>
-    public Guid? SessionUuid { get; set; }
+    public Guid SessionId { get; set; }
 
     /// <summary>
     /// The QR code hash value

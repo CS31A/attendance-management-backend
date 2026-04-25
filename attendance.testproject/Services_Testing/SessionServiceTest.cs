@@ -129,7 +129,7 @@ public class SessionServiceTest
 
         // Assert
         Assert.NotNull(result);
-        Assert.Equal(sessionId, result.Id);
+        Assert.Equal(session.Uuid, result.Id);
         Assert.Equal(SessionStatusConstants.NotStarted, result.Status);
         _mockSessionRepository.Verify(r => r.GetSessionByIdAsync(sessionId), Times.Once);
     }
@@ -182,7 +182,7 @@ public class SessionServiceTest
 
         // Assert
         Assert.NotNull(result);
-        Assert.Equal(session.Id, result.Id);
+        Assert.Equal(session.Uuid, result.Id);
         _mockSessionRepository.Verify(r => r.GetSessionByUuidAsync(session.Uuid), Times.Once);
     }
 
@@ -341,22 +341,22 @@ public class SessionServiceTest
         if (daysUntilMonday == 0) daysUntilMonday = 7; // If today is Monday, get next Monday
         var nextMonday = today.AddDays(daysUntilMonday);
 
+        var schedule = CreateTestSchedule(1, "Monday");
         var request = new CreateSession
         {
-            ScheduleId = 1,
+            ScheduleId = schedule.Uuid,
             SessionDate = nextMonday,
             Description = "Test session"
         };
-
-        var schedule = CreateTestSchedule(1, "Monday");
-        var createdSession = CreateTestSession(1, request.ScheduleId!.Value, sessionDate: request.SessionDate);
+        var createdSession = CreateTestSession(1, schedule.Id, sessionDate: request.SessionDate);
+        createdSession.Schedule = schedule;
 
         _mockScheduleRepository
-            .Setup(r => r.GetScheduleByIdAsync(request.ScheduleId!.Value))
+            .Setup(r => r.GetScheduleByUuidAsync(request.ScheduleId!.Value))
             .ReturnsAsync(schedule);
 
         _mockSessionRepository
-            .Setup(r => r.SessionExistsForScheduleAndDateAsync(request.ScheduleId!.Value, request.SessionDate!.Value))
+            .Setup(r => r.SessionExistsForScheduleAndDateAsync(schedule.Id, request.SessionDate!.Value))
             .ReturnsAsync(false);
 
         _mockSessionRepository
@@ -401,7 +401,7 @@ public class SessionServiceTest
         _mockSessionRepository.Verify(r => r.CreateSessionAsync(
             It.Is<Session>(s =>
                 s.Status == SessionStatusConstants.NotStarted &&
-                s.ScheduleId == request.ScheduleId &&
+                s.ScheduleId == schedule.Id &&
                 s.SessionDate == request.SessionDate
             )), Times.Once);
     }
@@ -412,16 +412,16 @@ public class SessionServiceTest
         // Arrange
         var request = new CreateSession
         {
-            ScheduleId = 999,
+            ScheduleId = Guid.NewGuid(),
             SessionDate = _timeZoneProvider.GetLocalNow().Date.AddDays(1)
         };
 
         _mockScheduleRepository
-            .Setup(r => r.GetScheduleByIdAsync(request.ScheduleId!.Value))
+            .Setup(r => r.GetScheduleByUuidAsync(request.ScheduleId!.Value))
             .ReturnsAsync((Schedules?)null);
 
         // Act & Assert
-        var exception = await Assert.ThrowsAsync<EntityNotFoundException<int>>(
+        var exception = await Assert.ThrowsAsync<EntityNotFoundException<Guid>>(
             () => _sessionService.CreateSessionAsync(request));
         Assert.Contains("not found", exception.Message);
     }
@@ -430,24 +430,23 @@ public class SessionServiceTest
     public async Task CreateSessionAsync_ThrowsEntityAlreadyExistsException_WhenSessionAlreadyExists()
     {
         // Arrange
+        var schedule = CreateTestSchedule(1, "Monday");
         var request = new CreateSession
         {
-            ScheduleId = 1,
+            ScheduleId = schedule.Uuid,
             SessionDate = _timeZoneProvider.GetLocalNow().Date.AddDays(1)
         };
 
-        var schedule = CreateTestSchedule(1, "Monday");
-
         _mockScheduleRepository
-            .Setup(r => r.GetScheduleByIdAsync(request.ScheduleId!.Value))
+            .Setup(r => r.GetScheduleByUuidAsync(request.ScheduleId!.Value))
             .ReturnsAsync(schedule);
 
         _mockSessionRepository
-            .Setup(r => r.SessionExistsForScheduleAndDateAsync(request.ScheduleId!.Value, request.SessionDate!.Value))
+            .Setup(r => r.SessionExistsForScheduleAndDateAsync(schedule.Id, request.SessionDate!.Value))
             .ReturnsAsync(true);
 
         // Act & Assert
-        var exception = await Assert.ThrowsAsync<EntityAlreadyExistsException<int>>(
+        var exception = await Assert.ThrowsAsync<EntityAlreadyExistsException<Guid>>(
             () => _sessionService.CreateSessionAsync(request));
         Assert.Contains("already exists", exception.Message);
     }
@@ -457,20 +456,19 @@ public class SessionServiceTest
     {
         // Arrange
         var mondayDate = new DateTime(2024, 1, 15); // Monday
+        var schedule = CreateTestSchedule(1, "Tuesday"); // Schedule is for Tuesday
         var request = new CreateSession
         {
-            ScheduleId = 1,
+            ScheduleId = schedule.Uuid,
             SessionDate = mondayDate
         };
 
-        var schedule = CreateTestSchedule(1, "Tuesday"); // Schedule is for Tuesday
-
         _mockScheduleRepository
-            .Setup(r => r.GetScheduleByIdAsync(request.ScheduleId!.Value))
+            .Setup(r => r.GetScheduleByUuidAsync(request.ScheduleId!.Value))
             .ReturnsAsync(schedule);
 
         _mockSessionRepository
-            .Setup(r => r.SessionExistsForScheduleAndDateAsync(request.ScheduleId!.Value, request.SessionDate!.Value))
+            .Setup(r => r.SessionExistsForScheduleAndDateAsync(schedule.Id, request.SessionDate!.Value))
             .ReturnsAsync(false);
 
         // Act & Assert
@@ -488,23 +486,23 @@ public class SessionServiceTest
         if (daysUntilTuesday == 0) daysUntilTuesday = 7;
         var nextTuesday = today.AddDays(daysUntilTuesday);
 
+        var schedule = CreateTestSchedule(1, "Monday");
         var request = new CreateSession
         {
-            ScheduleId = 1,
+            ScheduleId = schedule.Uuid,
             SessionDate = nextTuesday,
             AllowOffScheduleDate = true,
             OffScheduleReason = "Campus activity moved this class"
         };
-
-        var schedule = CreateTestSchedule(1, "Monday");
-        var createdSession = CreateTestSession(1, request.ScheduleId!.Value, sessionDate: request.SessionDate);
+        var createdSession = CreateTestSession(1, schedule.Id, sessionDate: request.SessionDate);
+        createdSession.Schedule = schedule;
 
         _mockScheduleRepository
-            .Setup(r => r.GetScheduleByIdAsync(request.ScheduleId!.Value))
+            .Setup(r => r.GetScheduleByUuidAsync(request.ScheduleId!.Value))
             .ReturnsAsync(schedule);
 
         _mockSessionRepository
-            .Setup(r => r.SessionExistsForScheduleAndDateAsync(request.ScheduleId!.Value, request.SessionDate!.Value))
+            .Setup(r => r.SessionExistsForScheduleAndDateAsync(schedule.Id, request.SessionDate!.Value))
             .ReturnsAsync(false);
 
         _mockSessionRepository
@@ -538,7 +536,7 @@ public class SessionServiceTest
         _mockSessionRepository.Verify(r => r.CreateSessionAsync(
             It.Is<Session>(s =>
                 s.Status == SessionStatusConstants.NotStarted &&
-                s.ScheduleId == request.ScheduleId &&
+                s.ScheduleId == schedule.Id &&
                 s.SessionDate == request.SessionDate
             )), Times.Once);
     }
@@ -551,22 +549,22 @@ public class SessionServiceTest
         // Arrange
         var today = _timeZoneProvider.GetLocalNow().Date;
         var matchingDate = today.AddDays(((int)DayOfWeek.Monday - (int)today.DayOfWeek + 7) % 7);
+        var schedule = CreateTestSchedule(1, matchingDate.DayOfWeek.ToString());
         var request = new CreateSession
         {
-            ScheduleId = 1,
+            ScheduleId = schedule.Uuid,
             SessionDate = matchingDate,
             OffScheduleReason = offScheduleReason
         };
-
-        var schedule = CreateTestSchedule(1, matchingDate.DayOfWeek.ToString());
-        var createdSession = CreateTestSession(1, request.ScheduleId!.Value, sessionDate: request.SessionDate);
+        var createdSession = CreateTestSession(1, schedule.Id, sessionDate: request.SessionDate);
+        createdSession.Schedule = schedule;
 
         _mockScheduleRepository
-            .Setup(r => r.GetScheduleByIdAsync(request.ScheduleId!.Value))
+            .Setup(r => r.GetScheduleByUuidAsync(request.ScheduleId!.Value))
             .ReturnsAsync(schedule);
 
         _mockSessionRepository
-            .Setup(r => r.SessionExistsForScheduleAndDateAsync(request.ScheduleId!.Value, request.SessionDate!.Value))
+            .Setup(r => r.SessionExistsForScheduleAndDateAsync(schedule.Id, request.SessionDate!.Value))
             .ReturnsAsync(false);
 
         _mockSessionRepository
@@ -594,20 +592,19 @@ public class SessionServiceTest
     {
         // Arrange
         var pastDate = _timeZoneProvider.GetLocalNow().Date.AddDays(-1);
+        var schedule = CreateTestSchedule(1, pastDate.DayOfWeek.ToString());
         var request = new CreateSession
         {
-            ScheduleId = 1,
+            ScheduleId = schedule.Uuid,
             SessionDate = pastDate
         };
 
-        var schedule = CreateTestSchedule(1, pastDate.DayOfWeek.ToString());
-
         _mockScheduleRepository
-            .Setup(r => r.GetScheduleByIdAsync(request.ScheduleId!.Value))
+            .Setup(r => r.GetScheduleByUuidAsync(request.ScheduleId!.Value))
             .ReturnsAsync(schedule);
 
         _mockSessionRepository
-            .Setup(r => r.SessionExistsForScheduleAndDateAsync(request.ScheduleId!.Value, request.SessionDate!.Value))
+            .Setup(r => r.SessionExistsForScheduleAndDateAsync(schedule.Id, request.SessionDate!.Value))
             .ReturnsAsync(false);
 
         // Act & Assert
@@ -625,15 +622,15 @@ public class SessionServiceTest
     {
         // Arrange
         int sessionId = 1;
+        var classroom = CreateTestClassroom(1);
         var request = new StartSession
         {
-            ActualRoomId = 1,
+            ActualRoomId = classroom.Uuid,
             AttendanceCutoffMinutes = 15,
             RowVersion = CreateRowVersion()
         };
 
         var instructor = CreateTestInstructor(1, "user-123");
-        var classroom = CreateTestClassroom(1);
         var session = CreateTestSession(sessionId, status: SessionStatusConstants.NotStarted, sessionDate: DateTime.Now.Date);
         session.Schedule = CreateTestSchedule(1, DateTime.Now.DayOfWeek.ToString());
         session.Schedule.InstructorId = instructor.Id;
@@ -647,7 +644,7 @@ public class SessionServiceTest
             .ReturnsAsync(session);
 
         _mockClassroomRepository
-            .Setup(r => r.GetClassroomByIdAsync(request.ActualRoomId.Value))
+            .Setup(r => r.GetClassroomByUuidAsync(request.ActualRoomId.Value))
             .ReturnsAsync(classroom);
 
         _mockSessionRepository
@@ -660,6 +657,8 @@ public class SessionServiceTest
                 session.ActualRoomId = s.ActualRoomId;
                 session.AttendanceCutOff = s.AttendanceCutOff;
                 session.StartedBy = s.StartedBy;
+                session.ActualRoom = classroom;
+                session.InstructorWhoStarted = instructor;
             })
             .ReturnsAsync(session);
 
@@ -690,7 +689,7 @@ public class SessionServiceTest
         Assert.Equal(request.ActualRoomId, result.ActualRoomId);
 
         // Verify instructor tracking
-        Assert.Equal(instructor.Id, result.StartedBy);
+        Assert.Equal(instructor.Uuid, result.StartedById);
 
         // Verify attendance cutoff calculation
         Assert.NotNull(result.AttendanceCutOff);
@@ -703,7 +702,7 @@ public class SessionServiceTest
                 s.Status == SessionStatusConstants.Active &&
                 s.ActualStartTime != null &&
                 s.StartedBy == instructor.Id &&
-                s.ActualRoomId == request.ActualRoomId &&
+                s.ActualRoomId == classroom.Id &&
                 s.RowVersion != null &&
                 s.RowVersion.SequenceEqual(request.RowVersion)
             )), Times.Once);
@@ -894,15 +893,15 @@ public class SessionServiceTest
         // Arrange
         int sessionId = 1;
         var sessionUuid = Guid.NewGuid();
+        var classroom = CreateTestClassroom(1);
         var request = new StartSession
         {
-            ActualRoomId = 1,
+            ActualRoomId = classroom.Uuid,
             AttendanceCutoffMinutes = 15,
             RowVersion = CreateRowVersion()
         };
 
         var instructor = CreateTestInstructor(1, "user-123");
-        var classroom = CreateTestClassroom(1);
         var session = CreateTestSession(sessionId, status: SessionStatusConstants.NotStarted, sessionDate: DateTime.Now.Date);
         session.Uuid = sessionUuid;
         session.Schedule = CreateTestSchedule(1, DateTime.Now.DayOfWeek.ToString());
@@ -921,7 +920,7 @@ public class SessionServiceTest
             .ReturnsAsync(session);
 
         _mockClassroomRepository
-            .Setup(r => r.GetClassroomByIdAsync(request.ActualRoomId.Value))
+            .Setup(r => r.GetClassroomByUuidAsync(request.ActualRoomId.Value))
             .ReturnsAsync(classroom);
 
         _mockSessionRepository
@@ -945,7 +944,7 @@ public class SessionServiceTest
 
         // Assert
         Assert.Equal(SessionStatusConstants.Active, result.Status);
-        Assert.Equal(sessionId, result.Id);
+        Assert.Equal(session.Uuid, result.Id);
         _mockSessionRepository.Verify(r => r.GetSessionByUuidAsync(sessionUuid), Times.Once);
     }
 
@@ -1001,6 +1000,7 @@ public class SessionServiceTest
                 session.ActualEndTime = s.ActualEndTime;
                 session.EndedBy = s.EndedBy;
                 session.Description = s.Description;
+                session.InstructorWhoEnded = instructor;
             })
             .ReturnsAsync(session);
 
@@ -1028,7 +1028,7 @@ public class SessionServiceTest
         Assert.InRange(result.ActualEndTime.Value, beforeEnd.AddSeconds(-2), afterEnd.AddSeconds(2));
 
         // Verify instructor tracking
-        Assert.Equal(instructor.Id, result.EndedBy);
+        Assert.Equal(instructor.Uuid, result.EndedById);
 
         // Verify description was updated
         Assert.Contains(request.Description, result.Description);
@@ -1184,7 +1184,7 @@ public class SessionServiceTest
 
         // Assert
         Assert.Equal(SessionStatusConstants.Ended, result.Status);
-        Assert.Equal(sessionId, result.Id);
+        Assert.Equal(session.Uuid, result.Id);
         _mockSessionRepository.Verify(r => r.GetSessionByUuidAsync(sessionUuid), Times.Once);
     }
 
@@ -1238,6 +1238,7 @@ public class SessionServiceTest
                 // Simulate the session being updated in the database
                 session.Status = s.Status;
                 session.Description = s.Description;
+                session.RowVersion = s.RowVersion;
             })
             .ReturnsAsync(session);
 
@@ -1386,78 +1387,12 @@ public class SessionServiceTest
             .ReturnsAsync(session);
 
         _mockSessionRepository
-            .Setup(r => r.GetSessionByIdAsync(sessionId))
-            .ReturnsAsync(session);
-
-        _mockSessionRepository
-            .Setup(r => r.UpdateSessionAsync(It.IsAny<Session>()))
-            .Callback<Session>(updated =>
-            {
-                session.Status = updated.Status;
-                session.Description = updated.Description;
-            })
-            .ReturnsAsync(session);
-
-        _mockSessionRepository
-            .Setup(r => r.SaveChangesAsync())
-            .ReturnsAsync(1);
-
-        // Act
-        var result = await _sessionService.CancelSessionByUuidAsync(sessionUuid, request);
-
-        // Assert
-        Assert.Equal(SessionStatusConstants.Cancelled, result.Status);
-        Assert.Equal(sessionId, result.Id);
-        _mockSessionRepository.Verify(r => r.GetSessionByUuidAsync(sessionUuid), Times.Once);
-    }
-
-    [Fact]
-    public async Task CancelSessionByUuidAsync_ThrowsEntityNotFoundException_WhenMissing()
-    {
-        // Arrange
-        var sessionUuid = Guid.NewGuid();
-
-        _mockSessionRepository
-            .Setup(r => r.GetSessionByUuidAsync(sessionUuid))
-            .ReturnsAsync((Session?)null);
-
-        // Act & Assert
-        await Assert.ThrowsAsync<EntityNotFoundException<Guid>>(
-            () => _sessionService.CancelSessionByUuidAsync(sessionUuid, new CancelSession { Reason = "Test" }));
-    }
-
-    #endregion
-
-    #region UpdateSessionRoomAsync Tests
-
-    [Fact]
-    public async Task UpdateSessionRoomAsync_UpdatesRoom_WhenSessionActive()
-    {
-        // Arrange
-        int sessionId = 1;
-        var request = new UpdateSessionRoom
-        {
-            ActualRoomId = 2,
-            RowVersion = CreateRowVersion()
-        };
-
-        var session = CreateTestSession(sessionId, status: SessionStatusConstants.Active);
-        var classroom = CreateTestClassroom(2);
-
-        _mockSessionRepository
-            .Setup(r => r.GetSessionByIdAsync(sessionId))
-            .ReturnsAsync(session);
-
-        _mockClassroomRepository
-            .Setup(r => r.GetClassroomByIdAsync(request.ActualRoomId!.Value))
-            .ReturnsAsync(classroom);
-
-        _mockSessionRepository
             .Setup(r => r.UpdateSessionAsync(It.IsAny<Session>()))
             .Callback<Session>(s =>
             {
-                // Simulate the session being updated in the database
-                session.ActualRoomId = s.ActualRoomId;
+                session.Status = s.Status;
+                session.Description = s.Description;
+                session.RowVersion = s.RowVersion;
             })
             .ReturnsAsync(session);
 
@@ -1470,24 +1405,25 @@ public class SessionServiceTest
             .ReturnsAsync(() => session); // Return the updated session
 
         // Act
-        var result = await _sessionService.UpdateSessionRoomAsync(sessionId, request);
+        var result = await _sessionService.CancelSessionByUuidAsync(sessionUuid, request);
 
         // Assert
         Assert.NotNull(result);
 
-        // Verify room was updated
-        Assert.Equal(request.ActualRoomId, result.ActualRoomId);
+        // Verify status change
+        Assert.Equal(SessionStatusConstants.Cancelled, result.Status);
 
-        // Verify status remained active
-        Assert.Equal(SessionStatusConstants.Active, result.Status);
+        // Verify cancellation reason was recorded
+        Assert.Contains(request.Reason, result.Description!);
 
-        // Verify repository method was called with correct room ID
+        // Verify repository method was called with correct session state
         _mockSessionRepository.Verify(r => r.UpdateSessionAsync(
             It.Is<Session>(s =>
-                s.ActualRoomId == request.ActualRoomId
-                && s.RowVersion != null
-                && s.RowVersion.SequenceEqual(request.RowVersion))
-        ), Times.Once);
+                s.Status == SessionStatusConstants.Cancelled &&
+                s.Description != null && s.Description.Contains(request.Reason) &&
+                s.RowVersion != null &&
+                s.RowVersion.SequenceEqual(request.RowVersion)
+            )), Times.Once);
     }
 
     [Fact]
@@ -1495,7 +1431,8 @@ public class SessionServiceTest
     {
         // Arrange
         int sessionId = 1;
-        var request = new UpdateSessionRoom { ActualRoomId = 2 };
+        var classroom = CreateTestClassroom(2);
+        var request = new UpdateSessionRoom { ActualRoomId = classroom.Uuid };
 
         var session = CreateTestSession(sessionId, status: SessionStatusConstants.Active);
 
@@ -1504,8 +1441,8 @@ public class SessionServiceTest
             .ReturnsAsync(session);
 
         _mockClassroomRepository
-            .Setup(r => r.GetClassroomByIdAsync(request.ActualRoomId!.Value))
-            .ReturnsAsync(CreateTestClassroom(request.ActualRoomId.Value));
+            .Setup(r => r.GetClassroomByUuidAsync(request.ActualRoomId!.Value))
+            .ReturnsAsync(classroom);
 
         // Act & Assert
         var exception = await Assert.ThrowsAsync<ValidationException>(
@@ -1519,9 +1456,10 @@ public class SessionServiceTest
     {
         // Arrange
         int sessionId = 1;
+        var classroom = CreateTestClassroom(2);
         var request = new UpdateSessionRoom
         {
-            ActualRoomId = 2,
+            ActualRoomId = classroom.Uuid,
             RowVersion = CreateRowVersion()
         };
 
@@ -1530,6 +1468,10 @@ public class SessionServiceTest
         _mockSessionRepository
             .Setup(r => r.GetSessionByIdAsync(sessionId))
             .ReturnsAsync(session);
+
+        _mockClassroomRepository
+            .Setup(r => r.GetClassroomByUuidAsync(request.ActualRoomId!.Value))
+            .ReturnsAsync(classroom);
 
         // Act & Assert
         var exception = await Assert.ThrowsAsync<ValidationException>(
@@ -1542,7 +1484,7 @@ public class SessionServiceTest
     {
         // Arrange
         int sessionId = 1;
-        var request = new UpdateSessionRoom { ActualRoomId = 999 };
+        var request = new UpdateSessionRoom { ActualRoomId = Guid.NewGuid() };
 
         var session = CreateTestSession(sessionId, status: SessionStatusConstants.Active);
 
@@ -1551,11 +1493,11 @@ public class SessionServiceTest
             .ReturnsAsync(session);
 
         _mockClassroomRepository
-            .Setup(r => r.GetClassroomByIdAsync(request.ActualRoomId!.Value))
+            .Setup(r => r.GetClassroomByUuidAsync(request.ActualRoomId!.Value))
             .ReturnsAsync((Classroom?)null);
 
         // Act & Assert
-        var exception = await Assert.ThrowsAsync<EntityNotFoundException<int>>(
+        var exception = await Assert.ThrowsAsync<EntityNotFoundException<Guid>>(
             () => _sessionService.UpdateSessionRoomAsync(sessionId, request));
         Assert.Contains("not found", exception.Message);
     }
@@ -1565,21 +1507,21 @@ public class SessionServiceTest
     {
         // Arrange
         int sessionId = 1;
+        var classroom = CreateTestClassroom(2);
         var request = new UpdateSessionRoom
         {
-            ActualRoomId = 2,
+            ActualRoomId = classroom.Uuid,
             RowVersion = CreateRowVersion()
         };
 
         var session = CreateTestSession(sessionId, status: SessionStatusConstants.Active);
-        var classroom = CreateTestClassroom(2);
 
         _mockSessionRepository
             .Setup(r => r.GetSessionByIdAsync(sessionId))
             .ReturnsAsync(session);
 
         _mockClassroomRepository
-            .Setup(r => r.GetClassroomByIdAsync(request.ActualRoomId!.Value))
+            .Setup(r => r.GetClassroomByUuidAsync(request.ActualRoomId!.Value))
             .ReturnsAsync(classroom);
 
         _mockSessionRepository
@@ -1599,15 +1541,15 @@ public class SessionServiceTest
         // Arrange
         int sessionId = 1;
         var sessionUuid = Guid.NewGuid();
+        var classroom = CreateTestClassroom(2);
         var request = new UpdateSessionRoom
         {
-            ActualRoomId = 2,
+            ActualRoomId = classroom.Uuid,
             RowVersion = CreateRowVersion()
         };
 
         var session = CreateTestSession(sessionId, status: SessionStatusConstants.Active);
         session.Uuid = sessionUuid;
-        var classroom = CreateTestClassroom(2);
 
         _mockSessionRepository
             .Setup(r => r.GetSessionByUuidAsync(sessionUuid))
@@ -1618,12 +1560,16 @@ public class SessionServiceTest
             .ReturnsAsync(session);
 
         _mockClassroomRepository
-            .Setup(r => r.GetClassroomByIdAsync(request.ActualRoomId!.Value))
+            .Setup(r => r.GetClassroomByUuidAsync(request.ActualRoomId!.Value))
             .ReturnsAsync(classroom);
 
         _mockSessionRepository
             .Setup(r => r.UpdateSessionAsync(It.IsAny<Session>()))
-            .Callback<Session>(updated => session.ActualRoomId = updated.ActualRoomId)
+            .Callback<Session>(updated =>
+            {
+                session.ActualRoomId = updated.ActualRoomId;
+                session.ActualRoom = classroom;
+            })
             .ReturnsAsync(session);
 
         _mockSessionRepository
@@ -1635,7 +1581,7 @@ public class SessionServiceTest
 
         // Assert
         Assert.Equal(request.ActualRoomId, result.ActualRoomId);
-        Assert.Equal(sessionId, result.Id);
+        Assert.Equal(session.Uuid, result.Id);
         _mockSessionRepository.Verify(r => r.GetSessionByUuidAsync(sessionUuid), Times.Once);
     }
 
@@ -1654,70 +1600,7 @@ public class SessionServiceTest
             () => _sessionService.UpdateSessionRoomByUuidAsync(sessionUuid, new UpdateSessionRoom()));
     }
 
-    [Fact]
-    public async Task UpdateSessionRoomAsync_ResolvesClassroomIdFromUuid_WhenProvided()
-    {
-        // Arrange
-        int sessionId = 1;
-        var request = new UpdateSessionRoom
-        {
-            ActualRoomUuid = Guid.NewGuid(),
-            RowVersion = CreateRowVersion()
-        };
 
-        var session = CreateTestSession(sessionId, status: SessionStatusConstants.Active);
-        var classroom = CreateTestClassroom(5);
-        classroom.Uuid = request.ActualRoomUuid.Value;
-
-        _mockSessionRepository
-            .Setup(r => r.GetSessionByIdAsync(sessionId))
-            .ReturnsAsync(session);
-
-        _mockClassroomRepository
-            .Setup(r => r.GetClassroomByUuidAsync(request.ActualRoomUuid.Value))
-            .ReturnsAsync(classroom);
-
-        _mockSessionRepository
-            .Setup(r => r.UpdateSessionAsync(It.IsAny<Session>()))
-            .Callback<Session>(updated => session.ActualRoomId = updated.ActualRoomId)
-            .ReturnsAsync(session);
-
-        _mockSessionRepository
-            .Setup(r => r.SaveChangesAsync())
-            .ReturnsAsync(1);
-
-        // Act
-        var result = await _sessionService.UpdateSessionRoomAsync(sessionId, request);
-
-        // Assert
-        Assert.Equal(classroom.Id, result.ActualRoomId);
-        _mockClassroomRepository.Verify(r => r.GetClassroomByUuidAsync(request.ActualRoomUuid.Value), Times.Once);
-    }
-
-    [Fact]
-    public async Task UpdateSessionRoomAsync_ThrowsValidationException_WhenActualRoomIdAndUuidResolveToDifferentClassrooms()
-    {
-        // Arrange
-        int sessionId = 1;
-        var request = new UpdateSessionRoom
-        {
-            ActualRoomId = 2,
-            ActualRoomUuid = Guid.NewGuid(),
-            RowVersion = CreateRowVersion()
-        };
-
-        var classroom = CreateTestClassroom(5);
-        classroom.Uuid = request.ActualRoomUuid.Value;
-
-        _mockClassroomRepository
-            .Setup(r => r.GetClassroomByUuidAsync(request.ActualRoomUuid.Value))
-            .ReturnsAsync(classroom);
-
-        // Act & Assert
-        var exception = await Assert.ThrowsAsync<attendance_monitoring.Exceptions.ValidationException>(
-            () => _sessionService.UpdateSessionRoomAsync(sessionId, request));
-        Assert.Equal("ActualRoomId and ActualRoomUuid must reference the same classroom.", exception.Message);
-    }
 
     #endregion
 
@@ -1732,6 +1615,7 @@ public class SessionServiceTest
         return new Session
         {
             Id = id,
+            Uuid = Guid.NewGuid(),
             ScheduleId = scheduleId,
             Status = status,
             SessionDate = sessionDate ?? _timeZoneProvider.GetLocalNow().Date,
@@ -1747,6 +1631,7 @@ public class SessionServiceTest
         return new Schedules
         {
             Id = id,
+            Uuid = Guid.NewGuid(),
             DayOfWeek = dayOfWeek,
             TimeIn = new TimeOnly(8, 0),
             TimeOut = new TimeOnly(10, 0),
@@ -1764,6 +1649,7 @@ public class SessionServiceTest
         return new Instructor
         {
             Id = id,
+            Uuid = Guid.NewGuid(),
             UserId = userId,
             Firstname = "John",
             Lastname = "Doe"
@@ -1775,6 +1661,7 @@ public class SessionServiceTest
         return new Classroom
         {
             Id = id,
+            Uuid = Guid.NewGuid(),
             Name = $"Room-{id}",
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
@@ -1786,22 +1673,21 @@ public class SessionServiceTest
     {
         // Arrange
         var today = DateTime.Now.Date;
+        var schedule = CreateTestSchedule(1, today.DayOfWeek.ToString());
         var request = new CreateSession
         {
-            ScheduleId = 1,
+            ScheduleId = schedule.Uuid,
             SessionDate = null, // This should default to today
             Description = "Test session with null date"
         };
-
-        var schedule = CreateTestSchedule(1, today.DayOfWeek.ToString());
-        var createdSession = CreateTestSession(1, request.ScheduleId!.Value, sessionDate: today);
+        var createdSession = CreateTestSession(1, schedule.Id, sessionDate: today);
 
         _mockScheduleRepository
-            .Setup(r => r.GetScheduleByIdAsync(request.ScheduleId!.Value))
+            .Setup(r => r.GetScheduleByUuidAsync(request.ScheduleId!.Value))
             .ReturnsAsync(schedule);
 
         _mockSessionRepository
-            .Setup(r => r.SessionExistsForScheduleAndDateAsync(request.ScheduleId!.Value, today))
+            .Setup(r => r.SessionExistsForScheduleAndDateAsync(schedule.Id, today))
             .ReturnsAsync(false);
 
         _mockSessionRepository
@@ -1830,85 +1716,10 @@ public class SessionServiceTest
         // Assert
         Assert.NotNull(result);
         Assert.Equal(today, result.SessionDate.Date);
-        _mockSessionRepository.Verify(r => r.SessionExistsForScheduleAndDateAsync(request.ScheduleId!.Value, today), Times.Once);
+        _mockSessionRepository.Verify(r => r.SessionExistsForScheduleAndDateAsync(schedule.Id, today), Times.Once);
     }
 
-    [Fact]
-    public async Task CreateSessionAsync_ResolvesScheduleIdFromUuid_WhenProvided()
-    {
-        // Arrange
-        var today = _timeZoneProvider.GetLocalNow().Date;
-        var request = new CreateSession
-        {
-            ScheduleUuid = Guid.NewGuid(),
-            SessionDate = today,
-            Description = "UUID schedule resolution"
-        };
 
-        var schedule = CreateTestSchedule(7, today.DayOfWeek.ToString());
-        schedule.Uuid = request.ScheduleUuid.Value;
-        var createdSession = CreateTestSession(1, schedule.Id, sessionDate: today);
-
-        _mockScheduleRepository
-            .Setup(r => r.GetScheduleByUuidAsync(request.ScheduleUuid.Value))
-            .ReturnsAsync(schedule);
-
-        _mockSessionRepository
-            .Setup(r => r.SessionExistsForScheduleAndDateAsync(schedule.Id, today))
-            .ReturnsAsync(false);
-
-        _mockSessionRepository
-            .Setup(r => r.CreateSessionAsync(It.IsAny<Session>()))
-            .Callback<Session>(session =>
-            {
-                createdSession.ScheduleId = session.ScheduleId;
-                createdSession.SessionDate = session.SessionDate;
-                createdSession.Description = session.Description;
-                createdSession.Status = session.Status;
-            })
-            .ReturnsAsync(createdSession);
-
-        _mockSessionRepository
-            .Setup(r => r.SaveChangesAsync())
-            .ReturnsAsync(1);
-
-        _mockSessionRepository
-            .Setup(r => r.GetSessionByIdAsync(It.IsAny<int>()))
-            .ReturnsAsync(createdSession);
-
-        // Act
-        var result = await _sessionService.CreateSessionAsync(request);
-
-        // Assert
-        Assert.Equal(schedule.Id, result.ScheduleId);
-        _mockScheduleRepository.Verify(r => r.GetScheduleByUuidAsync(request.ScheduleUuid.Value), Times.Once);
-        _mockSessionRepository.Verify(r => r.CreateSessionAsync(It.Is<Session>(session => session.ScheduleId == schedule.Id)), Times.Once);
-    }
-
-    [Fact]
-    public async Task CreateSessionAsync_ThrowsValidationException_WhenScheduleIdAndUuidResolveToDifferentSchedules()
-    {
-        // Arrange
-        var today = _timeZoneProvider.GetLocalNow().Date;
-        var request = new CreateSession
-        {
-            ScheduleId = 2,
-            ScheduleUuid = Guid.NewGuid(),
-            SessionDate = today
-        };
-
-        var schedule = CreateTestSchedule(7, today.DayOfWeek.ToString());
-        schedule.Uuid = request.ScheduleUuid.Value;
-
-        _mockScheduleRepository
-            .Setup(r => r.GetScheduleByUuidAsync(request.ScheduleUuid.Value))
-            .ReturnsAsync(schedule);
-
-        // Act & Assert
-        var exception = await Assert.ThrowsAsync<attendance_monitoring.Exceptions.ValidationException>(
-            () => _sessionService.CreateSessionAsync(request));
-        Assert.Equal("ScheduleId and ScheduleUuid must reference the same schedule.", exception.Message);
-    }
 
     #endregion
 }

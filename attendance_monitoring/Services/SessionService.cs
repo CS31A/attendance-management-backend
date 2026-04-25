@@ -261,27 +261,15 @@ public class SessionService : ISessionService
     /// </summary>
     public async Task<SessionResponseDto> UpdateSessionRoomAsync(int sessionId, UpdateSessionRoom updateRequest)
     {
-        Classroom? resolvedClassroom = null;
-
-        if (updateRequest.ActualRoomUuid.HasValue)
+        if (!updateRequest.ActualRoomId.HasValue || updateRequest.ActualRoomId.Value == Guid.Empty)
         {
-            resolvedClassroom = await _classroomRepository.GetClassroomByUuidAsync(updateRequest.ActualRoomUuid.Value).ConfigureAwait(false);
-            if (resolvedClassroom == null)
-            {
-                throw new EntityNotFoundException<Guid>("Classroom", updateRequest.ActualRoomUuid.Value);
-            }
-
-            if (updateRequest.ActualRoomId.HasValue && updateRequest.ActualRoomId.Value != resolvedClassroom.Id)
-            {
-                throw new ValidationException("ActualRoomId and ActualRoomUuid must reference the same classroom.");
-            }
-
-            updateRequest.ActualRoomId = resolvedClassroom.Id;
+            throw new ValidationException("ActualRoomId is required.");
         }
 
-        if (!updateRequest.ActualRoomId.HasValue)
+        var resolvedClassroom = await _classroomRepository.GetClassroomByUuidAsync(updateRequest.ActualRoomId.Value).ConfigureAwait(false);
+        if (resolvedClassroom == null)
         {
-            throw new ValidationException("Either ActualRoomId or ActualRoomUuid is required.");
+            throw new EntityNotFoundException<Guid>("Classroom", updateRequest.ActualRoomId.Value);
         }
 
         _logger.LogInformation("Updating room for session ID: {SessionId} to classroom ID: {ClassroomId}",
@@ -313,20 +301,11 @@ public class SessionService : ISessionService
                 throw new ValidationException(errorMessage);
             }
 
-            // Validate that the new classroom exists
-            var classroom = resolvedClassroom ?? await _classroomRepository.GetClassroomByIdAsync(updateRequest.ActualRoomId.Value)
-                .ConfigureAwait(false);
-
-            if (classroom == null)
-            {
-                var errorMessage = $"Classroom with ID {updateRequest.ActualRoomId.Value} not found.";
-                _logger.LogWarning("Session room update failed: {ErrorMessage}", errorMessage);
-                throw new EntityNotFoundException<int>("Classroom", updateRequest.ActualRoomId.Value);
-            }
+            var classroom = resolvedClassroom;
 
             // Update the session's actual room
             EnsureRowVersion(updateRequest.RowVersion, "update the room for");
-            session.ActualRoomId = updateRequest.ActualRoomId.Value;
+            session.ActualRoomId = resolvedClassroom.Id;
             session.RowVersion = updateRequest.RowVersion!;
 
             await _sessionRepository.UpdateSessionAsync(session).ConfigureAwait(false);
@@ -375,28 +354,18 @@ public class SessionService : ISessionService
     /// </summary>
     public async Task<SessionResponseDto> CreateSessionAsync(CreateSession request)
     {
-        Classes.Schedules? resolvedSchedule = null;
-
-        if (request.ScheduleUuid.HasValue)
+        if (!request.ScheduleId.HasValue || request.ScheduleId.Value == Guid.Empty)
         {
-            resolvedSchedule = await _scheduleRepository.GetScheduleByUuidAsync(request.ScheduleUuid.Value).ConfigureAwait(false);
-            if (resolvedSchedule == null)
-            {
-                throw new EntityNotFoundException<Guid>("Schedule", request.ScheduleUuid.Value);
-            }
-
-            if (request.ScheduleId.HasValue && request.ScheduleId.Value != resolvedSchedule.Id)
-            {
-                throw new ValidationException("ScheduleId and ScheduleUuid must reference the same schedule.");
-            }
-
-            request.ScheduleId = resolvedSchedule.Id;
+            throw new ValidationException("ScheduleId is required.");
         }
 
-        if (!request.ScheduleId.HasValue)
+        var resolvedSchedule = await _scheduleRepository.GetScheduleByUuidAsync(request.ScheduleId.Value).ConfigureAwait(false);
+        if (resolvedSchedule == null)
         {
-            throw new ValidationException("Either ScheduleId or ScheduleUuid is required.");
+            throw new EntityNotFoundException<Guid>("Schedule", request.ScheduleId.Value);
         }
+
+        var scheduleEntityId = resolvedSchedule.Id;
 
         // Use provided date or default to current date (using local time for session scheduling)
         var today = _clock.GetLocalNow().Date;
@@ -408,23 +377,17 @@ public class SessionService : ISessionService
         try
         {
             // Validate that the schedule exists
-            var schedule = resolvedSchedule ?? await _scheduleRepository.GetScheduleByIdAsync(request.ScheduleId.Value).ConfigureAwait(false);
-            if (schedule == null)
-            {
-                var errorMessage = $"Schedule with ID {request.ScheduleId.Value} not found.";
-                _logger.LogWarning("Session creation failed: {ErrorMessage}", errorMessage);
-                throw new EntityNotFoundException<int>("Schedule", request.ScheduleId.Value);
-            }
+            var schedule = resolvedSchedule;
 
             // Check if a session already exists for this schedule on this date
             var sessionExists = await _sessionRepository.SessionExistsForScheduleAndDateAsync(
-                request.ScheduleId.Value, effectiveSessionDate).ConfigureAwait(false);
+                scheduleEntityId, effectiveSessionDate).ConfigureAwait(false);
 
             if (sessionExists)
             {
                 var errorMessage = $"A session already exists for schedule ID {request.ScheduleId.Value} on {effectiveSessionDate:yyyy-MM-dd}.";
                 _logger.LogWarning("Session creation failed: {ErrorMessage}", errorMessage);
-                throw new EntityAlreadyExistsException<int>("Session", "ScheduleId", request.ScheduleId.Value, errorMessage);
+                throw new EntityAlreadyExistsException<Guid>("Session", "ScheduleId", request.ScheduleId.Value, errorMessage);
             }
 
             // Validate that the session date matches the schedule's day of week
@@ -472,7 +435,7 @@ public class SessionService : ISessionService
             // Create the session entity
             var session = new Session
             {
-                ScheduleId = request.ScheduleId.Value,
+                ScheduleId = scheduleEntityId,
                 SessionDate = effectiveSessionDate.Date,
                 Status = SessionStatusConstants.NotStarted,
                 Description = request.Description
@@ -491,11 +454,11 @@ public class SessionService : ISessionService
                 : throw new EntityServiceException("Session", $"CreateSession: ScheduleId {request.ScheduleId}",
                     "Failed to retrieve created session");
         }
-        catch (EntityNotFoundException<int>)
+        catch (EntityNotFoundException<Guid>)
         {
             throw;
         }
-        catch (EntityAlreadyExistsException<int>)
+        catch (EntityAlreadyExistsException<Guid>)
         {
             throw;
         }
@@ -586,24 +549,17 @@ public class SessionService : ISessionService
             }
 
             Classroom? resolvedClassroom = null;
-            if (request.ActualRoomUuid.HasValue)
+            if (request.ActualRoomId.HasValue)
             {
-                resolvedClassroom = await _classroomRepository.GetClassroomByUuidAsync(request.ActualRoomUuid.Value).ConfigureAwait(false);
+                resolvedClassroom = await _classroomRepository.GetClassroomByUuidAsync(request.ActualRoomId.Value).ConfigureAwait(false);
                 if (resolvedClassroom == null)
                 {
-                    throw new EntityNotFoundException<Guid>("Classroom", request.ActualRoomUuid.Value);
+                    throw new EntityNotFoundException<Guid>("Classroom", request.ActualRoomId.Value);
                 }
-
-                if (request.ActualRoomId.HasValue && request.ActualRoomId.Value != resolvedClassroom.Id)
-                {
-                    throw new ValidationException("ActualRoomId and ActualRoomUuid must reference the same classroom.");
-                }
-
-                request.ActualRoomId = resolvedClassroom.Id;
             }
 
             // If actualRoomId is provided, validate that the classroom exists
-            int? actualRoomId = request.ActualRoomId ?? session.Schedule?.ClassroomId;
+            var actualRoomId = resolvedClassroom?.Id ?? session.Schedule?.ClassroomId;
             if (actualRoomId.HasValue)
             {
                 var classroom = resolvedClassroom ?? await _classroomRepository.GetClassroomByIdAsync(actualRoomId.Value).ConfigureAwait(false);
@@ -966,26 +922,21 @@ public class SessionService : ISessionService
 
         return new SessionResponseDto
         {
-            Id = session.Id,
-            Uuid = session.Uuid,
-            ScheduleId = session.ScheduleId,
-            ScheduleUuid = session.Schedule?.Uuid,
+            Id = session.Uuid,
+            ScheduleId = session.Schedule?.Uuid ?? Guid.Empty,
             Status = session.Status,
             SessionDate = session.SessionDate,
             ActualStartTime = session.ActualStartTime,
             ActualEndTime = session.ActualEndTime,
             AttendanceCutOff = session.AttendanceCutOff,
             Description = session.Description,
-            ActualRoomId = session.ActualRoomId,
-            ActualRoomUuid = session.ActualRoom?.Uuid,
+            ActualRoomId = session.ActualRoom?.Uuid,
             ActualRoomName = session.ActualRoom?.Name,
-            StartedBy = session.StartedBy,
-            StartedByUuid = session.InstructorWhoStarted?.Uuid,
+            StartedById = session.InstructorWhoStarted?.Uuid,
             StartedByName = session.InstructorWhoStarted != null
                 ? $"{session.InstructorWhoStarted.Firstname} {session.InstructorWhoStarted.Lastname}"
                 : null,
-            EndedBy = session.EndedBy,
-            EndedByUuid = session.InstructorWhoEnded?.Uuid,
+            EndedById = session.InstructorWhoEnded?.Uuid,
             EndedByName = session.InstructorWhoEnded != null
                 ? $"{session.InstructorWhoEnded.Firstname} {session.InstructorWhoEnded.Lastname}"
                 : null,

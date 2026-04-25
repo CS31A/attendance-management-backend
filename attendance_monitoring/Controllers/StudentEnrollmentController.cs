@@ -49,7 +49,7 @@ public class StudentEnrollmentController : ControllerBase
         }
         catch (EntityNotFoundException<Guid> ex)
         {
-            _logger.LogWarning(ex, "Entity UUID not found while enrolling student {StudentUuid}", request.StudentUuid);
+            _logger.LogWarning(ex, "Entity not found while enrolling student {StudentId}", request.StudentId);
             return NotFound(new { message = ex.Message });
         }
         catch (EntityAlreadyExistsException<string> ex)
@@ -80,7 +80,7 @@ public class StudentEnrollmentController : ControllerBase
         _logger.LogInformation("Retrieving enrollments for student {StudentId}", studentId);
 
         var enrollments = await _enrollmentService.GetStudentEnrollmentsAsync(studentId);
-        var response = MapStudentSectionsResponse(studentId, enrollments);
+        var response = MapStudentSectionsResponse(enrollments.FirstOrDefault()?.Student?.Uuid ?? Guid.Empty, enrollments);
 
         _logger.LogInformation("Successfully retrieved {Count} enrollments for student {StudentId}",
             response.Enrollments.Count, studentId);
@@ -90,15 +90,15 @@ public class StudentEnrollmentController : ControllerBase
 
     [HttpGet("student/{id:guid}")]
     [Authorize(Roles = "Admin,Instructor,Student")]
-    public async Task<ActionResult<StudentSectionsResponseDto>> GetStudentEnrollmentsByUuid([FromRoute(Name = "id")] Guid studentUuid)
+    public async Task<ActionResult<StudentSectionsResponseDto>> GetStudentEnrollmentsByUuid([FromRoute(Name = "id")] Guid studentId)
     {
-        _logger.LogInformation("Retrieving enrollments for student UUID {StudentUuid}", studentUuid);
+        _logger.LogInformation("Retrieving enrollments for student ID {StudentId}", studentId);
 
-        var enrollments = await _enrollmentService.GetStudentEnrollmentsByStudentUuidAsync(studentUuid);
-        var response = MapStudentSectionsResponse(enrollments.FirstOrDefault()?.StudentId ?? 0, enrollments, studentUuid);
+        var enrollments = await _enrollmentService.GetStudentEnrollmentsByStudentUuidAsync(studentId);
+        var response = MapStudentSectionsResponse(studentId, enrollments);
 
-        _logger.LogInformation("Successfully retrieved {Count} enrollments for student UUID {StudentUuid}",
-            response.Enrollments.Count, studentUuid);
+        _logger.LogInformation("Successfully retrieved {Count} enrollments for student ID {StudentId}",
+            response.Enrollments.Count, studentId);
 
         return Ok(response);
     }
@@ -122,14 +122,14 @@ public class StudentEnrollmentController : ControllerBase
 
     [HttpGet("section/{id:guid}/students")]
     [Authorize(Roles = "Admin,Instructor")]
-    public async Task<ActionResult<IEnumerable<StudentEnrollmentResponseDto>>> GetSectionStudentsByUuid([FromRoute(Name = "id")] Guid sectionUuid)
+    public async Task<ActionResult<IEnumerable<StudentEnrollmentResponseDto>>> GetSectionStudentsByUuid([FromRoute(Name = "id")] Guid sectionId)
     {
-        _logger.LogInformation("Retrieving active students for section UUID {SectionUuid}", sectionUuid);
+        _logger.LogInformation("Retrieving active students for section ID {SectionId}", sectionId);
 
-        var enrollments = await _enrollmentService.GetActiveSectionEnrollmentsBySectionUuidAsync(sectionUuid);
+        var enrollments = await _enrollmentService.GetActiveSectionEnrollmentsBySectionUuidAsync(sectionId);
         var response = enrollments.Select(MapEnrollmentResponse);
 
-        _logger.LogInformation("Successfully retrieved students for section UUID {SectionUuid}", sectionUuid);
+        _logger.LogInformation("Successfully retrieved students for section ID {SectionId}", sectionId);
         return Ok(response);
     }
 
@@ -244,7 +244,7 @@ public class StudentEnrollmentController : ControllerBase
     /// <summary>
     /// Check if a student is enrolled in a specific section-subject combination
     /// </summary>
-    [HttpGet("check")]
+    [HttpGet("check/legacy")]
     [Authorize(Roles = "Admin,Instructor,Student")]
     public async Task<ActionResult<bool>> CheckEnrollment([FromQuery] int studentId, [FromQuery] int sectionId, [FromQuery] int subjectId)
     {
@@ -256,14 +256,14 @@ public class StudentEnrollmentController : ControllerBase
         return Ok(new { isEnrolled });
     }
 
-    [HttpGet("check/uuid")]
+    [HttpGet("check")]
     [Authorize(Roles = "Admin,Instructor,Student")]
-    public async Task<ActionResult<bool>> CheckEnrollmentByUuid([FromQuery] Guid studentUuid, [FromQuery] Guid sectionUuid, [FromQuery] Guid subjectUuid)
+    public async Task<ActionResult<bool>> CheckEnrollmentByUuid([FromQuery] Guid studentId, [FromQuery] Guid sectionId, [FromQuery] Guid subjectId)
     {
-        _logger.LogInformation("Checking enrollment for student UUID {StudentUuid}, section UUID {SectionUuid}, subject UUID {SubjectUuid}",
-            studentUuid, sectionUuid, subjectUuid);
+        _logger.LogInformation("Checking enrollment for student ID {StudentId}, section ID {SectionId}, subject ID {SubjectId}",
+            studentId, sectionId, subjectId);
 
-        var isEnrolled = await _enrollmentService.IsStudentEnrolledInSectionSubjectByUuidAsync(studentUuid, sectionUuid, subjectUuid);
+        var isEnrolled = await _enrollmentService.IsStudentEnrolledInSectionSubjectByUuidAsync(studentId, sectionId, subjectId);
 
         return Ok(new { isEnrolled });
     }
@@ -272,18 +272,14 @@ public class StudentEnrollmentController : ControllerBase
     {
         return new StudentEnrollmentResponseDto
         {
-            Id = enrollment.Id,
-            Uuid = enrollment.Uuid,
-            StudentId = enrollment.StudentId,
-            StudentUuid = enrollment.Student?.Uuid,
+            Id = enrollment.Uuid,
+            StudentId = enrollment.Student?.Uuid ?? Guid.Empty,
             StudentFirstname = enrollment.Student?.Firstname,
             StudentLastname = enrollment.Student?.Lastname,
             StudentEmail = enrollment.Student?.User?.Email,
-            SectionId = enrollment.SectionId,
-            SectionUuid = enrollment.Section?.Uuid,
+            SectionId = enrollment.Section?.Uuid ?? Guid.Empty,
             SectionName = enrollment.Section?.Name,
-            SubjectId = enrollment.SubjectId,
-            SubjectUuid = enrollment.Subject?.Uuid,
+            SubjectId = enrollment.Subject?.Uuid ?? Guid.Empty,
             SubjectName = enrollment.Subject?.Name,
             SubjectCode = enrollment.Subject?.Code,
             IsActive = enrollment.IsActive,
@@ -297,7 +293,7 @@ public class StudentEnrollmentController : ControllerBase
         };
     }
 
-    private static StudentSectionsResponseDto MapStudentSectionsResponse(int studentId, IEnumerable<StudentEnrollment> enrollments, Guid? studentUuid = null)
+    private static StudentSectionsResponseDto MapStudentSectionsResponse(Guid studentId, IEnumerable<StudentEnrollment> enrollments)
     {
         var enrollmentList = enrollments.ToList();
         var student = enrollmentList.FirstOrDefault()?.Student;
@@ -305,18 +301,15 @@ public class StudentEnrollmentController : ControllerBase
         return new StudentSectionsResponseDto
         {
             StudentId = studentId,
-            StudentUuid = studentUuid ?? student?.Uuid,
             StudentFirstname = student?.Firstname,
             StudentLastname = student?.Lastname,
+            IsRegular = student?.IsRegular ?? false,
             Enrollments = enrollmentList.Select(e => new EnrollmentSummaryDto
             {
-                EnrollmentId = e.Id,
-                EnrollmentUuid = e.Uuid,
-                SectionId = e.SectionId,
-                SectionUuid = e.Section?.Uuid,
+                EnrollmentId = e.Uuid,
+                SectionId = e.Section?.Uuid ?? Guid.Empty,
                 SectionName = e.Section?.Name,
-                SubjectId = e.SubjectId,
-                SubjectUuid = e.Subject?.Uuid,
+                SubjectId = e.Subject?.Uuid ?? Guid.Empty,
                 SubjectName = e.Subject?.Name,
                 SubjectCode = e.Subject?.Code,
                 EnrollmentType = e.EnrollmentType,

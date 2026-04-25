@@ -352,7 +352,7 @@ internal sealed class QrCodeScanService
         Student student,
         DateTime attendanceTime,
         int remainingScans,
-        int attendanceRecordId,
+        Guid attendanceRecordId,
         string? attendanceStatus)
         => CreateScanResponse(
             qrCode,
@@ -375,7 +375,7 @@ internal sealed class QrCodeScanService
         DateTime attendanceTime,
         int remainingScans,
         bool isDuplicateScan,
-        int? attendanceRecordId = null,
+        Guid? attendanceRecordId = null,
         string? attendanceStatus = null)
         => new()
         {

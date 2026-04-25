@@ -266,7 +266,7 @@ public class SessionController(ISessionService sessionService, ILogger<SessionCo
 
         var session = await sessionService.CreateSessionAsync(request);
         logger.LogInformation("Successfully created session ID: {SessionId}", session.Id);
-        return CreatedAtAction(nameof(GetSession), new { id = session.Id }, session);
+        return CreatedAtAction(nameof(GetSessionByUuid), new { id = session.Id }, session);
         // Exceptions are handled by global exception handler
     }
 
