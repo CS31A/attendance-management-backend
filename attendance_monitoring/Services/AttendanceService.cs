@@ -32,27 +32,13 @@ public class AttendanceService(
     /// </summary>
     public async Task<AttendanceRecordResponseDto> CreateAttendanceAsync(CreateAttendanceRequest request, ClaimsPrincipal user)
     {
-        var studentId = await ResolveStudentIdAsync(request.StudentId).ConfigureAwait(false);
-        var sessionId = await ResolveSessionIdAsync(request.SessionId).ConfigureAwait(false);
+        var student = await ResolveStudentAsync(request.StudentId).ConfigureAwait(false);
+        var session = await ResolveSessionAsync(request.SessionId).ConfigureAwait(false);
+        var studentId = student.Id;
+        var sessionId = session.Id;
 
         logger.LogInformation("Creating attendance record for StudentId: {StudentId}, SessionId: {SessionId}",
             studentId, sessionId);
-
-        // Verify student exists
-        var student = await studentRepository.GetStudentByIdAsync(studentId).ConfigureAwait(false);
-        if (student == null)
-        {
-            logger.LogWarning("Student with ID {StudentId} not found", studentId);
-            throw new EntityNotFoundException<int>("Student", studentId);
-        }
-
-        // Verify session exists
-        var session = await sessionRepository.GetSessionByIdAsync(sessionId).ConfigureAwait(false);
-        if (session == null)
-        {
-            logger.LogWarning("Session with ID {SessionId} not found", sessionId);
-            throw new EntityNotFoundException<int>("Session", sessionId);
-        }
 
         // Verify student is enrolled in the session's section/subject
         var isEnrolled = await VerifyStudentEnrollmentAsync(studentId, session).ConfigureAwait(false);
@@ -737,7 +723,7 @@ public class AttendanceService(
         return enrollments.Any(e => e.SectionId == session.Schedule.SectionId);
     }
 
-    private async Task<int> ResolveStudentIdAsync(Guid? studentId)
+    private async Task<Student> ResolveStudentAsync(Guid? studentId)
     {
         if (!studentId.HasValue || studentId.Value == Guid.Empty)
         {
@@ -750,10 +736,10 @@ public class AttendanceService(
             throw new EntityNotFoundException<Guid>("Student", studentId.Value);
         }
 
-        return student.Id;
+        return student;
     }
 
-    private async Task<int> ResolveSessionIdAsync(Guid? sessionId)
+    private async Task<Session> ResolveSessionAsync(Guid? sessionId)
     {
         if (!sessionId.HasValue || sessionId.Value == Guid.Empty)
         {
@@ -766,7 +752,7 @@ public class AttendanceService(
             throw new EntityNotFoundException<Guid>("Session", sessionId.Value);
         }
 
-        return session.Id;
+        return session;
     }
 
     private async Task<bool> IsAuthorizedToViewAttendanceAsync(ClaimsPrincipal user, AttendanceRecord record)

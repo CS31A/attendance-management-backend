@@ -79,8 +79,19 @@ public class StudentEnrollmentController : ControllerBase
     {
         _logger.LogInformation("Retrieving enrollments for student {StudentId}", studentId);
 
+        Student student;
+        try
+        {
+            student = await _enrollmentService.GetStudentByIdAsync(studentId).ConfigureAwait(false);
+        }
+        catch (EntityNotFoundException<int> ex)
+        {
+            _logger.LogWarning(ex, "Student {StudentId} not found while retrieving enrollments", studentId);
+            return NotFound(new { message = ex.Message });
+        }
+
         var enrollments = await _enrollmentService.GetStudentEnrollmentsAsync(studentId);
-        var response = MapStudentSectionsResponse(enrollments.FirstOrDefault()?.Student?.Uuid ?? Guid.Empty, enrollments);
+        var response = MapStudentSectionsResponse(student.Uuid, enrollments);
 
         _logger.LogInformation("Successfully retrieved {Count} enrollments for student {StudentId}",
             response.Enrollments.Count, studentId);

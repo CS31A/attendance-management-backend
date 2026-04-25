@@ -8,6 +8,7 @@ public interface IStudentEnrollmentService
 {
     Task<StudentEnrollment> EnrollStudentAsync(int studentId, int sectionId, int subjectId, string enrollmentType = "Irregular", string? academicYear = null, string? semester = null);
     Task<StudentEnrollment> EnrollStudentAsync(CreateStudentEnrollment request);
+    Task<Student> GetStudentByIdAsync(int studentId);
     Task<bool> UnenrollStudentAsync(int studentId, int sectionId, int subjectId);
     Task<bool> DropStudentFromSubjectAsync(int enrollmentId);
     Task<bool> DropStudentFromSubjectAsync(Guid enrollmentUuid);

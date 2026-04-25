@@ -120,19 +120,8 @@ public class AttendanceServiceUuidTests
         _mockStudentRepository
             .Setup(repository => repository.GetStudentByUuidAsync(studentUuid))
             .ReturnsAsync(new Student { Id = 21, Uuid = studentUuid, SectionId = 9 });
-        _mockStudentRepository
-            .Setup(repository => repository.GetStudentByIdAsync(21))
-            .ReturnsAsync(new Student { Id = 21, Uuid = studentUuid, SectionId = 9 });
         _mockSessionRepository
             .Setup(repository => repository.GetSessionByUuidAsync(sessionUuid))
-            .ReturnsAsync(new Session
-            {
-                Id = 44,
-                Uuid = sessionUuid,
-                Schedule = new Schedules { InstructorId = 10, SectionId = 9, SubjectId = 13 }
-            });
-        _mockSessionRepository
-            .Setup(repository => repository.GetSessionByIdAsync(44))
             .ReturnsAsync(new Session
             {
                 Id = 44,
@@ -174,6 +163,8 @@ public class AttendanceServiceUuidTests
         Assert.Equal(capturedRecord.Uuid, result.Id);
         _mockStudentRepository.Verify(repository => repository.GetStudentByUuidAsync(studentUuid), Times.Once);
         _mockSessionRepository.Verify(repository => repository.GetSessionByUuidAsync(sessionUuid), Times.Once);
+        _mockStudentRepository.Verify(repository => repository.GetStudentByIdAsync(It.IsAny<int>()), Times.Never);
+        _mockSessionRepository.Verify(repository => repository.GetSessionByIdAsync(It.IsAny<int>()), Times.Never);
     }
 
     [Fact]

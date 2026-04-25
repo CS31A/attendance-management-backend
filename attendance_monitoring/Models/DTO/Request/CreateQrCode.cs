@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using attendance_monitoring.Attributes;
 
 namespace attendance_monitoring.Models.DTO.Request;
 
@@ -10,6 +11,7 @@ public class CreateQrCode
     /// <summary>
     /// The session UUID this QR code belongs to
     /// </summary>
+    [NotEmptyGuid(ErrorMessage = "SessionId is required")]
     public Guid SessionId { get; set; }
 
     /// <summary>

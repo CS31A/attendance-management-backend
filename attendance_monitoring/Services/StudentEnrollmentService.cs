@@ -117,6 +117,17 @@ public class StudentEnrollmentService : IStudentEnrollmentService
             request.Semester).ConfigureAwait(false);
     }
 
+    public async Task<Student> GetStudentByIdAsync(int studentId)
+    {
+        var student = await _studentRepository.GetStudentByIdAsync(studentId).ConfigureAwait(false);
+        if (student == null || student.IsDeleted)
+        {
+            throw new EntityNotFoundException<int>("Student", studentId);
+        }
+
+        return student;
+    }
+
     public async Task<bool> UnenrollStudentAsync(int studentId, int sectionId, int subjectId)
     {
         var enrollment = await _enrollmentRepository.GetEnrollmentAsync(studentId, sectionId, subjectId);
