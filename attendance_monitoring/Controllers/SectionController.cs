@@ -100,7 +100,7 @@ namespace attendance_monitoring.Controllers
                 };
 
                 var createdSection = await sectionService.CreateSectionAsync(section);
-                return CreatedAtAction(nameof(GetSection), new { id = createdSection.Id }, createdSection);
+                return CreatedAtAction(nameof(GetSectionByUuid), new { id = createdSection.Id }, createdSection);
             }
             catch (EntityServiceException ex)
             {

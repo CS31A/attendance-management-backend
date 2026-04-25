@@ -255,7 +255,7 @@ public class SectionControllerTest
 
         // Assert
         var createdAtResult = Assert.IsType<CreatedAtActionResult>(result.Result);
-        Assert.Equal(nameof(SectionController.GetSection), createdAtResult.ActionName);
+        Assert.Equal(nameof(SectionController.GetSectionByUuid), createdAtResult.ActionName);
         Assert.Equal(createdSection.Id, createdAtResult.RouteValues!["id"]);
         var dto = Assert.IsType<SectionResponseDto>(createdAtResult.Value);
         Assert.Equal(createdSection.Id, dto.Id);
