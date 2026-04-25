@@ -118,13 +118,20 @@ namespace attendance_monitoring.Services
                 var createdSection = await sectionRepository.CreateSectionAsync(section).ConfigureAwait(false);
                 await sectionRepository.SaveChangesAsync().ConfigureAwait(false);
 
+                var refreshedSection = await sectionRepository.GetSectionByIdAsync(createdSection.Id).ConfigureAwait(false);
+                if (refreshedSection == null)
+                {
+                    logger.LogError("Created section with ID {SectionId} could not be found after save.", createdSection.Id);
+                    throw new InvalidOperationException("Created section could not be reloaded.");
+                }
+
                 var sectionDto = new SectionResponseDto
                 {
-                    Id = createdSection.Uuid,
-                    Name = createdSection.Name,
-                    CourseId = createdSection.Course?.Uuid ?? Guid.Empty,
-                    CreatedAt = createdSection.CreatedAt,
-                    UpdatedAt = createdSection.UpdatedAt
+                    Id = refreshedSection.Uuid,
+                    Name = refreshedSection.Name,
+                    CourseId = refreshedSection.Course?.Uuid ?? Guid.Empty,
+                    CreatedAt = refreshedSection.CreatedAt,
+                    UpdatedAt = refreshedSection.UpdatedAt
                 };
 
                 logger.LogInformation("Successfully created section with ID: {SectionId}", createdSection.Id);
@@ -162,13 +169,20 @@ namespace attendance_monitoring.Services
 
                 await sectionRepository.SaveChangesAsync().ConfigureAwait(false);
 
+                var refreshedSection = await sectionRepository.GetSectionByIdAsync(updatedSection.Id).ConfigureAwait(false);
+                if (refreshedSection == null)
+                {
+                    logger.LogError("Updated section with ID {SectionId} could not be found after save.", updatedSection.Id);
+                    throw new InvalidOperationException("Updated section could not be reloaded.");
+                }
+
                 var sectionDto = new SectionResponseDto
                 {
-                    Id = updatedSection.Uuid,
-                    Name = updatedSection.Name,
-                    CourseId = updatedSection.Course?.Uuid ?? Guid.Empty,
-                    CreatedAt = updatedSection.CreatedAt,
-                    UpdatedAt = updatedSection.UpdatedAt
+                    Id = refreshedSection.Uuid,
+                    Name = refreshedSection.Name,
+                    CourseId = refreshedSection.Course?.Uuid ?? Guid.Empty,
+                    CreatedAt = refreshedSection.CreatedAt,
+                    UpdatedAt = refreshedSection.UpdatedAt
                 };
 
                 logger.LogInformation("Successfully updated section with ID: {SectionId}", id);
