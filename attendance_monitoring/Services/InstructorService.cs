@@ -971,22 +971,27 @@ namespace attendance_monitoring.Services
                 }
 
                 var handledClasses = new List<InstructorHandledClassDto>();
-                var regularStudents = (await _instructorRepository.GetRegularStudentsBySectionIdAsync(sectionId).ConfigureAwait(false))
-                    .Select(student =>
-                    {
-                        var fingerprint = _fingerprintRepository.GetFingerprintByStudentIdAsync(student.Id).GetAwaiter().GetResult();
-                        return new InstructorHandledClassStudentDto
-                        {
-                            StudentId = student.Uuid,
-                            Firstname = student.Firstname,
-                            Lastname = student.Lastname,
-                            IsRegular = true,
-                            EnrollmentType = EnrollmentTypeConstants.Regular,
-                            HasFingerprint = fingerprint != null && !fingerprint.IsDeleted,
-                            FingerprintDeviceId = fingerprint?.DeviceId,
-                            FingerprintDeviceName = null
-                        };
-                    })
+                var regularStudentEntities = (await _instructorRepository.GetRegularStudentsBySectionIdAsync(sectionId).ConfigureAwait(false)).ToList();
+                var homeSectionStudentEntities = (await _instructorRepository.GetHomeSectionStudentsAsync(sectionId).ConfigureAwait(false)).ToList();
+                var irregularStudentEntities = schedulesList
+                    .SelectMany(schedule => section.StudentEnrollments
+                        .Where(se => se.SubjectId == schedule.SubjectId
+                            && !se.Student.IsDeleted
+                            && se.IsActive
+                            && se.Student.SectionId != sectionId)
+                        .Select(se => se.Student))
+                    .ToList();
+                var fingerprintLookup = await BuildFingerprintLookupAsync(regularStudentEntities
+                    .Concat(homeSectionStudentEntities)
+                    .Concat(irregularStudentEntities))
+                    .ConfigureAwait(false);
+
+                var regularStudents = regularStudentEntities
+                    .Select(student => CreateHandledClassStudentDto(
+                        student,
+                        true,
+                        EnrollmentTypeConstants.Regular,
+                        fingerprintLookup))
                     .ToList();
 
                 foreach (var scheduleGroup in schedulesList.GroupBy(s => s.SubjectId))
@@ -998,21 +1003,11 @@ namespace attendance_monitoring.Services
                             && !se.Student.IsDeleted
                             && se.IsActive
                             && se.Student.SectionId != sectionId)
-                        .Select(se =>
-                        {
-                            var fingerprint = _fingerprintRepository.GetFingerprintByStudentIdAsync(se.Student.Id).GetAwaiter().GetResult();
-                            return new InstructorHandledClassStudentDto
-                            {
-                                StudentId = se.Student.Uuid,
-                                Firstname = se.Student.Firstname,
-                                Lastname = se.Student.Lastname,
-                                IsRegular = false,
-                                EnrollmentType = se.EnrollmentType,
-                                HasFingerprint = fingerprint != null && !fingerprint.IsDeleted,
-                                FingerprintDeviceId = fingerprint?.DeviceId,
-                                FingerprintDeviceName = null
-                            };
-                        })
+                        .Select(se => CreateHandledClassStudentDto(
+                            se.Student,
+                            false,
+                            se.EnrollmentType,
+                            fingerprintLookup))
                         .ToList();
 
                     var allStudents = regularStudents
@@ -1039,22 +1034,9 @@ namespace attendance_monitoring.Services
                     });
                 }
 
-                var homeSectionStudents = await _instructorRepository.GetHomeSectionStudentsAsync(sectionId).ConfigureAwait(false);
-                var homeSectionStudentDtos = homeSectionStudents.Select(student =>
-                {
-                    var fingerprint = _fingerprintRepository.GetFingerprintByStudentIdAsync(student.Id).GetAwaiter().GetResult();
-                    return new InstructorHomeSectionStudentDto
-                    {
-                        StudentId = student.Uuid,
-                        Firstname = student.Firstname,
-                        Lastname = student.Lastname,
-                        IsRegular = student.SectionId == sectionId,
-                        EnrollmentType = student.SectionId == sectionId ? EnrollmentTypeConstants.Regular : EnrollmentTypeConstants.Irregular,
-                        HasFingerprint = fingerprint != null && !fingerprint.IsDeleted,
-                        FingerprintDeviceId = fingerprint?.DeviceId,
-                        FingerprintDeviceName = null
-                    };
-                }).ToList();
+                var homeSectionStudentDtos = homeSectionStudentEntities
+                    .Select(student => CreateHomeSectionStudentDto(student, sectionId, fingerprintLookup))
+                    .ToList();
 
                 var detailDto = new InstructorSectionDetailDto
                 {
@@ -1197,12 +1179,16 @@ namespace attendance_monitoring.Services
                 InstructorStudentFingerprintDto? fingerprintDto = null;
                 if (fingerprint != null && !fingerprint.IsDeleted)
                 {
+                    var devices = await _fingerprintRepository.GetDevicesAsync().ConfigureAwait(false);
+                    var deviceLookup = BuildDeviceLookup(devices);
+                    deviceLookup.TryGetValue(fingerprint.DeviceId, out var device);
+
                     fingerprintDto = new InstructorStudentFingerprintDto
                     {
                         Id = fingerprint.Uuid,
                         DeviceId = fingerprint.DeviceId,
-                        DeviceName = fingerprint.DeviceId,
-                        DeviceLocation = string.Empty,
+                        DeviceName = device?.Name ?? fingerprint.DeviceId,
+                        DeviceLocation = device?.Location ?? string.Empty,
                         EnrolledAt = fingerprint.CreatedAt
                     };
                 }
@@ -1312,6 +1298,95 @@ namespace attendance_monitoring.Services
             return section.Course
                 ?? throw new InvalidOperationException($"Section {section.Id} is missing required course data.");
         }
+
+        private async Task<Dictionary<int, StudentFingerprintDisplay>> BuildFingerprintLookupAsync(IEnumerable<Student> students)
+        {
+            var studentList = students
+                .GroupBy(student => student.Id)
+                .Select(group => group.First())
+                .ToList();
+            var studentUserIds = studentList
+                .Select(student => student.UserId)
+                .Where(userId => !string.IsNullOrWhiteSpace(userId))
+                .ToHashSet(StringComparer.Ordinal);
+
+            if (studentUserIds.Count == 0)
+            {
+                return new Dictionary<int, StudentFingerprintDisplay>();
+            }
+
+            var fingerprints = await _fingerprintRepository.GetActiveFingerprintsAsync().ConfigureAwait(false);
+            var devices = await _fingerprintRepository.GetDevicesAsync().ConfigureAwait(false);
+            var deviceLookup = BuildDeviceLookup(devices);
+            var fingerprintByUserId = fingerprints
+                .Where(fingerprint => studentUserIds.Contains(fingerprint.UserId))
+                .GroupBy(fingerprint => fingerprint.UserId, StringComparer.Ordinal)
+                .ToDictionary(group => group.Key, group => group.First(), StringComparer.Ordinal);
+
+            return studentList
+                .Where(student => fingerprintByUserId.ContainsKey(student.UserId))
+                .ToDictionary(
+                    student => student.Id,
+                    student =>
+                    {
+                        var fingerprint = fingerprintByUserId[student.UserId];
+                        deviceLookup.TryGetValue(fingerprint.DeviceId, out var device);
+                        return new StudentFingerprintDisplay(
+                            fingerprint.DeviceId,
+                            device?.Name);
+                    });
+        }
+
+        private static Dictionary<string, FingerprintDevice> BuildDeviceLookup(IEnumerable<FingerprintDevice> devices)
+        {
+            return devices
+                .Where(device => !string.IsNullOrWhiteSpace(device.DeviceIdentifier))
+                .GroupBy(device => device.DeviceIdentifier, StringComparer.Ordinal)
+                .ToDictionary(group => group.Key, group => group.First(), StringComparer.Ordinal);
+        }
+
+        private static InstructorHandledClassStudentDto CreateHandledClassStudentDto(
+            Student student,
+            bool isRegular,
+            string enrollmentType,
+            IReadOnlyDictionary<int, StudentFingerprintDisplay> fingerprintLookup)
+        {
+            fingerprintLookup.TryGetValue(student.Id, out var fingerprint);
+
+            return new InstructorHandledClassStudentDto
+            {
+                StudentId = student.Uuid,
+                Firstname = student.Firstname,
+                Lastname = student.Lastname,
+                IsRegular = isRegular,
+                EnrollmentType = enrollmentType,
+                HasFingerprint = fingerprint != null,
+                FingerprintDeviceId = fingerprint?.DeviceId,
+                FingerprintDeviceName = fingerprint?.DeviceName
+            };
+        }
+
+        private static InstructorHomeSectionStudentDto CreateHomeSectionStudentDto(
+            Student student,
+            int sectionId,
+            IReadOnlyDictionary<int, StudentFingerprintDisplay> fingerprintLookup)
+        {
+            fingerprintLookup.TryGetValue(student.Id, out var fingerprint);
+
+            return new InstructorHomeSectionStudentDto
+            {
+                StudentId = student.Uuid,
+                Firstname = student.Firstname,
+                Lastname = student.Lastname,
+                IsRegular = student.SectionId == sectionId,
+                EnrollmentType = student.SectionId == sectionId ? EnrollmentTypeConstants.Regular : EnrollmentTypeConstants.Irregular,
+                HasFingerprint = fingerprint != null,
+                FingerprintDeviceId = fingerprint?.DeviceId,
+                FingerprintDeviceName = fingerprint?.DeviceName
+            };
+        }
+
+        private sealed record StudentFingerprintDisplay(string DeviceId, string? DeviceName);
 
         #endregion
     }

@@ -43,6 +43,12 @@ public class InstructorServiceTest
         _mockSectionRepository
             .Setup(r => r.GetSectionByIdAsync(It.IsAny<int>()))
             .ReturnsAsync((int id) => new Section { Id = id });
+        _mockFingerprintRepository
+            .Setup(r => r.GetActiveFingerprintsAsync())
+            .ReturnsAsync(new List<Fingerprint>());
+        _mockFingerprintRepository
+            .Setup(r => r.GetDevicesAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<FingerprintDevice>());
 
         _service = new InstructorService(
             _mockInstructorRepository.Object,
@@ -1957,6 +1963,101 @@ public class InstructorServiceTest
     }
 
     [Fact]
+    public async Task GetInstructorSectionDetailAsync_FingerprintData_UsesBulkLookupAndMapsDeviceName()
+    {
+        // Arrange
+        const string userId = "test-user-id";
+        const int instructorId = 1;
+        const int sectionId = 1;
+        var instructor = new Instructor { Id = instructorId, Firstname = "John", Lastname = "Doe", UserId = userId };
+
+        var course = new Course { Id = 1, Uuid = Guid.NewGuid(), Name = "Computer Science" };
+        var section = new Section
+        {
+            Id = sectionId,
+            Uuid = Guid.NewGuid(),
+            Name = "CS-3A",
+            CourseId = course.Id,
+            Course = course,
+            StudentEnrollments = new List<StudentEnrollment>()
+        };
+
+        var subject = new Subject { Id = 1, Uuid = Guid.NewGuid(), Name = "Data Structures", Code = "CS301" };
+        var classroom = new Classroom { Id = 1, Uuid = Guid.NewGuid(), Name = "Room 101" };
+        var schedule = new Schedules
+        {
+            Id = 1,
+            Uuid = Guid.NewGuid(),
+            InstructorId = instructorId,
+            SectionId = sectionId,
+            SubjectId = subject.Id,
+            ClassroomId = classroom.Id,
+            DayOfWeek = "Monday",
+            TimeIn = TimeOnly.FromTimeSpan(TimeSpan.FromHours(8)),
+            TimeOut = TimeOnly.FromTimeSpan(TimeSpan.FromHours(10)),
+            Section = section,
+            Subject = subject,
+            Classroom = classroom,
+            Instructor = instructor
+        };
+
+        var regularStudent = new Student
+        {
+            Id = 1,
+            Uuid = Guid.NewGuid(),
+            Firstname = "Alice",
+            Lastname = "Smith",
+            SectionId = sectionId,
+            IsDeleted = false,
+            UserId = "student-user-id"
+        };
+
+        var fingerprint = new Fingerprint
+        {
+            Id = 1,
+            Uuid = Guid.NewGuid(),
+            UserId = regularStudent.UserId,
+            DeviceId = "device-001",
+            TemplateData = "template",
+            IsDeleted = false
+        };
+
+        _mockUserContextService.Setup(s => s.GetUserIdAsync(_testUserPrincipal)).ReturnsAsync(userId);
+        _mockInstructorRepository.Setup(r => r.GetInstructorByUserIdAsync(userId)).ReturnsAsync(instructor);
+        _mockInstructorRepository.Setup(r => r.IsInstructorHandlingSectionAsync(instructorId, sectionId)).ReturnsAsync(true);
+        _mockInstructorRepository.Setup(r => r.GetHandledClassesBySectionAndInstructorAsync(sectionId, instructorId))
+            .ReturnsAsync(new List<Schedules> { schedule });
+        _mockInstructorRepository.Setup(r => r.GetRegularStudentsBySectionIdAsync(sectionId))
+            .ReturnsAsync(new List<Student> { regularStudent });
+        _mockInstructorRepository.Setup(r => r.GetHomeSectionStudentsAsync(sectionId))
+            .ReturnsAsync(new List<Student> { regularStudent });
+        _mockFingerprintRepository.Setup(r => r.GetActiveFingerprintsAsync())
+            .ReturnsAsync(new List<Fingerprint> { fingerprint });
+        _mockFingerprintRepository.Setup(r => r.GetDevicesAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<FingerprintDevice>
+            {
+                new() { DeviceIdentifier = "device-001", Name = "Main Lab Scanner", Location = "Lab 1", IsActive = true }
+            });
+
+        // Act
+        var result = await _service.GetInstructorSectionDetailAsync(_testUserPrincipal, sectionId);
+
+        // Assert
+        var handledStudent = Assert.Single(result.HandledClasses.Single().Students);
+        Assert.True(handledStudent.HasFingerprint);
+        Assert.Equal("device-001", handledStudent.FingerprintDeviceId);
+        Assert.Equal("Main Lab Scanner", handledStudent.FingerprintDeviceName);
+
+        var homeStudent = Assert.Single(result.HomeSectionStudents);
+        Assert.True(homeStudent.HasFingerprint);
+        Assert.Equal("device-001", homeStudent.FingerprintDeviceId);
+        Assert.Equal("Main Lab Scanner", homeStudent.FingerprintDeviceName);
+
+        _mockFingerprintRepository.Verify(r => r.GetActiveFingerprintsAsync(), Times.Once);
+        _mockFingerprintRepository.Verify(r => r.GetFingerprintByStudentIdAsync(It.IsAny<int>()), Times.Never);
+    }
+
+    [Fact]
     public async Task GetInstructorSectionDetailAsync_NotHandlingSection_ThrowsEntityUnauthorizedException()
     {
         // Arrange
@@ -2129,6 +2230,84 @@ public class InstructorServiceTest
         Assert.Equal(0, result.AttendanceSummary.AbsentCount);
         Assert.Equal(0, result.AttendanceSummary.LateCount);
         Assert.Equal(100.0, result.AttendanceSummary.AttendanceRate);
+    }
+
+    [Fact]
+    public async Task GetInstructorStudentDetailAsync_FingerprintData_MapsDeviceNameAndLocation()
+    {
+        // Arrange
+        const string userId = "test-user-id";
+        const int instructorId = 1;
+        const int studentId = 1;
+        var instructor = new Instructor { Id = instructorId, Firstname = "John", Lastname = "Doe", UserId = userId };
+        var course = new Course { Id = 1, Uuid = Guid.NewGuid(), Name = "Computer Science" };
+        var section = new Section { Id = 1, Uuid = Guid.NewGuid(), Name = "CS-3A", CourseId = 1, Course = course };
+        var student = new Student
+        {
+            Id = studentId,
+            Uuid = Guid.NewGuid(),
+            Firstname = "Alice",
+            Lastname = "Smith",
+            SectionId = section.Id,
+            IsRegular = true,
+            IsDeleted = false,
+            Section = section,
+            AdditionalEnrollments = new List<StudentEnrollment>()
+        };
+
+        var instructorSchedules = new List<Schedules>
+        {
+            new()
+            {
+                Id = 1,
+                Uuid = Guid.NewGuid(),
+                SubjectId = 1,
+                Subject = new Subject { Id = 1, Uuid = Guid.NewGuid(), Name = "Data Structures", Code = "CS301" },
+                SectionId = section.Id,
+                Section = section,
+                ClassroomId = 1,
+                Classroom = new Classroom { Id = 1, Name = "Room 101" },
+                InstructorId = instructorId,
+                DayOfWeek = "Monday",
+                TimeIn = new TimeOnly(9, 0),
+                TimeOut = new TimeOnly(11, 0)
+            }
+        };
+
+        var fingerprint = new Fingerprint
+        {
+            Id = 1,
+            Uuid = Guid.NewGuid(),
+            UserId = "student-user-id",
+            DeviceId = "device-001",
+            TemplateData = "template",
+            IsDeleted = false,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        _mockUserContextService.Setup(s => s.GetUserIdAsync(_testUserPrincipal)).ReturnsAsync(userId);
+        _mockInstructorRepository.Setup(r => r.GetInstructorByUserIdAsync(userId)).ReturnsAsync(instructor);
+        _mockInstructorRepository.Setup(r => r.GetStudentWithDetailsAsync(studentId)).ReturnsAsync(student);
+        _mockInstructorRepository.Setup(r => r.IsInstructorHandlingSectionAsync(instructorId, student.SectionId)).ReturnsAsync(true);
+        _mockInstructorRepository.Setup(r => r.GetHandledClassesBySectionAndInstructorAsync(student.SectionId, instructorId))
+            .ReturnsAsync(instructorSchedules);
+        _mockInstructorRepository.Setup(r => r.GetStudentAttendanceForInstructorSubjectsAsync(studentId, instructorId))
+            .ReturnsAsync(new List<AttendanceRecord>());
+        _mockFingerprintRepository.Setup(r => r.GetFingerprintByStudentIdAsync(studentId)).ReturnsAsync(fingerprint);
+        _mockFingerprintRepository.Setup(r => r.GetDevicesAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<FingerprintDevice>
+            {
+                new() { DeviceIdentifier = "device-001", Name = "Main Lab Scanner", Location = "Lab 1", IsActive = true }
+            });
+
+        // Act
+        var result = await _service.GetInstructorStudentDetailAsync(_testUserPrincipal, studentId);
+
+        // Assert
+        Assert.NotNull(result.Fingerprint);
+        Assert.Equal("device-001", result.Fingerprint.DeviceId);
+        Assert.Equal("Main Lab Scanner", result.Fingerprint.DeviceName);
+        Assert.Equal("Lab 1", result.Fingerprint.DeviceLocation);
     }
 
     [Fact]
