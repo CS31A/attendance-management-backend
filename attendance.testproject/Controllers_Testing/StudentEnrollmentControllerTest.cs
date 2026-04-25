@@ -381,8 +381,11 @@ public class StudentEnrollmentControllerTest
     {
         // Arrange
         var studentId = 1;
+        var studentUuid = Guid.NewGuid();
         var enrollments = new List<StudentEnrollment>();
 
+        _mockService.Setup(s => s.GetStudentByIdAsync(studentId))
+            .ReturnsAsync(new Student { Id = studentId, Uuid = studentUuid });
         _mockService.Setup(s => s.GetStudentEnrollmentsAsync(studentId))
             .ReturnsAsync(enrollments);
 
@@ -392,8 +395,22 @@ public class StudentEnrollmentControllerTest
         // Assert
         var okResult = Assert.IsType<OkObjectResult>(result.Result);
         var response = Assert.IsType<StudentSectionsResponseDto>(okResult.Value);
-        Assert.Equal(Guid.Empty, response.StudentId);
+        Assert.Equal(studentUuid, response.StudentId);
         Assert.Empty(response.Enrollments);
+    }
+
+    [Fact]
+    public async Task GetStudentEnrollments_MissingStudent_ReturnsNotFound()
+    {
+        var studentId = 404;
+
+        _mockService.Setup(s => s.GetStudentByIdAsync(studentId))
+            .ThrowsAsync(new EntityNotFoundException<int>("Student", studentId));
+
+        var result = await _controller.GetStudentEnrollments(studentId);
+
+        Assert.IsType<NotFoundObjectResult>(result.Result);
+        _mockService.Verify(s => s.GetStudentEnrollmentsAsync(It.IsAny<int>()), Times.Never);
     }
 
     #endregion
