@@ -17,16 +17,13 @@ namespace attendance_monitoring.Classes;
 public class Session
 {
     [Key]
-    [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
-    public int Id { get; set; }
-
-    public Guid Uuid { get; set; }
+    public Guid Id { get; set; }
 
     /// <summary>
     /// Foreign key to the recurring schedule this session belongs to
     /// </summary>
     [Required]
-    public int ScheduleId { get; set; }
+    public Guid ScheduleId { get; set; }
 
     /// <summary>
     /// Current status of the session
@@ -68,17 +65,17 @@ public class Session
     /// The actual room where the session took place (may differ from scheduled room)
     /// Null if session hasn't started yet
     /// </summary>
-    public int? ActualRoomId { get; set; }
+    public Guid? ActualRoomId { get; set; }
 
     /// <summary>
     /// Foreign key to the instructor who started the session
     /// </summary>
-    public int? StartedBy { get; set; }
+    public Guid? StartedBy { get; set; }
 
     /// <summary>
     /// Foreign key to the instructor who ended the session
     /// </summary>
-    public int? EndedBy { get; set; }
+    public Guid? EndedBy { get; set; }
 
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }

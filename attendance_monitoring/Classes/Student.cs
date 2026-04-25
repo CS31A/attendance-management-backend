@@ -11,10 +11,7 @@ namespace attendance_monitoring.Classes;
 public class Student
 {
     [Key]
-    [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
-    public int Id { get; set; }
-
-    public Guid Uuid { get; set; }
+    public Guid Id { get; set; }
 
     [Required]
     [StringLength(100)]
@@ -28,7 +25,7 @@ public class Student
     public string UserId { get; set; } = string.Empty;
 
     // Foreign key to Section - primary/home section (kept for backward compatibility)
-    public int SectionId { get; set; }
+    public Guid SectionId { get; set; }
 
     // Navigation property - required relationship
     [ForeignKey("UserId")]

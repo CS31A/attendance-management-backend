@@ -12,10 +12,7 @@ namespace attendance_monitoring.Classes;
 public class Schedules
 {
     [Key]
-    [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
-    public int Id { get; set; }
-
-    public Guid Uuid { get; set; }
+    public Guid Id { get; set; }
 
     [Required]
     public TimeOnly TimeIn { get; set; }
@@ -29,18 +26,18 @@ public class Schedules
 
     // foreign key to subject id
     [Required]
-    public int SubjectId { get; set; }
+    public Guid SubjectId { get; set; }
 
     // foreign key to classroom id
     [Required]
-    public int ClassroomId { get; set; }
+    public Guid ClassroomId { get; set; }
 
     [Required]
-    public int SectionId { get; set; }
+    public Guid SectionId { get; set; }
 
     // foreign key to instructor id
     [Required]
-    public int InstructorId { get; set; }
+    public Guid InstructorId { get; set; }
 
     // Navigation properties
     public Subject Subject { get; set; } = null!;

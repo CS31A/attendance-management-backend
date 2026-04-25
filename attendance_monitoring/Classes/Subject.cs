@@ -10,10 +10,7 @@ namespace attendance_monitoring.Classes;
 public class Subject
 {
     [Key]
-    [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
-    public int Id { get; set; }
-
-    public Guid Uuid { get; set; }
+    public Guid Id { get; set; }
 
     [Required]
     [StringLength(100, MinimumLength = 2, ErrorMessage = "Subject name must be greater than or equal to 2 characters")]

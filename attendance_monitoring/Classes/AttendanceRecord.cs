@@ -16,27 +16,24 @@ namespace attendance_monitoring.Classes;
 public class AttendanceRecord
 {
     [Key]
-    [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
-    public int Id { get; set; }
-
-    public Guid Uuid { get; set; }
+    public Guid Id { get; set; }
 
     /// <summary>
     /// Foreign key to the student who attended
     /// </summary>
     [Required]
-    public int StudentId { get; set; }
+    public Guid StudentId { get; set; }
 
     /// <summary>
     /// Foreign key to the session this attendance is for
     /// </summary>
     [Required]
-    public int SessionId { get; set; }
+    public Guid SessionId { get; set; }
 
     /// <summary>
     /// Foreign key to the QR code that was scanned (null if manual entry)
     /// </summary>
-    public int? QrCodeId { get; set; }
+    public Guid? QrCodeId { get; set; }
 
     /// <summary>
     /// When the student checked in (scanned QR or manually marked)
