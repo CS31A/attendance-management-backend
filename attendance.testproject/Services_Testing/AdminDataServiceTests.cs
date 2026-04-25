@@ -361,6 +361,11 @@ public class AdminDataServiceTests
         context.Instructors.Add(new Instructor { Id = 2, UserId = "i-1", Firstname = "P", Lastname = "Q", CreatedAt = now, UpdatedAt = now });
         await context.SaveChangesAsync();
 
+        var expectedSubjectId = await context.Subjects.Select(subject => subject.Uuid).SingleAsync();
+        var expectedClassroomId = await context.Classrooms.Select(classroom => classroom.Uuid).SingleAsync();
+        var expectedSectionId = await context.Sections.Select(section => section.Uuid).SingleAsync();
+        var expectedInstructorId = await context.Instructors.Select(instructor => instructor.Uuid).SingleAsync();
+
         var accountService = new Mock<IAccountService>();
         accountService.Setup(s => s.GetAllUsersAsync(It.IsAny<UserStatus>()))
             .ReturnsAsync(Array.Empty<GetAllUsersDto>());
@@ -386,11 +391,11 @@ public class AdminDataServiceTests
         var secondCall = scheduleService.Invocations[1].Arguments[0] as CreateSchedule;
         Assert.NotNull(firstCall);
         Assert.NotNull(secondCall);
-        Assert.Equal(10, firstCall.SubjectId);
-        Assert.Equal(5, firstCall.ClassroomId);
-        Assert.Equal(3, firstCall.SectionId);
-        Assert.Equal(2, firstCall.InstructorId);
-        Assert.Equal(10, secondCall.SubjectId);
+        Assert.Equal(expectedSubjectId, firstCall.SubjectId);
+        Assert.Equal(expectedClassroomId, firstCall.ClassroomId);
+        Assert.Equal(expectedSectionId, firstCall.SectionId);
+        Assert.Equal(expectedInstructorId, firstCall.InstructorId);
+        Assert.Equal(expectedSubjectId, secondCall.SubjectId);
     }
 
     [Fact]
@@ -514,9 +519,9 @@ public class AdminDataServiceTests
             })
             .ReturnsAsync((Section section) => new SectionResponseDto
             {
-                Id = section.Id,
+                Id = section.Uuid,
                 Name = section.Name,
-                CourseId = section.CourseId,
+                CourseId = section.Course?.Uuid ?? Guid.Empty,
             });
 
         var service = CreateService(context, accountService.Object, sectionService: sectionService.Object);
@@ -562,9 +567,9 @@ public class AdminDataServiceTests
             })
             .ReturnsAsync((Section section) => new SectionResponseDto
             {
-                Id = section.Id,
+                Id = section.Uuid,
                 Name = section.Name,
-                CourseId = section.CourseId,
+                CourseId = section.Course?.Uuid ?? Guid.Empty,
             });
 
         var service = CreateService(context, accountService.Object, sectionService: sectionService.Object);
@@ -607,9 +612,9 @@ public class AdminDataServiceTests
             })
             .ReturnsAsync((Section section) => new SectionResponseDto
             {
-                Id = section.Id,
+                Id = section.Uuid,
                 Name = section.Name,
-                CourseId = section.CourseId,
+                CourseId = section.Course?.Uuid ?? Guid.Empty,
             });
 
         var service = CreateService(context, accountService.Object, sectionService: sectionService.Object);
@@ -656,9 +661,9 @@ public class AdminDataServiceTests
             })
             .ReturnsAsync((Section section) => new SectionResponseDto
             {
-                Id = section.Id,
+                Id = section.Uuid,
                 Name = section.Name,
-                CourseId = section.CourseId,
+                CourseId = section.Course?.Uuid ?? Guid.Empty,
             });
 
         var service = CreateService(context, accountService.Object, sectionService: sectionService.Object);
@@ -714,9 +719,9 @@ public class AdminDataServiceTests
             })
             .ReturnsAsync((Section section) => new SectionResponseDto
             {
-                Id = section.Id,
+                Id = section.Uuid,
                 Name = section.Name,
-                CourseId = section.CourseId,
+                CourseId = section.Course?.Uuid ?? Guid.Empty,
             });
 
         var service = CreateService(context, accountService.Object, sectionService: sectionService.Object);
@@ -1091,14 +1096,14 @@ public class AdminDataServiceTests
             {
                 new ScheduleResponseDto
                 {
-                    Id = 1,
+                    Id = Guid.Parse("11111111-1111-1111-1111-111111111111"),
                     DayOfWeek = "Monday",
                     TimeIn = new TimeOnly(8, 0),
                     TimeOut = new TimeOnly(10, 0),
-                    Subject = new SubjectResponseDto { Id = 1, Code = "CS101", Name = "Intro to Computing", CreatedAt = now, UpdatedAt = now },
-                    Section = new SectionResponseDto { Id = 1, Name = "BSCS-1A", CourseId = 1, CreatedAt = now, UpdatedAt = now },
-                    Classroom = new ClassroomResponseDto { Id = 1, Name = "Lab 1", CreatedAt = now, UpdatedAt = now },
-                    Instructor = new InstructorResponseDto { Id = 1, Firstname = "Ada", Lastname = "Lovelace", Email = "teacher@example.com" },
+                    Subject = new SubjectResponseDto { Id = Guid.Parse("22222222-2222-2222-2222-222222222222"), Code = "CS101", Name = "Intro to Computing", CreatedAt = now, UpdatedAt = now },
+                    Section = new SectionResponseDto { Id = Guid.Parse("33333333-3333-3333-3333-333333333333"), Name = "BSCS-1A", CourseId = Guid.Parse("44444444-4444-4444-4444-444444444444"), CreatedAt = now, UpdatedAt = now },
+                    Classroom = new ClassroomResponseDto { Id = Guid.Parse("55555555-5555-5555-5555-555555555555"), Name = "Lab 1", CreatedAt = now, UpdatedAt = now },
+                    Instructor = new InstructorResponseDto { Id = Guid.Parse("66666666-6666-6666-6666-666666666666"), Firstname = "Ada", Lastname = "Lovelace", Email = "teacher@example.com" },
                     CreatedAt = now,
                     UpdatedAt = now,
                 },

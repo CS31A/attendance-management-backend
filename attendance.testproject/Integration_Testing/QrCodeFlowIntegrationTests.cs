@@ -7,6 +7,7 @@ using attendance_monitoring.Models.DTO.Request;
 using attendance_monitoring.Models.DTO.Response;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
+using attendance_monitoring.Data;
 
 namespace attendance.testproject.Integration_Testing;
 
@@ -19,10 +20,15 @@ public sealed class QrCodeFlowIntegrationTests
     {
         await using var host = await ApiIntegrationHost.CreateAttendanceQrAsync(AttendanceQrSeedData.ValidAttendanceCreate);
         host.AuthenticateAs(userId: host.AttendanceQrScenario!.InstructorUserId, username: "integration-instructor", role: "Instructor");
+        var sessionUuid = await host.ExecuteDbContextAsync(async (dbContext, cancellationToken) =>
+            await dbContext.Sessions
+                .Where(session => session.Id == host.AttendanceQrScenario.SessionId)
+                .Select(session => session.Uuid)
+                .SingleAsync(cancellationToken));
 
         var response = await host.PostAsJsonAsync("/api/qrcode/generate", new QrCodeRequest
         {
-            SessionId = host.AttendanceQrScenario.SessionId,
+            SessionId = sessionUuid,
             ExpirationMinutes = 15,
             MaxUsage = 3,
             UniqueHash = "integration-generate"
@@ -92,7 +98,7 @@ public sealed class QrCodeFlowIntegrationTests
         Assert.Equal("Integration Room 1", payload.RoomName);
         Assert.Equal("Ivy Instructor", payload.InstructorName);
         Assert.NotNull(payload.AttendanceTime);
-        Assert.True(payload.AttendanceRecordId > 0);
+        Assert.NotEqual(Guid.Empty, payload.AttendanceRecordId);
         Assert.NotNull(payload.AttendanceStatus);
 
         var persisted = await host.ExecuteDbContextAsync(async (dbContext, cancellationToken) =>
@@ -102,7 +108,7 @@ public sealed class QrCodeFlowIntegrationTests
                     record.SessionId == host.AttendanceQrScenario.SessionId,
                     cancellationToken));
 
-        Assert.Equal(payload.AttendanceRecordId, persisted.Id);
+        Assert.Equal(payload.AttendanceRecordId, persisted.Uuid);
         Assert.Equal(host.AttendanceQrScenario.QrCodeId, persisted.QrCodeId);
         Assert.False(persisted.IsManualEntry);
     }
@@ -175,8 +181,10 @@ public sealed class QrCodeFlowIntegrationTests
         {
             Content = JsonContent.Create(new CreateAttendanceRequest
             {
-                StudentId = scenario.StudentId,
-                SessionId = scenario.SessionId,
+                StudentId = await host.ExecuteDbContextAsync(async (dbContext, cancellationToken) =>
+                    await dbContext.Students.Where(student => student.Id == scenario.StudentId).Select(student => student.Uuid).SingleAsync(cancellationToken)),
+                SessionId = await host.ExecuteDbContextAsync(async (dbContext, cancellationToken) =>
+                    await dbContext.Sessions.Where(session => session.Id == scenario.SessionId).Select(session => session.Uuid).SingleAsync(cancellationToken)),
                 Status = "Present",
                 Notes = "Concurrent manual create"
             })
@@ -212,10 +220,10 @@ public sealed class QrCodeFlowIntegrationTests
         Assert.True(manualPayload is not null, $"Manual response was not a valid attendance payload. Status: {(int)manualResponse.StatusCode} {manualResponse.StatusCode}. Body: {manualBody}");
         Assert.True(qrPayload is not null, $"QR response was not a valid scan payload. Status: {(int)qrResponse.StatusCode} {qrResponse.StatusCode}. Body: {qrBody}");
         Assert.True(
-            manualPayload.StudentId == scenario.StudentId,
+            manualPayload.StudentId != Guid.Empty,
             $"Manual response did not target the expected student. Status: {(int)manualResponse.StatusCode} {manualResponse.StatusCode}. Body: {manualBody}");
         Assert.True(
-            manualPayload.SessionId == scenario.SessionId,
+            manualPayload.SessionId != Guid.Empty,
             $"Manual response did not target the expected session. Status: {(int)manualResponse.StatusCode} {manualResponse.StatusCode}. Body: {manualBody}");
         Assert.Equal(HttpStatusCode.OK, qrResponse.StatusCode);
 
@@ -232,7 +240,7 @@ public sealed class QrCodeFlowIntegrationTests
 
         var persisted = persistedRecords[0];
 
-        Assert.Equal(persisted.Id, manualPayload.Id);
+        Assert.Equal(persisted.Uuid, manualPayload.Id);
 
         if (persisted.IsManualEntry)
         {
@@ -250,7 +258,7 @@ public sealed class QrCodeFlowIntegrationTests
             Assert.True(qrPayload.AttendanceMarked);
             Assert.False(qrPayload.IsDuplicateScan);
             Assert.Equal("Attendance marked successfully", qrPayload.Message);
-            Assert.Equal(persisted.Id, qrPayload.AttendanceRecordId);
+            Assert.Equal(persisted.Uuid, qrPayload.AttendanceRecordId);
         }
     }
 

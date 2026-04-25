@@ -33,7 +33,7 @@ public class QrCodeServiceTest
         var response = await service.GetQrCodeByUuidAsync(qrCodeUuid);
 
         Assert.NotNull(response);
-        Assert.Equal(qrCodeUuid, response.Uuid);
+        Assert.Equal(qrCodeUuid, response.Id);
         qrCodeRepository.Verify(repository => repository.GetQrCodeByUuidAsync(qrCodeUuid), Times.Once);
     }
 
@@ -54,7 +54,7 @@ public class QrCodeServiceTest
         var response = await service.UpdateQrCodeByUuidAsync(qrCode.Uuid, new UpdateQrCode { IsActive = false }, CreateUser());
 
         Assert.NotNull(response);
-        Assert.Equal(qrCode.Uuid, response.Uuid);
+        Assert.Equal(qrCode.Uuid, response.Id);
         qrCodeRepository.Verify(repository => repository.GetQrCodeByUuidAsync(qrCode.Uuid), Times.Once);
         qrCodeRepository.Verify(repository => repository.UpdateQrCodeAsync(It.Is<QrCode>(entity => entity.Uuid == qrCode.Uuid && entity.IsActive == false)), Times.Once);
         qrCodeRepository.Verify(repository => repository.SaveChangesAsync(), Times.Once);
@@ -147,7 +147,7 @@ public class QrCodeServiceTest
     }
 
     [Fact]
-    public async Task CreateQrCodeAsync_SessionUuidOnly_ResolvesSessionIdBeforePersisting()
+    public async Task CreateQrCodeAsync_CanonicalSessionId_ResolvesSessionIdBeforePersisting()
     {
         var sessionUuid = Guid.NewGuid();
         var capturedSessionId = 0;
@@ -169,8 +169,7 @@ public class QrCodeServiceTest
         await service.CreateQrCodeAsync(
             new CreateQrCode
             {
-                SessionId = 0,
-                SessionUuid = sessionUuid,
+                SessionId = sessionUuid,
                 QrHash = "uuid-backed-hash",
                 ExpiresAt = DateTime.UtcNow.AddMinutes(5)
             },
@@ -181,7 +180,7 @@ public class QrCodeServiceTest
     }
 
     [Fact]
-    public async Task GenerateQrCodeAsync_SessionUuidOnly_ResolvesSessionIdBeforePersisting()
+    public async Task GenerateQrCodeAsync_CanonicalSessionId_ResolvesSessionIdBeforePersisting()
     {
         var sessionUuid = Guid.NewGuid();
         var capturedSessionId = 0;
@@ -206,8 +205,7 @@ public class QrCodeServiceTest
         var result = await service.GenerateQrCodeAsync(
             new QrCodeRequest
             {
-                SessionId = 0,
-                SessionUuid = sessionUuid,
+                SessionId = sessionUuid,
                 ExpirationMinutes = 15,
                 UniqueHash = "client-seed"
             },

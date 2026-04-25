@@ -65,7 +65,7 @@ public class QrCodeBoundaryLoggingTests
             service.CreateQrCodeAsync(
                 new CreateQrCode
                 {
-                    SessionId = 42,
+                    SessionId = Guid.NewGuid(),
                     QrHash = "hash-42",
                     ExpiresAt = DateTime.UtcNow.AddMinutes(5)
                 },
@@ -98,7 +98,7 @@ public class QrCodeBoundaryLoggingTests
         var result = await service.GenerateQrCodeAsync(
             new QrCodeRequest
             {
-                SessionId = 42,
+                SessionId = Guid.NewGuid(),
                 ExpirationMinutes = 15,
                 UniqueHash = "client-seed"
             },

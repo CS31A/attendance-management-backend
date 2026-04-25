@@ -92,7 +92,7 @@ public class StudentEnrollmentServiceTest
     }
 
     [Fact]
-    public async Task EnrollStudentAsync_RequestWithUuidReferences_NormalizesToIntIdentifiers()
+    public async Task EnrollStudentAsync_RequestWithCanonicalGuidIds_NormalizesToIntIdentifiers()
     {
         var studentUuid = Guid.NewGuid();
         var sectionUuid = Guid.NewGuid();
@@ -114,9 +114,9 @@ public class StudentEnrollmentServiceTest
 
         var result = await _service.EnrollStudentAsync(new CreateStudentEnrollment
         {
-            StudentUuid = studentUuid,
-            SectionUuid = sectionUuid,
-            SubjectUuid = subjectUuid,
+            StudentId = studentUuid,
+            SectionId = sectionUuid,
+            SubjectId = subjectUuid,
             EnrollmentType = "Irregular",
         });
 

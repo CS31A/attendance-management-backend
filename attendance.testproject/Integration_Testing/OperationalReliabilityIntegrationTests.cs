@@ -5,6 +5,8 @@ using attendance_monitoring.IServices;
 using attendance_monitoring.Models.DTO;
 using attendance_monitoring.Models.DTO.Request;
 using attendance_monitoring.Models.DTO.Response;
+using attendance_monitoring.Data;
+using Microsoft.EntityFrameworkCore;
 
 namespace attendance.testproject.Integration_Testing;
 
@@ -51,11 +53,22 @@ public sealed class OperationalReliabilityIntegrationTests
         await using var host = await ApiIntegrationHost.CreateOperationalReliabilityAsync(AttendanceQrSeedData.ValidAttendanceCreate);
         host.AuthenticateAs(userId: host.AttendanceQrScenario!.InstructorUserId, username: "integration-instructor", role: "Instructor");
         const string invalidCorrelationId = "invalid correlation id!";
+        var identifiers = await host.ExecuteDbContextAsync(async (dbContext, cancellationToken) => new
+        {
+            StudentId = await dbContext.Students
+                .Where(student => student.Id == host.AttendanceQrScenario.StudentId)
+                .Select(student => student.Uuid)
+                .SingleAsync(cancellationToken),
+            SessionId = await dbContext.Sessions
+                .Where(session => session.Id == host.AttendanceQrScenario.SessionId)
+                .Select(session => session.Uuid)
+                .SingleAsync(cancellationToken)
+        });
 
         var request = CreateJsonPostRequest("/api/attendance", new CreateAttendanceRequest
         {
-            StudentId = host.AttendanceQrScenario.StudentId,
-            SessionId = host.AttendanceQrScenario.SessionId,
+            StudentId = identifiers.StudentId,
+            SessionId = identifiers.SessionId,
             Status = "Present",
             Notes = "Correlation validation"
         }, invalidCorrelationId);
@@ -257,27 +270,37 @@ public sealed class OperationalReliabilityIntegrationTests
         }));
     }
 
-    private static Task<HttpResponseMessage> SendAttendanceSuccessAsync(ApiIntegrationHost host)
+    private static async Task<HttpResponseMessage> SendAttendanceSuccessAsync(ApiIntegrationHost host)
     {
         host.AuthenticateAs(userId: host.AttendanceQrScenario!.InstructorUserId, username: "integration-instructor", role: "Instructor");
-
-        return host.SendAsync(CreateJsonPostRequest("/api/attendance", new CreateAttendanceRequest
+        var identifiers = await host.ExecuteDbContextAsync(async (dbContext, cancellationToken) => new
         {
-            StudentId = host.AttendanceQrScenario.StudentId,
-            SessionId = host.AttendanceQrScenario.SessionId,
+            StudentId = await dbContext.Students.Where(student => student.Id == host.AttendanceQrScenario.StudentId).Select(student => student.Uuid).SingleAsync(cancellationToken),
+            SessionId = await dbContext.Sessions.Where(session => session.Id == host.AttendanceQrScenario.SessionId).Select(session => session.Uuid).SingleAsync(cancellationToken)
+        });
+
+        return await host.SendAsync(CreateJsonPostRequest("/api/attendance", new CreateAttendanceRequest
+        {
+            StudentId = identifiers.StudentId,
+            SessionId = identifiers.SessionId,
             Status = "Present",
             Notes = "Telemetry success"
         }));
     }
 
-    private static Task<HttpResponseMessage> SendAttendanceFailureAsync(ApiIntegrationHost host)
+    private static async Task<HttpResponseMessage> SendAttendanceFailureAsync(ApiIntegrationHost host)
     {
         host.ClearAuthentication();
-
-        return host.SendAsync(CreateJsonPostRequest("/api/attendance", new CreateAttendanceRequest
+        var identifiers = await host.ExecuteDbContextAsync(async (dbContext, cancellationToken) => new
         {
-            StudentId = host.AttendanceQrScenario!.StudentId,
-            SessionId = host.AttendanceQrScenario.SessionId,
+            StudentId = await dbContext.Students.Where(student => student.Id == host.AttendanceQrScenario!.StudentId).Select(student => student.Uuid).SingleAsync(cancellationToken),
+            SessionId = await dbContext.Sessions.Where(session => session.Id == host.AttendanceQrScenario.SessionId).Select(session => session.Uuid).SingleAsync(cancellationToken)
+        });
+
+        return await host.SendAsync(CreateJsonPostRequest("/api/attendance", new CreateAttendanceRequest
+        {
+            StudentId = identifiers.StudentId,
+            SessionId = identifiers.SessionId,
             Status = "Present",
             Notes = "Telemetry failure"
         }));

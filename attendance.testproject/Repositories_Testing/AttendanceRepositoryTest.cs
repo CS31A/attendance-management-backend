@@ -213,7 +213,7 @@ public class AttendanceRepositoryTest : IDisposable
         // Verify full result has StudentNumber properly mapped
         Assert.All(fullResult, item =>
         {
-            Assert.True(item.Id > 0);
+            Assert.NotEqual(Guid.Empty, item.Id);
             Assert.False(string.IsNullOrEmpty(item.StudentName));
             Assert.False(string.IsNullOrEmpty(item.StudentNumber));
             Assert.False(string.IsNullOrEmpty(item.SubjectName));

@@ -17,10 +17,12 @@ public sealed class AttendanceFlowIntegrationTests
         await using var host = await ApiIntegrationHost.CreateAttendanceQrAsync(AttendanceQrSeedData.ValidAttendanceCreate);
         host.AuthenticateAs(userId: host.AttendanceQrScenario!.InstructorUserId, username: "integration-instructor", role: "Instructor");
 
+        var (studentUuid, sessionUuid) = await ResolveStudentAndSessionUuidsAsync(host);
+
         var request = new CreateAttendanceRequest
         {
-            StudentId = host.AttendanceQrScenario.StudentId,
-            SessionId = host.AttendanceQrScenario.SessionId,
+            StudentId = studentUuid,
+            SessionId = sessionUuid,
             Status = "Present",
             Notes = "Manual integration check-in"
         };
@@ -30,7 +32,7 @@ public sealed class AttendanceFlowIntegrationTests
 
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
         Assert.NotNull(payload);
-        Assert.True(payload.Id > 0);
+        Assert.NotEqual(Guid.Empty, payload.Id);
         Assert.Equal(request.StudentId, payload.StudentId);
         Assert.Equal(request.SessionId, payload.SessionId);
         Assert.Equal("Sam Student", payload.StudentName);
@@ -42,16 +44,16 @@ public sealed class AttendanceFlowIntegrationTests
         Assert.Equal("INT-SEC-A", payload.SectionName);
         Assert.Equal("Integration Room 1", payload.RoomName);
         Assert.Equal("Ivy Instructor", payload.InstructorName);
-        Assert.Equal($"/api/attendance/{payload.Id}", response.Headers.Location?.AbsolutePath);
+        Assert.Contains(payload.Id.ToString(), response.Headers.Location?.ToString());
 
         var persisted = await host.ExecuteDbContextAsync(async (dbContext, cancellationToken) =>
             await dbContext.AttendanceRecords
                 .SingleAsync(record =>
-                    record.StudentId == request.StudentId &&
-                    record.SessionId == request.SessionId,
+                    record.StudentId == host.AttendanceQrScenario!.StudentId &&
+                    record.SessionId == host.AttendanceQrScenario.SessionId,
                     cancellationToken));
 
-        Assert.Equal(payload.Id, persisted.Id);
+        Assert.Equal(payload.Id, persisted.Uuid);
         Assert.True(persisted.IsManualEntry);
         Assert.Equal(request.Notes, persisted.Notes);
         Assert.Equal(host.AttendanceQrScenario.InstructorUserId, persisted.EnteredBy);
@@ -65,12 +67,19 @@ public sealed class AttendanceFlowIntegrationTests
 
         var response = await host.Client.GetAsync($"/api/attendance/{host.AttendanceQrScenario.ExistingAttendanceRecordId}");
         var payload = await response.Content.ReadFromJsonAsync<AttendanceRecordResponseDto>();
+        var (studentUuid, sessionUuid) = await ResolveStudentAndSessionUuidsAsync(host);
+        var attendanceUuid = await host.ExecuteDbContextAsync(async (dbContext, cancellationToken) =>
+            await dbContext.AttendanceRecords
+                .AsNoTracking()
+                .Where(record => record.Id == host.AttendanceQrScenario.ExistingAttendanceRecordId)
+                .Select(record => record.Uuid)
+                .SingleAsync(cancellationToken));
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.NotNull(payload);
-        Assert.Equal(host.AttendanceQrScenario.ExistingAttendanceRecordId, payload.Id);
-        Assert.Equal(host.AttendanceQrScenario.StudentId, payload.StudentId);
-        Assert.Equal(host.AttendanceQrScenario.SessionId, payload.SessionId);
+        Assert.Equal(attendanceUuid, payload.Id);
+        Assert.Equal(studentUuid, payload.StudentId);
+        Assert.Equal(sessionUuid, payload.SessionId);
         Assert.Equal("Present", payload.Status);
         Assert.True(payload.IsManualEntry);
         Assert.Equal("Sam Student", payload.StudentName);
@@ -86,10 +95,12 @@ public sealed class AttendanceFlowIntegrationTests
         await using var host = await ApiIntegrationHost.CreateAttendanceQrAsync(AttendanceQrSeedData.ValidAttendanceCreate);
         host.AuthenticateAs(userId: host.AttendanceQrScenario!.InstructorUserId, username: "integration-instructor", role: "Instructor");
 
+        var (studentUuid, sessionUuid) = await ResolveStudentAndSessionUuidsAsync(host);
+
         var initialRequest = new CreateAttendanceRequest
         {
-            StudentId = host.AttendanceQrScenario.StudentId,
-            SessionId = host.AttendanceQrScenario.SessionId,
+            StudentId = studentUuid,
+            SessionId = sessionUuid,
             Status = "Present",
             Notes = "Initial manual create"
         };
@@ -134,8 +145,8 @@ public sealed class AttendanceFlowIntegrationTests
         var persistedCount = await host.ExecuteDbContextAsync(async (dbContext, cancellationToken) =>
             await dbContext.AttendanceRecords
                 .CountAsync(record =>
-                    record.StudentId == initialRequest.StudentId &&
-                    record.SessionId == initialRequest.SessionId,
+                    record.StudentId == host.AttendanceQrScenario!.StudentId &&
+                    record.SessionId == host.AttendanceQrScenario.SessionId,
                     cancellationToken));
 
         Assert.Equal(1, persistedCount);
@@ -147,10 +158,18 @@ public sealed class AttendanceFlowIntegrationTests
         await using var host = await ApiIntegrationHost.CreateAttendanceQrAsync(AttendanceQrSeedData.ValidAttendanceCreate);
         host.AuthenticateAs(userId: host.AttendanceQrScenario!.InstructorUserId, username: "integration-instructor", role: "Instructor");
 
+        var (_, sessionUuid) = await ResolveStudentAndSessionUuidsAsync(host);
+        var outsiderStudentUuid = await host.ExecuteDbContextAsync(async (dbContext, cancellationToken) =>
+            await dbContext.Students
+                .AsNoTracking()
+                .Where(student => student.Id == host.AttendanceQrScenario.OutsiderStudentId)
+                .Select(student => student.Uuid)
+                .SingleAsync(cancellationToken));
+
         var response = await host.PostAsJsonAsync("/api/attendance", new CreateAttendanceRequest
         {
-            StudentId = host.AttendanceQrScenario.OutsiderStudentId,
-            SessionId = host.AttendanceQrScenario.SessionId,
+            StudentId = outsiderStudentUuid,
+            SessionId = sessionUuid,
             Status = "Present"
         });
 
@@ -166,27 +185,51 @@ public sealed class AttendanceFlowIntegrationTests
         await using var host = await ApiIntegrationHost.CreateAttendanceQrAsync(AttendanceQrSeedData.ValidAttendanceCreate);
         host.AuthenticateAs(userId: host.AttendanceQrScenario!.InstructorUserId, username: "integration-instructor", role: "Instructor");
 
+        var (studentUuid, sessionUuid) = await ResolveStudentAndSessionUuidsAsync(host);
+        var missingStudentUuid = Guid.NewGuid();
+        var missingSessionUuid = Guid.NewGuid();
+
         var missingStudentResponse = await host.PostAsJsonAsync("/api/attendance", new CreateAttendanceRequest
         {
-            StudentId = int.MaxValue,
-            SessionId = host.AttendanceQrScenario.SessionId,
+            StudentId = missingStudentUuid,
+            SessionId = sessionUuid,
             Status = "Present"
         });
         var missingStudentPayload = await ReadJsonObjectAsync(missingStudentResponse);
 
         Assert.Equal(HttpStatusCode.NotFound, missingStudentResponse.StatusCode);
-        Assert.Equal($"Student with ID {int.MaxValue} was not found.", missingStudentPayload["message"]?.GetValue<string>());
+        Assert.Equal($"Student with ID {missingStudentUuid} was not found.", missingStudentPayload["message"]?.GetValue<string>());
 
         var missingSessionResponse = await host.PostAsJsonAsync("/api/attendance", new CreateAttendanceRequest
         {
-            StudentId = host.AttendanceQrScenario.StudentId,
-            SessionId = int.MaxValue,
+            StudentId = studentUuid,
+            SessionId = missingSessionUuid,
             Status = "Present"
         });
         var missingSessionPayload = await ReadJsonObjectAsync(missingSessionResponse);
 
         Assert.Equal(HttpStatusCode.NotFound, missingSessionResponse.StatusCode);
-        Assert.Equal($"Session with ID {int.MaxValue} was not found.", missingSessionPayload["message"]?.GetValue<string>());
+        Assert.Equal($"Session with ID {missingSessionUuid} was not found.", missingSessionPayload["message"]?.GetValue<string>());
+    }
+
+    private static async Task<(Guid StudentUuid, Guid SessionUuid)> ResolveStudentAndSessionUuidsAsync(ApiIntegrationHost host)
+    {
+        return await host.ExecuteDbContextAsync(async (dbContext, cancellationToken) =>
+        {
+            var studentUuid = await dbContext.Students
+                .AsNoTracking()
+                .Where(student => student.Id == host.AttendanceQrScenario!.StudentId)
+                .Select(student => student.Uuid)
+                .SingleAsync(cancellationToken);
+
+            var sessionUuid = await dbContext.Sessions
+                .AsNoTracking()
+                .Where(session => session.Id == host.AttendanceQrScenario!.SessionId)
+                .Select(session => session.Uuid)
+                .SingleAsync(cancellationToken);
+
+            return (studentUuid, sessionUuid);
+        });
     }
 
     private static async Task<JsonObject> ReadJsonObjectAsync(HttpResponseMessage response)

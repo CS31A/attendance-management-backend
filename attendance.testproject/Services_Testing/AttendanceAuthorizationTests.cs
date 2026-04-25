@@ -171,7 +171,7 @@ public class AttendanceAuthorizationTests
         Assert.NotNull(result);
         Assert.Equal(1, result.TotalCount);
         Assert.Single(result.Items);
-        Assert.Equal(studentId, result.Items[0].StudentId);
+        Assert.Equal(student.Uuid, result.Items[0].StudentId);
     }
 
     #endregion
@@ -357,7 +357,7 @@ public class AttendanceAuthorizationTests
 
         // Assert
         Assert.NotNull(result);
-        Assert.Equal(studentId, result.StudentId);
+        Assert.Equal(student.Uuid, result.StudentId);
         Assert.Single(result.AttendanceRecords);
     }
 
