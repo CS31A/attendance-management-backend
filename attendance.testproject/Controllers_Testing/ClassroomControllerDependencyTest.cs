@@ -21,7 +21,7 @@ public class ClassroomControllerDependencyTest
     [Fact]
     public async Task HasSchedulesInClassroom_ReturnsOk_WithBooleanResult()
     {
-        const int classroomId = 5;
+        var classroomId = Guid.NewGuid();
         _mockClassroomService
             .Setup(service => service.HasSchedulesInClassroomAsync(classroomId))
             .ReturnsAsync(true);
@@ -45,7 +45,7 @@ public class ClassroomControllerDependencyTest
     [Fact]
     public async Task HasSchedulesInClassroom_ReturnsServerError_WhenServiceThrowsException()
     {
-        const int classroomId = 12;
+        var classroomId = Guid.NewGuid();
         _mockClassroomService
             .Setup(service => service.HasSchedulesInClassroomAsync(classroomId))
             .ThrowsAsync(new EntityServiceException("Classroom", $"HasSchedulesInClassroom: {classroomId}", "Error checking classroom dependencies"));
@@ -60,7 +60,7 @@ public class ClassroomControllerDependencyTest
     [Fact]
     public async Task HasSessionsInClassroom_ReturnsOk_WithBooleanResult()
     {
-        const int classroomId = 8;
+        var classroomId = Guid.NewGuid();
         _mockClassroomService
             .Setup(service => service.HasSessionsInClassroomAsync(classroomId))
             .ReturnsAsync(true);
@@ -84,7 +84,7 @@ public class ClassroomControllerDependencyTest
     [Fact]
     public async Task HasSessionsInClassroom_ReturnsServerError_WhenServiceThrowsException()
     {
-        const int classroomId = 15;
+        var classroomId = Guid.NewGuid();
         _mockClassroomService
             .Setup(service => service.HasSessionsInClassroomAsync(classroomId))
             .ThrowsAsync(new EntityServiceException("Classroom", $"HasSessionsInClassroom: {classroomId}", "Error checking classroom dependencies"));

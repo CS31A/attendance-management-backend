@@ -45,7 +45,7 @@ public class OrphanedUserConstraintTests : IDisposable
             Firstname = "Test",
             Lastname = "Student",
             UserId = "test-user-id",
-            SectionId = 1,
+            SectionId = Guid.NewGuid(),
             IsDeleted = true,
             DeletedAt = null // This should be invalid per our constraint
         };
@@ -66,7 +66,7 @@ public class OrphanedUserConstraintTests : IDisposable
             Firstname = "Test",
             Lastname = "Student",
             UserId = "test-user-id",
-            SectionId = 1,
+            SectionId = Guid.NewGuid(),
             IsDeleted = false,
             DeletedAt = DateTime.UtcNow // This should be invalid per our constraint
         };
@@ -85,7 +85,7 @@ public class OrphanedUserConstraintTests : IDisposable
             Firstname = "Test",
             Lastname = "Student",
             UserId = "test-user-id",
-            SectionId = 1,
+            SectionId = Guid.NewGuid(),
             IsDeleted = true,
             DeletedAt = DateTime.UtcNow // This is valid
         };
@@ -104,7 +104,7 @@ public class OrphanedUserConstraintTests : IDisposable
             Firstname = "Test",
             Lastname = "Student",
             UserId = "test-user-id",
-            SectionId = 1,
+            SectionId = Guid.NewGuid(),
             IsDeleted = false,
             DeletedAt = null // This is valid
         };
@@ -164,7 +164,7 @@ public class OrphanedUserConstraintTests : IDisposable
             Firstname = "Test",
             Lastname = "Student",
             UserId = userId,
-            SectionId = 1,
+            SectionId = Guid.NewGuid(),
             IsDeleted = false,
             DeletedAt = null
         };
@@ -237,7 +237,7 @@ public class OrphanedUserConstraintTests : IDisposable
             Firstname = "Test",
             Lastname = "Student",
             UserId = userId,
-            SectionId = 1,
+            SectionId = Guid.NewGuid(),
             IsDeleted = true,
             DeletedAt = DateTime.UtcNow
         };
@@ -322,7 +322,7 @@ public class OrphanedUserConstraintTests : IDisposable
             Firstname = "Consistent",
             Lastname = "Student",
             UserId = "consistent-user",
-            SectionId = 1,
+            SectionId = Guid.NewGuid(),
             IsDeleted = false,
             DeletedAt = null
         };

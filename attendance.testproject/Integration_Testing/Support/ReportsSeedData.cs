@@ -193,19 +193,19 @@ internal static class ReportsSeedData
             StudentUserId = studentUser.Id,
             OutsiderStudentUserId = outsiderUser.Id,
             InstructorId = instructor.Id,
-            InstructorUuid = instructor.Uuid,
+            InstructorUuid = instructor.Id,
             OtherInstructorId = otherInstructor.Id,
-            OtherInstructorUuid = otherInstructor.Uuid,
+            OtherInstructorUuid = otherInstructor.Id,
             StudentId = student.Id,
-            StudentUuid = student.Uuid,
+            StudentUuid = student.Id,
             OutsiderStudentId = outsiderStudent.Id,
-            OutsiderStudentUuid = outsiderStudent.Uuid,
+            OutsiderStudentUuid = outsiderStudent.Id,
             SectionId = section.Id,
-            SectionUuid = section.Uuid,
+            SectionUuid = section.Id,
             SessionId = session.Id,
-            SessionUuid = session.Uuid,
+            SessionUuid = session.Id,
             ScheduleId = schedule.Id,
-            ScheduleUuid = schedule.Uuid
+            ScheduleUuid = schedule.Id
         };
     }
 

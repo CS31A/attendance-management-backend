@@ -54,7 +54,7 @@ public sealed class UuidProfileMigrationIntegrationTests
             var student = new Student
             {
                 UserId = studentUser.Id,
-                Firstname = "Uuid",
+                Firstname = "Id",
                 Lastname = "Student",
                 IsRegular = true,
                 SectionId = scenario.PrimarySectionId,
@@ -65,7 +65,7 @@ public sealed class UuidProfileMigrationIntegrationTests
             var instructor = new Instructor
             {
                 UserId = instructorUser.Id,
-                Firstname = "Uuid",
+                Firstname = "Id",
                 Lastname = "Instructor",
                 CreatedAt = now,
                 UpdatedAt = now
@@ -74,7 +74,7 @@ public sealed class UuidProfileMigrationIntegrationTests
             var admin = new Admin
             {
                 UserId = adminUser.Id,
-                Firstname = "Uuid",
+                Firstname = "Id",
                 Lastname = "Admin",
                 CreatedAt = now,
                 UpdatedAt = now
@@ -86,9 +86,9 @@ public sealed class UuidProfileMigrationIntegrationTests
 
             await dbContext.SaveChangesAsync(cancellationToken);
 
-            var insertedStudentUuid = student.Uuid;
-            var insertedInstructorUuid = instructor.Uuid;
-            var insertedAdminUuid = admin.Uuid;
+            var insertedStudentUuid = student.Id;
+            var insertedInstructorUuid = instructor.Id;
+            var insertedAdminUuid = admin.Id;
 
             student.Lastname = "Student Updated";
             student.UpdatedAt = now.AddMinutes(1);
@@ -114,9 +114,9 @@ public sealed class UuidProfileMigrationIntegrationTests
         Assert.NotEqual(Guid.Empty, persisted.InsertedInstructorUuid);
         Assert.NotEqual(Guid.Empty, persisted.InsertedAdminUuid);
 
-        Assert.Equal(persisted.InsertedStudentUuid, persisted.Student.Uuid);
-        Assert.Equal(persisted.InsertedInstructorUuid, persisted.Instructor.Uuid);
-        Assert.Equal(persisted.InsertedAdminUuid, persisted.Admin.Uuid);
+        Assert.Equal(persisted.InsertedStudentUuid, persisted.Student.Id);
+        Assert.Equal(persisted.InsertedInstructorUuid, persisted.Instructor.Id);
+        Assert.Equal(persisted.InsertedAdminUuid, persisted.Admin.Id);
     }
 
     [RequiresEnvironmentVariableFact("ATTENDANCE_TEST_SQLSERVER_CONNECTION")]
@@ -172,10 +172,10 @@ public sealed class UuidProfileMigrationIntegrationTests
             return new
             {
                 StudentId = student.Id,
-                StudentUuid = student.Uuid,
+                StudentUuid = student.Id,
                 EnrollmentId = persistedEnrollment.Id,
                 EnrollmentStudentId = persistedEnrollment.StudentId,
-                EnrollmentStudentUuid = persistedEnrollment.Student.Uuid,
+                EnrollmentStudentUuid = persistedEnrollment.Student.Id,
                 EnrollmentSubjectId = persistedEnrollment.SubjectId,
                 EnrollmentSectionId = persistedEnrollment.SectionId,
                 AdditionalEnrollmentIds = studentWithEnrollments.AdditionalEnrollments.Select(row => row.Id).ToList()
@@ -444,59 +444,59 @@ public sealed class UuidProfileMigrationIntegrationTests
             state => AssertUuidTableState(state, "FingerprintEnrollmentSessions", minimumExpectedRows: 1),
             state => AssertUuidTableState(state, "FingerprintScanEvents", minimumExpectedRows: 1));
 
-        Assert.NotEqual(Guid.Empty, persisted.Enrollment.Uuid);
+        Assert.NotEqual(Guid.Empty, persisted.Enrollment.Id);
         Assert.Equal(persisted.Enrollment.StudentId, persisted.Attendance.StudentId);
-        Assert.Equal(persisted.Enrollment.Student.Uuid, persisted.Attendance.Student.Uuid);
+        Assert.Equal(persisted.Enrollment.Student.Id, persisted.Attendance.Student.Id);
         Assert.Equal(persisted.Enrollment.SectionId, persisted.Enrollment.Section.Id);
-        Assert.NotEqual(Guid.Empty, persisted.Enrollment.Section.Uuid);
+        Assert.NotEqual(Guid.Empty, persisted.Enrollment.Section.Id);
         Assert.Equal(persisted.Enrollment.SubjectId, persisted.Enrollment.Subject.Id);
-        Assert.NotEqual(Guid.Empty, persisted.Enrollment.Subject.Uuid);
+        Assert.NotEqual(Guid.Empty, persisted.Enrollment.Subject.Id);
 
-        Assert.NotEqual(Guid.Empty, persisted.Session.Uuid);
+        Assert.NotEqual(Guid.Empty, persisted.Session.Id);
         Assert.Equal(persisted.Session.ScheduleId, persisted.Session.Schedule.Id);
         Assert.Equal(persisted.Session.Schedule.SectionId, persisted.Enrollment.SectionId);
         Assert.Equal(persisted.Session.Schedule.SubjectId, persisted.Enrollment.SubjectId);
         Assert.True(persisted.Session.Schedule.ClassroomId > 0);
-        Assert.NotEqual(Guid.Empty, persisted.Session.Schedule.Uuid);
-        Assert.NotEqual(Guid.Empty, persisted.Session.Schedule.Section.Uuid);
-        Assert.NotEqual(Guid.Empty, persisted.Session.Schedule.Subject.Uuid);
-        Assert.NotEqual(Guid.Empty, persisted.Session.Schedule.Classroom.Uuid);
+        Assert.NotEqual(Guid.Empty, persisted.Session.Schedule.Id);
+        Assert.NotEqual(Guid.Empty, persisted.Session.Schedule.Section.Id);
+        Assert.NotEqual(Guid.Empty, persisted.Session.Schedule.Subject.Id);
+        Assert.NotEqual(Guid.Empty, persisted.Session.Schedule.Classroom.Id);
 
-        Assert.NotEqual(Guid.Empty, persisted.QrCode.Uuid);
+        Assert.NotEqual(Guid.Empty, persisted.QrCode.Id);
         Assert.Equal(persisted.Session.Id, persisted.QrCode.SessionId);
-        Assert.Equal(persisted.Session.Uuid, persisted.QrCode.Session.Uuid);
+        Assert.Equal(persisted.Session.Id, persisted.QrCode.Session.Id);
 
-        Assert.NotEqual(Guid.Empty, persisted.Attendance.Uuid);
+        Assert.NotEqual(Guid.Empty, persisted.Attendance.Id);
         Assert.Equal(persisted.Attendance.StudentId, persisted.Enrollment.StudentId);
         Assert.Equal(persisted.Session.Id, persisted.Attendance.SessionId);
-        Assert.Equal(persisted.Session.Uuid, persisted.Attendance.Session.Uuid);
+        Assert.Equal(persisted.Session.Id, persisted.Attendance.Session.Id);
         Assert.Equal(persisted.QrCode.Id, persisted.Attendance.QrCodeId);
-        Assert.Equal(persisted.QrCode.Uuid, persisted.Attendance.QrCode!.Uuid);
+        Assert.Equal(persisted.QrCode.Id, persisted.Attendance.QrCode!.Id);
 
-        Assert.NotEqual(Guid.Empty, persisted.Fingerprint.Uuid);
+        Assert.NotEqual(Guid.Empty, persisted.Fingerprint.Id);
         Assert.Equal(persisted.FingerprintDevice.DeviceIdentifier, persisted.Fingerprint.DeviceId);
         Assert.True(persisted.Fingerprint.SensorFingerprintId > 0);
 
-        Assert.NotEqual(Guid.Empty, persisted.FingerprintDevice.Uuid);
+        Assert.NotEqual(Guid.Empty, persisted.FingerprintDevice.Id);
         Assert.Equal(persisted.FingerprintScanEvent.DeviceId, persisted.FingerprintDevice.Id);
         Assert.Equal(persisted.FingerprintEnrollmentSession.DeviceId, persisted.FingerprintDevice.Id);
 
-        Assert.NotEqual(Guid.Empty, persisted.FingerprintEnrollmentSession.Uuid);
-        Assert.NotEqual(persisted.FingerprintEnrollmentSession.Uuid, persisted.FingerprintEnrollmentSession.EnrollmentSessionId);
+        Assert.NotEqual(Guid.Empty, persisted.FingerprintEnrollmentSession.Id);
+        Assert.NotEqual(persisted.FingerprintEnrollmentSession.Id, persisted.FingerprintEnrollmentSession.EnrollmentSessionId);
         Assert.NotEqual(Guid.Empty, persisted.FingerprintEnrollmentSession.EnrollmentSessionId);
         Assert.Equal(persisted.FingerprintEnrollmentSession.DeviceId, persisted.FingerprintEnrollmentSession.Device.Id);
         Assert.Equal(persisted.FingerprintEnrollmentSession.StudentId, persisted.FingerprintEnrollmentSession.Student.Id);
         Assert.Equal(persisted.Enrollment.StudentId, persisted.FingerprintEnrollmentSession.StudentId);
 
-        Assert.NotEqual(Guid.Empty, persisted.FingerprintScanEvent.Uuid);
-        Assert.NotEqual(persisted.FingerprintScanEvent.Uuid, persisted.FingerprintScanEvent.EventId);
+        Assert.NotEqual(Guid.Empty, persisted.FingerprintScanEvent.Id);
+        Assert.NotEqual(persisted.FingerprintScanEvent.Id, persisted.FingerprintScanEvent.EventId);
         Assert.NotEqual(Guid.Empty, persisted.FingerprintScanEvent.EventId);
         Assert.Equal(persisted.FingerprintDevice.Id, persisted.FingerprintScanEvent.DeviceId);
         Assert.Equal(persisted.Enrollment.StudentId, persisted.FingerprintScanEvent.MatchedStudentId);
         Assert.Equal(persisted.Session.Id, persisted.FingerprintScanEvent.SessionId);
         Assert.Equal(persisted.Attendance.Id, persisted.FingerprintScanEvent.AttendanceRecordId);
-        Assert.Equal(persisted.FingerprintDevice.Uuid, persisted.FingerprintScanEvent.Device.Uuid);
-        Assert.Equal(persisted.Attendance.Uuid, persisted.FingerprintScanEvent.AttendanceRecord!.Uuid);
+        Assert.Equal(persisted.FingerprintDevice.Id, persisted.FingerprintScanEvent.Device.Id);
+        Assert.Equal(persisted.Attendance.Id, persisted.FingerprintScanEvent.AttendanceRecord!.Id);
     }
 
     private static void AssertUuidTableState(UuidTableState state, string expectedTableName, int minimumExpectedRows)
@@ -532,9 +532,9 @@ public sealed class UuidProfileMigrationIntegrationTests
         command.CommandText = $@"
 SELECT
     COUNT(*) AS TotalRows,
-    COALESCE(SUM(CASE WHEN [Uuid] IS NULL THEN 1 ELSE 0 END), 0) AS NullUuidRows,
-    COALESCE(SUM(CASE WHEN [Uuid] = '{ZeroUuidLiteral}' THEN 1 ELSE 0 END), 0) AS ZeroUuidRows,
-    COUNT(*) - COUNT(DISTINCT [Uuid]) AS DuplicateUuidRows
+    COALESCE(SUM(CASE WHEN [Id] IS NULL THEN 1 ELSE 0 END), 0) AS NullUuidRows,
+    COALESCE(SUM(CASE WHEN [Id] = '{ZeroUuidLiteral}' THEN 1 ELSE 0 END), 0) AS ZeroUuidRows,
+    COUNT(*) - COUNT(DISTINCT [Id]) AS DuplicateUuidRows
 FROM [{tableName}];";
 
         if (command.Connection is null)

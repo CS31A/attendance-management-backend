@@ -132,12 +132,12 @@ public sealed class StartupInitializationIntegrationTests
         var instructor = await context.Instructors.SingleAsync();
         var admin = await context.Admins.SingleAsync();
 
-        Assert.NotEqual(Guid.Empty, student.Uuid);
-        Assert.NotEqual(Guid.Empty, instructor.Uuid);
-        Assert.NotEqual(Guid.Empty, admin.Uuid);
-        Assert.NotEqual(student.Uuid, instructor.Uuid);
-        Assert.NotEqual(student.Uuid, admin.Uuid);
-        Assert.NotEqual(instructor.Uuid, admin.Uuid);
+        Assert.NotEqual(Guid.Empty, student.Id);
+        Assert.NotEqual(Guid.Empty, instructor.Id);
+        Assert.NotEqual(Guid.Empty, admin.Id);
+        Assert.NotEqual(student.Id, instructor.Id);
+        Assert.NotEqual(student.Id, admin.Id);
+        Assert.NotEqual(instructor.Id, admin.Id);
     }
 
     [Fact]
@@ -366,21 +366,21 @@ public sealed class StartupInitializationIntegrationTests
         var persistedEnrollmentSession = await context.FingerprintEnrollmentSessions.AsNoTracking().SingleAsync(row => row.Id == enrollmentSession.Id);
         var persistedScanEvent = await context.FingerprintScanEvents.AsNoTracking().SingleAsync(row => row.Id == scanEvent.Id);
 
-        Assert.NotEqual(Guid.Empty, persistedCourse.Uuid);
-        Assert.NotEqual(Guid.Empty, persistedSection.Uuid);
-        Assert.NotEqual(Guid.Empty, persistedSubject.Uuid);
-        Assert.NotEqual(Guid.Empty, persistedClassroom.Uuid);
-        Assert.NotEqual(Guid.Empty, persistedSchedule.Uuid);
-        Assert.NotEqual(Guid.Empty, persistedEnrollment.Uuid);
-        Assert.NotEqual(Guid.Empty, persistedSession.Uuid);
-        Assert.NotEqual(Guid.Empty, persistedQrCode.Uuid);
-        Assert.NotEqual(Guid.Empty, persistedAttendance.Uuid);
-        Assert.NotEqual(Guid.Empty, persistedDevice.Uuid);
-        Assert.NotEqual(Guid.Empty, persistedEnrollmentSession.Uuid);
-        Assert.NotEqual(Guid.Empty, persistedScanEvent.Uuid);
+        Assert.NotEqual(Guid.Empty, persistedCourse.Id);
+        Assert.NotEqual(Guid.Empty, persistedSection.Id);
+        Assert.NotEqual(Guid.Empty, persistedSubject.Id);
+        Assert.NotEqual(Guid.Empty, persistedClassroom.Id);
+        Assert.NotEqual(Guid.Empty, persistedSchedule.Id);
+        Assert.NotEqual(Guid.Empty, persistedEnrollment.Id);
+        Assert.NotEqual(Guid.Empty, persistedSession.Id);
+        Assert.NotEqual(Guid.Empty, persistedQrCode.Id);
+        Assert.NotEqual(Guid.Empty, persistedAttendance.Id);
+        Assert.NotEqual(Guid.Empty, persistedDevice.Id);
+        Assert.NotEqual(Guid.Empty, persistedEnrollmentSession.Id);
+        Assert.NotEqual(Guid.Empty, persistedScanEvent.Id);
 
-        Assert.NotEqual(persistedEnrollmentSession.EnrollmentSessionId, persistedEnrollmentSession.Uuid);
-        Assert.NotEqual(persistedScanEvent.EventId, persistedScanEvent.Uuid);
+        Assert.NotEqual(persistedEnrollmentSession.EnrollmentSessionId, persistedEnrollmentSession.Id);
+        Assert.NotEqual(persistedScanEvent.EventId, persistedScanEvent.Id);
 
         Assert.Equal(course.Id, persistedSection.CourseId);
         Assert.Equal(subject.Id, persistedSchedule.SubjectId);

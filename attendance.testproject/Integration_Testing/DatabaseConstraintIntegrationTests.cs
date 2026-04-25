@@ -102,7 +102,7 @@ public class DatabaseConstraintIntegrationTests : IDisposable
         var sectionUuid = Guid.NewGuid();
         _mockSectionRepository
             .Setup(r => r.GetSectionByUuidAsync(sectionUuid))
-            .ReturnsAsync(new Section { Id = 1, Uuid = sectionUuid, Name = "Test Section" });
+            .ReturnsAsync(new Section { Id = Guid.NewGuid(), Id = sectionUuid, Name = "Test Section" });
 
         var factory = new UserFactory(_mockAccountRepository.Object, _mockSectionRepository.Object, _mockLogger.Object);
 
@@ -180,7 +180,7 @@ public class DatabaseConstraintIntegrationTests : IDisposable
         var sectionUuid = Guid.NewGuid();
         _mockSectionRepository
             .Setup(r => r.GetSectionByUuidAsync(sectionUuid))
-            .ReturnsAsync(new Section { Id = 1, Uuid = sectionUuid, Name = "Test Section" });
+            .ReturnsAsync(new Section { Id = Guid.NewGuid(), Id = sectionUuid, Name = "Test Section" });
 
         var factory = new UserFactory(_mockAccountRepository.Object, _mockSectionRepository.Object, _mockLogger.Object);
 
@@ -376,7 +376,7 @@ public class DatabaseConstraintIntegrationTests : IDisposable
             Firstname = "Test",
             Lastname = "Student",
             UserId = userId,
-            SectionId = 1,
+            SectionId = Guid.NewGuid(),
             IsDeleted = false
         };
 
@@ -412,7 +412,7 @@ public class DatabaseConstraintIntegrationTests : IDisposable
             Firstname = "Test",
             Lastname = "Student",
             UserId = userId,
-            SectionId = 1,
+            SectionId = Guid.NewGuid(),
             IsDeleted = false,
             DeletedAt = null // Consistent soft delete state
         };

@@ -86,10 +86,10 @@ public class SectionControllerTest
     public async Task GetSection_ReturnsOkResult_WithSectionResponseDto()
     {
         // Arrange
-        const int sectionId = 3;
+        var sectionId = Guid.NewGuid();
         var section = CreateSectionEntity(id: sectionId, name: "Section 3", courseId: 12);
-        section.Uuid = Guid.NewGuid();
-        section.Course = new Course { Id = section.CourseId, Uuid = Guid.NewGuid(), Name = "BSCS" };
+        section.Id = Guid.NewGuid();
+        section.Course = new Course { Id = section.CourseId, Id = Guid.NewGuid(), Name = "BSCS" };
         _mockSectionService
             .Setup(service => service.GetSectionByIdAsync(sectionId))
             .ReturnsAsync(section);
@@ -100,9 +100,9 @@ public class SectionControllerTest
         // Assert
         var okResult = Assert.IsType<OkObjectResult>(result.Result);
         var dto = Assert.IsType<SectionResponseDto>(okResult.Value);
-        Assert.Equal(section.Uuid, dto.Id);
+        Assert.Equal(section.Id, dto.Id);
         Assert.Equal(section.Name, dto.Name);
-        Assert.Equal(section.Course!.Uuid, dto.CourseId);
+        Assert.Equal(section.Course!.Id, dto.CourseId);
         Assert.Equal(section.CreatedAt, dto.CreatedAt);
         Assert.Equal(section.UpdatedAt, dto.UpdatedAt);
         _mockSectionService.Verify(service => service.GetSectionByIdAsync(sectionId), Times.Once);
@@ -114,8 +114,8 @@ public class SectionControllerTest
         var sectionUuid = Guid.NewGuid();
         var courseUuid = Guid.NewGuid();
         var section = CreateSectionEntity(id: 3, name: "Section 3", courseId: 12);
-        section.Uuid = sectionUuid;
-        section.Course = new Course { Id = 12, Uuid = courseUuid, Name = "BSCS" };
+        section.Id = sectionUuid;
+        section.Course = new Course { Id = Guid.NewGuid(), Id = courseUuid, Name = "BSCS" };
 
         _mockSectionService
             .Setup(service => service.GetSectionByUuidAsync(sectionUuid))
@@ -162,7 +162,7 @@ public class SectionControllerTest
     public async Task GetSection_ReturnsNotFound_WhenSectionDoesNotExist()
     {
         // Arrange
-        const int sectionId = 77;
+        var sectionId = Guid.NewGuid();
         _mockSectionService
             .Setup(service => service.GetSectionByIdAsync(sectionId))
             .ThrowsAsync(new EntityNotFoundException<int>("Section", sectionId));
@@ -179,7 +179,7 @@ public class SectionControllerTest
     public async Task GetSection_ReturnsServerError_WhenServiceThrowsException()
     {
         // Arrange
-        const int sectionId = 91;
+        var sectionId = Guid.NewGuid();
         _mockSectionService
             .Setup(service => service.GetSectionByIdAsync(sectionId))
             .ThrowsAsync(new EntityServiceException("Section", $"GetSection: {sectionId}", "Lookup failed"));
@@ -242,7 +242,7 @@ public class SectionControllerTest
 
         _mockCourseService
             .Setup(service => service.GetCourseByUuidAsync(request.CourseId!.Value))
-            .ReturnsAsync(new Course { Id = 8, Uuid = request.CourseId.Value, Name = "BSCS" });
+            .ReturnsAsync(new Course { Id = Guid.NewGuid(), Id = request.CourseId.Value, Name = "BSCS" });
 
         _mockSectionService
             .Setup(service => service.CreateSectionAsync(It.Is<Section>(section =>
@@ -286,7 +286,7 @@ public class SectionControllerTest
         const string errorMessage = "Section already exists";
         _mockCourseService
             .Setup(service => service.GetCourseByUuidAsync(request.CourseId!.Value))
-            .ReturnsAsync(new Course { Id = 1, Uuid = request.CourseId.Value, Name = "BSCS" });
+            .ReturnsAsync(new Course { Id = Guid.NewGuid(), Id = request.CourseId.Value, Name = "BSCS" });
         _mockSectionService
             .Setup(service => service.CreateSectionAsync(It.IsAny<Section>()))
             .ThrowsAsync(new EntityServiceException("Section", "CreateSection", errorMessage));
@@ -303,13 +303,13 @@ public class SectionControllerTest
     public async Task UpdateSection_ReturnsOkResult_WhenUpdateSucceeds()
     {
         // Arrange
-        const int sectionId = 15;
+        var sectionId = Guid.NewGuid();
         var request = CreateSectionRequest(name: "Updated Section");
         var updatedSection = CreateSectionResponseDto(name: request.Name, courseId: request.CourseId!.Value);
 
         _mockCourseService
             .Setup(service => service.GetCourseByUuidAsync(request.CourseId!.Value))
-            .ReturnsAsync(new Course { Id = 99, Uuid = request.CourseId.Value, Name = "BSIT" });
+            .ReturnsAsync(new Course { Id = Guid.NewGuid(), Id = request.CourseId.Value, Name = "BSIT" });
 
         _mockSectionService
             .Setup(service => service.UpdateSectionAsync(sectionId, It.Is<Section>(section =>
@@ -341,7 +341,7 @@ public class SectionControllerTest
 
         _mockCourseService
             .Setup(service => service.GetCourseByUuidAsync(courseUuid))
-            .ReturnsAsync(new Course { Id = 99, Uuid = courseUuid, Name = "BSIT" });
+            .ReturnsAsync(new Course { Id = Guid.NewGuid(), Id = courseUuid, Name = "BSIT" });
 
         _mockSectionService
             .Setup(service => service.UpdateSectionByUuidAsync(sectionUuid, It.Is<Section>(section =>
@@ -375,7 +375,7 @@ public class SectionControllerTest
 
         _mockCourseService
             .Setup(service => service.GetCourseByUuidAsync(courseUuid))
-            .ReturnsAsync(new Course { Id = 99, Uuid = courseUuid, Name = "BSIT" });
+            .ReturnsAsync(new Course { Id = Guid.NewGuid(), Id = courseUuid, Name = "BSIT" });
 
         _mockSectionService
             .Setup(service => service.UpdateSectionByUuidAsync(sectionUuid, It.IsAny<Section>()))
@@ -401,7 +401,7 @@ public class SectionControllerTest
 
         _mockCourseService
             .Setup(service => service.GetCourseByUuidAsync(courseUuid))
-            .ReturnsAsync(new Course { Id = 99, Uuid = courseUuid, Name = "BSIT" });
+            .ReturnsAsync(new Course { Id = Guid.NewGuid(), Id = courseUuid, Name = "BSIT" });
 
         _mockSectionService
             .Setup(service => service.UpdateSectionByUuidAsync(sectionUuid, It.IsAny<Section>()))
@@ -432,11 +432,11 @@ public class SectionControllerTest
     public async Task UpdateSection_ReturnsNotFound_WhenSectionDoesNotExist()
     {
         // Arrange
-        const int sectionId = 101;
+        var sectionId = Guid.NewGuid();
         var request = CreateSectionRequest();
         _mockCourseService
             .Setup(service => service.GetCourseByUuidAsync(request.CourseId!.Value))
-            .ReturnsAsync(new Course { Id = 1, Uuid = request.CourseId.Value, Name = "BSCS" });
+            .ReturnsAsync(new Course { Id = Guid.NewGuid(), Id = request.CourseId.Value, Name = "BSCS" });
         _mockSectionService
             .Setup(service => service.UpdateSectionAsync(sectionId, It.IsAny<Section>()))
             .ThrowsAsync(new EntityNotFoundException<int>("Section", sectionId));
@@ -453,12 +453,12 @@ public class SectionControllerTest
     public async Task UpdateSection_ReturnsBadRequest_WhenServiceException()
     {
         // Arrange
-        const int sectionId = 16;
+        var sectionId = Guid.NewGuid();
         var request = CreateSectionRequest();
         const string errorMessage = "Unable to update section";
         _mockCourseService
             .Setup(service => service.GetCourseByUuidAsync(request.CourseId!.Value))
-            .ReturnsAsync(new Course { Id = 1, Uuid = request.CourseId.Value, Name = "BSCS" });
+            .ReturnsAsync(new Course { Id = Guid.NewGuid(), Id = request.CourseId.Value, Name = "BSCS" });
         _mockSectionService
             .Setup(service => service.UpdateSectionAsync(sectionId, It.IsAny<Section>()))
             .ThrowsAsync(new EntityServiceException("Section", $"UpdateSection: {sectionId}", errorMessage));
@@ -475,7 +475,7 @@ public class SectionControllerTest
     public async Task UpdateSection_ReturnsBadRequest_WhenInvalidModelState()
     {
         // Arrange
-        const int sectionId = 5;
+        var sectionId = Guid.NewGuid();
         var request = CreateSectionRequest();
         _controller.ModelState.AddModelError("CourseId", "Course ID is required");
 
@@ -492,7 +492,7 @@ public class SectionControllerTest
     public async Task GetActiveStudentsBySectionId_ReturnsOkResult_WithStudentsList()
     {
         // Arrange
-        const int sectionId = 4;
+        var sectionId = Guid.NewGuid();
         var students = new List<Student>
         {
             CreateStudent(1, "Alice", "Anderson", "user-1", sectionId),
@@ -528,7 +528,7 @@ public class SectionControllerTest
     public async Task GetActiveStudentsBySectionId_ReturnsServerError_WhenServiceThrowsException()
     {
         // Arrange
-        const int sectionId = 6;
+        var sectionId = Guid.NewGuid();
         _mockSectionService
             .Setup(service => service.GetActiveStudentsBySectionIdAsync(sectionId))
             .ThrowsAsync(new EntityServiceException("Section", $"GetActiveStudentsBySectionId: {sectionId}", "Lookup failed"));
@@ -546,7 +546,7 @@ public class SectionControllerTest
     public async Task GetAllStudentsBySectionId_ReturnsOkResult_WithStudentsList()
     {
         // Arrange
-        const int sectionId = 5;
+        var sectionId = Guid.NewGuid();
         var students = new List<Student>
         {
             CreateStudent(10, "Carla", "Cruz", "user-10", sectionId),
@@ -582,7 +582,7 @@ public class SectionControllerTest
     public async Task GetAllStudentsBySectionId_ReturnsServerError_WhenServiceThrowsException()
     {
         // Arrange
-        const int sectionId = 7;
+        var sectionId = Guid.NewGuid();
         _mockSectionService
             .Setup(service => service.GetAllStudentsBySectionIdAsync(sectionId))
             .ThrowsAsync(new EntityServiceException("Section", $"GetAllStudentsBySectionId: {sectionId}", "Lookup failed"));
@@ -600,7 +600,7 @@ public class SectionControllerTest
     public async Task HasStudentsInSection_ReturnsOkResult_WithBoolean()
     {
         // Arrange
-        const int sectionId = 8;
+        var sectionId = Guid.NewGuid();
         _mockSectionService
             .Setup(service => service.HasStudentsInSectionAsync(sectionId))
             .ReturnsAsync(true);
@@ -630,7 +630,7 @@ public class SectionControllerTest
     public async Task HasStudentsInSection_ReturnsServerError_WhenServiceThrowsException()
     {
         // Arrange
-        const int sectionId = 14;
+        var sectionId = Guid.NewGuid();
         _mockSectionService
             .Setup(service => service.HasStudentsInSectionAsync(sectionId))
             .ThrowsAsync(new EntityServiceException("Section", $"HasStudentsInSection: {sectionId}", "Dependency check failed"));
@@ -648,7 +648,7 @@ public class SectionControllerTest
     public async Task HasStudentEnrollmentsInSection_ReturnsOkResult_WithBoolean()
     {
         // Arrange
-        const int sectionId = 9;
+        var sectionId = Guid.NewGuid();
         _mockSectionService
             .Setup(service => service.HasStudentEnrollmentsInSectionAsync(sectionId))
             .ReturnsAsync(false);
@@ -678,7 +678,7 @@ public class SectionControllerTest
     public async Task HasStudentEnrollmentsInSection_ReturnsServerError_WhenServiceThrowsException()
     {
         // Arrange
-        const int sectionId = 13;
+        var sectionId = Guid.NewGuid();
         _mockSectionService
             .Setup(service => service.HasStudentEnrollmentsInSectionAsync(sectionId))
             .ThrowsAsync(new EntityServiceException("Section", $"HasStudentEnrollmentsInSection: {sectionId}", "Dependency check failed"));
@@ -696,7 +696,7 @@ public class SectionControllerTest
     public async Task HasSchedulesInSection_ReturnsOk_WithBooleanResult()
     {
         // Arrange
-        const int sectionId = 7;
+        var sectionId = Guid.NewGuid();
         _mockSectionService
             .Setup(service => service.HasSchedulesInSectionAsync(sectionId))
             .ReturnsAsync(true);
@@ -726,7 +726,7 @@ public class SectionControllerTest
     public async Task HasSchedulesInSection_ReturnsServerError_WhenServiceThrowsEntityServiceException()
     {
         // Arrange
-        const int sectionId = 12;
+        var sectionId = Guid.NewGuid();
         _mockSectionService
             .Setup(service => service.HasSchedulesInSectionAsync(sectionId))
             .ThrowsAsync(new EntityServiceException("Section", $"HasSchedulesInSection: {sectionId}", "Error checking section dependencies"));
@@ -744,7 +744,7 @@ public class SectionControllerTest
     public async Task DeleteSection_ReturnsNoContent_WhenDeletionSucceeds()
     {
         // Arrange
-        const int sectionId = 1;
+        var sectionId = Guid.NewGuid();
         _mockSectionService
             .Setup(service => service.DeleteSectionAsync(sectionId))
             .Returns(Task.CompletedTask);
@@ -820,7 +820,7 @@ public class SectionControllerTest
     public async Task DeleteSection_ReturnsNotFound_WhenSectionDoesNotExist()
     {
         // Arrange
-        const int sectionId = 1;
+        var sectionId = Guid.NewGuid();
         _mockSectionService
             .Setup(service => service.DeleteSectionAsync(sectionId))
             .ThrowsAsync(new EntityNotFoundException<int>("Section", sectionId));
@@ -837,7 +837,7 @@ public class SectionControllerTest
     public async Task DeleteSection_ReturnsConflict_WithErrorResponseDto_WhenBlockedByDependencies()
     {
         // Arrange
-        const int sectionId = 1;
+        var sectionId = Guid.NewGuid();
         const string conflictMessage = "Cannot delete: Section has schedules assigned. Remove schedules first.";
         _mockSectionService
             .Setup(service => service.DeleteSectionAsync(sectionId))
@@ -858,7 +858,7 @@ public class SectionControllerTest
     public async Task DeleteSection_ReturnsConflict_WithEnrollmentsMessage_WhenBlockedByEnrollments()
     {
         // Arrange
-        const int sectionId = 1;
+        var sectionId = Guid.NewGuid();
         const string conflictMessage = "Cannot delete: Section has student enrollments. Remove enrollments first.";
         _mockSectionService
             .Setup(service => service.DeleteSectionAsync(sectionId))
@@ -877,7 +877,7 @@ public class SectionControllerTest
     public async Task DeleteSection_ReturnsConflict_WithStudentsMessage_WhenBlockedByStudents()
     {
         // Arrange
-        const int sectionId = 1;
+        var sectionId = Guid.NewGuid();
         const string conflictMessage = "Cannot delete: Section has assigned students. Reassign students first.";
         _mockSectionService
             .Setup(service => service.DeleteSectionAsync(sectionId))
@@ -896,7 +896,7 @@ public class SectionControllerTest
     public async Task DeleteSection_ReturnsServerError_ForUnexpectedServiceException()
     {
         // Arrange
-        const int sectionId = 1;
+        var sectionId = Guid.NewGuid();
         _mockSectionService
             .Setup(service => service.DeleteSectionAsync(sectionId))
             .ThrowsAsync(new EntityServiceException("Section", $"DeleteSection: {sectionId}", "Database connection failed"));

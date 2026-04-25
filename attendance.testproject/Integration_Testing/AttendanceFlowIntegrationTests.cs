@@ -53,7 +53,7 @@ public sealed class AttendanceFlowIntegrationTests
                     record.SessionId == host.AttendanceQrScenario.SessionId,
                     cancellationToken));
 
-        Assert.Equal(payload.Id, persisted.Uuid);
+        Assert.Equal(payload.Id, persisted.Id);
         Assert.True(persisted.IsManualEntry);
         Assert.Equal(request.Notes, persisted.Notes);
         Assert.Equal(host.AttendanceQrScenario.InstructorUserId, persisted.EnteredBy);
@@ -72,7 +72,7 @@ public sealed class AttendanceFlowIntegrationTests
             await dbContext.AttendanceRecords
                 .AsNoTracking()
                 .Where(record => record.Id == host.AttendanceQrScenario.ExistingAttendanceRecordId)
-                .Select(record => record.Uuid)
+                .Select(record => record.Id)
                 .SingleAsync(cancellationToken));
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
@@ -163,7 +163,7 @@ public sealed class AttendanceFlowIntegrationTests
             await dbContext.Students
                 .AsNoTracking()
                 .Where(student => student.Id == host.AttendanceQrScenario.OutsiderStudentId)
-                .Select(student => student.Uuid)
+                .Select(student => student.Id)
                 .SingleAsync(cancellationToken));
 
         var response = await host.PostAsJsonAsync("/api/attendance", new CreateAttendanceRequest
@@ -219,13 +219,13 @@ public sealed class AttendanceFlowIntegrationTests
             var studentUuid = await dbContext.Students
                 .AsNoTracking()
                 .Where(student => student.Id == host.AttendanceQrScenario!.StudentId)
-                .Select(student => student.Uuid)
+                .Select(student => student.Id)
                 .SingleAsync(cancellationToken);
 
             var sessionUuid = await dbContext.Sessions
                 .AsNoTracking()
                 .Where(session => session.Id == host.AttendanceQrScenario!.SessionId)
-                .Select(session => session.Uuid)
+                .Select(session => session.Id)
                 .SingleAsync(cancellationToken);
 
             return (studentUuid, sessionUuid);

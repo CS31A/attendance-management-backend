@@ -149,9 +149,9 @@ internal static class AdminUserManagementSeedData
             OrphanedUserId = orphanedUser.Id,
             OrphanedUserEmail = orphanedUser.Email!,
             PrimarySectionId = primarySection.Id,
-            PrimarySectionUuid = primarySection.Uuid,
+            PrimarySectionUuid = primarySection.Id,
             AlternateSectionId = alternateSection.Id,
-            AlternateSectionUuid = alternateSection.Uuid,
+            AlternateSectionUuid = alternateSection.Id,
             ActiveStudentRefreshTokenId = activeStudentRefreshTokenId,
             ControlRefreshTokenId = controlRefreshTokenId
         };

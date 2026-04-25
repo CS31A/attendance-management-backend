@@ -21,7 +21,7 @@ public class CourseControllerDependencyTest
     [Fact]
     public async Task HasSectionsInCourse_ReturnsOk_WithBooleanResult()
     {
-        const int courseId = 7;
+        var courseId = Guid.NewGuid();
         _mockCourseService
             .Setup(service => service.HasSectionsInCourseAsync(courseId))
             .ReturnsAsync(true);
@@ -45,7 +45,7 @@ public class CourseControllerDependencyTest
     [Fact]
     public async Task HasSectionsInCourse_ReturnsServerError_WhenServiceThrowsEntityServiceException()
     {
-        const int courseId = 12;
+        var courseId = Guid.NewGuid();
         _mockCourseService
             .Setup(service => service.HasSectionsInCourseAsync(courseId))
             .ThrowsAsync(new EntityServiceException("Course", $"HasSectionsInCourse: {courseId}", "Error checking course dependencies"));

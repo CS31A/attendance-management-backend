@@ -41,8 +41,8 @@ public class InstructorControllerTest
         // Arrange
         var expectedInstructors = new List<Instructor>
         {
-            new Instructor { Id = 1, Firstname = "John", Lastname = "Doe" },
-            new Instructor { Id = 2, Firstname = "Jane", Lastname = "Smith" }
+            new Instructor { Id = Guid.NewGuid(), Firstname = "John", Lastname = "Doe" },
+            new Instructor { Id = Guid.NewGuid(), Firstname = "Jane", Lastname = "Smith" }
         };
         _mockInstructorService
             .Setup(s => s.GetAllInstructorsAsync())

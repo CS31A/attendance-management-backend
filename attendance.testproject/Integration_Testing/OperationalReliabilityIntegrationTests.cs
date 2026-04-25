@@ -57,11 +57,11 @@ public sealed class OperationalReliabilityIntegrationTests
         {
             StudentId = await dbContext.Students
                 .Where(student => student.Id == host.AttendanceQrScenario.StudentId)
-                .Select(student => student.Uuid)
+                .Select(student => student.Id)
                 .SingleAsync(cancellationToken),
             SessionId = await dbContext.Sessions
                 .Where(session => session.Id == host.AttendanceQrScenario.SessionId)
-                .Select(session => session.Uuid)
+                .Select(session => session.Id)
                 .SingleAsync(cancellationToken)
         });
 
@@ -275,8 +275,8 @@ public sealed class OperationalReliabilityIntegrationTests
         host.AuthenticateAs(userId: host.AttendanceQrScenario!.InstructorUserId, username: "integration-instructor", role: "Instructor");
         var identifiers = await host.ExecuteDbContextAsync(async (dbContext, cancellationToken) => new
         {
-            StudentId = await dbContext.Students.Where(student => student.Id == host.AttendanceQrScenario.StudentId).Select(student => student.Uuid).SingleAsync(cancellationToken),
-            SessionId = await dbContext.Sessions.Where(session => session.Id == host.AttendanceQrScenario.SessionId).Select(session => session.Uuid).SingleAsync(cancellationToken)
+            StudentId = await dbContext.Students.Where(student => student.Id == host.AttendanceQrScenario.StudentId).Select(student => student.Id).SingleAsync(cancellationToken),
+            SessionId = await dbContext.Sessions.Where(session => session.Id == host.AttendanceQrScenario.SessionId).Select(session => session.Id).SingleAsync(cancellationToken)
         });
 
         return await host.SendAsync(CreateJsonPostRequest("/api/attendance", new CreateAttendanceRequest
@@ -293,8 +293,8 @@ public sealed class OperationalReliabilityIntegrationTests
         host.ClearAuthentication();
         var identifiers = await host.ExecuteDbContextAsync(async (dbContext, cancellationToken) => new
         {
-            StudentId = await dbContext.Students.Where(student => student.Id == host.AttendanceQrScenario!.StudentId).Select(student => student.Uuid).SingleAsync(cancellationToken),
-            SessionId = await dbContext.Sessions.Where(session => session.Id == host.AttendanceQrScenario.SessionId).Select(session => session.Uuid).SingleAsync(cancellationToken)
+            StudentId = await dbContext.Students.Where(student => student.Id == host.AttendanceQrScenario!.StudentId).Select(student => student.Id).SingleAsync(cancellationToken),
+            SessionId = await dbContext.Sessions.Where(session => session.Id == host.AttendanceQrScenario.SessionId).Select(session => session.Id).SingleAsync(cancellationToken)
         });
 
         return await host.SendAsync(CreateJsonPostRequest("/api/attendance", new CreateAttendanceRequest

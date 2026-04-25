@@ -80,7 +80,7 @@ public class SessionControllerTest
     public async Task GetSession_ReturnsOkResult_WithSession()
     {
         // Arrange
-        int sessionId = 1;
+        var sessionId = Guid.NewGuid();
         var expectedSession = CreateTestSessionResponseDto(sessionId);
 
         _mockSessionService
@@ -102,7 +102,7 @@ public class SessionControllerTest
     public async Task GetSession_ReturnsNotFound_WhenSessionDoesNotExist()
     {
         // Arrange
-        int sessionId = 999;
+        var sessionId = Guid.NewGuid();
         _mockSessionService
             .Setup(s => s.GetSessionByIdAsync(sessionId))
             .ThrowsAsync(new EntityNotFoundException<int>("Session", sessionId));
@@ -156,7 +156,7 @@ public class SessionControllerTest
     public async Task GetSessionsBySchedule_ReturnsOkResult_WithSessions()
     {
         // Arrange
-        int scheduleId = 1;
+        var scheduleId = Guid.NewGuid();
         var sessions = new List<SessionResponseDto>
         {
             CreateTestSessionResponseDto(1, scheduleId: Guid.NewGuid()),
@@ -453,7 +453,7 @@ public class SessionControllerTest
     public async Task StartSession_ReturnsOkResult_WhenSuccessful()
     {
         // Arrange
-        int sessionId = 1;
+        var sessionId = Guid.NewGuid();
         var request = new StartSession
         {
             ActualRoomId = Guid.NewGuid(),
@@ -481,7 +481,7 @@ public class SessionControllerTest
     public async Task StartSession_ReturnsBadRequest_WhenModelStateInvalid()
     {
         // Arrange
-        int sessionId = 1;
+        var sessionId = Guid.NewGuid();
         var request = new StartSession();
         _sessionController.ModelState.AddModelError("ActualRoomId", "Required");
 
@@ -497,7 +497,7 @@ public class SessionControllerTest
     public async Task StartSession_ThrowsValidationException_WhenServiceThrowsValidationException()
     {
         // Arrange
-        int sessionId = 1;
+        var sessionId = Guid.NewGuid();
         var request = new StartSession();
 
         _mockSessionService
@@ -514,7 +514,7 @@ public class SessionControllerTest
     public async Task StartSession_ThrowsEntityNotFoundException_WhenSessionDoesNotExist()
     {
         // Arrange
-        int sessionId = 999;
+        var sessionId = Guid.NewGuid();
         var request = new StartSession();
 
         _mockSessionService
@@ -530,7 +530,7 @@ public class SessionControllerTest
     public async Task StartSession_ThrowsException_WhenServiceThrowsException()
     {
         // Arrange
-        int sessionId = 1;
+        var sessionId = Guid.NewGuid();
         var request = new StartSession();
 
         _mockSessionService
@@ -575,7 +575,7 @@ public class SessionControllerTest
     public async Task EndSession_ReturnsOkResult_WhenSuccessful()
     {
         // Arrange
-        int sessionId = 1;
+        var sessionId = Guid.NewGuid();
         var request = new EndSession
         {
             Description = "Session ended successfully"
@@ -602,7 +602,7 @@ public class SessionControllerTest
     public async Task EndSession_ReturnsBadRequest_WhenModelStateInvalid()
     {
         // Arrange
-        int sessionId = 1;
+        var sessionId = Guid.NewGuid();
         var request = new EndSession();
         _sessionController.ModelState.AddModelError("Description", "Invalid");
 
@@ -618,7 +618,7 @@ public class SessionControllerTest
     public async Task EndSession_ThrowsValidationException_WhenServiceThrowsValidationException()
     {
         // Arrange
-        int sessionId = 1;
+        var sessionId = Guid.NewGuid();
         var request = new EndSession();
 
         _mockSessionService
@@ -635,7 +635,7 @@ public class SessionControllerTest
     public async Task EndSession_ThrowsEntityNotFoundException_WhenSessionDoesNotExist()
     {
         // Arrange
-        int sessionId = 999;
+        var sessionId = Guid.NewGuid();
         var request = new EndSession();
 
         _mockSessionService
@@ -651,7 +651,7 @@ public class SessionControllerTest
     public async Task EndSession_ThrowsException_WhenServiceThrowsException()
     {
         // Arrange
-        int sessionId = 1;
+        var sessionId = Guid.NewGuid();
         var request = new EndSession();
 
         _mockSessionService
@@ -672,7 +672,7 @@ public class SessionControllerTest
     public async Task CancelSession_ReturnsOkResult_WhenSuccessful()
     {
         // Arrange
-        int sessionId = 1;
+        var sessionId = Guid.NewGuid();
         var request = new CancelSession
         {
             Reason = "Instructor unavailable"
@@ -699,7 +699,7 @@ public class SessionControllerTest
     public async Task CancelSession_ReturnsBadRequest_WhenModelStateInvalid()
     {
         // Arrange
-        int sessionId = 1;
+        var sessionId = Guid.NewGuid();
         var request = new CancelSession();
         _sessionController.ModelState.AddModelError("Reason", "Required");
 
@@ -715,7 +715,7 @@ public class SessionControllerTest
     public async Task CancelSession_ThrowsValidationException_WhenServiceThrowsValidationException()
     {
         // Arrange
-        int sessionId = 1;
+        var sessionId = Guid.NewGuid();
         var request = new CancelSession { Reason = "Test" };
 
         _mockSessionService
@@ -732,7 +732,7 @@ public class SessionControllerTest
     public async Task CancelSession_ThrowsEntityNotFoundException_WhenSessionDoesNotExist()
     {
         // Arrange
-        int sessionId = 999;
+        var sessionId = Guid.NewGuid();
         var request = new CancelSession { Reason = "Test" };
 
         _mockSessionService
@@ -748,7 +748,7 @@ public class SessionControllerTest
     public async Task CancelSession_ThrowsException_WhenServiceThrowsException()
     {
         // Arrange
-        int sessionId = 1;
+        var sessionId = Guid.NewGuid();
         var request = new CancelSession { Reason = "Test" };
 
         _mockSessionService
@@ -769,7 +769,7 @@ public class SessionControllerTest
     public async Task UpdateSessionRoom_ReturnsOkResult_WhenSuccessful()
     {
         // Arrange
-        int sessionId = 1;
+        var sessionId = Guid.NewGuid();
         var request = new UpdateSessionRoom { ActualRoomId = Guid.NewGuid() };
 
         var updatedSession = CreateTestSessionResponseDto(sessionId, actualRoomId: request.ActualRoomId);
@@ -793,7 +793,7 @@ public class SessionControllerTest
     public async Task UpdateSessionRoom_ReturnsBadRequest_WhenModelStateInvalid()
     {
         // Arrange
-        int sessionId = 1;
+        var sessionId = Guid.NewGuid();
         var request = new UpdateSessionRoom();
         _sessionController.ModelState.AddModelError("ActualRoomId", "Required");
 
@@ -855,7 +855,7 @@ public class SessionControllerTest
     public async Task UpdateSessionRoom_ThrowsValidationException_WhenServiceThrowsValidationException()
     {
         // Arrange
-        int sessionId = 1;
+        var sessionId = Guid.NewGuid();
         var request = new UpdateSessionRoom { ActualRoomId = Guid.NewGuid() };
 
         _mockSessionService
@@ -872,7 +872,7 @@ public class SessionControllerTest
     public async Task UpdateSessionRoom_ThrowsEntityNotFoundException_WhenSessionDoesNotExist()
     {
         // Arrange
-        int sessionId = 999;
+        var sessionId = Guid.NewGuid();
         var request = new UpdateSessionRoom { ActualRoomId = Guid.NewGuid() };
 
         _mockSessionService

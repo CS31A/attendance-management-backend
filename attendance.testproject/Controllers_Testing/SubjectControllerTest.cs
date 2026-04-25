@@ -29,8 +29,8 @@ public class SubjectControllerTest
         // Arrange
         var expectedSubjects = new List<Subject>
         {
-            new Subject { Id = 1, Name = "Mathematics" },
-            new Subject { Id = 2, Name = "Science" }
+            new Subject { Id = Guid.NewGuid(), Name = "Mathematics" },
+            new Subject { Id = Guid.NewGuid(), Name = "Science" }
         };
         _mockSubjectService
             .Setup(s => s.GetAllSubjectsAsync())
@@ -63,7 +63,7 @@ public class SubjectControllerTest
     public async Task GetSubjectByUuid_ReturnsOkResult_WhenSubjectExists()
     {
         var subjectUuid = Guid.NewGuid();
-        var subject = new Subject { Id = 5, Uuid = subjectUuid, Name = "Physics", Code = "PHY101" };
+        var subject = new Subject { Id = Guid.NewGuid(), Id = subjectUuid, Name = "Physics", Code = "PHY101" };
 
         _mockSubjectService
             .Setup(s => s.GetSubjectByUuidAsync(subjectUuid))
@@ -73,7 +73,7 @@ public class SubjectControllerTest
 
         var okResult = Assert.IsType<OkObjectResult>(result.Result);
         var returnedSubject = Assert.IsType<Subject>(okResult.Value);
-        Assert.Equal(subjectUuid, returnedSubject.Uuid);
+        Assert.Equal(subjectUuid, returnedSubject.Id);
         _mockSubjectService.Verify(s => s.GetSubjectByUuidAsync(subjectUuid), Times.Once);
     }
 
@@ -98,7 +98,7 @@ public class SubjectControllerTest
     {
         var subjectUuid = Guid.NewGuid();
         var updateSubject = new UpdateSubject { Name = "Advanced Physics" };
-        var updatedSubject = new Subject { Id = 5, Uuid = subjectUuid, Name = updateSubject.Name! };
+        var updatedSubject = new Subject { Id = Guid.NewGuid(), Id = subjectUuid, Name = updateSubject.Name! };
 
         _mockSubjectService
             .Setup(s => s.UpdateSubjectByUuidAsync(subjectUuid, updateSubject))
@@ -108,7 +108,7 @@ public class SubjectControllerTest
 
         var okResult = Assert.IsType<OkObjectResult>(result.Result);
         var returnedSubject = Assert.IsType<Subject>(okResult.Value);
-        Assert.Equal(subjectUuid, returnedSubject.Uuid);
+        Assert.Equal(subjectUuid, returnedSubject.Id);
     }
 
     [Fact]
@@ -177,7 +177,7 @@ public class SubjectControllerTest
     [Fact]
     public async Task HasSchedulesInSubject_ReturnsOk_WithBooleanResult()
     {
-        const int subjectId = 9;
+        var subjectId = Guid.NewGuid();
         _mockSubjectService
             .Setup(service => service.HasSchedulesInSubjectAsync(subjectId))
             .ReturnsAsync(true);
@@ -191,7 +191,7 @@ public class SubjectControllerTest
     [Fact]
     public async Task HasEnrollmentsInSubject_ReturnsOk_WithBooleanResult()
     {
-        const int subjectId = 4;
+        var subjectId = Guid.NewGuid();
         _mockSubjectService
             .Setup(service => service.HasEnrollmentsInSubjectAsync(subjectId))
             .ReturnsAsync(true);

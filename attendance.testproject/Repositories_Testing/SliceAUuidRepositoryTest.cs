@@ -31,8 +31,7 @@ public sealed class SliceAUuidRepositoryTest : IDisposable
 
         _course = new Course
         {
-            Id = 1,
-            Uuid = Guid.NewGuid(),
+            Id = Guid.NewGuid(),
             Name = "Computer Science",
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow,
@@ -40,8 +39,7 @@ public sealed class SliceAUuidRepositoryTest : IDisposable
 
         _subject = new Subject
         {
-            Id = 1,
-            Uuid = Guid.NewGuid(),
+            Id = Guid.NewGuid(),
             Name = "Mathematics",
             Code = "MATH101",
             CreatedAt = DateTime.UtcNow,
@@ -50,8 +48,7 @@ public sealed class SliceAUuidRepositoryTest : IDisposable
 
         _classroom = new Classroom
         {
-            Id = 1,
-            Uuid = Guid.NewGuid(),
+            Id = Guid.NewGuid(),
             Name = "Room 101",
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow,
@@ -59,8 +56,7 @@ public sealed class SliceAUuidRepositoryTest : IDisposable
 
         _section = new Section
         {
-            Id = 1,
-            Uuid = Guid.NewGuid(),
+            Id = Guid.NewGuid(),
             Name = "CS-3A",
             CourseId = _course.Id,
             Course = _course,
@@ -70,8 +66,7 @@ public sealed class SliceAUuidRepositoryTest : IDisposable
 
         _instructor = new Instructor
         {
-            Id = 1,
-            Uuid = Guid.NewGuid(),
+            Id = Guid.NewGuid(),
             Firstname = "Ada",
             Lastname = "Lovelace",
             UserId = "instructor-1",
@@ -90,8 +85,7 @@ public sealed class SliceAUuidRepositoryTest : IDisposable
 
         _student = new Student
         {
-            Id = 1,
-            Uuid = Guid.NewGuid(),
+            Id = Guid.NewGuid(),
             Firstname = "Grace",
             Lastname = "Hopper",
             UserId = "student-1",
@@ -112,8 +106,7 @@ public sealed class SliceAUuidRepositoryTest : IDisposable
 
         _schedule = new Schedules
         {
-            Id = 1,
-            Uuid = Guid.NewGuid(),
+            Id = Guid.NewGuid(),
             TimeIn = new TimeOnly(8, 0),
             TimeOut = new TimeOnly(10, 0),
             DayOfWeek = "Monday",
@@ -131,8 +124,7 @@ public sealed class SliceAUuidRepositoryTest : IDisposable
 
         _enrollment = new StudentEnrollment
         {
-            Id = 1,
-            Uuid = Guid.NewGuid(),
+            Id = Guid.NewGuid(),
             StudentId = _student.Id,
             Student = _student,
             SectionId = _section.Id,
@@ -158,8 +150,8 @@ public sealed class SliceAUuidRepositoryTest : IDisposable
         _context.StudentEnrollments.Add(_enrollment);
         _context.SaveChanges();
 
-        _schedule.Uuid = _context.Schedules.AsNoTracking().Single(s => s.Id == _schedule.Id).Uuid;
-        _enrollment.Uuid = _context.StudentEnrollments.AsNoTracking().Single(se => se.Id == _enrollment.Id).Uuid;
+        _schedule.Id = _context.Schedules.AsNoTracking().Single(s => s.Id == _schedule.Id).Id;
+        _enrollment.Id = _context.StudentEnrollments.AsNoTracking().Single(se => se.Id == _enrollment.Id).Id;
         _context.ChangeTracker.Clear();
     }
 
@@ -168,8 +160,8 @@ public sealed class SliceAUuidRepositoryTest : IDisposable
     {
         var repository = new CourseRepository(_context);
 
-        var readOnlyCourse = await repository.GetCourseByUuidAsync(_course.Uuid);
-        var trackedCourse = await repository.GetCourseByUuidTrackedAsync(_course.Uuid);
+        var readOnlyCourse = await repository.GetCourseByUuidAsync(_course.Id);
+        var trackedCourse = await repository.GetCourseByUuidTrackedAsync(_course.Id);
 
         Assert.NotNull(readOnlyCourse);
         Assert.Equal(_course.Id, readOnlyCourse.Id);
@@ -182,8 +174,8 @@ public sealed class SliceAUuidRepositoryTest : IDisposable
     {
         var repository = new SubjectRepository(_context);
 
-        var readOnlySubject = await repository.GetSubjectByUuidAsync(_subject.Uuid);
-        var trackedSubject = await repository.GetSubjectByUuidTrackedAsync(_subject.Uuid);
+        var readOnlySubject = await repository.GetSubjectByUuidAsync(_subject.Id);
+        var trackedSubject = await repository.GetSubjectByUuidTrackedAsync(_subject.Id);
 
         Assert.NotNull(readOnlySubject);
         Assert.Equal(_subject.Code, readOnlySubject.Code);
@@ -196,8 +188,8 @@ public sealed class SliceAUuidRepositoryTest : IDisposable
     {
         var repository = new SectionRepository(_context, NullLogger<SectionRepository>.Instance);
 
-        var readOnlySection = await repository.GetSectionByUuidAsync(_section.Uuid);
-        var trackedSection = await repository.GetSectionByUuidTrackedAsync(_section.Uuid);
+        var readOnlySection = await repository.GetSectionByUuidAsync(_section.Id);
+        var trackedSection = await repository.GetSectionByUuidTrackedAsync(_section.Id);
 
         Assert.NotNull(readOnlySection);
         Assert.Equal(_section.CourseId, readOnlySection.CourseId);
@@ -210,8 +202,8 @@ public sealed class SliceAUuidRepositoryTest : IDisposable
     {
         var repository = new ClassroomRepository(_context);
 
-        var readOnlyClassroom = await repository.GetClassroomByUuidAsync(_classroom.Uuid);
-        var trackedClassroom = await repository.GetClassroomByUuidTrackedAsync(_classroom.Uuid);
+        var readOnlyClassroom = await repository.GetClassroomByUuidAsync(_classroom.Id);
+        var trackedClassroom = await repository.GetClassroomByUuidTrackedAsync(_classroom.Id);
 
         Assert.NotNull(readOnlyClassroom);
         Assert.Equal(_classroom.Name, readOnlyClassroom.Name);
@@ -223,7 +215,7 @@ public sealed class SliceAUuidRepositoryTest : IDisposable
     public async Task ScheduleRepository_GetScheduleByUuidAsync_ReturnsReadOnlyAndTrackedScheduleWithNavigations()
     {
         var repository = new ScheduleRepository(_context);
-        var scheduleUuid = _context.Schedules.AsNoTracking().Where(s => s.Id == _schedule.Id).Select(s => s.Uuid).Single();
+        var scheduleUuid = _context.Schedules.AsNoTracking().Where(s => s.Id == _schedule.Id).Select(s => s.Id).Single();
 
         var readOnlySchedule = await repository.GetScheduleByUuidAsync(scheduleUuid);
         var trackedSchedule = await repository.GetScheduleByUuidTrackedAsync(scheduleUuid);
@@ -240,7 +232,7 @@ public sealed class SliceAUuidRepositoryTest : IDisposable
     public async Task StudentEnrollmentRepository_GetByUuidAsync_ReturnsReadOnlyAndTrackedEnrollmentWithNavigations()
     {
         var repository = new StudentEnrollmentRepository(_context);
-        var enrollmentUuid = _context.StudentEnrollments.AsNoTracking().Where(se => se.Id == _enrollment.Id).Select(se => se.Uuid).Single();
+        var enrollmentUuid = _context.StudentEnrollments.AsNoTracking().Where(se => se.Id == _enrollment.Id).Select(se => se.Id).Single();
 
         var readOnlyEnrollment = await repository.GetByUuidAsync(enrollmentUuid);
         var trackedEnrollment = await repository.GetByUuidTrackedAsync(enrollmentUuid);

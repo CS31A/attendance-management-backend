@@ -122,7 +122,7 @@ public class AccountRepositoryTransactionTests
             setupContext.Admins.Add(new attendance_monitoring.Classes.Admin
             {
                 UserId = "admin-user",
-                Uuid = adminUuid,
+                Id = adminUuid,
                 Firstname = "Ada",
                 Lastname = "Admin",
                 CreatedAt = DateTime.UtcNow,
@@ -139,7 +139,7 @@ public class AccountRepositoryTransactionTests
 
         Assert.NotNull(byUserId);
         Assert.NotNull(byUuid);
-        Assert.Equal(adminUuid, byUserId!.Uuid);
+        Assert.Equal(adminUuid, byUserId!.Id);
         Assert.Equal("admin-user", byUuid!.UserId);
     }
 

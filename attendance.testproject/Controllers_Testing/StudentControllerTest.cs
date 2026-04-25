@@ -29,8 +29,8 @@ public class StudentControllerTest
         // Arrange
         var expectedStudents = new List<StudentListDto>
         {
-            new StudentListDto { Id = 1, Firstname = "John", Lastname = "Doe" },
-            new StudentListDto { Id = 2, Firstname = "Jane", Lastname = "Smith" }
+            new StudentListDto { Id = Guid.NewGuid(), Firstname = "John", Lastname = "Doe" },
+            new StudentListDto { Id = Guid.NewGuid(), Firstname = "Jane", Lastname = "Smith" }
         };
 
         _mockStudentService
@@ -60,8 +60,8 @@ public class StudentControllerTest
         var searchTerm = "john";
         var expectedStudents = new List<StudentListDto>
         {
-            new StudentListDto { Id = 1, Firstname = "John", Lastname = "Doe", UserId = "user1" },
-            new StudentListDto { Id = 2, Firstname = "Johnny", Lastname = "Smith", UserId = "user2" }
+            new StudentListDto { Id = Guid.NewGuid(), Firstname = "John", Lastname = "Doe", UserId = "user1" },
+            new StudentListDto { Id = Guid.NewGuid(), Firstname = "Johnny", Lastname = "Smith", UserId = "user2" }
         };
 
         _mockStudentService
@@ -87,7 +87,7 @@ public class StudentControllerTest
         var pageSize = 20;
         var expectedStudents = new List<StudentListDto>
         {
-            new StudentListDto { Id = 3, Firstname = "Jane", Lastname = "Doe", UserId = "user3" }
+            new StudentListDto { Id = Guid.NewGuid(), Firstname = "Jane", Lastname = "Doe", UserId = "user3" }
         };
 
         _mockStudentService
@@ -191,8 +191,8 @@ public class StudentControllerTest
         var searchTerm = "@example.com";
         var expectedStudents = new List<StudentListDto>
         {
-            new StudentListDto { Id = 1, Firstname = "John", Lastname = "Doe", UserId = "user1" },
-            new StudentListDto { Id = 2, Firstname = "Jane", Lastname = "Smith", UserId = "user2" }
+            new StudentListDto { Id = Guid.NewGuid(), Firstname = "John", Lastname = "Doe", UserId = "user1" },
+            new StudentListDto { Id = Guid.NewGuid(), Firstname = "Jane", Lastname = "Smith", UserId = "user2" }
         };
 
         _mockStudentService
@@ -218,7 +218,7 @@ public class StudentControllerTest
         var pageSize = 10;
         var expectedStudents = new List<StudentListDto>
         {
-            new StudentListDto { Id = 5, Firstname = "Test", Lastname = "User", UserId = "user5" }
+            new StudentListDto { Id = Guid.NewGuid(), Firstname = "Test", Lastname = "User", UserId = "user5" }
         };
 
         _mockStudentService
