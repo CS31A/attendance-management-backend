@@ -1172,43 +1172,37 @@ public class InstructorServiceTest
 
         // Assert
         Assert.NotNull(result);
-        Assert.Equal(instructorId, result.InstructorId);
-        Assert.Equal(instructorGuid, result.InstructorUuid);
+        Assert.Equal(instructorGuid, result.InstructorId);
         Assert.Equal("John", result.InstructorFirstname);
         Assert.Equal("Doe", result.InstructorLastname);
         Assert.Single(result.Sections);
 
         var sectionDto = result.Sections.First();
-        Assert.Equal(1, sectionDto.SectionId);
-        Assert.Equal(sectionGuid, sectionDto.SectionUuid);
+        Assert.Equal(sectionGuid, sectionDto.SectionId);
         Assert.Equal("CS-3A", sectionDto.SectionName);
-        Assert.Equal(1, sectionDto.CourseId);
-        Assert.Equal(courseGuid, sectionDto.CourseUuid);
+        Assert.Equal(courseGuid, sectionDto.CourseId);
         Assert.Equal("Computer Science", sectionDto.CourseName);
         Assert.Single(sectionDto.Subjects);
 
         var subjectDto = sectionDto.Subjects.First();
-        Assert.Equal(1, subjectDto.SubjectId);
-        Assert.Equal(subjectGuid, subjectDto.SubjectUuid);
+        Assert.Equal(subjectGuid, subjectDto.SubjectId);
         Assert.Equal("Data Structures", subjectDto.SubjectName);
         Assert.Equal("CS301", subjectDto.SubjectCode);
-        Assert.Equal(1, subjectDto.ScheduleId);
-        Assert.Equal(scheduleGuid, subjectDto.ScheduleUuid);
+        Assert.Equal(scheduleGuid, subjectDto.ScheduleId);
         Assert.Equal("Monday", subjectDto.DayOfWeek);
-        Assert.Equal(1, subjectDto.ClassroomId);
-        Assert.Equal(classroomGuid, subjectDto.ClassroomUuid);
+        Assert.Equal(classroomGuid, subjectDto.ClassroomId);
         Assert.Equal("Room 101", subjectDto.ClassroomName);
         Assert.Equal(2, subjectDto.Students.Count);
 
-        var regularStudent = subjectDto.Students.First(s => s.StudentId == 1);
-        Assert.Equal(student1Guid, regularStudent.StudentUuid);
+        var regularStudent = subjectDto.Students.First(s => s.StudentId == student1Guid);
+        Assert.Equal(student1Guid, regularStudent.StudentId);
         Assert.Equal("Alice", regularStudent.Firstname);
         Assert.Equal("Smith", regularStudent.Lastname);
         Assert.True(regularStudent.IsRegular);
         Assert.Equal("Regular", regularStudent.EnrollmentType);
 
-        var irregularStudent = subjectDto.Students.First(s => s.StudentId == 2);
-        Assert.Equal(student2Guid, irregularStudent.StudentUuid);
+        var irregularStudent = subjectDto.Students.First(s => s.StudentId == student2Guid);
+        Assert.Equal(student2Guid, irregularStudent.StudentId);
         Assert.Equal("Bob", irregularStudent.Firstname);
         Assert.Equal("Johnson", irregularStudent.Lastname);
         Assert.False(irregularStudent.IsRegular);
@@ -1315,11 +1309,11 @@ public class InstructorServiceTest
         var students = result.Sections.First().Subjects.First().Students;
         Assert.Equal(2, students.Count);
 
-        var regular = students.First(s => s.StudentId == 1);
+        var regular = students.First(s => s.StudentId == regularStudent.Uuid);
         Assert.True(regular.IsRegular);
         Assert.Equal("Regular", regular.EnrollmentType);
 
-        var irregular = students.First(s => s.StudentId == 2);
+        var irregular = students.First(s => s.StudentId == irregularStudent.Uuid);
         Assert.False(irregular.IsRegular);
         Assert.Equal("Irregular", irregular.EnrollmentType);
     }
@@ -1375,7 +1369,7 @@ public class InstructorServiceTest
 
         // Assert
         Assert.NotNull(result);
-        Assert.Equal(instructorId, result.InstructorId);
+        Assert.Equal(instructor.Uuid, result.InstructorId);
         Assert.Equal("John", result.InstructorFirstname);
         Assert.Equal("Doe", result.InstructorLastname);
         Assert.Empty(result.Sections);
@@ -1479,7 +1473,7 @@ public class InstructorServiceTest
         Assert.NotNull(result);
         var students = result.Sections.First().Subjects.First().Students;
         Assert.Single(students);
-        Assert.Equal(1, students.First().StudentId);
+        Assert.Equal(activeStudent.Uuid, students.First().StudentId);
         Assert.Equal("Active", students.First().Firstname);
     }
 
@@ -1683,7 +1677,7 @@ public class InstructorServiceTest
         // Assert
         var students = result.Sections.First().Subjects.First().Students;
         var returnedStudent = Assert.Single(students);
-        Assert.Equal(regularStudent.Id, returnedStudent.StudentId);
+        Assert.Equal(regularStudent.Uuid, returnedStudent.StudentId);
         Assert.True(returnedStudent.IsRegular);
         Assert.Equal(EnrollmentTypeConstants.Regular, returnedStudent.EnrollmentType);
     }
@@ -1763,12 +1757,12 @@ public class InstructorServiceTest
         Assert.NotNull(result);
         Assert.Equal(2, result.Count);
 
-        var overview1 = result.First(s => s.SectionId == 1);
+        var overview1 = result.First(s => s.SectionId == section1.Uuid);
         Assert.Equal("CS-3A", overview1.SectionName);
         Assert.Equal(2, overview1.HandledClassCount);
         Assert.Equal(2, overview1.UniqueStudentCount);
 
-        var overview2 = result.First(s => s.SectionId == 2);
+        var overview2 = result.First(s => s.SectionId == section2.Uuid);
         Assert.Equal("CS-3B", overview2.SectionName);
         Assert.Equal(0, overview2.HandledClassCount);
         Assert.Equal(0, overview2.UniqueStudentCount);
@@ -1950,7 +1944,7 @@ public class InstructorServiceTest
 
         // Assert
         Assert.NotNull(result);
-        Assert.Equal(sectionId, result.SectionId);
+        Assert.Equal(section.Uuid, result.SectionId);
         Assert.Equal("CS-3A", result.SectionName);
         Assert.Equal(1, result.HandledClassCount);
         Assert.Single(result.HandledClasses);
@@ -2086,12 +2080,13 @@ public class InstructorServiceTest
             }
         };
 
+        var enrollmentSubjectGuid = Guid.NewGuid();
         var instructorSchedules = new List<Schedules>
         {
             new()
             {
                 Id = 1, Uuid = Guid.NewGuid(),
-                SubjectId = 1, Subject = new Subject { Id = 1, Name = "Data Structures", Code = "CS301" },
+                SubjectId = 1, Subject = new Subject { Id = 1, Uuid = enrollmentSubjectGuid, Name = "Data Structures", Code = "CS301" },
                 SectionId = section.Id, Section = section,
                 ClassroomId = 1, Classroom = new Classroom { Id = 1, Name = "Room 101" },
                 InstructorId = instructorId,
@@ -2113,15 +2108,15 @@ public class InstructorServiceTest
 
         // Assert
         Assert.NotNull(result);
-        Assert.Equal(studentId, result.StudentId);
+        Assert.Equal(student.Uuid, result.StudentId);
         Assert.Equal("Alice", result.Firstname);
         Assert.Equal("Smith", result.Lastname);
-        Assert.Equal(1, result.SectionId);
+        Assert.Equal(section.Uuid, result.SectionId);
         Assert.Equal("CS-3A", result.SectionName);
         Assert.True(result.IsRegular);
         Assert.Equal("Regular", result.EnrollmentType);
         Assert.Single(result.Enrollments);
-        Assert.Equal(1, result.Enrollments[0].SubjectId);
+        Assert.Equal(enrollmentSubjectGuid, result.Enrollments[0].SubjectId);
         Assert.Equal("Data Structures", result.Enrollments[0].SubjectName);
         Assert.Equal("CS301", result.Enrollments[0].SubjectCode);
         Assert.Equal("Regular", result.Enrollments[0].EnrollmentType);
@@ -2190,16 +2185,16 @@ public class InstructorServiceTest
         Assert.NotNull(result);
         Assert.Equal(2, result.Enrollments.Count);
 
-        var homeEnrollment = result.Enrollments.First(e => e.SubjectId == 1);
+        var homeEnrollment = result.Enrollments.First(e => e.SubjectName == "Data Structures");
         Assert.Equal("Data Structures", homeEnrollment.SubjectName);
         Assert.Equal("CS301", homeEnrollment.SubjectCode);
-        Assert.Equal(section.Id, homeEnrollment.SectionId);
+        Assert.Equal(section.Uuid, homeEnrollment.SectionId);
         Assert.Equal("Regular", homeEnrollment.EnrollmentType);
 
-        var additionalEnrollment = result.Enrollments.First(e => e.SubjectId == 2);
+        var additionalEnrollment = result.Enrollments.First(e => e.SubjectName == "Algorithms");
         Assert.Equal("Algorithms", additionalEnrollment.SubjectName);
         Assert.Equal("CS302", additionalEnrollment.SubjectCode);
-        Assert.Equal(otherSection.Id, additionalEnrollment.SectionId);
+        Assert.Equal(otherSection.Uuid, additionalEnrollment.SectionId);
         Assert.Equal(EnrollmentTypeConstants.Irregular, additionalEnrollment.EnrollmentType);
     }
 
@@ -2350,8 +2345,8 @@ public class InstructorServiceTest
         // Assert
         Assert.NotNull(result);
         Assert.Single(result.Enrollments);
-        Assert.Equal(matchingSubject.Id, result.Enrollments[0].SubjectId);
-        Assert.Equal(handledSection.Id, result.Enrollments[0].SectionId);
+        Assert.Equal(matchingSubject.Uuid, result.Enrollments[0].SubjectId);
+        Assert.Equal(handledSection.Uuid, result.Enrollments[0].SectionId);
         Assert.Equal(EnrollmentTypeConstants.Irregular, result.Enrollments[0].EnrollmentType);
     }
 

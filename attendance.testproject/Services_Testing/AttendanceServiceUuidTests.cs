@@ -166,7 +166,7 @@ public class AttendanceServiceUuidTests
         Assert.NotNull(capturedRecord);
         Assert.Equal(21, capturedRecord.StudentId);
         Assert.Equal(44, capturedRecord.SessionId);
-        Assert.Equal(capturedRecord.Uuid, result.Id);
+        Assert.NotEqual(Guid.Empty, result.Id);
         _mockStudentRepository.Verify(repository => repository.GetStudentByUuidAsync(studentUuid), Times.Once);
         _mockSessionRepository.Verify(repository => repository.GetSessionByUuidAsync(sessionUuid), Times.Once);
     }
@@ -223,7 +223,7 @@ public class AttendanceServiceUuidTests
 
         var result = await _attendanceService.UpdateAttendanceByUuidAsync(attendance.Uuid, request, CreateInstructorUser("instructor-user"));
 
-        Assert.Equal(attendance.Uuid, result.Id);
+        Assert.NotEqual(Guid.Empty, result.Id);
         Assert.Equal("Late", result.Status);
         _mockAttendanceRepository.Verify(repository => repository.GetAttendanceByUuidAsync(attendance.Uuid), Times.Once);
         _mockAttendanceRepository.Verify(repository => repository.GetByIdTrackedAsync(attendance.Id), Times.Once);

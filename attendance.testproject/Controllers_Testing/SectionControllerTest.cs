@@ -284,6 +284,9 @@ public class SectionControllerTest
         // Arrange
         var request = CreateSectionRequest(name: "Duplicate Section");
         const string errorMessage = "Section already exists";
+        _mockCourseService
+            .Setup(service => service.GetCourseByUuidAsync(request.CourseId!.Value))
+            .ReturnsAsync(new Course { Id = 1, Uuid = request.CourseId.Value, Name = "BSCS" });
         _mockSectionService
             .Setup(service => service.CreateSectionAsync(It.IsAny<Section>()))
             .ThrowsAsync(new EntityServiceException("Section", "CreateSection", errorMessage));
@@ -431,6 +434,9 @@ public class SectionControllerTest
         // Arrange
         const int sectionId = 101;
         var request = CreateSectionRequest();
+        _mockCourseService
+            .Setup(service => service.GetCourseByUuidAsync(request.CourseId!.Value))
+            .ReturnsAsync(new Course { Id = 1, Uuid = request.CourseId.Value, Name = "BSCS" });
         _mockSectionService
             .Setup(service => service.UpdateSectionAsync(sectionId, It.IsAny<Section>()))
             .ThrowsAsync(new EntityNotFoundException<int>("Section", sectionId));
@@ -450,6 +456,9 @@ public class SectionControllerTest
         const int sectionId = 16;
         var request = CreateSectionRequest();
         const string errorMessage = "Unable to update section";
+        _mockCourseService
+            .Setup(service => service.GetCourseByUuidAsync(request.CourseId!.Value))
+            .ReturnsAsync(new Course { Id = 1, Uuid = request.CourseId.Value, Name = "BSCS" });
         _mockSectionService
             .Setup(service => service.UpdateSectionAsync(sectionId, It.IsAny<Section>()))
             .ThrowsAsync(new EntityServiceException("Section", $"UpdateSection: {sectionId}", errorMessage));

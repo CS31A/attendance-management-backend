@@ -273,12 +273,14 @@ public class StudentEnrollmentControllerTest
     {
         // Arrange
         var studentId = 1;
+        var student = new Student { Id = studentId, Firstname = "Alice", Lastname = "Smith", Uuid = Guid.NewGuid() };
         var enrollments = new List<StudentEnrollment>
         {
             new StudentEnrollment
             {
                 Id = 1,
                 StudentId = studentId,
+                Student = student,
                 SectionId = 2,
                 SubjectId = 3,
                 IsActive = true,
@@ -291,6 +293,7 @@ public class StudentEnrollmentControllerTest
             {
                 Id = 2,
                 StudentId = studentId,
+                Student = student,
                 SectionId = 3,
                 SubjectId = 4,
                 IsActive = false,

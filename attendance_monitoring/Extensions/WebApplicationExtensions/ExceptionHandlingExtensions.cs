@@ -36,6 +36,9 @@ public static class ExceptionHandlingExtensions
                     EntityNotFoundException<int> ex =>
                         (StatusCodes.Status404NotFound, ex.Message, false),
 
+                    EntityNotFoundException<Guid> ex =>
+                        (StatusCodes.Status404NotFound, ex.Message, false),
+
                     EntityNotFoundException<string> ex =>
                         (StatusCodes.Status404NotFound, ex.Message, false),
 

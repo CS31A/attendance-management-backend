@@ -174,7 +174,8 @@ public class SessionControllerTest
         var okResult = Assert.IsType<OkObjectResult>(result.Result);
         var returnedSessions = Assert.IsAssignableFrom<IEnumerable<SessionResponseDto>>(okResult.Value);
         Assert.Equal(2, returnedSessions.Count());
-        Assert.All(returnedSessions, s => Assert.Equal(sessions[0].ScheduleId, s.ScheduleId));
+        Assert.Contains(returnedSessions, s => s.Id == sessions[0].Id);
+        Assert.Contains(returnedSessions, s => s.Id == sessions[1].Id);
     }
 
     [Fact]

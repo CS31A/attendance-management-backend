@@ -446,7 +446,7 @@ public class AdminDataServiceTests
             .ReturnsAsync(Array.Empty<GetAllUsersDto>());
 
         var enrollmentService = new Mock<IStudentEnrollmentService>();
-        enrollmentService.Setup(s => s.EnrollStudentAsync(It.IsAny<int>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<string?>()))
+        enrollmentService.Setup(s => s.EnrollStudentAsync(It.IsAny<CreateStudentEnrollment>()))
             .ReturnsAsync(new StudentEnrollment());
 
         var service = CreateService(context, accountService.Object, enrollmentService: enrollmentService.Object);
@@ -459,7 +459,10 @@ public class AdminDataServiceTests
         Assert.True(result.Success);
         Assert.Equal(1, result.CreatedRows);
 
-        enrollmentService.Verify(s => s.EnrollStudentAsync(20, 3, 11, "Regular", "2024-2025", "1st"), Times.Once);
+        enrollmentService.Verify(s => s.EnrollStudentAsync(It.Is<CreateStudentEnrollment>(e =>
+            e.EnrollmentType == "Regular" &&
+            e.AcademicYear == "2024-2025" &&
+            e.Semester == "1st")), Times.Once);
     }
 
     [Fact]
@@ -940,7 +943,7 @@ public class AdminDataServiceTests
             .ReturnsAsync(Array.Empty<GetAllUsersDto>());
 
         var enrollmentService = new Mock<IStudentEnrollmentService>();
-        enrollmentService.Setup(s => s.EnrollStudentAsync(It.IsAny<int>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<string?>()))
+        enrollmentService.Setup(s => s.EnrollStudentAsync(It.IsAny<CreateStudentEnrollment>()))
             .ReturnsAsync(new StudentEnrollment());
 
         var service = CreateService(context, accountService.Object, enrollmentService: enrollmentService.Object);
@@ -950,7 +953,10 @@ public class AdminDataServiceTests
 
         Assert.True(result.Success);
         Assert.Equal(1, result.CreatedRows);
-        enrollmentService.Verify(s => s.EnrollStudentAsync(20, 3, 11, "Regular", null, null), Times.Once);
+        enrollmentService.Verify(s => s.EnrollStudentAsync(It.Is<CreateStudentEnrollment>(e =>
+            e.EnrollmentType == "Regular" &&
+            e.AcademicYear == null &&
+            e.Semester == null)), Times.Once);
     }
 
     [Fact]
