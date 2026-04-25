@@ -340,7 +340,7 @@ public class SessionControllerTest
 
         // Assert
         var createdAtActionResult = Assert.IsType<CreatedAtActionResult>(result.Result);
-        Assert.Equal(nameof(_sessionController.GetSession), createdAtActionResult.ActionName);
+        Assert.Equal(nameof(_sessionController.GetSessionByUuid), createdAtActionResult.ActionName);
         var session = Assert.IsType<SessionResponseDto>(createdAtActionResult.Value);
         Assert.Equal(createdSession.Id, session.Id);
 

@@ -562,7 +562,9 @@ namespace attendance_monitoring.Services
                         Id = data.Instructor.Uuid,
                         Firstname = data.Instructor.Firstname,
                         Lastname = data.Instructor.Lastname,
-                        Email = data.Instructor.User?.Email
+                        Email = data.Instructor.User?.Email,
+                        CreatedAt = data.Instructor.CreatedAt,
+                        UpdatedAt = data.Instructor.UpdatedAt
                     },
                     Classroom = new ClassroomResponseDto
                     {

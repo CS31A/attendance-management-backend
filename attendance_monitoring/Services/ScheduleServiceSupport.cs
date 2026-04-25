@@ -78,6 +78,8 @@ internal static class ScheduleServiceSupport
                 Firstname = schedule.Instructor.Firstname,
                 Lastname = schedule.Instructor.Lastname,
                 Email = schedule.Instructor.User?.Email ?? string.Empty,
+                CreatedAt = schedule.Instructor.CreatedAt,
+                UpdatedAt = schedule.Instructor.UpdatedAt,
             },
             CreatedAt = schedule.CreatedAt,
             UpdatedAt = schedule.UpdatedAt,
