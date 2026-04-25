@@ -81,7 +81,10 @@ namespace attendance_monitoring.Repositories
         #region UpdateSectionAsync
         public async Task<Section?> UpdateSectionAsync(int id, Section section)
         {
-            var existingSection = await context.Sections.FindAsync(id).ConfigureAwait(false);
+            var existingSection = await context.Sections
+                .Include(s => s.Course)
+                .FirstOrDefaultAsync(s => s.Id == id)
+                .ConfigureAwait(false);
             if (existingSection == null)
             {
                 logger.LogWarning("Section with ID {SectionId} not found for update in database.", id);
