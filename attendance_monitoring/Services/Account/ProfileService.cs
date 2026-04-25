@@ -85,24 +85,36 @@ internal sealed class ProfileService : IProfileService
                 .FirstOrDefaultAsync(s => s.UserId == userId && !s.IsDeleted)
                 .ConfigureAwait(false);
 
-            if (student != null)
+            if (student == null)
             {
-                profile.StudentProfile = new StudentProfileInfo
-                {
-                    Id = student.Uuid,
-                    Firstname = student.Firstname,
-                    Lastname = student.Lastname,
-                    IsRegular = student.IsRegular,
-                    SectionId = student.Section?.Uuid ?? Guid.Empty,
-                    SectionName = student.Section?.Name ?? string.Empty,
-                    CourseId = student.Section?.Course?.Uuid ?? Guid.Empty,
-                    CourseName = student.Section?.Course?.Name ?? string.Empty,
-                    CreatedAt = student.CreatedAt,
-                    UpdatedAt = student.UpdatedAt
-                };
-                profile.CreatedAt = student.CreatedAt;
-                profile.UpdatedAt = student.UpdatedAt;
+                throw new InvalidOperationException($"User {userId} has Student role but is missing required student profile data.");
             }
+
+            if (student.Section == null)
+            {
+                throw new InvalidOperationException($"Student {student.Id} is missing required section data.");
+            }
+
+            if (student.Section.Course == null)
+            {
+                throw new InvalidOperationException($"Student {student.Id} section {student.SectionId} is missing required course data.");
+            }
+
+            profile.StudentProfile = new StudentProfileInfo
+            {
+                Id = student.Uuid,
+                Firstname = student.Firstname,
+                Lastname = student.Lastname,
+                IsRegular = student.IsRegular,
+                SectionId = student.Section.Uuid,
+                SectionName = student.Section.Name,
+                CourseId = student.Section.Course.Uuid,
+                CourseName = student.Section.Course.Name,
+                CreatedAt = student.CreatedAt,
+                UpdatedAt = student.UpdatedAt
+            };
+            profile.CreatedAt = student.CreatedAt;
+            profile.UpdatedAt = student.UpdatedAt;
         }
         else if (role.Equals(RoleConstants.Instructor, StringComparison.OrdinalIgnoreCase))
         {

@@ -23,7 +23,7 @@ public class StudentProfileDto
     public string Firstname { get; set; } = string.Empty;
     public string Lastname { get; set; } = string.Empty;
     public bool IsRegular { get; set; }
-    public Guid SectionId { get; set; }
+    public Guid? SectionId { get; set; }
     public string? SectionName { get; set; }
     public Guid? CourseId { get; set; }
     public string? CourseName { get; set; }

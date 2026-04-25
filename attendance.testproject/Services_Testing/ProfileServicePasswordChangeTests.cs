@@ -19,6 +19,48 @@ namespace attendance.testproject.Services_Testing;
 public class ProfileServicePasswordChangeTests
 {
     [Fact]
+    public async Task GetUserProfileAsync_ThrowsInvalidOperationException_WhenStudentProfileDataIsMissing()
+    {
+        // Arrange
+        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString())
+            .Options;
+
+        await using var context = new ApplicationDbContext(options);
+        var accountRepository = new Mock<IAccountRepository>();
+        var sectionRepository = new Mock<ISectionRepository>();
+        var instructorRepository = new Mock<IInstructorRepository>();
+
+        var user = new IdentityUser { Id = "student-1", UserName = "student", Email = "student@test.com" };
+        accountRepository.Setup(r => r.FindUserByIdAsync("student-1")).ReturnsAsync(user);
+        accountRepository.Setup(r => r.GetUserRolesAsync(user)).ReturnsAsync(new List<string> { "Student" });
+
+        context.Students.Add(new Student
+        {
+            Firstname = "Missing",
+            Lastname = "Section",
+            UserId = "student-1",
+            SectionId = 999,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        });
+        await context.SaveChangesAsync();
+
+        var service = new ProfileService(
+            context,
+            accountRepository.Object,
+            sectionRepository.Object,
+            instructorRepository.Object,
+            NullLogger<ProfileService>.Instance);
+
+        // Act & Assert
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => service.GetUserProfileAsync("student-1"));
+
+        Assert.Contains("missing required student profile data", exception.Message);
+    }
+
+    [Fact]
     public async Task UpdateUserProfileAsync_ThrowsValidationException_WhenNewPasswordProvidedWithoutCurrentPassword()
     {
         // Arrange
@@ -221,17 +263,7 @@ public class ProfileServicePasswordChangeTests
         accountRepository.Setup(r => r.SaveChangesAsync())
             .ReturnsAsync(1);
 
-        // Mock GetUserProfileAsync to return updated profile
-        var updatedProfile = new attendance_monitoring.Models.DTO.Response.UserProfileResponseDto
-        {
-            UserId = "user-1",
-            Username = "testuser",
-            Email = "test@test.com",
-            Role = "Student"
-        };
-
-        // Need to mock the repository methods called by GetUserProfileAsync
-        accountRepository.Setup(r => r.GetStudentByUserIdAsync("user-1")).ReturnsAsync((attendance_monitoring.Classes.Student?)null);
+        await SeedValidStudentProfileAsync(context, user);
 
         var service = new ProfileService(
             context,
@@ -288,8 +320,7 @@ public class ProfileServicePasswordChangeTests
         accountRepository.Setup(r => r.SaveChangesAsync())
             .ReturnsAsync(1);
 
-        // Mock GetUserProfileAsync to return updated profile
-        accountRepository.Setup(r => r.GetStudentByUserIdAsync("user-1")).ReturnsAsync((attendance_monitoring.Classes.Student?)null);
+        await SeedValidStudentProfileAsync(context, user);
 
         var service = new ProfileService(
             context,
@@ -388,7 +419,7 @@ public class ProfileServicePasswordChangeTests
         accountRepository.Setup(r => r.SaveChangesAsync())
             .ReturnsAsync(1);
 
-        accountRepository.Setup(r => r.GetStudentByUserIdAsync("user-1")).ReturnsAsync((attendance_monitoring.Classes.Student?)null);
+        await SeedValidStudentProfileAsync(context, user);
 
         var service = new ProfileService(
             context,
@@ -412,5 +443,37 @@ public class ProfileServicePasswordChangeTests
         // Verify password operations were NOT called
         accountRepository.Verify(r => r.CheckPasswordAsync(It.IsAny<IdentityUser>(), It.IsAny<string>()), Times.Never);
         accountRepository.Verify(r => r.ChangePasswordAsync(It.IsAny<IdentityUser>(), It.IsAny<string>(), It.IsAny<string>()), Times.Never);
+    }
+
+    private static async Task SeedValidStudentProfileAsync(ApplicationDbContext context, IdentityUser user)
+    {
+        context.Users.Add(user);
+
+        var course = new Course
+        {
+            Name = $"Course {Guid.NewGuid()}",
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+
+        var section = new Section
+        {
+            Name = $"Section {Guid.NewGuid()}",
+            Course = course,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+
+        context.Students.Add(new Student
+        {
+            Firstname = "Test",
+            Lastname = "Student",
+            UserId = user.Id,
+            Section = section,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        });
+
+        await context.SaveChangesAsync();
     }
 }

@@ -60,10 +60,10 @@ public class StudentProfileInfo
     public string? Firstname { get; set; }
     public string? Lastname { get; set; }
     public bool IsRegular { get; set; }
-    public Guid SectionId { get; set; }
-    public string SectionName { get; set; } = string.Empty;
-    public Guid CourseId { get; set; }
-    public string CourseName { get; set; } = string.Empty;
+    public Guid? SectionId { get; set; }
+    public string? SectionName { get; set; }
+    public Guid? CourseId { get; set; }
+    public string? CourseName { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
 }

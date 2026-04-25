@@ -780,8 +780,8 @@ namespace attendance_monitoring.Services
                     {
                         SectionId = section.Uuid,
                         SectionName = section.Name,
-                        CourseId = section.Course.Uuid,
-                        CourseName = section.Course.Name,
+                        CourseId = GetRequiredCourse(section).Uuid,
+                        CourseName = GetRequiredCourse(section).Name,
                         Subjects = subjectSchedules
                     });
                 }
@@ -881,8 +881,8 @@ namespace attendance_monitoring.Services
                     {
                         SectionId = section.Uuid,
                         SectionName = section.Name,
-                        CourseId = section.Course.Uuid,
-                        CourseName = section.Course.Name,
+                        CourseId = GetRequiredCourse(section).Uuid,
+                        CourseName = GetRequiredCourse(section).Name,
                         HandledClassCount = handledClassCount,
                         UniqueStudentCount = uniqueStudentCount
                     });
@@ -1035,8 +1035,8 @@ namespace attendance_monitoring.Services
                 {
                     SectionId = section.Uuid,
                     SectionName = section.Name,
-                    CourseId = section.Course.Uuid,
-                    CourseName = section.Course.Name,
+                    CourseId = GetRequiredCourse(section).Uuid,
+                    CourseName = GetRequiredCourse(section).Name,
                     HandledClassCount = handledClasses.Count,
                     HomeSectionStudentCount = homeSectionStudentDtos.Count,
                     HandledClasses = handledClasses.OrderBy(h => h.SubjectName).ToList(),
@@ -1266,6 +1266,12 @@ namespace attendance_monitoring.Services
             }
         }
         #endregion
+
+        private static Course GetRequiredCourse(Section section)
+        {
+            return section.Course
+                ?? throw new InvalidOperationException($"Section {section.Id} is missing required course data.");
+        }
 
         #endregion
     }
