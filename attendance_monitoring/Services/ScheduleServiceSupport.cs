@@ -68,7 +68,7 @@ internal static class ScheduleServiceSupport
             {
                 Id = schedule.Section.Uuid,
                 Name = schedule.Section.Name,
-                CourseId = schedule.Section.Course?.Uuid ?? Guid.Empty,
+                CourseId = schedule.Section.Course?.Uuid,
                 CreatedAt = schedule.Section.CreatedAt,
                 UpdatedAt = schedule.Section.UpdatedAt,
             },

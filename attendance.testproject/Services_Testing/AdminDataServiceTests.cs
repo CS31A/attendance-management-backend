@@ -524,7 +524,7 @@ public class AdminDataServiceTests
             {
                 Id = section.Uuid,
                 Name = section.Name,
-                CourseId = section.Course?.Uuid ?? Guid.Empty,
+                CourseId = section.Course?.Uuid,
             });
 
         var service = CreateService(context, accountService.Object, sectionService: sectionService.Object);
@@ -572,7 +572,7 @@ public class AdminDataServiceTests
             {
                 Id = section.Uuid,
                 Name = section.Name,
-                CourseId = section.Course?.Uuid ?? Guid.Empty,
+                CourseId = section.Course?.Uuid,
             });
 
         var service = CreateService(context, accountService.Object, sectionService: sectionService.Object);
@@ -617,7 +617,7 @@ public class AdminDataServiceTests
             {
                 Id = section.Uuid,
                 Name = section.Name,
-                CourseId = section.Course?.Uuid ?? Guid.Empty,
+                CourseId = section.Course?.Uuid,
             });
 
         var service = CreateService(context, accountService.Object, sectionService: sectionService.Object);
@@ -666,7 +666,7 @@ public class AdminDataServiceTests
             {
                 Id = section.Uuid,
                 Name = section.Name,
-                CourseId = section.Course?.Uuid ?? Guid.Empty,
+                CourseId = section.Course?.Uuid,
             });
 
         var service = CreateService(context, accountService.Object, sectionService: sectionService.Object);
@@ -724,7 +724,7 @@ public class AdminDataServiceTests
             {
                 Id = section.Uuid,
                 Name = section.Name,
-                CourseId = section.Course?.Uuid ?? Guid.Empty,
+                CourseId = section.Course?.Uuid,
             });
 
         var service = CreateService(context, accountService.Object, sectionService: sectionService.Object);

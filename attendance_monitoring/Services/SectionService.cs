@@ -86,7 +86,7 @@ namespace attendance_monitoring.Services
                 {
                     Id = s.Uuid,
                     Name = s.Name,
-                    CourseId = s.Course?.Uuid ?? Guid.Empty,
+                    CourseId = s.Course?.Uuid,
                     CreatedAt = s.CreatedAt,
                     UpdatedAt = s.UpdatedAt
                 }).ToList();
@@ -129,7 +129,7 @@ namespace attendance_monitoring.Services
                 {
                     Id = refreshedSection.Uuid,
                     Name = refreshedSection.Name,
-                    CourseId = refreshedSection.Course?.Uuid ?? Guid.Empty,
+                    CourseId = refreshedSection.Course?.Uuid,
                     CreatedAt = refreshedSection.CreatedAt,
                     UpdatedAt = refreshedSection.UpdatedAt
                 };
@@ -180,7 +180,7 @@ namespace attendance_monitoring.Services
                 {
                     Id = refreshedSection.Uuid,
                     Name = refreshedSection.Name,
-                    CourseId = refreshedSection.Course?.Uuid ?? Guid.Empty,
+                    CourseId = refreshedSection.Course?.Uuid,
                     CreatedAt = refreshedSection.CreatedAt,
                     UpdatedAt = refreshedSection.UpdatedAt
                 };

@@ -117,6 +117,7 @@ public class AttendanceController(IAttendanceService attendanceService, ILogger<
     }
 
     [HttpGet("{id:guid}")]
+    [ActionName("GetAttendanceByUuid")]
     public async Task<ActionResult<AttendanceRecordResponseDto>> GetAttendanceByUuid([FromRoute(Name = "id")] Guid uuid)
     {
         logger.LogInformation("Getting attendance record with UUID: {Uuid}", uuid);

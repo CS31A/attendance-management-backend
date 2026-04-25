@@ -20,7 +20,7 @@ public class UpdateSessionRoom : IValidatableObject
 
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
     {
-        if (!ActualRoomId.HasValue)
+        if (!ActualRoomId.HasValue || ActualRoomId.Value == Guid.Empty)
         {
             yield return new ValidationResult(
                 "ActualRoomId is required.",

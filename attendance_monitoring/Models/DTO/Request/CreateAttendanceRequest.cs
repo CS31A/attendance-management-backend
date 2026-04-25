@@ -38,14 +38,14 @@ public class CreateAttendanceRequest : IValidatableObject
 
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
     {
-        if (!StudentId.HasValue)
+        if (!StudentId.HasValue || StudentId.Value == Guid.Empty)
         {
             yield return new ValidationResult(
                 "StudentId is required.",
                 [nameof(StudentId)]);
         }
 
-        if (!SessionId.HasValue)
+        if (!SessionId.HasValue || SessionId.Value == Guid.Empty)
         {
             yield return new ValidationResult(
                 "SessionId is required.",

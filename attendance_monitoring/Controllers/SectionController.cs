@@ -384,7 +384,7 @@ namespace attendance_monitoring.Controllers
             {
                 Id = section.Uuid,
                 Name = section.Name,
-                CourseId = section.Course?.Uuid ?? Guid.Empty,
+                CourseId = section.Course?.Uuid,
                 CreatedAt = section.CreatedAt,
                 UpdatedAt = section.UpdatedAt
             };

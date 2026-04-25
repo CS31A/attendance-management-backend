@@ -39,7 +39,7 @@ public class CreateSession : IValidatableObject
 
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
     {
-        if (!ScheduleId.HasValue)
+        if (!ScheduleId.HasValue || ScheduleId.Value == Guid.Empty)
         {
             yield return new ValidationResult(
                 "ScheduleId is required.",
