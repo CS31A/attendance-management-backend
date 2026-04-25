@@ -48,6 +48,9 @@ public static class ExceptionHandlingExtensions
                     EntityAlreadyExistsException<int> ex =>
                         (StatusCodes.Status409Conflict, ex.Message, false),
 
+                    EntityAlreadyExistsException<Guid> ex =>
+                        (StatusCodes.Status409Conflict, ex.Message, false),
+
                     EntityAlreadyExistsException<string> ex =>
                         (StatusCodes.Status409Conflict, ex.Message, false),
 
