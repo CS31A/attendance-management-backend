@@ -151,7 +151,7 @@ public class FingerprintServiceTest
         Assert.Equal(2, response.AssignedSensorFingerprintId);
         Assert.Equal(student.Uuid, response.StudentId);
         Assert.Equal("John Doe", response.StudentName);
-        Assert.NotEqual(Guid.Empty, response.Id);
+        Assert.NotEqual(Guid.Empty, response.EnrollmentSessionId);
 
         var persistedSession = await _context.FingerprintEnrollmentSessions.SingleAsync();
         Assert.Equal("Pending", persistedSession.Status);
@@ -218,7 +218,7 @@ public class FingerprintServiceTest
 
         Assert.NotNull(response);
         Assert.True(response!.Success);
-        Assert.Equal(enrollmentSession.Uuid, response.Id);
+        Assert.Equal(enrollmentSession.Uuid, response.EnrollmentSessionId);
         Assert.Equal(student.Uuid, response.StudentId);
         Assert.Equal("InProgress", response.Status);
     }

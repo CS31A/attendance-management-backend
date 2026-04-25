@@ -126,6 +126,40 @@ public class FingerprintController(
         }
     }
 
+    /// <summary>
+    /// Gets an enrollment session by public UUID for instructor monitoring.
+    /// Requires Admin or Instructor role.
+    /// </summary>
+    [HttpGet("enrollment-sessions/{sessionId:guid}")]
+    [Authorize(Policy = "PrivilegedPolicy")]
+    [ProducesResponseType(typeof(FingerprintEnrollmentSessionResponseDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(FingerprintEnrollmentSessionResponseDto), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(FingerprintEnrollmentSessionResponseDto), StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<FingerprintEnrollmentSessionResponseDto>> GetEnrollmentSession(Guid sessionId)
+    {
+        try
+        {
+            var response = await fingerprintService.GetEnrollmentSessionAsync(sessionId, User);
+            return Ok(response);
+        }
+        catch (EntityNotFoundException<Guid> ex)
+        {
+            return NotFound(new FingerprintEnrollmentSessionResponseDto
+            {
+                Success = false,
+                Message = ex.Message
+            });
+        }
+        catch (EntityUnauthorizedException ex)
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new FingerprintEnrollmentSessionResponseDto
+            {
+                Success = false,
+                Message = ex.Message
+            });
+        }
+    }
+
     #endregion
 
     #region Scan/Attendance Endpoints
@@ -263,6 +297,37 @@ public class FingerprintController(
     #endregion
 
     #region Query Endpoints
+
+    /// <summary>
+    /// Gets all active fingerprint devices.
+    /// Requires Admin or Instructor role.
+    /// </summary>
+    /// <returns>List of active fingerprint devices.</returns>
+    /// <response code="200">Devices retrieved successfully</response>
+    /// <response code="401">User not authenticated</response>
+    /// <response code="403">User not authorized</response>
+    [HttpGet("devices")]
+    [Authorize(Policy = "PrivilegedPolicy")]
+    [ProducesResponseType(typeof(IEnumerable<FingerprintDeviceResponseDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<ActionResult<IEnumerable<FingerprintDeviceResponseDto>>> GetDevices(CancellationToken cancellationToken)
+    {
+        logger.LogInformation("Retrieving active fingerprint devices");
+
+        var devices = await fingerprintService.GetDevicesAsync(cancellationToken);
+        var dtos = devices.Select(d => new FingerprintDeviceResponseDto
+        {
+            Id = d.Uuid,
+            DeviceIdentifier = d.DeviceIdentifier,
+            Name = d.Name ?? string.Empty,
+            Location = d.Location ?? string.Empty,
+            IsActive = d.IsActive,
+            LastSeenAt = d.LastSeenAt
+        }).ToList();
+
+        return Ok(dtos);
+    }
 
     /// <summary>
     /// Gets fingerprint information for a student.

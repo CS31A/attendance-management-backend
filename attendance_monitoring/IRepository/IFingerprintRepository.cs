@@ -94,6 +94,13 @@ public interface IFingerprintRepository : ISaveableRepository
     /// <returns>The number of fingerprints registered for the device.</returns>
     Task<int> GetFingerprintCountForDeviceAsync(string deviceId);
 
+    /// <summary>
+    /// Retrieves all active fingerprint devices ordered by name.
+    /// </summary>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>A list of active fingerprint devices.</returns>
+    Task<List<FingerprintDevice>> GetDevicesAsync(CancellationToken cancellationToken = default);
+
     #endregion
 
     #region Write Operations

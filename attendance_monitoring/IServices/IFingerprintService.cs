@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using attendance_monitoring.Classes;
 using attendance_monitoring.Exceptions;
 using attendance_monitoring.Models.DTO.Request;
 using attendance_monitoring.Models.DTO.Response;
@@ -39,6 +40,14 @@ public interface IFingerprintService
     /// <param name="apiKey">The device API key.</param>
     /// <returns>The pending enrollment session if one exists; otherwise null.</returns>
     Task<FingerprintEnrollmentSessionResponseDto?> GetPendingEnrollmentSessionAsync(string deviceId, string apiKey);
+
+    /// <summary>
+    /// Gets an enrollment session by its public UUID for instructor monitoring.
+    /// </summary>
+    /// <param name="sessionId">The public enrollment session UUID.</param>
+    /// <param name="user">The authenticated admin or instructor querying the session.</param>
+    /// <returns>The enrollment session metadata.</returns>
+    Task<FingerprintEnrollmentSessionResponseDto> GetEnrollmentSessionAsync(Guid sessionId, ClaimsPrincipal user);
 
     /// <summary>
     /// Completes an enrollment session after device-side enrollment succeeds or fails.
@@ -99,6 +108,13 @@ public interface IFingerprintService
     /// <param name="studentId">The student UUID.</param>
     /// <returns>True if the student has a registered fingerprint; otherwise, false.</returns>
     Task<bool> StudentHasFingerprintAsync(Guid studentId);
+
+    /// <summary>
+    /// Gets all active fingerprint devices ordered by name.
+    /// </summary>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>A list of active fingerprint devices.</returns>
+    Task<List<FingerprintDevice>> GetDevicesAsync(CancellationToken cancellationToken = default);
 
     #endregion
 }

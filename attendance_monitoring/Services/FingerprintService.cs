@@ -172,6 +172,37 @@ public class FingerprintService(
         return MapEnrollmentSessionDto(enrollmentSession, device.DeviceIdentifier, student);
     }
 
+    public async Task<FingerprintEnrollmentSessionResponseDto> GetEnrollmentSessionAsync(Guid sessionId, ClaimsPrincipal user)
+    {
+        await EnsurePrivilegedUserAsync(user, "monitor fingerprint enrollment").ConfigureAwait(false);
+
+        var enrollmentSession = await context.FingerprintEnrollmentSessions
+            .Include(session => session.Device)
+            .FirstOrDefaultAsync(session => session.Uuid == sessionId)
+            .ConfigureAwait(false);
+
+        if (enrollmentSession == null)
+        {
+            throw new EntityNotFoundException<Guid>("FingerprintEnrollmentSession", sessionId);
+        }
+
+        if ((enrollmentSession.Status == PendingStatus || enrollmentSession.Status == InProgressStatus) &&
+            enrollmentSession.ExpiresAt <= DateTime.UtcNow)
+        {
+            await ExpireStaleEnrollmentSessionsAsync(enrollmentSession.DeviceId).ConfigureAwait(false);
+
+            enrollmentSession = await context.FingerprintEnrollmentSessions
+                .Include(session => session.Device)
+                .FirstAsync(session => session.Uuid == sessionId)
+                .ConfigureAwait(false);
+        }
+
+        var student = await studentRepository.GetStudentByIdAsync(enrollmentSession.StudentId).ConfigureAwait(false)
+                      ?? throw new EntityNotFoundException<int>("Student", enrollmentSession.StudentId);
+
+        return MapEnrollmentSessionDto(enrollmentSession, enrollmentSession.Device.DeviceIdentifier, student);
+    }
+
     public async Task<FingerprintRegistrationResponseDto> CompleteEnrollmentSessionAsync(
         CompleteFingerprintEnrollmentRequest request,
         string apiKey)
@@ -434,6 +465,12 @@ public class FingerprintService(
     {
         var student = await studentRepository.GetStudentByUuidAsync(studentId).ConfigureAwait(false);
         return student != null && await fingerprintRepository.StudentHasFingerprintAsync(student.Id).ConfigureAwait(false);
+    }
+
+    public async Task<List<FingerprintDevice>> GetDevicesAsync(CancellationToken cancellationToken = default)
+    {
+        logger.LogInformation("Fetching active fingerprint devices");
+        return await fingerprintRepository.GetDevicesAsync(cancellationToken).ConfigureAwait(false);
     }
 
     #endregion
@@ -902,13 +939,14 @@ public class FingerprintService(
         {
             Success = true,
             Message = "Fingerprint enrollment session ready",
-            Id = enrollmentSession.Uuid,
+            EnrollmentSessionId = enrollmentSession.Uuid,
             StudentId = student.Uuid,
             StudentName = $"{student.Firstname} {student.Lastname}",
             DeviceId = deviceIdentifier,
             AssignedSensorFingerprintId = enrollmentSession.AssignedSensorFingerprintId,
             Status = enrollmentSession.Status,
-            ExpiresAt = enrollmentSession.ExpiresAt
+            ExpiresAt = enrollmentSession.ExpiresAt,
+            FailureReason = enrollmentSession.FailureReason
         };
     }
 

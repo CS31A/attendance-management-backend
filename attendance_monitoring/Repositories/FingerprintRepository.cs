@@ -110,6 +110,16 @@ public class FingerprintRepository(ApplicationDbContext context, ILogger<Fingerp
             .CountAsync()
             .ConfigureAwait(false);
 
+    public async Task<List<FingerprintDevice>> GetDevicesAsync(CancellationToken cancellationToken = default)
+    {
+        return await context.FingerprintDevices
+            .AsNoTracking()
+            .Where(d => d.IsActive)
+            .OrderBy(d => d.Name)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+    }
+
     #endregion
 
     #region Write Operations
