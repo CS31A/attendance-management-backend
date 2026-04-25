@@ -18,6 +18,7 @@ cleanup() {
   fi
 
   podman stop "$CONTAINER_NAME" >/dev/null 2>&1 || true
+  podman rm "$CONTAINER_NAME" >/dev/null 2>&1 || true
 }
 
 trap cleanup EXIT
@@ -37,7 +38,7 @@ if [[ ! "$DB_NAME" =~ ^[A-Za-z0-9_]+$ ]]; then
   exit 1
 fi
 
-podman run -d --rm \
+podman run -d \
   --name "$CONTAINER_NAME" \
   -e ACCEPT_EULA=Y \
   -e MSSQL_SA_PASSWORD="$PASSWORD" \

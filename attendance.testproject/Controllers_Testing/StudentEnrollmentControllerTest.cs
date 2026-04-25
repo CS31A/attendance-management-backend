@@ -306,6 +306,8 @@ public class StudentEnrollmentControllerTest
 
         _mockService.Setup(s => s.GetStudentEnrollmentsAsync(studentId))
             .ReturnsAsync(enrollments);
+        _mockService.Setup(s => s.GetStudentByIdAsync(studentId))
+            .ReturnsAsync(student);
 
         // Act
         var result = await _controller.GetStudentEnrollments(studentId);
