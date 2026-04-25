@@ -318,7 +318,7 @@ public class FingerprintController(
         var devices = await fingerprintService.GetDevicesAsync(cancellationToken);
         var dtos = devices.Select(d => new FingerprintDeviceResponseDto
         {
-            Id = d.Uuid,
+            Id = d.Id,
             DeviceIdentifier = d.DeviceIdentifier,
             Name = d.Name ?? string.Empty,
             Location = d.Location ?? string.Empty,

@@ -70,7 +70,7 @@ public class QrCodeController(
                 maxUsage = result.MaxUsage
             });
         }
-        catch (EntityNotFoundException<int> ex)
+        catch (EntityNotFoundException<Guid> ex)
         {
             logger.LogWarning(ex, "Entity not found while generating QR code");
             return NotFound(new { message = ex.Message });
@@ -92,7 +92,7 @@ public class QrCodeController(
     [HttpPatch("{id:int}/revoke")]
     [ApiExplorerSettings(IgnoreApi = true)]
     [Authorize(Policy = "PrivilegedPolicy")]
-    public async Task<ActionResult> RevokeQrCode(int id, [FromBody] RevokeQrCode? request)
+    public async Task<ActionResult> RevokeQrCode(Guid id, [FromBody] RevokeQrCode? request)
     {
         logger.LogInformation("Revoking QR code with ID: {QrCodeId}", id);
 
@@ -104,13 +104,13 @@ public class QrCodeController(
 
     [HttpPatch("{id:guid}/revoke")]
     [Authorize(Policy = "PrivilegedPolicy")]
-    public async Task<ActionResult> RevokeQrCodeByUuid([FromRoute(Name = "id")] Guid uuid, [FromBody] RevokeQrCode? request)
+    public async Task<ActionResult> RevokeQrCodeByUuid([FromRoute(Name = "id")] Guid id, [FromBody] RevokeQrCode? request)
     {
-        logger.LogInformation("Revoking QR code with UUID: {QrCodeUuid}", uuid);
+        logger.LogInformation("Revoking QR code with UUID: {QrCodeUuid}", id);
 
-        await qrCodeService.RevokeQrCodeByUuidAsync(uuid, request?.Reason, User);
+        await qrCodeService.RevokeQrCodeByUuidAsync(id, request?.Reason, User);
 
-        logger.LogInformation("Successfully revoked QR code with UUID: {QrCodeUuid}", uuid);
+        logger.LogInformation("Successfully revoked QR code with UUID: {QrCodeUuid}", id);
         return NoContent();
     }
 
@@ -140,7 +140,7 @@ public class QrCodeController(
     [HttpPatch("{id:int}/reactivate")]
     [ApiExplorerSettings(IgnoreApi = true)]
     [Authorize(Policy = "PrivilegedPolicy")]
-    public async Task<ActionResult> ReactivateQrCode(int id)
+    public async Task<ActionResult> ReactivateQrCode(Guid id)
     {
         logger.LogInformation("Reactivating QR code with ID: {QrCodeId}", id);
 
@@ -152,13 +152,13 @@ public class QrCodeController(
 
     [HttpPatch("{id:guid}/reactivate")]
     [Authorize(Policy = "PrivilegedPolicy")]
-    public async Task<ActionResult> ReactivateQrCodeByUuid([FromRoute(Name = "id")] Guid uuid)
+    public async Task<ActionResult> ReactivateQrCodeByUuid([FromRoute(Name = "id")] Guid id)
     {
-        logger.LogInformation("Reactivating QR code with UUID: {QrCodeUuid}", uuid);
+        logger.LogInformation("Reactivating QR code with UUID: {QrCodeUuid}", id);
 
-        await qrCodeService.ReactivateQrCodeByUuidAsync(uuid, User);
+        await qrCodeService.ReactivateQrCodeByUuidAsync(id, User);
 
-        logger.LogInformation("Successfully reactivated QR code with UUID: {QrCodeUuid}", uuid);
+        logger.LogInformation("Successfully reactivated QR code with UUID: {QrCodeUuid}", id);
         return NoContent();
     }
 
@@ -187,7 +187,7 @@ public class QrCodeController(
     [HttpGet("{id:int}")]
     [ApiExplorerSettings(IgnoreApi = true)]
     [Authorize(Policy = "PrivilegedPolicy")]
-    public async Task<ActionResult> GetQrCodeById(int id)
+    public async Task<ActionResult> GetQrCodeById(Guid id)
     {
         logger.LogInformation("Retrieving QR code with ID: {QrCodeId}", id);
 
@@ -206,19 +206,19 @@ public class QrCodeController(
 
     [HttpGet("{id:guid}")]
     [Authorize(Policy = "PrivilegedPolicy")]
-    public async Task<ActionResult> GetQrCodeByUuid([FromRoute(Name = "id")] Guid uuid)
+    public async Task<ActionResult> GetQrCodeByUuid([FromRoute(Name = "id")] Guid id)
     {
-        logger.LogInformation("Retrieving QR code with UUID: {QrCodeUuid}", uuid);
+        logger.LogInformation("Retrieving QR code with UUID: {QrCodeUuid}", id);
 
-        var qrCode = await qrCodeService.GetQrCodeByUuidAsync(uuid);
+        var qrCode = await qrCodeService.GetQrCodeByUuidAsync(id);
 
         if (qrCode == null)
         {
-            logger.LogWarning("QR code with UUID {QrCodeUuid} not found", uuid);
-            return NotFound(new { message = $"QR code with UUID {uuid} not found" });
+            logger.LogWarning("QR code with UUID {QrCodeUuid} not found", id);
+            return NotFound(new { message = $"QR code with UUID {id} not found" });
         }
 
-        logger.LogInformation("Successfully retrieved QR code with UUID: {QrCodeUuid}", uuid);
+        logger.LogInformation("Successfully retrieved QR code with UUID: {QrCodeUuid}", id);
         return Ok(qrCode);
     }
 
@@ -231,7 +231,7 @@ public class QrCodeController(
     [HttpGet("{id:int}/image")]
     [ApiExplorerSettings(IgnoreApi = true)]
     [Authorize(Policy = "PrivilegedPolicy")]
-    public async Task<IActionResult> GetQrCodeImage(int id)
+    public async Task<IActionResult> GetQrCodeImage(Guid id)
     {
         logger.LogInformation("Retrieving QR code image for ID: {QrCodeId}", id);
 
@@ -257,16 +257,16 @@ public class QrCodeController(
 
     [HttpGet("{id:guid}/image")]
     [Authorize(Policy = "PrivilegedPolicy")]
-    public async Task<IActionResult> GetQrCodeImageByUuid([FromRoute(Name = "id")] Guid uuid)
+    public async Task<IActionResult> GetQrCodeImageByUuid([FromRoute(Name = "id")] Guid id)
     {
-        logger.LogInformation("Retrieving QR code image for UUID: {QrCodeUuid}", uuid);
+        logger.LogInformation("Retrieving QR code image for UUID: {QrCodeUuid}", id);
 
-        var qrCode = await qrCodeService.GetQrCodeByUuidAsync(uuid);
+        var qrCode = await qrCodeService.GetQrCodeByUuidAsync(id);
 
         if (qrCode == null)
         {
-            logger.LogWarning("QR code with UUID {QrCodeUuid} not found", uuid);
-            return NotFound(new { message = $"QR code with UUID {uuid} not found" });
+            logger.LogWarning("QR code with UUID {QrCodeUuid} not found", id);
+            return NotFound(new { message = $"QR code with UUID {id} not found" });
         }
 
         using var qrGenerator = new QRCodeGenerator();
@@ -274,7 +274,7 @@ public class QrCodeController(
         var qrCodeImage = new PngByteQRCode(qrCodeData);
         byte[] imageBytes = qrCodeImage.GetGraphic(20);
 
-        logger.LogInformation("Successfully generated image for QR code UUID: {QrCodeUuid}", uuid);
+        logger.LogInformation("Successfully generated image for QR code UUID: {QrCodeUuid}", id);
         return File(imageBytes, "image/png");
     }
 
@@ -310,7 +310,7 @@ public class QrCodeController(
     [HttpGet("session/{sessionId:int}")]
     [ApiExplorerSettings(IgnoreApi = true)]
     [Authorize(Policy = "PrivilegedPolicy")]
-    public async Task<ActionResult> GetQrCodesBySessionId(int sessionId)
+    public async Task<ActionResult> GetQrCodesBySessionId(Guid sessionId)
     {
         logger.LogInformation("Retrieving QR codes for session ID: {SessionId}", sessionId);
 
@@ -494,7 +494,7 @@ public class QrCodeController(
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult> GetScanHistory(
-        int id,
+        Guid id,
         [FromQuery] int pageNumber = 1,
         [FromQuery] int pageSize = 50)
     {
@@ -518,7 +518,7 @@ public class QrCodeController(
 
             return Ok(result);
         }
-        catch (EntityNotFoundException<int> ex)
+        catch (EntityNotFoundException<Guid> ex)
         {
             logger.LogWarning("QR code not found: {Message}", ex.Message);
             return NotFound(new { message = ex.Message, errorCode = "QRCODE_NOT_FOUND" });
@@ -548,7 +548,7 @@ public class QrCodeController(
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult> GetScanHistoryByUuid(
-        [FromRoute(Name = "id")] Guid uuid,
+        [FromRoute(Name = "id")] Guid id,
         [FromQuery] int pageNumber = 1,
         [FromQuery] int pageSize = 50)
     {
@@ -565,10 +565,10 @@ public class QrCodeController(
 
             logger.LogInformation(
                 "Instructor {InstructorId} ({UserRole}) requesting scan history for QR code UUID {QrCodeUuid}",
-                instructorId.Value, userRole, uuid);
+                instructorId.Value, userRole, id);
 
             var result = await qrCodeService.GetScanHistoryByUuidAsync(
-                uuid, instructorId.Value, userRole, pageNumber, pageSize);
+                id, instructorId.Value, userRole, pageNumber, pageSize);
 
             return Ok(result);
         }
@@ -590,7 +590,7 @@ public class QrCodeController(
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Error retrieving scan history for QR code UUID {QrCodeUuid}", uuid);
+            logger.LogError(ex, "Error retrieving scan history for QR code UUID {QrCodeUuid}", id);
             return StatusCode(500, new { message = "An error occurred while retrieving scan history" });
         }
     }

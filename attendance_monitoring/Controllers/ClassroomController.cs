@@ -46,7 +46,7 @@ public class ClassroomController(IClassroomService classroomService, ILogger<Cla
     // GET: api/Classrooms/5
     [HttpGet("{id:int}")]
     [ApiExplorerSettings(IgnoreApi = true)]
-    public async Task<ActionResult<Classroom>> GetClassroom(int id)
+    public async Task<ActionResult<Classroom>> GetClassroom(Guid id)
     {
         logger.LogInformation("Getting classroom with ID: {Id}", id);
         try
@@ -55,7 +55,7 @@ public class ClassroomController(IClassroomService classroomService, ILogger<Cla
             logger.LogInformation("Successfully retrieved classroom with ID: {Id}", id);
             return Ok(classroom);
         }
-        catch (EntityNotFoundException<int> ex)
+        catch (EntityNotFoundException<Guid> ex)
         {
             logger.LogWarning(ex, "Classroom with ID {Id} not found", id);
             return NotFound(new { message = ex.Message });
@@ -64,18 +64,18 @@ public class ClassroomController(IClassroomService classroomService, ILogger<Cla
     }
 
     [HttpGet("{id:guid}")]
-    public async Task<ActionResult<Classroom>> GetClassroomByUuid([FromRoute(Name = "id")] Guid uuid)
+    public async Task<ActionResult<Classroom>> GetClassroomByUuid([FromRoute(Name = "id")] Guid id)
     {
-        logger.LogInformation("Getting classroom with UUID: {Uuid}", uuid);
+        logger.LogInformation("Getting classroom with UUID: {Id}", id);
         try
         {
-            var classroom = await classroomService.GetClassroomByUuidAsync(uuid);
-            logger.LogInformation("Successfully retrieved classroom with UUID: {Uuid}", uuid);
+            var classroom = await classroomService.GetClassroomByUuidAsync(id);
+            logger.LogInformation("Successfully retrieved classroom with UUID: {Id}", id);
             return Ok(classroom);
         }
         catch (EntityNotFoundException<Guid> ex)
         {
-            logger.LogWarning(ex, "Classroom with UUID {Uuid} not found", uuid);
+            logger.LogWarning(ex, "Classroom with UUID {Id} not found", id);
             return NotFound(new { message = ex.Message });
         }
     }
@@ -132,7 +132,7 @@ public class ClassroomController(IClassroomService classroomService, ILogger<Cla
     [HttpPatch("{id:int}")]
     [ApiExplorerSettings(IgnoreApi = true)]
     [Authorize(Policy = "AdminPolicy")]
-    public async Task<ActionResult<Classroom>> UpdateClassroom(int id, UpdateClassroom updateClassroom)
+    public async Task<ActionResult<Classroom>> UpdateClassroom(Guid id, UpdateClassroom updateClassroom)
     {
         logger.LogInformation("Updating classroom with ID: {Id}", id);
         if (!ModelState.IsValid)
@@ -150,18 +150,18 @@ public class ClassroomController(IClassroomService classroomService, ILogger<Cla
 
     [HttpPatch("{id:guid}")]
     [Authorize(Policy = "AdminPolicy")]
-    public async Task<ActionResult<Classroom>> UpdateClassroomByUuid([FromRoute(Name = "id")] Guid uuid, UpdateClassroom updateClassroom)
+    public async Task<ActionResult<Classroom>> UpdateClassroomByUuid([FromRoute(Name = "id")] Guid id, UpdateClassroom updateClassroom)
     {
-        logger.LogInformation("Updating classroom with UUID: {Uuid}", uuid);
+        logger.LogInformation("Updating classroom with UUID: {Id}", id);
         if (!ModelState.IsValid)
         {
-            logger.LogWarning("Classroom update failed due to invalid model state for classroom UUID: {Uuid}", uuid);
+            logger.LogWarning("Classroom update failed due to invalid model state for classroom UUID: {Id}", id);
             return BadRequest(ModelState);
         }
 
-        var classroom = await classroomService.UpdateClassroomByUuidAsync(uuid, updateClassroom);
+        var classroom = await classroomService.UpdateClassroomByUuidAsync(id, updateClassroom);
 
-        logger.LogInformation("Successfully updated classroom with UUID: {Uuid}", uuid);
+        logger.LogInformation("Successfully updated classroom with UUID: {Id}", id);
         return Ok(classroom);
     }
 
@@ -182,7 +182,7 @@ public class ClassroomController(IClassroomService classroomService, ILogger<Cla
     [HttpDelete("{id:int}")]
     [ApiExplorerSettings(IgnoreApi = true)]
     [Authorize(Policy = "AdminPolicy")]
-    public async Task<ActionResult> DeleteClassroom(int id)
+    public async Task<ActionResult> DeleteClassroom(Guid id)
     {
         logger.LogInformation("Deleting classroom with ID: {Id}", id);
 
@@ -195,23 +195,23 @@ public class ClassroomController(IClassroomService classroomService, ILogger<Cla
 
     [HttpDelete("{id:guid}")]
     [Authorize(Policy = "AdminPolicy")]
-    public async Task<ActionResult> DeleteClassroomByUuid([FromRoute(Name = "id")] Guid uuid)
+    public async Task<ActionResult> DeleteClassroomByUuid([FromRoute(Name = "id")] Guid id)
     {
-        logger.LogInformation("Deleting classroom with UUID: {Uuid}", uuid);
+        logger.LogInformation("Deleting classroom with UUID: {Id}", id);
 
-        await classroomService.DeleteClassroomByUuidAsync(uuid);
+        await classroomService.DeleteClassroomByUuidAsync(id);
 
-        logger.LogInformation("Successfully deleted classroom with UUID: {Uuid}", uuid);
+        logger.LogInformation("Successfully deleted classroom with UUID: {Id}", id);
         return NoContent();
     }
 
     [Authorize(Policy = "PrivilegedPolicy")]
     [HttpGet("{id:int}/has-schedules")]
-    public async Task<ActionResult<bool>> HasSchedulesInClassroom(int id)
+    public async Task<ActionResult<bool>> HasSchedulesInClassroom(Guid id)
     {
         try
         {
-            if (id <= 0)
+            if (id == Guid.Empty)
             {
                 logger.LogWarning("Invalid classroom ID {ClassroomId} provided for dependency check.", id);
                 return BadRequest("Classroom ID must be greater than 0.");
@@ -229,11 +229,11 @@ public class ClassroomController(IClassroomService classroomService, ILogger<Cla
 
     [Authorize(Policy = "PrivilegedPolicy")]
     [HttpGet("{id:int}/has-sessions")]
-    public async Task<ActionResult<bool>> HasSessionsInClassroom(int id)
+    public async Task<ActionResult<bool>> HasSessionsInClassroom(Guid id)
     {
         try
         {
-            if (id <= 0)
+            if (id == Guid.Empty)
             {
                 logger.LogWarning("Invalid classroom ID {ClassroomId} provided for dependency check.", id);
                 return BadRequest("Classroom ID must be greater than 0.");
