@@ -351,6 +351,7 @@ public class FingerprintService(
         return await HandleMatchedFingerprintAsync(
             fingerprint,
             requestedSessionId,
+            request.SessionId.HasValue,
             "DeviceSlot",
             request.Confidence,
             scanEvent).ConfigureAwait(false);
@@ -442,6 +443,7 @@ public class FingerprintService(
     private async Task<FingerprintScanResponseDto> HandleMatchedFingerprintAsync(
         Fingerprint fingerprint,
         int? requestedSessionId,
+        bool wasSessionRequested,
         string matchMethod,
         int? matchScore,
         FingerprintScanEvent? scanEvent)
@@ -467,9 +469,11 @@ public class FingerprintService(
         }
 
         Session? session;
-        if (requestedSessionId.HasValue)
+        if (wasSessionRequested)
         {
-            session = await sessionRepository.GetSessionByIdAsync(requestedSessionId.Value).ConfigureAwait(false);
+            session = requestedSessionId.HasValue
+                ? await sessionRepository.GetSessionByIdAsync(requestedSessionId.Value).ConfigureAwait(false)
+                : null;
             if (session == null)
             {
                 if (scanEvent != null)
