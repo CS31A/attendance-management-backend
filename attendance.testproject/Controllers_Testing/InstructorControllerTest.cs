@@ -70,25 +70,25 @@ public class InstructorControllerTest
         {
             new ScheduleResponseDto
             {
-                Id = 1,
+                Id = Guid.NewGuid(),
                 TimeIn = new TimeOnly(8, 0),
                 TimeOut = new TimeOnly(10, 0),
                 DayOfWeek = "Monday",
-                Subject = new SubjectResponseDto { Id = 1, Name = "Math", Code = "MATH101" },
-                Classroom = new ClassroomResponseDto { Id = 1, Name = "Room 101" },
-                Section = new SectionResponseDto { Id = 1, Name = "Section A", CourseId = 1 },
-                Instructor = new InstructorResponseDto { Id = 1, Firstname = "John", Lastname = "Doe" }
+                Subject = new SubjectResponseDto { Id = Guid.NewGuid(), Name = "Math", Code = "MATH101" },
+                Classroom = new ClassroomResponseDto { Id = Guid.NewGuid(), Name = "Room 101" },
+                Section = new SectionResponseDto { Id = Guid.NewGuid(), Name = "Section A", CourseId = Guid.NewGuid() },
+                Instructor = new InstructorResponseDto { Id = Guid.NewGuid(), Firstname = "John", Lastname = "Doe" }
             },
             new ScheduleResponseDto
             {
-                Id = 2,
+                Id = Guid.NewGuid(),
                 TimeIn = new TimeOnly(10, 0),
                 TimeOut = new TimeOnly(12, 0),
                 DayOfWeek = "Tuesday",
-                Subject = new SubjectResponseDto { Id = 2, Name = "Science", Code = "SCI101" },
-                Classroom = new ClassroomResponseDto { Id = 2, Name = "Room 102" },
-                Section = new SectionResponseDto { Id = 2, Name = "Section B", CourseId = 1 },
-                Instructor = new InstructorResponseDto { Id = 1, Firstname = "John", Lastname = "Doe" }
+                Subject = new SubjectResponseDto { Id = Guid.NewGuid(), Name = "Science", Code = "SCI101" },
+                Classroom = new ClassroomResponseDto { Id = Guid.NewGuid(), Name = "Room 102" },
+                Section = new SectionResponseDto { Id = Guid.NewGuid(), Name = "Section B", CourseId = Guid.NewGuid() },
+                Instructor = new InstructorResponseDto { Id = Guid.NewGuid(), Firstname = "John", Lastname = "Doe" }
             }
         };
         _mockInstructorService
@@ -169,35 +169,35 @@ public class InstructorControllerTest
         // Arrange
         var expectedResponse = new InstructorSectionsWithStudentsResponseDto
         {
-            InstructorId = 1,
-            InstructorUuid = Guid.NewGuid(),
+            InstructorId = Guid.NewGuid(),
             InstructorFirstname = "John",
             InstructorLastname = "Doe",
             Sections = new List<SectionWithStudentsDto>
             {
                 new SectionWithStudentsDto
                 {
-                    SectionId = 1,
+                    SectionId = Guid.NewGuid(),
                     SectionName = "BSCS 3A",
-                    CourseId = 1,
+                    CourseId = Guid.NewGuid(),
                     CourseName = "Bachelor of Science in Computer Science",
                     Subjects = new List<SubjectScheduleDto>
                     {
                         new SubjectScheduleDto
                         {
-                            SubjectId = 1,
+                            SubjectId = Guid.NewGuid(),
                             SubjectName = "Data Structures",
                             SubjectCode = "CS301",
-                            ScheduleId = 1,
+                            ScheduleId = Guid.NewGuid(),
                             DayOfWeek = "Monday",
                             TimeIn = new TimeOnly(8, 0),
                             TimeOut = new TimeOnly(10, 0),
+                            ClassroomId = Guid.NewGuid(),
                             ClassroomName = "Room 101",
                             Students = new List<StudentDto>
                             {
                                 new StudentDto
                                 {
-                                    StudentId = 1,
+                                    StudentId = Guid.NewGuid(),
                                     Firstname = "Alice",
                                     Lastname = "Smith",
                                     IsRegular = true,
@@ -219,7 +219,7 @@ public class InstructorControllerTest
         // Assert
         var okResult = Assert.IsType<OkObjectResult>(result.Result);
         var response = Assert.IsType<InstructorSectionsWithStudentsResponseDto>(okResult.Value);
-        Assert.Equal(1, response.InstructorId);
+        Assert.Equal(expectedResponse.InstructorId, response.InstructorId);
         Assert.Equal("John", response.InstructorFirstname);
         Assert.Equal("Doe", response.InstructorLastname);
         Assert.Single(response.Sections);
@@ -273,22 +273,18 @@ public class InstructorControllerTest
         {
             new InstructorSectionOverviewDto
             {
-                SectionId = 1,
-                SectionUuid = Guid.NewGuid(),
+                SectionId = Guid.NewGuid(),
                 SectionName = "BSCS 3A",
-                CourseId = 1,
-                CourseUuid = Guid.NewGuid(),
+                CourseId = Guid.NewGuid(),
                 CourseName = "Computer Science",
                 HandledClassCount = 2,
                 UniqueStudentCount = 30
             },
             new InstructorSectionOverviewDto
             {
-                SectionId = 2,
-                SectionUuid = Guid.NewGuid(),
+                SectionId = Guid.NewGuid(),
                 SectionName = "BSCS 3B",
-                CourseId = 1,
-                CourseUuid = Guid.NewGuid(),
+                CourseId = Guid.NewGuid(),
                 CourseName = "Computer Science",
                 HandledClassCount = 1,
                 UniqueStudentCount = 25
@@ -370,14 +366,12 @@ public class InstructorControllerTest
     public async Task GetMySectionDetail_ReturnsOkResult_WithSectionDetail()
     {
         // Arrange
-        var sectionId = 1;
+        var sectionId = Guid.NewGuid();
         var expectedDetail = new InstructorSectionDetailDto
         {
             SectionId = sectionId,
-            SectionUuid = Guid.NewGuid(),
             SectionName = "BSCS 3A",
-            CourseId = 1,
-            CourseUuid = Guid.NewGuid(),
+            CourseId = Guid.NewGuid(),
             CourseName = "Computer Science",
             HandledClassCount = 2,
             HomeSectionStudentCount = 30,
@@ -385,17 +379,14 @@ public class InstructorControllerTest
             {
                 new InstructorHandledClassDto
                 {
-                    SubjectId = 1,
-                    SubjectUuid = Guid.NewGuid(),
+                    SubjectId = Guid.NewGuid(),
                     SubjectName = "Data Structures",
                     SubjectCode = "CS301",
-                    ScheduleId = 1,
-                    ScheduleUuid = Guid.NewGuid(),
+                    ScheduleId = Guid.NewGuid(),
                     DayOfWeek = "Monday",
                     TimeIn = new TimeOnly(8, 0),
                     TimeOut = new TimeOnly(10, 0),
-                    ClassroomId = 1,
-                    ClassroomUuid = Guid.NewGuid(),
+                    ClassroomId = Guid.NewGuid(),
                     ClassroomName = "Room 101",
                     StudentCount = 30,
                     Students = new List<InstructorHandledClassStudentDto>()
@@ -404,7 +395,7 @@ public class InstructorControllerTest
             HomeSectionStudents = new List<InstructorHomeSectionStudentDto>()
         };
         _mockInstructorService
-            .Setup(s => s.GetInstructorSectionDetailAsync(It.IsAny<ClaimsPrincipal>(), sectionId))
+            .Setup(s => s.GetInstructorSectionDetailByUuidAsync(It.IsAny<ClaimsPrincipal>(), sectionId))
             .ReturnsAsync(expectedDetail);
 
         // Act
@@ -413,18 +404,18 @@ public class InstructorControllerTest
         // Assert
         var okResult = Assert.IsType<OkObjectResult>(result.Result);
         var detail = Assert.IsType<InstructorSectionDetailDto>(okResult.Value);
-        Assert.Equal(sectionId, detail.SectionId);
+        Assert.Equal(expectedDetail.SectionId, detail.SectionId);
         Assert.Equal("BSCS 3A", detail.SectionName);
-        _mockInstructorService.Verify(s => s.GetInstructorSectionDetailAsync(It.IsAny<ClaimsPrincipal>(), sectionId), Times.Once);
+        _mockInstructorService.Verify(s => s.GetInstructorSectionDetailByUuidAsync(It.IsAny<ClaimsPrincipal>(), sectionId), Times.Once);
     }
 
     [Fact]
     public async Task GetMySectionDetail_ReturnsNotFound_WhenInstructorNotFound()
     {
         // Arrange
-        var sectionId = 1;
+        var sectionId = Guid.NewGuid();
         _mockInstructorService
-            .Setup(s => s.GetInstructorSectionDetailAsync(It.IsAny<ClaimsPrincipal>(), sectionId))
+            .Setup(s => s.GetInstructorSectionDetailByUuidAsync(It.IsAny<ClaimsPrincipal>(), sectionId))
             .ThrowsAsync(new attendance_monitoring.Exceptions.EntityNotFoundException<string>("Instructor", "UserId: 1"));
 
         // Act
@@ -439,10 +430,10 @@ public class InstructorControllerTest
     public async Task GetMySectionDetail_ReturnsNotFound_WhenSectionNotFound()
     {
         // Arrange
-        var sectionId = 999;
+        var sectionId = Guid.NewGuid();
         _mockInstructorService
-            .Setup(s => s.GetInstructorSectionDetailAsync(It.IsAny<ClaimsPrincipal>(), sectionId))
-            .ThrowsAsync(new attendance_monitoring.Exceptions.EntityNotFoundException<int>("Section", sectionId));
+            .Setup(s => s.GetInstructorSectionDetailByUuidAsync(It.IsAny<ClaimsPrincipal>(), sectionId))
+            .ThrowsAsync(new attendance_monitoring.Exceptions.EntityNotFoundException<Guid>("Section", sectionId));
 
         // Act
         var result = await _instructorController.GetMySectionDetail(sectionId);
@@ -456,9 +447,9 @@ public class InstructorControllerTest
     public async Task GetMySectionDetail_ReturnsForbidden_WhenNotAuthorized()
     {
         // Arrange
-        var sectionId = 1;
+        var sectionId = Guid.NewGuid();
         _mockInstructorService
-            .Setup(s => s.GetInstructorSectionDetailAsync(It.IsAny<ClaimsPrincipal>(), sectionId))
+            .Setup(s => s.GetInstructorSectionDetailByUuidAsync(It.IsAny<ClaimsPrincipal>(), sectionId))
             .ThrowsAsync(new attendance_monitoring.Exceptions.EntityUnauthorizedException("Section", "View section", "1", "You are not authorized to view this section"));
 
         // Act
@@ -474,9 +465,9 @@ public class InstructorControllerTest
     public async Task GetMySectionDetail_ReturnsInternalServerError_WhenServiceExceptionOccurs()
     {
         // Arrange
-        var sectionId = 1;
+        var sectionId = Guid.NewGuid();
         _mockInstructorService
-            .Setup(s => s.GetInstructorSectionDetailAsync(It.IsAny<ClaimsPrincipal>(), sectionId))
+            .Setup(s => s.GetInstructorSectionDetailByUuidAsync(It.IsAny<ClaimsPrincipal>(), sectionId))
             .ThrowsAsync(new attendance_monitoring.Exceptions.EntityServiceException("Instructor", "GetInstructorSectionDetail", "Service error"));
 
         // Act
@@ -496,16 +487,15 @@ public class InstructorControllerTest
     public async Task GetMyStudentDetail_ReturnsOkResult_WithStudentDetail()
     {
         // Arrange
-        var studentId = 1;
+        var studentId = Guid.NewGuid();
         var expectedDetail = new InstructorStudentDetailDto
         {
             StudentId = studentId,
-            StudentUuid = Guid.NewGuid(),
             Firstname = "Alice",
             Lastname = "Smith",
-            SectionId = 1,
+            SectionId = Guid.NewGuid(),
             SectionName = "BSCS 3A",
-            CourseId = 1,
+            CourseId = Guid.NewGuid(),
             CourseName = "Computer Science",
             IsRegular = true,
             EnrollmentType = "Regular",
@@ -513,10 +503,10 @@ public class InstructorControllerTest
             {
                 new InstructorStudentEnrollmentDto
                 {
-                    SubjectId = 1,
+                    SubjectId = Guid.NewGuid(),
                     SubjectName = "Data Structures",
                     SubjectCode = "CS301",
-                    SectionId = 1,
+                    SectionId = Guid.NewGuid(),
                     SectionName = "BSCS 3A",
                     EnrollmentType = "Regular"
                 }
@@ -531,7 +521,7 @@ public class InstructorControllerTest
             }
         };
         _mockInstructorService
-            .Setup(s => s.GetInstructorStudentDetailAsync(It.IsAny<ClaimsPrincipal>(), studentId))
+            .Setup(s => s.GetInstructorStudentDetailByUuidAsync(It.IsAny<ClaimsPrincipal>(), studentId))
             .ReturnsAsync(expectedDetail);
 
         // Act
@@ -540,19 +530,19 @@ public class InstructorControllerTest
         // Assert
         var okResult = Assert.IsType<OkObjectResult>(result.Result);
         var detail = Assert.IsType<InstructorStudentDetailDto>(okResult.Value);
-        Assert.Equal(studentId, detail.StudentId);
+        Assert.Equal(expectedDetail.StudentId, detail.StudentId);
         Assert.Equal("Alice", detail.Firstname);
         Assert.Equal("Smith", detail.Lastname);
-        _mockInstructorService.Verify(s => s.GetInstructorStudentDetailAsync(It.IsAny<ClaimsPrincipal>(), studentId), Times.Once);
+        _mockInstructorService.Verify(s => s.GetInstructorStudentDetailByUuidAsync(It.IsAny<ClaimsPrincipal>(), studentId), Times.Once);
     }
 
     [Fact]
     public async Task GetMyStudentDetail_ReturnsNotFound_WhenInstructorNotFound()
     {
         // Arrange
-        var studentId = 1;
+        var studentId = Guid.NewGuid();
         _mockInstructorService
-            .Setup(s => s.GetInstructorStudentDetailAsync(It.IsAny<ClaimsPrincipal>(), studentId))
+            .Setup(s => s.GetInstructorStudentDetailByUuidAsync(It.IsAny<ClaimsPrincipal>(), studentId))
             .ThrowsAsync(new attendance_monitoring.Exceptions.EntityNotFoundException<string>("Instructor", "UserId: 1"));
 
         // Act
@@ -567,10 +557,10 @@ public class InstructorControllerTest
     public async Task GetMyStudentDetail_ReturnsNotFound_WhenStudentNotFound()
     {
         // Arrange
-        var studentId = 999;
+        var studentId = Guid.NewGuid();
         _mockInstructorService
-            .Setup(s => s.GetInstructorStudentDetailAsync(It.IsAny<ClaimsPrincipal>(), studentId))
-            .ThrowsAsync(new attendance_monitoring.Exceptions.EntityNotFoundException<int>("Student", studentId));
+            .Setup(s => s.GetInstructorStudentDetailByUuidAsync(It.IsAny<ClaimsPrincipal>(), studentId))
+            .ThrowsAsync(new attendance_monitoring.Exceptions.EntityNotFoundException<Guid>("Student", studentId));
 
         // Act
         var result = await _instructorController.GetMyStudentDetail(studentId);
@@ -584,9 +574,9 @@ public class InstructorControllerTest
     public async Task GetMyStudentDetail_ReturnsForbidden_WhenNotAuthorized()
     {
         // Arrange
-        var studentId = 1;
+        var studentId = Guid.NewGuid();
         _mockInstructorService
-            .Setup(s => s.GetInstructorStudentDetailAsync(It.IsAny<ClaimsPrincipal>(), studentId))
+            .Setup(s => s.GetInstructorStudentDetailByUuidAsync(It.IsAny<ClaimsPrincipal>(), studentId))
             .ThrowsAsync(new attendance_monitoring.Exceptions.EntityUnauthorizedException("Student", "View student", "1", "You are not authorized to view this student"));
 
         // Act
@@ -602,9 +592,9 @@ public class InstructorControllerTest
     public async Task GetMyStudentDetail_ReturnsInternalServerError_WhenServiceExceptionOccurs()
     {
         // Arrange
-        var studentId = 1;
+        var studentId = Guid.NewGuid();
         _mockInstructorService
-            .Setup(s => s.GetInstructorStudentDetailAsync(It.IsAny<ClaimsPrincipal>(), studentId))
+            .Setup(s => s.GetInstructorStudentDetailByUuidAsync(It.IsAny<ClaimsPrincipal>(), studentId))
             .ThrowsAsync(new attendance_monitoring.Exceptions.EntityServiceException("Instructor", "GetInstructorStudentDetail", "Service error"));
 
         // Act

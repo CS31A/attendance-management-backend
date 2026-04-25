@@ -97,14 +97,13 @@ namespace attendance_monitoring.Repositories
                 Role = string.IsNullOrEmpty(role.Name) ? "Unknown" : RoleConstants.NormalizeRole(role.Name),
                 StudentProfile = student != null ? new StudentProfileDto
                 {
-                    Id = student.Id,
-                    Uuid = student.Uuid,
+                    Id = student.Uuid,
                     Firstname = student.Firstname,
                     Lastname = student.Lastname,
                     IsRegular = student.IsRegular,
-                    SectionId = student.SectionId,
+                    SectionId = student.Section != null ? student.Section.Uuid : null,
                     SectionName = student.Section != null ? student.Section.Name : null,
-                    CourseId = student.Section != null && student.Section.Course != null ? student.Section.Course.Id : null,
+                    CourseId = student.Section != null && student.Section.Course != null ? student.Section.Course.Uuid : null,
                     CourseName = student.Section != null && student.Section.Course != null ? student.Section.Course.Name : null,
                     CreatedAt = student.CreatedAt,
                     UpdatedAt = student.UpdatedAt,
@@ -113,8 +112,7 @@ namespace attendance_monitoring.Repositories
                 } : null,
                 InstructorProfile = instructor != null ? new InstructorProfileDto
                 {
-                    Id = instructor.Id,
-                    Uuid = instructor.Uuid,
+                    Id = instructor.Uuid,
                     Firstname = instructor.Firstname,
                     Lastname = instructor.Lastname,
                     Department = instructor.Department,
@@ -125,8 +123,7 @@ namespace attendance_monitoring.Repositories
                 } : null,
                 AdminProfile = admin != null ? new AdminProfileDto
                 {
-                    Id = admin.Id,
-                    Uuid = admin.Uuid,
+                    Id = admin.Uuid,
                     Firstname = admin.Firstname,
                     Lastname = admin.Lastname,
                     CreatedAt = admin.CreatedAt,
@@ -164,13 +161,12 @@ namespace attendance_monitoring.Repositories
                 Role = string.IsNullOrEmpty(r.Role) ? "Unknown" : RoleConstants.NormalizeRole(r.Role),
                 StudentProfile = r.Role.Equals("Student", StringComparison.OrdinalIgnoreCase) && r.ProfileId.HasValue ? new StudentProfileDto
                 {
-                    Id = r.ProfileId.Value,
-                    Uuid = r.ProfileUuid ?? Guid.Empty,
+                    Id = r.ProfileUuid ?? Guid.Empty,
                     Firstname = r.Firstname ?? string.Empty,
                     Lastname = r.Lastname ?? string.Empty,
-                    SectionId = r.SectionId ?? 0,
+                    SectionId = r.SectionUuid,
                     SectionName = r.SectionName,
-                    CourseId = r.CourseId,
+                    CourseId = r.CourseUuid,
                     CourseName = r.CourseName,
                     IsRegular = r.IsRegular ?? false,
                     CreatedAt = r.CreatedAt ?? DateTime.UtcNow,
@@ -180,8 +176,7 @@ namespace attendance_monitoring.Repositories
                 } : null,
                 InstructorProfile = RoleConstants.IsInstructorRole(r.Role) && r.ProfileId.HasValue ? new InstructorProfileDto
                 {
-                    Id = r.ProfileId.Value,
-                    Uuid = r.ProfileUuid ?? Guid.Empty,
+                    Id = r.ProfileUuid ?? Guid.Empty,
                     Firstname = r.Firstname,
                     Lastname = r.Lastname,
                     Department = r.Department,
@@ -192,8 +187,7 @@ namespace attendance_monitoring.Repositories
                 } : null,
                 AdminProfile = r.Role.Equals("Admin", StringComparison.OrdinalIgnoreCase) && r.ProfileId.HasValue ? new AdminProfileDto
                 {
-                    Id = r.ProfileId.Value,
-                    Uuid = r.ProfileUuid ?? Guid.Empty,
+                    Id = r.ProfileUuid ?? Guid.Empty,
                     Firstname = r.Firstname,
                     Lastname = r.Lastname,
                     CreatedAt = r.CreatedAt ?? DateTime.UtcNow,
@@ -221,8 +215,10 @@ namespace attendance_monitoring.Repositories
             public string? Lastname { get; set; }
             public string? Department { get; set; }
             public int? SectionId { get; set; }
+            public Guid? SectionUuid { get; set; }
             public string? SectionName { get; set; }
             public int? CourseId { get; set; }
+            public Guid? CourseUuid { get; set; }
             public string? CourseName { get; set; }
             public bool? IsRegular { get; set; }
             public DateTime? CreatedAt { get; set; }
@@ -584,10 +580,11 @@ namespace attendance_monitoring.Repositories
                         {
                             userDto.StudentProfile = new StudentProfileDto
                             {
-                                Id = result.ProfileId,
-                                Uuid = result.ProfileUuid ?? Guid.Empty,
+                                Id = result.ProfileUuid ?? Guid.Empty,
                                 Firstname = result.Firstname ?? string.Empty,
                                 Lastname = result.Lastname ?? string.Empty,
+                                SectionId = result.SectionUuid,
+                                CourseId = result.CourseUuid,
                                 CreatedAt = result.CreatedAt,
                                 UpdatedAt = result.UpdatedAt
                             };
@@ -596,8 +593,7 @@ namespace attendance_monitoring.Repositories
                         {
                             userDto.InstructorProfile = new InstructorProfileDto
                             {
-                                Id = result.ProfileId,
-                                Uuid = result.ProfileUuid ?? Guid.Empty,
+                                Id = result.ProfileUuid ?? Guid.Empty,
                                 Firstname = result.Firstname,
                                 Lastname = result.Lastname,
                                 CreatedAt = result.CreatedAt,
@@ -608,8 +604,7 @@ namespace attendance_monitoring.Repositories
                         {
                             userDto.AdminProfile = new AdminProfileDto
                             {
-                                Id = result.ProfileId,
-                                Uuid = result.ProfileUuid ?? Guid.Empty,
+                                Id = result.ProfileUuid ?? Guid.Empty,
                                 Firstname = result.Firstname,
                                 Lastname = result.Lastname,
                                 CreatedAt = result.CreatedAt,

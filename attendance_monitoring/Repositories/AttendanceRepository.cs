@@ -41,6 +41,32 @@ public class AttendanceRepository(ApplicationDbContext context) : IAttendanceRep
     }
 
     /// <summary>
+    /// Retrieves an attendance record by its UUID with all navigation properties loaded.
+    /// Performance: Single JOIN query (no split query for single record).
+    /// Loads: Student, Session, Schedule, Subject, Section, Classroom, Instructor, QrCode.
+    /// Use case: UUID detail views requiring full attendance information.
+    /// </summary>
+    public async Task<AttendanceRecord?> GetAttendanceByUuidAsync(Guid uuid)
+    {
+        return await ApplyFullIncludes(context.AttendanceRecords.AsNoTracking())
+            .FirstOrDefaultAsync(a => a.Uuid == uuid)
+            .ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Retrieves an attendance record by its UUID with all navigation properties loaded, with change tracking enabled.
+    /// Performance: Single JOIN query (no split query for single record).
+    /// Loads: Student, Session, Schedule, Subject, Section, Classroom, Instructor, QrCode.
+    /// Use case: UUID update operations where the entity needs to be tracked for changes.
+    /// </summary>
+    public async Task<AttendanceRecord?> GetAttendanceByUuidTrackedAsync(Guid uuid)
+    {
+        return await ApplyFullIncludes(context.AttendanceRecords)
+            .FirstOrDefaultAsync(a => a.Uuid == uuid)
+            .ConfigureAwait(false);
+    }
+
+    /// <summary>
     /// Retrieves all attendance records with pagination support.
     /// Performance: ~8 split queries for full navigation properties.
     /// ⚠️ DEPRECATED: Use GetAllForListingOptimizedAsync() for listing views (80-90% faster).
@@ -74,13 +100,13 @@ public class AttendanceRepository(ApplicationDbContext context) : IAttendanceRep
             .Take(pageSize)
             .Select(a => new AttendanceRecordResponseDto
             {
-                Id = a.Id,
-                StudentId = a.StudentId,
+                Id = a.Uuid,
+                StudentId = a.Student.Uuid,
                 StudentName = $"{a.Student.Firstname ?? ""} {a.Student.Lastname ?? ""}".Trim(),
                 StudentNumber = a.Student.Id.ToString(),
-                SessionId = a.SessionId,
+                SessionId = a.Session.Uuid,
                 SessionDate = a.Session.SessionDate,
-                QrCodeId = a.QrCodeId,
+                QrCodeId = a.QrCode != null ? a.QrCode.Uuid : null,
                 CheckInTime = a.CheckInTime,
                 Status = a.Status ?? "",
                 Notes = a.Notes,
@@ -88,7 +114,7 @@ public class AttendanceRepository(ApplicationDbContext context) : IAttendanceRep
                 EnteredBy = a.EnteredBy,
                 CreatedAt = a.CreatedAt,
                 UpdatedAt = a.UpdatedAt,
-                ScheduleId = a.Session.ScheduleId,
+                ScheduleId = a.Session.Schedule.Uuid,
                 ScheduleTitle = $"{a.Session.Schedule.Subject.Name ?? ""} - {a.Session.Schedule.DayOfWeek ?? ""} {a.Session.Schedule.TimeIn}-{a.Session.Schedule.TimeOut}",
                 SubjectName = a.Session.Schedule.Subject.Name ?? "",
                 SectionName = a.Session.Schedule.Section.Name ?? "",

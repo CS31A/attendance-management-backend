@@ -65,6 +65,7 @@ public class SessionController(ISessionService sessionService, ILogger<SessionCo
     /// <response code="401">Not authorized</response>
     /// <response code="500">Internal server error</response>
     [HttpGet("{id:int}")]
+    [ApiExplorerSettings(IgnoreApi = true)]
     public async Task<ActionResult<SessionResponseDto>> GetSession(int id)
     {
         logger.LogInformation("Getting session with ID: {Id}", id);
@@ -82,6 +83,24 @@ public class SessionController(ISessionService sessionService, ILogger<SessionCo
         }
     }
 
+    [HttpGet("{id:guid}")]
+    public async Task<ActionResult<SessionResponseDto>> GetSessionByUuid([FromRoute(Name = "id")] Guid uuid)
+    {
+        logger.LogInformation("Getting session with UUID: {Uuid}", uuid);
+
+        try
+        {
+            var session = await sessionService.GetSessionByUuidAsync(uuid);
+            logger.LogInformation("Successfully retrieved session with UUID: {Uuid}", uuid);
+            return Ok(session);
+        }
+        catch (EntityNotFoundException<Guid> ex)
+        {
+            logger.LogWarning(ex, "Session with UUID {Uuid} not found", uuid);
+            return NotFound(new { message = ex.Message });
+        }
+    }
+
     /// <summary>
     /// Get sessions for a specific schedule.
     /// </summary>
@@ -91,6 +110,7 @@ public class SessionController(ISessionService sessionService, ILogger<SessionCo
     /// <response code="401">Not authorized</response>
     /// <response code="500">Internal server error</response>
     [HttpGet("schedule/{scheduleId:int}")]
+    [ApiExplorerSettings(IgnoreApi = true)]
     public async Task<ActionResult<IEnumerable<SessionResponseDto>>> GetSessionsBySchedule(int scheduleId)
     {
         logger.LogInformation("Getting sessions for schedule ID: {ScheduleId}", scheduleId);
@@ -98,6 +118,17 @@ public class SessionController(ISessionService sessionService, ILogger<SessionCo
         var sessions = await sessionService.GetSessionsByScheduleIdAsync(scheduleId);
         logger.LogInformation("Successfully retrieved {Count} sessions for schedule ID: {ScheduleId}",
             sessions.Count(), scheduleId);
+        return Ok(sessions);
+    }
+
+    [HttpGet("schedule/{id:guid}")]
+    public async Task<ActionResult<IEnumerable<SessionResponseDto>>> GetSessionsByScheduleUuid([FromRoute(Name = "id")] Guid scheduleUuid)
+    {
+        logger.LogInformation("Getting sessions for schedule UUID: {ScheduleUuid}", scheduleUuid);
+
+        var sessions = await sessionService.GetSessionsByScheduleUuidAsync(scheduleUuid);
+        logger.LogInformation("Successfully retrieved {Count} sessions for schedule UUID: {ScheduleUuid}",
+            sessions.Count(), scheduleUuid);
         return Ok(sessions);
     }
 
@@ -169,6 +200,7 @@ public class SessionController(ISessionService sessionService, ILogger<SessionCo
     /// <response code="403">Not authorized to update this session</response>
     /// <response code="500">Internal server error</response>
     [HttpPatch("{id:int}/room")]
+    [ApiExplorerSettings(IgnoreApi = true)]
     [Authorize(Policy = "InstructorPolicy")]
     public async Task<ActionResult<SessionResponseDto>> UpdateSessionRoom(int id, UpdateSessionRoom updateRequest)
     {
@@ -185,6 +217,23 @@ public class SessionController(ISessionService sessionService, ILogger<SessionCo
         logger.LogInformation("Successfully updated room for session ID: {SessionId}", id);
         return Ok(session);
         // Exceptions are handled by global exception handler
+    }
+
+    [HttpPatch("{id:guid}/room")]
+    [Authorize(Policy = "InstructorPolicy")]
+    public async Task<ActionResult<SessionResponseDto>> UpdateSessionRoomByUuid([FromRoute(Name = "id")] Guid uuid, UpdateSessionRoom updateRequest)
+    {
+        logger.LogInformation("Updating room for session UUID: {SessionUuid}", uuid);
+
+        if (!ModelState.IsValid)
+        {
+            logger.LogWarning("Session room update failed due to invalid model state for session UUID: {SessionUuid}", uuid);
+            return BadRequest(ModelState);
+        }
+
+        var session = await sessionService.UpdateSessionRoomByUuidAsync(uuid, updateRequest);
+        logger.LogInformation("Successfully updated room for session UUID: {SessionUuid}", uuid);
+        return Ok(session);
     }
 
     #endregion
@@ -217,7 +266,7 @@ public class SessionController(ISessionService sessionService, ILogger<SessionCo
 
         var session = await sessionService.CreateSessionAsync(request);
         logger.LogInformation("Successfully created session ID: {SessionId}", session.Id);
-        return CreatedAtAction(nameof(GetSession), new { id = session.Id }, session);
+        return CreatedAtAction(nameof(GetSessionByUuid), new { id = session.Id }, session);
         // Exceptions are handled by global exception handler
     }
 
@@ -234,6 +283,7 @@ public class SessionController(ISessionService sessionService, ILogger<SessionCo
     /// <response code="403">Not authorized to start this session</response>
     /// <response code="500">Internal server error</response>
     [HttpPatch("{id:int}/start")]
+    [ApiExplorerSettings(IgnoreApi = true)]
     [Authorize(Policy = "InstructorPolicy")]
     public async Task<ActionResult<SessionResponseDto>> StartSession(int id, [FromBody] StartSession request)
     {
@@ -251,6 +301,23 @@ public class SessionController(ISessionService sessionService, ILogger<SessionCo
         // Exceptions are handled by global exception handler
     }
 
+    [HttpPatch("{id:guid}/start")]
+    [Authorize(Policy = "InstructorPolicy")]
+    public async Task<ActionResult<SessionResponseDto>> StartSessionByUuid([FromRoute(Name = "id")] Guid uuid, [FromBody] StartSession request)
+    {
+        logger.LogInformation("Starting session UUID: {SessionUuid}", uuid);
+
+        if (!ModelState.IsValid)
+        {
+            logger.LogWarning("Session start failed due to invalid model state for session UUID: {SessionUuid}", uuid);
+            return BadRequest(ModelState);
+        }
+
+        var session = await sessionService.StartSessionByUuidAsync(uuid, request);
+        logger.LogInformation("Successfully started session UUID: {SessionUuid}", uuid);
+        return Ok(session);
+    }
+
     /// <summary>
     /// End an active session.
     /// </summary>
@@ -264,6 +331,7 @@ public class SessionController(ISessionService sessionService, ILogger<SessionCo
     /// <response code="403">Not authorized to end this session</response>
     /// <response code="500">Internal server error</response>
     [HttpPatch("{id:int}/end")]
+    [ApiExplorerSettings(IgnoreApi = true)]
     [Authorize(Policy = "InstructorPolicy")]
     public async Task<ActionResult<SessionResponseDto>> EndSession(int id, [FromBody] EndSession request)
     {
@@ -281,6 +349,23 @@ public class SessionController(ISessionService sessionService, ILogger<SessionCo
         // Exceptions are handled by global exception handler
     }
 
+    [HttpPatch("{id:guid}/end")]
+    [Authorize(Policy = "InstructorPolicy")]
+    public async Task<ActionResult<SessionResponseDto>> EndSessionByUuid([FromRoute(Name = "id")] Guid uuid, [FromBody] EndSession request)
+    {
+        logger.LogInformation("Ending session UUID: {SessionUuid}", uuid);
+
+        if (!ModelState.IsValid)
+        {
+            logger.LogWarning("Session end failed due to invalid model state for session UUID: {SessionUuid}", uuid);
+            return BadRequest(ModelState);
+        }
+
+        var session = await sessionService.EndSessionByUuidAsync(uuid, request);
+        logger.LogInformation("Successfully ended session UUID: {SessionUuid}", uuid);
+        return Ok(session);
+    }
+
     /// <summary>
     /// Cancel a session that has not started yet.
     /// </summary>
@@ -294,6 +379,7 @@ public class SessionController(ISessionService sessionService, ILogger<SessionCo
     /// <response code="403">Not authorized to cancel this session</response>
     /// <response code="500">Internal server error</response>
     [HttpDelete("{id:int}")]
+    [ApiExplorerSettings(IgnoreApi = true)]
     [Authorize(Policy = "PrivilegedPolicy")]
     public async Task<ActionResult<SessionResponseDto>> CancelSession(int id, [FromBody] CancelSession request)
     {
@@ -309,6 +395,23 @@ public class SessionController(ISessionService sessionService, ILogger<SessionCo
         logger.LogInformation("Successfully cancelled session ID: {SessionId}", id);
         return Ok(session);
         // Exceptions are handled by global exception handler
+    }
+
+    [HttpDelete("{id:guid}")]
+    [Authorize(Policy = "PrivilegedPolicy")]
+    public async Task<ActionResult<SessionResponseDto>> CancelSessionByUuid([FromRoute(Name = "id")] Guid uuid, [FromBody] CancelSession request)
+    {
+        logger.LogInformation("Cancelling session UUID: {SessionUuid}", uuid);
+
+        if (!ModelState.IsValid)
+        {
+            logger.LogWarning("Session cancellation failed due to invalid model state for session UUID: {SessionUuid}", uuid);
+            return BadRequest(ModelState);
+        }
+
+        var session = await sessionService.CancelSessionByUuidAsync(uuid, request);
+        logger.LogInformation("Successfully cancelled session UUID: {SessionUuid}", uuid);
+        return Ok(session);
     }
 
     #endregion

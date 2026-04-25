@@ -331,11 +331,21 @@ namespace attendance_monitoring.Data
                     .IsRequired(false)
                     .ValueGeneratedNever()
                     .IsConcurrencyToken(false);
+
+                builder.Entity<FingerprintScanEvent>()
+                    .Property(e => e.RowVersion)
+                    .IsRequired(false)
+                    .ValueGeneratedNever()
+                    .IsConcurrencyToken(false);
             }
             else
             {
                 builder.Entity<Session>()
                     .Property(s => s.RowVersion)
+                    .IsRowVersion();
+
+                builder.Entity<FingerprintScanEvent>()
+                    .Property(e => e.RowVersion)
                     .IsRowVersion();
             }
 
@@ -471,10 +481,6 @@ namespace attendance_monitoring.Data
                 .IsUnique()
                 .HasFilter("[AttendanceRecordId] IS NOT NULL")
                 .HasDatabaseName("IX_FingerprintScanEvents_AttendanceRecordId");
-
-            builder.Entity<FingerprintScanEvent>()
-                .Property(e => e.RowVersion)
-                .IsRowVersion();
 
             builder.Entity<FingerprintScanEvent>()
                 .Property(e => e.MatchScore)

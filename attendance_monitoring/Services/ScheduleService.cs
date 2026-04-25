@@ -28,7 +28,7 @@ namespace attendance_monitoring.Services
             try
             {
                 var schedules = await scheduleRepository.GetAllSchedulesAsync();
-                var allSchedules = schedules.Select(MapToResponseDto).ToList();
+                var allSchedules = schedules.Select(ScheduleServiceSupport.MapToResponseDto).ToList();
                 logger.LogInformation("Successfully retrieved {Count} schedules", allSchedules.Count);
                 return allSchedules;
             }
@@ -52,7 +52,7 @@ namespace attendance_monitoring.Services
                 }
 
                 logger.LogInformation("Successfully retrieved schedule with ID: {Id}", id);
-                return MapToResponseDto(schedule);
+                return ScheduleServiceSupport.MapToResponseDto(schedule);
             }
             catch (EntityNotFoundException<int>)
             {
@@ -65,13 +65,39 @@ namespace attendance_monitoring.Services
             }
         }
 
+        public async Task<ScheduleResponseDto> GetScheduleByUuidAsync(Guid uuid)
+        {
+            logger.LogInformation("Retrieving schedule by UUID: {Uuid}", uuid);
+            try
+            {
+                var schedule = await scheduleRepository.GetScheduleByUuidAsync(uuid).ConfigureAwait(false);
+                if (schedule == null)
+                {
+                    logger.LogWarning("Schedule with UUID {Uuid} not found", uuid);
+                    throw new EntityNotFoundException<Guid>("Schedule", uuid);
+                }
+
+                logger.LogInformation("Successfully retrieved schedule with UUID: {Uuid}", uuid);
+                return ScheduleServiceSupport.MapToResponseDto(schedule);
+            }
+            catch (EntityNotFoundException<Guid>)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Error occurred while retrieving schedule with UUID {Uuid}", uuid);
+                throw new EntityServiceException("Schedule", $"GetScheduleByUuid: {uuid}", "An error occurred while retrieving the schedule", ex);
+            }
+        }
+
         public async Task<IEnumerable<ScheduleResponseDto>> GetSchedulesByInstructorIdAsync(int instructorId)
         {
             logger.LogInformation("Retrieving schedules for instructor ID: {InstructorId}", instructorId);
             try
             {
                 var schedules = await scheduleRepository.GetSchedulesByInstructorIdAsync(instructorId);
-                var instructorSchedules = schedules.Select(MapToResponseDto).ToList();
+                var instructorSchedules = schedules.Select(ScheduleServiceSupport.MapToResponseDto).ToList();
                 logger.LogInformation("Successfully retrieved {Count} schedules for instructor ID: {InstructorId}",
                     instructorSchedules.Count, instructorId);
                 return instructorSchedules;
@@ -90,7 +116,7 @@ namespace attendance_monitoring.Services
             try
             {
                 var schedules = await scheduleRepository.GetSchedulesBySectionIdAsync(sectionId);
-                var sectionSchedules = schedules.Select(MapToResponseDto).ToList();
+                var sectionSchedules = schedules.Select(ScheduleServiceSupport.MapToResponseDto).ToList();
                 logger.LogInformation("Successfully retrieved {Count} schedules for section ID: {SectionId}",
                     sectionSchedules.Count, sectionId);
                 return sectionSchedules;
@@ -188,43 +214,20 @@ namespace attendance_monitoring.Services
                 }
 
                 // Validate relationships if needed
-                var subjectExists = await context.Subjects.AsNoTracking().AnyAsync(s => s.Id == createSchedule.SubjectId);
-                if (!subjectExists)
-                {
-                    logger.LogWarning("Schedule creation failed: Subject with ID {SubjectId} not found", createSchedule.SubjectId);
-                    throw new EntityNotFoundException<int>("Subject", createSchedule.SubjectId);
-                }
-
-                var classroomExists = await context.Classrooms.AsNoTracking().AnyAsync(c => c.Id == createSchedule.ClassroomId);
-                if (!classroomExists)
-                {
-                    logger.LogWarning("Schedule creation failed: Classroom with ID {ClassroomId} not found", createSchedule.ClassroomId);
-                    throw new EntityNotFoundException<int>("Classroom", createSchedule.ClassroomId);
-                }
-
-                var sectionExists = await context.Sections.AsNoTracking().AnyAsync(s => s.Id == createSchedule.SectionId);
-                if (!sectionExists)
-                {
-                    logger.LogWarning("Schedule creation failed: Section with ID {SectionId} not found", createSchedule.SectionId);
-                    throw new EntityNotFoundException<int>("Section", createSchedule.SectionId);
-                }
-
-                var instructorExists = await context.Instructors.AsNoTracking().AnyAsync(i => i.Id == createSchedule.InstructorId);
-                if (!instructorExists)
-                {
-                    logger.LogWarning("Schedule creation failed: Instructor with ID {InstructorId} not found", createSchedule.InstructorId);
-                    throw new EntityNotFoundException<int>("Instructor", createSchedule.InstructorId);
-                }
+                var subjectId = await ScheduleServiceSupport.ResolveSubjectIdAsync(context, createSchedule.SubjectId).ConfigureAwait(false);
+                var classroomId = await ScheduleServiceSupport.ResolveClassroomIdAsync(context, createSchedule.ClassroomId).ConfigureAwait(false);
+                var sectionId = await ScheduleServiceSupport.ResolveSectionIdAsync(context, createSchedule.SectionId).ConfigureAwait(false);
+                var instructorId = await ScheduleServiceSupport.ResolveInstructorIdAsync(context, createSchedule.InstructorId).ConfigureAwait(false);
 
                 var schedule = new Schedules
                 {
                     TimeIn = createSchedule.TimeIn,
                     TimeOut = createSchedule.TimeOut,
                     DayOfWeek = createSchedule.DayOfWeek,
-                    SubjectId = createSchedule.SubjectId,
-                    ClassroomId = createSchedule.ClassroomId,
-                    SectionId = createSchedule.SectionId,
-                    InstructorId = createSchedule.InstructorId,
+                    SubjectId = subjectId,
+                    ClassroomId = classroomId,
+                    SectionId = sectionId,
+                    InstructorId = instructorId,
                     CreatedAt = DateTime.UtcNow,
                     UpdatedAt = DateTime.UtcNow
                 };
@@ -239,6 +242,10 @@ namespace attendance_monitoring.Services
                 throw;
             }
             catch (EntityNotFoundException<int>)
+            {
+                throw;
+            }
+            catch (EntityNotFoundException<Guid>)
             {
                 throw;
             }
@@ -284,48 +291,24 @@ namespace attendance_monitoring.Services
                 }
 
                 // Validate and update relationships only if provided
-                if (updateSchedule.SubjectId.HasValue)
+                if (updateSchedule.SubjectId.HasValue && updateSchedule.SubjectId.Value != Guid.Empty)
                 {
-                    var subjectExists = await context.Subjects.AsNoTracking().AnyAsync(s => s.Id == updateSchedule.SubjectId.Value);
-                    if (!subjectExists)
-                    {
-                        logger.LogWarning("Schedule update failed: Subject with ID {SubjectId} not found", updateSchedule.SubjectId.Value);
-                        throw new EntityNotFoundException<int>("Subject", updateSchedule.SubjectId.Value);
-                    }
-                    existingSchedule.SubjectId = updateSchedule.SubjectId.Value;
+                    existingSchedule.SubjectId = await ScheduleServiceSupport.ResolveSubjectIdAsync(context, updateSchedule.SubjectId.Value).ConfigureAwait(false);
                 }
 
-                if (updateSchedule.ClassroomId.HasValue)
+                if (updateSchedule.ClassroomId.HasValue && updateSchedule.ClassroomId.Value != Guid.Empty)
                 {
-                    var classroomExists = await context.Classrooms.AsNoTracking().AnyAsync(c => c.Id == updateSchedule.ClassroomId.Value);
-                    if (!classroomExists)
-                    {
-                        logger.LogWarning("Schedule update failed: Classroom with ID {ClassroomId} not found", updateSchedule.ClassroomId.Value);
-                        throw new EntityNotFoundException<int>("Classroom", updateSchedule.ClassroomId.Value);
-                    }
-                    existingSchedule.ClassroomId = updateSchedule.ClassroomId.Value;
+                    existingSchedule.ClassroomId = await ScheduleServiceSupport.ResolveClassroomIdAsync(context, updateSchedule.ClassroomId.Value).ConfigureAwait(false);
                 }
 
-                if (updateSchedule.SectionId.HasValue)
+                if (updateSchedule.SectionId.HasValue && updateSchedule.SectionId.Value != Guid.Empty)
                 {
-                    var sectionExists = await context.Sections.AsNoTracking().AnyAsync(s => s.Id == updateSchedule.SectionId.Value);
-                    if (!sectionExists)
-                    {
-                        logger.LogWarning("Schedule update failed: Section with ID {SectionId} not found", updateSchedule.SectionId.Value);
-                        throw new EntityNotFoundException<int>("Section", updateSchedule.SectionId.Value);
-                    }
-                    existingSchedule.SectionId = updateSchedule.SectionId.Value;
+                    existingSchedule.SectionId = await ScheduleServiceSupport.ResolveSectionIdAsync(context, updateSchedule.SectionId.Value).ConfigureAwait(false);
                 }
 
-                if (updateSchedule.InstructorId.HasValue)
+                if (updateSchedule.InstructorId.HasValue && updateSchedule.InstructorId.Value != Guid.Empty)
                 {
-                    var instructorExists = await context.Instructors.AsNoTracking().AnyAsync(i => i.Id == updateSchedule.InstructorId.Value);
-                    if (!instructorExists)
-                    {
-                        logger.LogWarning("Schedule update failed: Instructor with ID {InstructorId} not found", updateSchedule.InstructorId.Value);
-                        throw new EntityNotFoundException<int>("Instructor", updateSchedule.InstructorId.Value);
-                    }
-                    existingSchedule.InstructorId = updateSchedule.InstructorId.Value;
+                    existingSchedule.InstructorId = await ScheduleServiceSupport.ResolveInstructorIdAsync(context, updateSchedule.InstructorId.Value).ConfigureAwait(false);
                 }
 
                 // Update simple fields only if provided
@@ -365,6 +348,10 @@ namespace attendance_monitoring.Services
             {
                 throw;
             }
+            catch (EntityNotFoundException<Guid>)
+            {
+                throw;
+            }
             catch (EntityServiceException)
             {
                 throw;
@@ -377,6 +364,17 @@ namespace attendance_monitoring.Services
         }
 
         #endregion
+
+        public async Task<Schedules> UpdateScheduleByUuidAsync(Guid uuid, UpdateSchedule updateSchedule)
+        {
+            var existingSchedule = await scheduleRepository.GetScheduleByUuidAsync(uuid).ConfigureAwait(false);
+            if (existingSchedule == null)
+            {
+                throw new EntityNotFoundException<Guid>("Schedule", uuid);
+            }
+
+            return await UpdateScheduleAsync(existingSchedule.Id, updateSchedule).ConfigureAwait(false);
+        }
 
         #region Delete Operations
 
@@ -429,6 +427,17 @@ namespace attendance_monitoring.Services
                 throw ExceptionHandlingHelper.CreateServiceException("Schedule", $"DeleteSchedule: {id}", ex);
             }
         }
+
+        public async Task DeleteScheduleByUuidAsync(Guid uuid, ClaimsPrincipal user)
+        {
+            var existingSchedule = await scheduleRepository.GetScheduleByUuidAsync(uuid).ConfigureAwait(false);
+            if (existingSchedule == null)
+            {
+                throw new EntityNotFoundException<Guid>("Schedule", uuid);
+            }
+
+            await DeleteScheduleAsync(existingSchedule.Id, user).ConfigureAwait(false);
+        }
         #endregion
 
         private static string ResolveDeleteConflictType(DbUpdateException ex)
@@ -451,50 +460,5 @@ namespace attendance_monitoring.Services
             };
         }
 
-        #region Helper Methods
-        public static ScheduleResponseDto MapToResponseDto(Schedules schedule)
-        {
-            return new ScheduleResponseDto
-            {
-                Id = schedule.Id,
-                TimeIn = schedule.TimeIn,
-                TimeOut = schedule.TimeOut,
-                DayOfWeek = schedule.DayOfWeek,
-                Subject = new SubjectResponseDto
-                {
-                    Id = schedule.Subject.Id,
-                    Name = schedule.Subject.Name,
-                    Code = schedule.Subject.Code,
-                    CreatedAt = schedule.Subject.CreatedAt,
-                    UpdatedAt = schedule.Subject.UpdatedAt
-                },
-                Classroom = new ClassroomResponseDto
-                {
-                    Id = schedule.Classroom.Id,
-                    Name = schedule.Classroom.Name,
-                    CreatedAt = schedule.Classroom.CreatedAt,
-                    UpdatedAt = schedule.Classroom.UpdatedAt
-                },
-                Section = new SectionResponseDto
-                {
-                    Id = schedule.Section.Id,
-                    Name = schedule.Section.Name,
-                    CourseId = schedule.Section.CourseId,
-                    CreatedAt = schedule.Section.CreatedAt,
-                    UpdatedAt = schedule.Section.UpdatedAt
-                },
-                Instructor = new InstructorResponseDto
-                {
-                    Id = schedule.Instructor.Id,
-                    Firstname = schedule.Instructor.Firstname,
-                    Lastname = schedule.Instructor.Lastname,
-                    Email = schedule.Instructor.User?.Email
-                },
-                CreatedAt = schedule.CreatedAt,
-                UpdatedAt = schedule.UpdatedAt
-            };
-        }
-
-        #endregion
     }
 }

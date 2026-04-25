@@ -554,6 +554,67 @@ Cancel a session.
 ### GET /api/sessions/{sessionId}
 Get session details.
 
+### GET /api/sessions/uuid/{uuid}
+Get session details by UUID.
+
+### GET /api/sessions/schedule/{scheduleId}
+Get sessions for a specific schedule.
+
+### GET /api/sessions/schedule/uuid/{scheduleUuid}
+Get sessions for a specific schedule by UUID.
+
+### PATCH /api/sessions/{sessionId}/start
+Start a session, marking it as active.
+
+**Authorization:** Requires `InstructorPolicy` (Instructor role)
+
+**Request Body:**
+```json
+{
+  "actualRoomId": 1,
+  "attendanceCutoffMinutes": 15
+}
+```
+
+**Note:** You can also provide `actualRoomUuid` instead of `actualRoomId` to specify the room by UUID.
+
+### PATCH /api/sessions/uuid/{uuid}/start
+Start a session by UUID, marking it as active.
+
+**Authorization:** Requires `InstructorPolicy` (Instructor role)
+
+**Request Body:** Same as `PATCH /api/sessions/{sessionId}/start`
+
+### PATCH /api/sessions/{sessionId}/end
+End an active session.
+
+**Authorization:** Requires `InstructorPolicy` (Instructor role)
+
+### PATCH /api/sessions/uuid/{uuid}/end
+End an active session by UUID.
+
+**Authorization:** Requires `InstructorPolicy` (Instructor role)
+
+### PATCH /api/sessions/{sessionId}/room
+Update the actual room for a session.
+
+**Authorization:** Requires `InstructorPolicy` (Instructor role)
+
+### PATCH /api/sessions/uuid/{uuid}/room
+Update the actual room for a session by UUID.
+
+**Authorization:** Requires `InstructorPolicy` (Instructor role)
+
+### DELETE /api/sessions/{sessionId}
+Cancel a session that has not started yet.
+
+**Authorization:** Requires `PrivilegedPolicy` (Admin or Instructor role)
+
+### DELETE /api/sessions/uuid/{uuid}
+Cancel a session by UUID that has not started yet.
+
+**Authorization:** Requires `PrivilegedPolicy` (Admin or Instructor role)
+
 ## Student Enrollment
 
 ### GET /api/student-enrollments
@@ -657,6 +718,9 @@ Create a new attendance record manually.
 ### GET /api/attendance/{id}
 Get a specific attendance record.
 
+### GET /api/attendance/uuid/{uuid}
+Get a specific attendance record by UUID.
+
 ### GET /api/attendance
 Get all attendance records with optional filtering.
 
@@ -674,6 +738,7 @@ Get attendance history for a specific student.
 ```json
 {
   "studentId": 1,
+  "studentUuid": "guid",
   "history": [...],
   "statistics": {
     "totalSessions": 20,
@@ -685,8 +750,18 @@ Get attendance history for a specific student.
 }
 ```
 
+### GET /api/attendance/student/uuid/{studentUuid}
+Get attendance history for a specific student by UUID.
+
+**Response:** Same as `/student/{studentId}/history`
+
 ### GET /api/attendance/session/{sessionId}
 Get attendance overview for a session.
+
+### GET /api/attendance/session/uuid/{sessionUuid}
+Get attendance overview for a session by UUID.
+
+**Authorization:** Requires `PrivilegedPolicy` (Admin or Instructor role)
 
 ### GET /api/attendance/summary
 Get attendance summary statistics.
@@ -702,8 +777,20 @@ Update an attendance record.
 }
 ```
 
+### PUT /api/attendance/uuid/{uuid}
+Update an attendance record by UUID.
+
+**Authorization:** Requires `PrivilegedPolicy` (Admin or Instructor role)
+
+**Request Body:** Same as `PATCH /api/attendance/{id}`
+
 ### DELETE /api/attendance/{id}
 Delete an attendance record (Admin only).
+
+### DELETE /api/attendance/uuid/{uuid}
+Delete an attendance record by UUID (Admin only).
+
+**Authorization:** Requires `PrivilegedPolicy` (Admin or Instructor role)
 
 ## Notification Preferences
 

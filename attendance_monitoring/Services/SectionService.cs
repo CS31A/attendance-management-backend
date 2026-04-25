@@ -46,6 +46,31 @@ namespace attendance_monitoring.Services
             }
         }
 
+        public async Task<Section> GetSectionByUuidAsync(Guid uuid)
+        {
+            try
+            {
+                var section = await sectionRepository.GetSectionByUuidAsync(uuid).ConfigureAwait(false);
+                if (section == null)
+                {
+                    logger.LogWarning("Section with UUID {SectionUuid} not found", uuid);
+                    throw new EntityNotFoundException<Guid>("Section", uuid);
+                }
+
+                logger.LogInformation("Successfully retrieved section with UUID: {SectionUuid}", uuid);
+                return section;
+            }
+            catch (EntityNotFoundException<Guid>)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "An error occurred while retrieving section with UUID {SectionUuid} from repository.", uuid);
+                throw new EntityServiceException("Section", $"GetSectionByUuid: {uuid}", "An error occurred while retrieving the section", ex);
+            }
+        }
+
         /// <summary>
         /// Retrieves all sections
         /// </summary>
@@ -59,9 +84,9 @@ namespace attendance_monitoring.Services
                 var sections = await sectionRepository.GetAllSectionsAsync().ConfigureAwait(false);
                 var sectionDtos = sections.Select(s => new SectionResponseDto
                 {
-                    Id = s.Id,
+                    Id = s.Uuid,
                     Name = s.Name,
-                    CourseId = s.CourseId,
+                    CourseId = s.Course?.Uuid,
                     CreatedAt = s.CreatedAt,
                     UpdatedAt = s.UpdatedAt
                 }).ToList();
@@ -93,13 +118,20 @@ namespace attendance_monitoring.Services
                 var createdSection = await sectionRepository.CreateSectionAsync(section).ConfigureAwait(false);
                 await sectionRepository.SaveChangesAsync().ConfigureAwait(false);
 
+                var refreshedSection = await sectionRepository.GetSectionByIdAsync(createdSection.Id).ConfigureAwait(false);
+                if (refreshedSection == null)
+                {
+                    logger.LogError("Created section with ID {SectionId} could not be found after save.", createdSection.Id);
+                    throw new InvalidOperationException("Created section could not be reloaded.");
+                }
+
                 var sectionDto = new SectionResponseDto
                 {
-                    Id = createdSection.Id,
-                    Name = createdSection.Name,
-                    CourseId = createdSection.CourseId,
-                    CreatedAt = createdSection.CreatedAt,
-                    UpdatedAt = createdSection.UpdatedAt
+                    Id = refreshedSection.Uuid,
+                    Name = refreshedSection.Name,
+                    CourseId = refreshedSection.Course?.Uuid,
+                    CreatedAt = refreshedSection.CreatedAt,
+                    UpdatedAt = refreshedSection.UpdatedAt
                 };
 
                 logger.LogInformation("Successfully created section with ID: {SectionId}", createdSection.Id);
@@ -137,13 +169,20 @@ namespace attendance_monitoring.Services
 
                 await sectionRepository.SaveChangesAsync().ConfigureAwait(false);
 
+                var refreshedSection = await sectionRepository.GetSectionByIdAsync(updatedSection.Id).ConfigureAwait(false);
+                if (refreshedSection == null)
+                {
+                    logger.LogError("Updated section with ID {SectionId} could not be found after save.", updatedSection.Id);
+                    throw new InvalidOperationException("Updated section could not be reloaded.");
+                }
+
                 var sectionDto = new SectionResponseDto
                 {
-                    Id = updatedSection.Id,
-                    Name = updatedSection.Name,
-                    CourseId = updatedSection.CourseId,
-                    CreatedAt = updatedSection.CreatedAt,
-                    UpdatedAt = updatedSection.UpdatedAt
+                    Id = refreshedSection.Uuid,
+                    Name = refreshedSection.Name,
+                    CourseId = refreshedSection.Course?.Uuid,
+                    CreatedAt = refreshedSection.CreatedAt,
+                    UpdatedAt = refreshedSection.UpdatedAt
                 };
 
                 logger.LogInformation("Successfully updated section with ID: {SectionId}", id);
@@ -159,6 +198,12 @@ namespace attendance_monitoring.Services
                 logger.LogError(ex, "An error occurred while updating section with ID {SectionId} in repository.", id);
                 throw new EntityServiceException("Section", $"UpdateSection: {id}", "An error occurred while updating the section", ex);
             }
+        }
+
+        public async Task<SectionResponseDto> UpdateSectionByUuidAsync(Guid uuid, Section section)
+        {
+            var existingSection = await GetSectionByUuidAsync(uuid).ConfigureAwait(false);
+            return await UpdateSectionAsync(existingSection.Id, section).ConfigureAwait(false);
         }
 
         #endregion
@@ -203,6 +248,12 @@ namespace attendance_monitoring.Services
                 logger.LogError(ex, "An error occurred while deleting section with ID {SectionId} from repository.", id);
                 throw new EntityServiceException("Section", $"DeleteSection: {id}", "An error occurred while deleting the section", ex);
             }
+        }
+
+        public async Task DeleteSectionByUuidAsync(Guid uuid)
+        {
+            var existingSection = await GetSectionByUuidAsync(uuid).ConfigureAwait(false);
+            await DeleteSectionAsync(existingSection.Id).ConfigureAwait(false);
         }
 
         /// <summary>

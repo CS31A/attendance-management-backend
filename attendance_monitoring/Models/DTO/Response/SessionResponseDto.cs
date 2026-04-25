@@ -5,19 +5,19 @@ namespace attendance_monitoring.Models.DTO.Response;
 /// </summary>
 public class SessionResponseDto
 {
-    public int Id { get; set; }
-    public int ScheduleId { get; set; }
+    public Guid Id { get; set; }
+    public Guid ScheduleId { get; set; }
     public string Status { get; set; } = string.Empty;
     public DateTime SessionDate { get; set; }
     public DateTime? ActualStartTime { get; set; }
     public DateTime? ActualEndTime { get; set; }
     public DateTime? AttendanceCutOff { get; set; }
     public string? Description { get; set; }
-    public int? ActualRoomId { get; set; }
+    public Guid? ActualRoomId { get; set; }
     public string? ActualRoomName { get; set; }
-    public int? StartedBy { get; set; }
+    public Guid? StartedById { get; set; }
     public string? StartedByName { get; set; }
-    public int? EndedBy { get; set; }
+    public Guid? EndedById { get; set; }
     public string? EndedByName { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }

@@ -58,9 +58,14 @@ public class AttendanceController(IAttendanceService attendanceService, ILogger<
             }
 
             logger.LogInformation("Successfully created attendance record with ID: {Id}", attendance.Id);
-            return CreatedAtAction(nameof(GetAttendance), new { id = attendance.Id }, attendance);
+            return CreatedAtAction(nameof(GetAttendanceByUuid), new { id = attendance.Id }, attendance);
         }
         catch (EntityNotFoundException<int> ex)
+        {
+            logger.LogWarning(ex, "Entity not found while creating attendance");
+            return NotFound(new { message = ex.Message });
+        }
+        catch (EntityNotFoundException<Guid> ex)
         {
             logger.LogWarning(ex, "Entity not found while creating attendance");
             return NotFound(new { message = ex.Message });
@@ -88,6 +93,7 @@ public class AttendanceController(IAttendanceService attendanceService, ILogger<
     /// <response code="404">Attendance record not found</response>
     /// <response code="500">Internal server error</response>
     [HttpGet("{id:int}")]
+    [ApiExplorerSettings(IgnoreApi = true)]
     public async Task<ActionResult<AttendanceRecordResponseDto>> GetAttendance(int id)
     {
         logger.LogInformation("Getting attendance record with ID: {Id}", id);
@@ -106,6 +112,30 @@ public class AttendanceController(IAttendanceService attendanceService, ILogger<
         catch (UnauthorizedAccessException ex)
         {
             logger.LogWarning(ex, "Unauthorized access to attendance record {Id}", id);
+            return Forbid();
+        }
+    }
+
+    [HttpGet("{id:guid}")]
+    [ActionName("GetAttendanceByUuid")]
+    public async Task<ActionResult<AttendanceRecordResponseDto>> GetAttendanceByUuid([FromRoute(Name = "id")] Guid uuid)
+    {
+        logger.LogInformation("Getting attendance record with UUID: {Uuid}", uuid);
+
+        try
+        {
+            var attendance = await attendanceService.GetAttendanceByUuidAsync(uuid, User);
+            logger.LogInformation("Successfully retrieved attendance record with UUID: {Uuid}", uuid);
+            return Ok(attendance);
+        }
+        catch (EntityNotFoundException<Guid> ex)
+        {
+            logger.LogWarning(ex, "Attendance record with UUID {Uuid} not found", uuid);
+            return NotFound(new { message = ex.Message });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            logger.LogWarning(ex, "Unauthorized access to attendance record UUID {Uuid}", uuid);
             return Forbid();
         }
     }
@@ -142,6 +172,7 @@ public class AttendanceController(IAttendanceService attendanceService, ILogger<
     /// <response code="404">Student not found</response>
     /// <response code="500">Internal server error</response>
     [HttpGet("student/{studentId:int}")]
+    [ApiExplorerSettings(IgnoreApi = true)]
     public async Task<ActionResult<StudentAttendanceHistoryDto>> GetStudentAttendanceHistory(int studentId)
     {
         logger.LogInformation("Getting attendance history for StudentId: {StudentId}", studentId);
@@ -164,6 +195,29 @@ public class AttendanceController(IAttendanceService attendanceService, ILogger<
         }
     }
 
+    [HttpGet("student/{id:guid}")]
+    public async Task<ActionResult<StudentAttendanceHistoryDto>> GetStudentAttendanceHistoryByUuid([FromRoute(Name = "id")] Guid studentUuid)
+    {
+        logger.LogInformation("Getting attendance history for StudentUuid: {StudentUuid}", studentUuid);
+
+        try
+        {
+            var history = await attendanceService.GetStudentAttendanceHistoryByUuidAsync(studentUuid, User);
+            logger.LogInformation("Successfully retrieved attendance history for StudentUuid: {StudentUuid}", studentUuid);
+            return Ok(history);
+        }
+        catch (EntityNotFoundException<Guid> ex)
+        {
+            logger.LogWarning(ex, "Student with UUID {StudentUuid} not found", studentUuid);
+            return NotFound(new { message = ex.Message });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            logger.LogWarning(ex, "Unauthorized access to student UUID {StudentUuid} attendance", studentUuid);
+            return Forbid();
+        }
+    }
+
     /// <summary>
     /// Get attendance overview for a specific session.
     /// Instructors can only view their own session attendance.
@@ -176,6 +230,7 @@ public class AttendanceController(IAttendanceService attendanceService, ILogger<
     /// <response code="404">Session not found</response>
     /// <response code="500">Internal server error</response>
     [HttpGet("session/{sessionId:int}")]
+    [ApiExplorerSettings(IgnoreApi = true)]
     [Authorize(Policy = "PrivilegedPolicy")]
     public async Task<ActionResult<SessionAttendanceDto>> GetSessionAttendance(int sessionId)
     {
@@ -195,6 +250,30 @@ public class AttendanceController(IAttendanceService attendanceService, ILogger<
         catch (UnauthorizedAccessException ex)
         {
             logger.LogWarning(ex, "Unauthorized access to session {SessionId} attendance", sessionId);
+            return Forbid();
+        }
+    }
+
+    [HttpGet("session/{id:guid}")]
+    [Authorize(Policy = "PrivilegedPolicy")]
+    public async Task<ActionResult<SessionAttendanceDto>> GetSessionAttendanceByUuid([FromRoute(Name = "id")] Guid sessionUuid)
+    {
+        logger.LogInformation("Getting session attendance for SessionUuid: {SessionUuid}", sessionUuid);
+
+        try
+        {
+            var sessionAttendance = await attendanceService.GetSessionAttendanceByUuidAsync(sessionUuid, User);
+            logger.LogInformation("Successfully retrieved session attendance for SessionUuid: {SessionUuid}", sessionUuid);
+            return Ok(sessionAttendance);
+        }
+        catch (EntityNotFoundException<Guid> ex)
+        {
+            logger.LogWarning(ex, "Session with UUID {SessionUuid} not found", sessionUuid);
+            return NotFound(new { message = ex.Message });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            logger.LogWarning(ex, "Unauthorized access to session UUID {SessionUuid} attendance", sessionUuid);
             return Forbid();
         }
     }
@@ -237,6 +316,7 @@ public class AttendanceController(IAttendanceService attendanceService, ILogger<
     /// <response code="404">Attendance record not found</response>
     /// <response code="500">Internal server error</response>
     [HttpPut("{id:int}")]
+    [ApiExplorerSettings(IgnoreApi = true)]
     [Authorize(Policy = "PrivilegedPolicy")]
     public async Task<ActionResult<AttendanceRecordResponseDto>> UpdateAttendance(int id, [FromBody] UpdateAttendanceRequest request)
     {
@@ -260,6 +340,30 @@ public class AttendanceController(IAttendanceService attendanceService, ILogger<
         }
     }
 
+    [HttpPut("{id:guid}")]
+    [Authorize(Policy = "PrivilegedPolicy")]
+    public async Task<ActionResult<AttendanceRecordResponseDto>> UpdateAttendanceByUuid([FromRoute(Name = "id")] Guid uuid, [FromBody] UpdateAttendanceRequest request)
+    {
+        logger.LogInformation("Updating attendance record with UUID: {Uuid}", uuid);
+
+        try
+        {
+            var updated = await attendanceService.UpdateAttendanceByUuidAsync(uuid, request, User);
+            logger.LogInformation("Successfully updated attendance record with UUID: {Uuid}", uuid);
+            return Ok(updated);
+        }
+        catch (EntityNotFoundException<Guid> ex)
+        {
+            logger.LogWarning(ex, "Attendance record with UUID {Uuid} not found", uuid);
+            return NotFound(new { message = ex.Message });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            logger.LogWarning(ex, "Unauthorized attempt to update attendance record UUID {Uuid}", uuid);
+            return Forbid();
+        }
+    }
+
     #endregion
 
     #region Delete Operations
@@ -276,6 +380,7 @@ public class AttendanceController(IAttendanceService attendanceService, ILogger<
     /// <response code="404">Attendance record not found</response>
     /// <response code="500">Internal server error</response>
     [HttpDelete("{id:int}")]
+    [ApiExplorerSettings(IgnoreApi = true)]
     [Authorize(Policy = "PrivilegedPolicy")]
     public async Task<IActionResult> DeleteAttendance(int id)
     {
@@ -301,6 +406,36 @@ public class AttendanceController(IAttendanceService attendanceService, ILogger<
         catch (UnauthorizedAccessException ex)
         {
             logger.LogWarning(ex, "Unauthorized attempt to delete attendance record {Id}", id);
+            return Forbid();
+        }
+    }
+
+    [HttpDelete("{id:guid}")]
+    [Authorize(Policy = "PrivilegedPolicy")]
+    public async Task<IActionResult> DeleteAttendanceByUuid([FromRoute(Name = "id")] Guid uuid)
+    {
+        logger.LogInformation("Deleting attendance record with UUID: {Uuid}", uuid);
+
+        try
+        {
+            var deleted = await attendanceService.DeleteAttendanceByUuidAsync(uuid, User);
+            if (deleted)
+            {
+                logger.LogInformation("Successfully deleted attendance record with UUID: {Uuid}", uuid);
+                return NoContent();
+            }
+
+            logger.LogWarning("Failed to delete attendance record with UUID: {Uuid}", uuid);
+            return NotFound(new { message = "Attendance record not found" });
+        }
+        catch (EntityNotFoundException<Guid> ex)
+        {
+            logger.LogWarning(ex, "Attendance record with UUID {Uuid} not found", uuid);
+            return NotFound(new { message = ex.Message });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            logger.LogWarning(ex, "Unauthorized attempt to delete attendance record UUID {Uuid}", uuid);
             return Forbid();
         }
     }

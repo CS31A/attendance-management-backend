@@ -5,19 +5,26 @@ namespace attendance_monitoring.Models.DTO.Request;
 /// <summary>
 /// Request DTO for updating the actual room of an active session.
 /// </summary>
-public class UpdateSessionRoom
+public class UpdateSessionRoom : IValidatableObject
 {
     /// <summary>
-    /// The new classroom ID for the session.
-    /// The classroom must exist and be available.
+    /// The UUID of the new classroom for the session.
     /// </summary>
-    [Required(ErrorMessage = "ActualRoomId is required")]
-    [Range(1, int.MaxValue, ErrorMessage = "ActualRoomId must be a valid positive integer")]
-    public int ActualRoomId { get; set; }
+    public Guid? ActualRoomId { get; set; }
 
     /// <summary>
     /// Optimistic concurrency token for the current session row.
     /// Serialized as base64 over JSON.
     /// </summary>
     public byte[]? RowVersion { get; set; }
+
+    public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+    {
+        if (!ActualRoomId.HasValue || ActualRoomId.Value == Guid.Empty)
+        {
+            yield return new ValidationResult(
+                "ActualRoomId is required.",
+                [nameof(ActualRoomId)]);
+        }
+    }
 }

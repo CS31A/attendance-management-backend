@@ -23,10 +23,24 @@ public class SubjectRepository(ApplicationDbContext context) : ISubjectRepositor
     }
     #endregion
 
+    #region GetSubjectByUuidAsync
+    public async Task<Subject?> GetSubjectByUuidAsync(Guid uuid)
+    {
+        return await context.Subjects.AsNoTracking().FirstOrDefaultAsync(s => s.Uuid == uuid).ConfigureAwait(false);
+    }
+    #endregion
+
     #region GetSubjectByIdTrackedAsync
     public async Task<Subject?> GetSubjectByIdTrackedAsync(int id)
     {
         return await context.Subjects.FirstOrDefaultAsync(s => s.Id == id).ConfigureAwait(false);
+    }
+    #endregion
+
+    #region GetSubjectByUuidTrackedAsync
+    public async Task<Subject?> GetSubjectByUuidTrackedAsync(Guid uuid)
+    {
+        return await context.Subjects.FirstOrDefaultAsync(s => s.Uuid == uuid).ConfigureAwait(false);
     }
     #endregion
 

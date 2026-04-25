@@ -197,4 +197,18 @@ public interface IQrCodeRepository : ISaveableRepository
     /// <returns>Tuple containing total scans, unique students, status breakdown, and scan time range</returns>
     Task<(int totalScans, int uniqueStudents, Dictionary<string, int> statusBreakdown, DateTime? firstScan, DateTime? lastScan)> GetScanStatisticsAsync(
         int qrCodeId);
+
+    /// <summary>
+    /// Retrieves a QR code by its UUID with all navigation properties loaded (read-only).
+    /// </summary>
+    /// <param name="uuid">The QR code UUID</param>
+    /// <returns>The QR code if found, null otherwise</returns>
+    Task<QrCode?> GetQrCodeByUuidAsync(Guid uuid);
+
+    /// <summary>
+    /// Retrieves a QR code by its UUID with all navigation properties loaded (tracked for updates).
+    /// </summary>
+    /// <param name="uuid">The QR code UUID</param>
+    /// <returns>The QR code if found, null otherwise</returns>
+    Task<QrCode?> GetQrCodeByUuidTrackedAsync(Guid uuid);
 }

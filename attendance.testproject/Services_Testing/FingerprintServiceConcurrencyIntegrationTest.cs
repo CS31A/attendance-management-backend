@@ -105,6 +105,9 @@ public sealed class FingerprintServiceConcurrencyIntegrationTest : IDisposable
         mockSessionRepository
             .Setup(repository => repository.GetSessionByIdAsync(seed.Session.Id))
             .ReturnsAsync(seed.Session);
+        mockSessionRepository
+            .Setup(repository => repository.GetSessionByUuidAsync(seed.Session.Uuid))
+            .ReturnsAsync(seed.Session);
 
         mockAttendanceService
             .Setup(service => service.DetermineAttendanceStatus(
@@ -148,7 +151,7 @@ public sealed class FingerprintServiceConcurrencyIntegrationTest : IDisposable
                 DeviceId = seed.Device.DeviceIdentifier,
                 SensorFingerprintId = 5,
                 Confidence = 96,
-                SessionId = seed.Session.Id
+                SessionId = seed.Session.Uuid
             },
             "device-secret");
 
@@ -169,11 +172,15 @@ public sealed class FingerprintServiceConcurrencyIntegrationTest : IDisposable
         Assert.Single(persistedAttendance);
         Assert.Single(persistedScanEvents);
 
-        Assert.Equal(persistedAttendance[0].Id, response.AttendanceRecordId);
+        Assert.Equal(persistedAttendance[0].Uuid, response.AttendanceRecordId);
         Assert.Equal("Duplicate", persistedScanEvents[0].Status);
+        Assert.Equal(seed.Session.Id, persistedScanEvents[0].SessionId);
         Assert.Equal(persistedAttendance[0].Id, persistedScanEvents[0].AttendanceRecordId);
+        Assert.NotEqual(Guid.Empty, seed.Session.Uuid);
         Assert.NotEqual(Guid.Empty, matchedFingerprint.Uuid);
         Assert.NotEqual(Guid.Empty, persistedScanEvents[0].Uuid);
+        Assert.NotEqual(Guid.Empty, persistedScanEvents[0].EventId);
+        Assert.NotEqual(persistedScanEvents[0].Uuid, persistedScanEvents[0].EventId);
     }
 
     [Fact]
@@ -223,6 +230,9 @@ public sealed class FingerprintServiceConcurrencyIntegrationTest : IDisposable
 
         mockSessionRepository
             .Setup(repository => repository.GetSessionByIdAsync(seed.Session.Id))
+            .ReturnsAsync(seed.Session);
+        mockSessionRepository
+            .Setup(repository => repository.GetSessionByUuidAsync(seed.Session.Uuid))
             .ReturnsAsync(seed.Session);
 
         mockAttendanceService
@@ -300,7 +310,7 @@ public sealed class FingerprintServiceConcurrencyIntegrationTest : IDisposable
                 DeviceId = seed.Device.DeviceIdentifier,
                 SensorFingerprintId = 5,
                 Confidence = 96,
-                SessionId = seed.Session.Id
+                SessionId = seed.Session.Uuid
             },
             "device-secret");
 
@@ -319,8 +329,12 @@ public sealed class FingerprintServiceConcurrencyIntegrationTest : IDisposable
 
         Assert.Single(persistedAttendance);
         Assert.Single(persistedScanEvents);
+        Assert.Equal(seed.Session.Id, persistedScanEvents[0].SessionId);
         Assert.Equal(persistedAttendance[0].Id, persistedScanEvents[0].AttendanceRecordId);
-        Assert.Equal(persistedAttendance[0].Id, response.AttendanceRecordId);
+        Assert.Equal(persistedAttendance[0].Uuid, response.AttendanceRecordId);
+        Assert.NotEqual(Guid.Empty, persistedScanEvents[0].Uuid);
+        Assert.NotEqual(Guid.Empty, persistedScanEvents[0].EventId);
+        Assert.NotEqual(persistedScanEvents[0].Uuid, persistedScanEvents[0].EventId);
     }
 
     public void Dispose()
@@ -509,6 +523,12 @@ public sealed class FingerprintServiceConcurrencyIntegrationTest : IDisposable
 
         public Task<AttendanceRecord?> GetByIdTrackedAsync(int id)
             => _inner.GetByIdTrackedAsync(id);
+
+        public Task<AttendanceRecord?> GetAttendanceByUuidAsync(Guid uuid)
+            => _inner.GetAttendanceByUuidAsync(uuid);
+
+        public Task<AttendanceRecord?> GetAttendanceByUuidTrackedAsync(Guid uuid)
+            => _inner.GetAttendanceByUuidTrackedAsync(uuid);
 
         public Task<List<AttendanceRecord>> GetAllAsync(int pageNumber = 1, int pageSize = 50)
             => _inner.GetAllAsync(pageNumber, pageSize);

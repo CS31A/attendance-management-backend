@@ -132,6 +132,34 @@ public class CourseServiceTest
         Assert.Same(expectedException, exception.InnerException);
     }
 
+    [Fact]
+    public async Task GetCourseByUuidAsync_ReturnsCourse_WhenFound()
+    {
+        var courseUuid = Guid.NewGuid();
+        var course = new Course { Id = 4, Uuid = courseUuid, Name = "Physics" };
+        _mockCourseRepository
+            .Setup(repository => repository.GetCourseByUuidAsync(courseUuid))
+            .ReturnsAsync(course);
+
+        var result = await _service.GetCourseByUuidAsync(courseUuid);
+
+        Assert.Same(course, result);
+    }
+
+    [Fact]
+    public async Task GetCourseByUuidAsync_ThrowsEntityNotFoundException_WhenMissing()
+    {
+        var courseUuid = Guid.NewGuid();
+        _mockCourseRepository
+            .Setup(repository => repository.GetCourseByUuidAsync(courseUuid))
+            .ReturnsAsync((Course?)null);
+
+        var exception = await Assert.ThrowsAsync<EntityNotFoundException<Guid>>(() => _service.GetCourseByUuidAsync(courseUuid));
+
+        Assert.Equal("Course", exception.EntityName);
+        Assert.Equal(courseUuid, exception.Key);
+    }
+
     [Theory]
     [InlineData(null)]
     [InlineData("")]

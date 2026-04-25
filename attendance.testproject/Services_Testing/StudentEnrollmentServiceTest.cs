@@ -2,6 +2,7 @@ using attendance_monitoring.Classes;
 using attendance_monitoring.Constants;
 using attendance_monitoring.Exceptions;
 using attendance_monitoring.IRepository;
+using attendance_monitoring.Models.DTO.Request;
 using attendance_monitoring.Services;
 using Microsoft.Extensions.Logging;
 
@@ -88,6 +89,52 @@ public class StudentEnrollmentServiceTest
         Assert.Equal(subjectId, result.SubjectId);
         Assert.True(result.IsActive);
         _mockEnrollmentRepo.Verify(r => r.CreateAsync(It.IsAny<StudentEnrollment>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task EnrollStudentAsync_RequestWithCanonicalGuidIds_NormalizesToIntIdentifiers()
+    {
+        var studentUuid = Guid.NewGuid();
+        var sectionUuid = Guid.NewGuid();
+        var subjectUuid = Guid.NewGuid();
+        var student = new Student { Id = 1, Uuid = studentUuid, SectionId = 5, IsDeleted = false };
+        var section = new Section { Id = 2, Uuid = sectionUuid };
+        var subject = new Subject { Id = 3, Uuid = subjectUuid };
+
+        _mockStudentRepo.Setup(r => r.GetStudentByUuidAsync(studentUuid)).ReturnsAsync(student);
+        _mockStudentRepo.Setup(r => r.GetStudentByIdAsync(student.Id)).ReturnsAsync(student);
+        _mockSectionRepo.Setup(r => r.GetSectionByUuidAsync(sectionUuid)).ReturnsAsync(section);
+        _mockSectionRepo.Setup(r => r.GetSectionByIdAsync(section.Id)).ReturnsAsync(section);
+        _mockSubjectRepo.Setup(r => r.GetSubjectByUuidAsync(subjectUuid)).ReturnsAsync(subject);
+        _mockSubjectRepo.Setup(r => r.GetSubjectByIdAsync(subject.Id)).ReturnsAsync(subject);
+        _mockEnrollmentRepo.Setup(r => r.GetEnrollmentAsync(student.Id, section.Id, subject.Id))
+            .ReturnsAsync((StudentEnrollment?)null);
+        _mockEnrollmentRepo.Setup(r => r.CreateAsync(It.IsAny<StudentEnrollment>()))
+            .ReturnsAsync((StudentEnrollment e) => e);
+
+        var result = await _service.EnrollStudentAsync(new CreateStudentEnrollment
+        {
+            StudentId = studentUuid,
+            SectionId = sectionUuid,
+            SubjectId = subjectUuid,
+            EnrollmentType = "Irregular",
+        });
+
+        Assert.Equal(student.Id, result.StudentId);
+        Assert.Equal(section.Id, result.SectionId);
+        Assert.Equal(subject.Id, result.SubjectId);
+    }
+
+    [Fact]
+    public async Task GetEnrollmentByUuidAsync_ReturnsEnrollment_WhenFound()
+    {
+        var enrollmentUuid = Guid.NewGuid();
+        var enrollment = new StudentEnrollment { Id = 10, Uuid = enrollmentUuid, StudentId = 1, SectionId = 2, SubjectId = 3 };
+        _mockEnrollmentRepo.Setup(r => r.GetByUuidAsync(enrollmentUuid)).ReturnsAsync(enrollment);
+
+        var result = await _service.GetEnrollmentByUuidAsync(enrollmentUuid);
+
+        Assert.Same(enrollment, result);
     }
 
     [Fact]

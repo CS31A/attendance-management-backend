@@ -366,6 +366,11 @@ public sealed class UuidProfileMigrationIntegrationTests
             var persistedSession = await dbContext.Sessions
                 .AsNoTracking()
                 .Include(row => row.Schedule)
+                .ThenInclude(row => row.Subject)
+                .Include(row => row.Schedule)
+                .ThenInclude(row => row.Section)
+                .Include(row => row.Schedule)
+                .ThenInclude(row => row.Classroom)
                 .SingleAsync(row => row.Id == session.Id, cancellationToken);
             var persistedQrCode = await dbContext.QrCodes
                 .AsNoTracking()
@@ -400,7 +405,10 @@ public sealed class UuidProfileMigrationIntegrationTests
                 new[]
                 {
                     await ReadUuidTableStateAsync(dbContext, "Courses", cancellationToken),
+                    await ReadUuidTableStateAsync(dbContext, "Subjects", cancellationToken),
                     await ReadUuidTableStateAsync(dbContext, "Sections", cancellationToken),
+                    await ReadUuidTableStateAsync(dbContext, "Classrooms", cancellationToken),
+                    await ReadUuidTableStateAsync(dbContext, "Schedules", cancellationToken),
                     await ReadUuidTableStateAsync(dbContext, "StudentEnrollments", cancellationToken),
                     await ReadUuidTableStateAsync(dbContext, "Sessions", cancellationToken),
                     await ReadUuidTableStateAsync(dbContext, "AttendanceRecords", cancellationToken),
@@ -423,7 +431,10 @@ public sealed class UuidProfileMigrationIntegrationTests
         Assert.Collection(
             persisted.TableStates,
             state => AssertUuidTableState(state, "Courses", minimumExpectedRows: 1),
+            state => AssertUuidTableState(state, "Subjects", minimumExpectedRows: 1),
             state => AssertUuidTableState(state, "Sections", minimumExpectedRows: 2),
+            state => AssertUuidTableState(state, "Classrooms", minimumExpectedRows: 1),
+            state => AssertUuidTableState(state, "Schedules", minimumExpectedRows: 1),
             state => AssertUuidTableState(state, "StudentEnrollments", minimumExpectedRows: 1),
             state => AssertUuidTableState(state, "Sessions", minimumExpectedRows: 1),
             state => AssertUuidTableState(state, "AttendanceRecords", minimumExpectedRows: 1),
@@ -443,13 +454,20 @@ public sealed class UuidProfileMigrationIntegrationTests
 
         Assert.NotEqual(Guid.Empty, persisted.Session.Uuid);
         Assert.Equal(persisted.Session.ScheduleId, persisted.Session.Schedule.Id);
+        Assert.Equal(persisted.Session.Schedule.SectionId, persisted.Enrollment.SectionId);
+        Assert.Equal(persisted.Session.Schedule.SubjectId, persisted.Enrollment.SubjectId);
+        Assert.True(persisted.Session.Schedule.ClassroomId > 0);
         Assert.NotEqual(Guid.Empty, persisted.Session.Schedule.Uuid);
+        Assert.NotEqual(Guid.Empty, persisted.Session.Schedule.Section.Uuid);
+        Assert.NotEqual(Guid.Empty, persisted.Session.Schedule.Subject.Uuid);
+        Assert.NotEqual(Guid.Empty, persisted.Session.Schedule.Classroom.Uuid);
 
         Assert.NotEqual(Guid.Empty, persisted.QrCode.Uuid);
         Assert.Equal(persisted.Session.Id, persisted.QrCode.SessionId);
         Assert.Equal(persisted.Session.Uuid, persisted.QrCode.Session.Uuid);
 
         Assert.NotEqual(Guid.Empty, persisted.Attendance.Uuid);
+        Assert.Equal(persisted.Attendance.StudentId, persisted.Enrollment.StudentId);
         Assert.Equal(persisted.Session.Id, persisted.Attendance.SessionId);
         Assert.Equal(persisted.Session.Uuid, persisted.Attendance.Session.Uuid);
         Assert.Equal(persisted.QrCode.Id, persisted.Attendance.QrCodeId);

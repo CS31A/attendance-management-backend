@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace attendance_monitoring.Models.DTO.Response;
 
 /// <summary>
@@ -8,12 +10,7 @@ public class SectionWithStudentsDto
     /// <summary>
     /// Gets or sets the section's unique identifier.
     /// </summary>
-    public int SectionId { get; set; }
-
-    /// <summary>
-    /// Gets or sets the section's UUID.
-    /// </summary>
-    public Guid SectionUuid { get; set; }
+    public Guid SectionId { get; set; }
 
     /// <summary>
     /// Gets or sets the section name (e.g., "BSCS 3A").
@@ -23,12 +20,7 @@ public class SectionWithStudentsDto
     /// <summary>
     /// Gets or sets the course's unique identifier.
     /// </summary>
-    public int CourseId { get; set; }
-
-    /// <summary>
-    /// Gets or sets the course's UUID.
-    /// </summary>
-    public Guid CourseUuid { get; set; }
+    public Guid CourseId { get; set; }
 
     /// <summary>
     /// Gets or sets the course name (e.g., "Bachelor of Science in Computer Science").

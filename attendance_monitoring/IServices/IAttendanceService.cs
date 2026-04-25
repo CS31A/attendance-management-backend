@@ -36,6 +36,14 @@ public interface IAttendanceService
     Task<AttendanceRecordResponseDto?> GetAttendanceByIdAsync(int id, ClaimsPrincipal user);
 
     /// <summary>
+    /// Retrieves an attendance record by its UUID.
+    /// </summary>
+    /// <param name="uuid">The attendance record UUID</param>
+    /// <param name="user">The current user principal for authorization</param>
+    /// <returns>The attendance record DTO if found and authorized</returns>
+    Task<AttendanceRecordResponseDto?> GetAttendanceByUuidAsync(Guid uuid, ClaimsPrincipal user);
+
+    /// <summary>
     /// Retrieves all attendance records with filtering and pagination.
     /// </summary>
     /// <param name="filter">The filter and pagination parameters</param>
@@ -53,12 +61,29 @@ public interface IAttendanceService
     Task<AttendanceRecordResponseDto> UpdateAttendanceAsync(int id, UpdateAttendanceRequest request, ClaimsPrincipal user);
 
     /// <summary>
+    /// Updates an existing attendance record by its UUID.
+    /// </summary>
+    /// <param name="uuid">The attendance record UUID</param>
+    /// <param name="request">The update request</param>
+    /// <param name="user">The current user principal for authorization</param>
+    /// <returns>The updated attendance record DTO</returns>
+    Task<AttendanceRecordResponseDto> UpdateAttendanceByUuidAsync(Guid uuid, UpdateAttendanceRequest request, ClaimsPrincipal user);
+
+    /// <summary>
     /// Deletes an attendance record.
     /// </summary>
     /// <param name="id">The attendance record ID</param>
     /// <param name="user">The current user principal for authorization</param>
     /// <returns>True if deleted successfully</returns>
     Task<bool> DeleteAttendanceAsync(int id, ClaimsPrincipal user);
+
+    /// <summary>
+    /// Deletes an attendance record by its UUID.
+    /// </summary>
+    /// <param name="uuid">The attendance record UUID</param>
+    /// <param name="user">The current user principal for authorization</param>
+    /// <returns>True if deleted successfully</returns>
+    Task<bool> DeleteAttendanceByUuidAsync(Guid uuid, ClaimsPrincipal user);
 
     /// <summary>
     /// Retrieves attendance history for a specific student.
@@ -69,12 +94,28 @@ public interface IAttendanceService
     Task<StudentAttendanceHistoryDto> GetStudentAttendanceHistoryAsync(int studentId, ClaimsPrincipal user);
 
     /// <summary>
+    /// Retrieves attendance history for a specific student UUID.
+    /// </summary>
+    /// <param name="studentUuid">The student UUID</param>
+    /// <param name="user">The current user principal for authorization</param>
+    /// <returns>Student attendance history with statistics</returns>
+    Task<StudentAttendanceHistoryDto> GetStudentAttendanceHistoryByUuidAsync(Guid studentUuid, ClaimsPrincipal user);
+
+    /// <summary>
     /// Retrieves attendance information for a specific session.
     /// </summary>
     /// <param name="sessionId">The session ID</param>
     /// <param name="user">The current user principal for authorization</param>
     /// <returns>Session attendance overview</returns>
     Task<SessionAttendanceDto> GetSessionAttendanceAsync(int sessionId, ClaimsPrincipal user);
+
+    /// <summary>
+    /// Retrieves attendance information for a specific session UUID.
+    /// </summary>
+    /// <param name="sessionUuid">The session UUID</param>
+    /// <param name="user">The current user principal for authorization</param>
+    /// <returns>Session attendance overview</returns>
+    Task<SessionAttendanceDto> GetSessionAttendanceByUuidAsync(Guid sessionUuid, ClaimsPrincipal user);
 
     /// <summary>
     /// Retrieves attendance summary statistics.

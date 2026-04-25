@@ -22,6 +22,7 @@ public class DatabaseConstraintIntegrationTests : IDisposable
 {
     private readonly ApplicationDbContext _context;
     private readonly Mock<IAccountRepository> _mockAccountRepository;
+    private readonly Mock<ISectionRepository> _mockSectionRepository;
     private readonly Mock<ILogger<UserFactory>> _mockLogger;
     private readonly Mock<IServiceScopeFactory> _mockScopeFactory;
     private readonly Mock<IServiceScope> _mockScope;
@@ -40,6 +41,7 @@ public class DatabaseConstraintIntegrationTests : IDisposable
 
         // Setup mocks
         _mockAccountRepository = new Mock<IAccountRepository>();
+        _mockSectionRepository = new Mock<ISectionRepository>();
         _mockLogger = new Mock<ILogger<UserFactory>>();
         _mockScopeFactory = new Mock<IServiceScopeFactory>();
         _mockScope = new Mock<IServiceScope>();
@@ -97,7 +99,12 @@ public class DatabaseConstraintIntegrationTests : IDisposable
             .Setup(r => r.SaveChangesAsync())
             .ReturnsAsync(1);
 
-        var factory = new UserFactory(_mockAccountRepository.Object, _mockLogger.Object);
+        var sectionUuid = Guid.NewGuid();
+        _mockSectionRepository
+            .Setup(r => r.GetSectionByUuidAsync(sectionUuid))
+            .ReturnsAsync(new Section { Id = 1, Uuid = sectionUuid, Name = "Test Section" });
+
+        var factory = new UserFactory(_mockAccountRepository.Object, _mockSectionRepository.Object, _mockLogger.Object);
 
         // Act
         var result = await factory.CreateUserAsync(
@@ -107,7 +114,7 @@ public class DatabaseConstraintIntegrationTests : IDisposable
             "Student",
             "Test",
             "Student",
-            1);
+            sectionUuid);
 
         // Assert
         Assert.True(result.Success);
@@ -132,7 +139,7 @@ public class DatabaseConstraintIntegrationTests : IDisposable
             .Setup(r => r.DeleteUserAsync(It.IsAny<IdentityUser>()))
             .ReturnsAsync(IdentityResult.Success);
 
-        var factory = new UserFactory(_mockAccountRepository.Object, _mockLogger.Object);
+        var factory = new UserFactory(_mockAccountRepository.Object, _mockSectionRepository.Object, _mockLogger.Object);
 
         // Act - Create student without sectionId
         var result = await factory.CreateUserAsync(
@@ -170,7 +177,12 @@ public class DatabaseConstraintIntegrationTests : IDisposable
             .Setup(r => r.DeleteUserAsync(It.IsAny<IdentityUser>()))
             .ReturnsAsync(IdentityResult.Success);
 
-        var factory = new UserFactory(_mockAccountRepository.Object, _mockLogger.Object);
+        var sectionUuid = Guid.NewGuid();
+        _mockSectionRepository
+            .Setup(r => r.GetSectionByUuidAsync(sectionUuid))
+            .ReturnsAsync(new Section { Id = 1, Uuid = sectionUuid, Name = "Test Section" });
+
+        var factory = new UserFactory(_mockAccountRepository.Object, _mockSectionRepository.Object, _mockLogger.Object);
 
         // Act
         var result = await factory.CreateUserAsync(
@@ -180,7 +192,7 @@ public class DatabaseConstraintIntegrationTests : IDisposable
             "Student",
             null, // Missing firstname
             "Student",
-            1);
+            sectionUuid);
 
         // Assert
         Assert.False(result.Success);
@@ -216,7 +228,7 @@ public class DatabaseConstraintIntegrationTests : IDisposable
             .Setup(r => r.DeleteUserAsync(It.IsAny<IdentityUser>()))
             .ReturnsAsync(IdentityResult.Success);
 
-        var factory = new UserFactory(_mockAccountRepository.Object, _mockLogger.Object);
+        var factory = new UserFactory(_mockAccountRepository.Object, _mockSectionRepository.Object, _mockLogger.Object);
 
         // Act
         var result = await factory.CreateUserAsync(
@@ -263,7 +275,7 @@ public class DatabaseConstraintIntegrationTests : IDisposable
             .Setup(r => r.DeleteUserAsync(It.IsAny<IdentityUser>()))
             .ReturnsAsync(IdentityResult.Success);
 
-        var factory = new UserFactory(_mockAccountRepository.Object, _mockLogger.Object);
+        var factory = new UserFactory(_mockAccountRepository.Object, _mockSectionRepository.Object, _mockLogger.Object);
 
         // Act
         var result = await factory.CreateUserAsync(
@@ -304,7 +316,7 @@ public class DatabaseConstraintIntegrationTests : IDisposable
             .Setup(r => r.DeleteUserAsync(It.IsAny<IdentityUser>()))
             .ReturnsAsync(IdentityResult.Success);
 
-        var factory = new UserFactory(_mockAccountRepository.Object, _mockLogger.Object);
+        var factory = new UserFactory(_mockAccountRepository.Object, _mockSectionRepository.Object, _mockLogger.Object);
 
         // Act
         var result = await factory.CreateUserAsync(

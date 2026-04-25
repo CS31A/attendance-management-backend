@@ -21,6 +21,12 @@ public sealed class InstructorSectionsIntegrationTests
         // Arrange
         await using var host = await CreateHostWithInstructorScenarioAsync();
         var scenario = host.InstructorScenario!;
+        var instructorUuid = await host.ExecuteDbContextAsync(async (dbContext, cancellationToken) =>
+            await dbContext.Instructors
+                .AsNoTracking()
+                .Where(instructor => instructor.Id == scenario.InstructorId)
+                .Select(instructor => instructor.Uuid)
+                .SingleAsync(cancellationToken));
         
         host.AuthenticateAs(
             userId: scenario.InstructorUserId,
@@ -34,7 +40,7 @@ public sealed class InstructorSectionsIntegrationTests
         // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.NotNull(payload);
-        Assert.Equal(scenario.InstructorId, payload.InstructorId);
+        Assert.Equal(instructorUuid, payload.InstructorId);
         Assert.Equal(scenario.InstructorFirstname, payload.InstructorFirstname);
         Assert.Equal(scenario.InstructorLastname, payload.InstructorLastname);
         Assert.NotNull(payload.Sections);
@@ -42,17 +48,17 @@ public sealed class InstructorSectionsIntegrationTests
         
         // Verify data structure
         var firstSection = payload.Sections[0];
-        Assert.True(firstSection.SectionId > 0);
+        Assert.NotEqual(Guid.Empty, firstSection.SectionId);
         Assert.False(string.IsNullOrEmpty(firstSection.SectionName));
         Assert.False(string.IsNullOrEmpty(firstSection.CourseName));
         Assert.NotNull(firstSection.Subjects);
         Assert.NotEmpty(firstSection.Subjects);
         
         var firstSubject = firstSection.Subjects[0];
-        Assert.True(firstSubject.SubjectId > 0);
+        Assert.NotEqual(Guid.Empty, firstSubject.SubjectId);
         Assert.False(string.IsNullOrEmpty(firstSubject.SubjectName));
         Assert.False(string.IsNullOrEmpty(firstSubject.SubjectCode));
-        Assert.True(firstSubject.ScheduleId > 0);
+        Assert.NotEqual(Guid.Empty, firstSubject.ScheduleId);
         Assert.NotNull(firstSubject.Students);
         Assert.NotEmpty(firstSubject.Students);
         Assert.Contains(firstSubject.Students, student => student.IsRegular);
@@ -100,6 +106,12 @@ public sealed class InstructorSectionsIntegrationTests
         // Arrange
         await using var host = await CreateHostWithInstructorScenarioAsync();
         var scenario = host.InstructorScenario!;
+        var instructorUuid = await host.ExecuteDbContextAsync(async (dbContext, cancellationToken) =>
+            await dbContext.Instructors
+                .AsNoTracking()
+                .Where(instructor => instructor.Id == scenario.InstructorWithNoSchedulesId)
+                .Select(instructor => instructor.Uuid)
+                .SingleAsync(cancellationToken));
         
         host.AuthenticateAs(
             userId: scenario.InstructorWithNoSchedulesUserId,
@@ -113,7 +125,7 @@ public sealed class InstructorSectionsIntegrationTests
         // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.NotNull(payload);
-        Assert.Equal(scenario.InstructorWithNoSchedulesId, payload.InstructorId);
+        Assert.Equal(instructorUuid, payload.InstructorId);
         Assert.NotNull(payload.Sections);
         Assert.Empty(payload.Sections);
     }

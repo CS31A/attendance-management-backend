@@ -29,6 +29,13 @@ public interface IQrCodeService
     Task<QrCodeResponseDto?> GetQrCodeByHashAsync(string qrHash);
 
     /// <summary>
+    /// Retrieves a QR code by its UUID.
+    /// </summary>
+    /// <param name="uuid">The QR code UUID.</param>
+    /// <returns>The QR code response DTO if found; otherwise, null.</returns>
+    Task<QrCodeResponseDto?> GetQrCodeByUuidAsync(Guid uuid);
+
+    /// <summary>
     /// Retrieves all QR codes for a specific schedule.
     /// </summary>
     /// <param name="scheduleId">The schedule ID.</param>
@@ -48,6 +55,13 @@ public interface IQrCodeService
     /// <param name="sessionId">The session ID.</param>
     /// <returns>A collection of QR code response DTOs for the specified session.</returns>
     Task<IEnumerable<QrCodeResponseDto>> GetQrCodesBySessionIdAsync(int sessionId);
+
+    /// <summary>
+    /// Retrieves all QR codes for a specific session UUID.
+    /// </summary>
+    /// <param name="sessionUuid">The session UUID.</param>
+    /// <returns>A collection of QR code response DTOs for the specified session.</returns>
+    Task<IEnumerable<QrCodeResponseDto>> GetQrCodesBySessionUuidAsync(Guid sessionUuid);
 
     /// <summary>
     /// Retrieves all active QR codes that have not expired.
@@ -82,6 +96,22 @@ public interface IQrCodeService
     /// <returns>Complete scan history response with pagination and statistics</returns>
     Task<QrCodeScanHistoryResponseDto> GetScanHistoryByHashAsync(
         string qrHash,
+        int instructorId,
+        string userRole,
+        int pageNumber = 1,
+        int pageSize = 50);
+
+    /// <summary>
+    /// Get scan history for a QR code by UUID.
+    /// </summary>
+    /// <param name="uuid">The QR code UUID.</param>
+    /// <param name="instructorId">The authenticated instructor's ID.</param>
+    /// <param name="userRole">The authenticated user's role.</param>
+    /// <param name="pageNumber">Page number (default: 1).</param>
+    /// <param name="pageSize">Page size (default: 50, max: 100).</param>
+    /// <returns>Complete scan history response with pagination and statistics.</returns>
+    Task<QrCodeScanHistoryResponseDto> GetScanHistoryByUuidAsync(
+        Guid uuid,
         int instructorId,
         string userRole,
         int pageNumber = 1,
@@ -124,6 +154,18 @@ public interface IQrCodeService
     Task<QrCodeResponseDto> UpdateQrCodeAsync(int id, UpdateQrCode updateQrCode, ClaimsPrincipal user);
 
     /// <summary>
+    /// Updates an existing QR code by its UUID.
+    /// </summary>
+    /// <param name="uuid">The QR code UUID to update.</param>
+    /// <param name="updateQrCode">The update data.</param>
+    /// <param name="user">The authenticated user making the request.</param>
+    /// <returns>The updated QR code response DTO.</returns>
+    /// <exception cref="ValidationException">Thrown when validation fails.</exception>
+    /// <exception cref="EntityNotFoundException{Guid}">Thrown when QR code is not found.</exception>
+    /// <exception cref="EntityUnauthorizedException">Thrown when user is not authorized.</exception>
+    Task<QrCodeResponseDto> UpdateQrCodeByUuidAsync(Guid uuid, UpdateQrCode updateQrCode, ClaimsPrincipal user);
+
+    /// <summary>
     /// Deactivates a QR code by setting its IsActive status to false.
     /// </summary>
     /// <param name="id">The QR code ID to deactivate.</param>
@@ -162,6 +204,16 @@ public interface IQrCodeService
     Task RevokeQrCodeByHashAsync(string qrHash, string? reason, ClaimsPrincipal user);
 
     /// <summary>
+    /// Revokes a QR code by its UUID with audit trail.
+    /// </summary>
+    /// <param name="uuid">The QR code UUID to revoke.</param>
+    /// <param name="reason">The reason for revocation.</param>
+    /// <param name="user">The authenticated user making the request.</param>
+    /// <exception cref="EntityNotFoundException{Guid}">Thrown when QR code is not found.</exception>
+    /// <exception cref="EntityUnauthorizedException">Thrown when user is not authorized.</exception>
+    Task RevokeQrCodeByUuidAsync(Guid uuid, string? reason, ClaimsPrincipal user);
+
+    /// <summary>
     /// Reactivates a previously revoked QR code.
     /// </summary>
     /// <param name="id">The QR code ID to reactivate.</param>
@@ -182,6 +234,16 @@ public interface IQrCodeService
     Task ReactivateQrCodeByHashAsync(string qrHash, ClaimsPrincipal user);
 
     /// <summary>
+    /// Reactivates a previously revoked QR code by its UUID.
+    /// </summary>
+    /// <param name="uuid">The QR code UUID to reactivate.</param>
+    /// <param name="user">The authenticated user making the request.</param>
+    /// <exception cref="EntityNotFoundException{Guid}">Thrown when QR code is not found.</exception>
+    /// <exception cref="EntityUnauthorizedException">Thrown when user is not authorized.</exception>
+    /// <exception cref="ValidationException">Thrown when QR code is already active.</exception>
+    Task ReactivateQrCodeByUuidAsync(Guid uuid, ClaimsPrincipal user);
+
+    /// <summary>
     /// Hard deletes a QR code from the database.
     /// </summary>
     /// <param name="id">The QR code ID to delete.</param>
@@ -189,6 +251,15 @@ public interface IQrCodeService
     /// <exception cref="EntityNotFoundException{Int32}">Thrown when QR code is not found.</exception>
     /// <exception cref="EntityUnauthorizedException">Thrown when user is not authorized.</exception>
     Task DeleteQrCodeAsync(int id, ClaimsPrincipal user);
+
+    /// <summary>
+    /// Hard deletes a QR code from the database by its UUID.
+    /// </summary>
+    /// <param name="uuid">The QR code UUID to delete.</param>
+    /// <param name="user">The authenticated user making the request.</param>
+    /// <exception cref="EntityNotFoundException{Guid}">Thrown when QR code is not found.</exception>
+    /// <exception cref="EntityUnauthorizedException">Thrown when user is not authorized.</exception>
+    Task DeleteQrCodeByUuidAsync(Guid uuid, ClaimsPrincipal user);
 
     #endregion
 
@@ -252,6 +323,18 @@ public interface IQrCodeService
     /// <exception cref="EntityNotFoundException{Int32}">Thrown when QR code is not found.</exception>
     /// <exception cref="EntityUnauthorizedException">Thrown when user is not authorized.</exception>
     Task<QrCodeResponseDto> ExtendQrCodeExpirationAsync(int id, int additionalMinutes, ClaimsPrincipal user);
+
+    /// <summary>
+    /// Extends the expiration time of a QR code by its UUID.
+    /// </summary>
+    /// <param name="uuid">The QR code UUID.</param>
+    /// <param name="additionalMinutes">The number of minutes to add to the current expiration time.</param>
+    /// <param name="user">The authenticated user making the request.</param>
+    /// <returns>The updated QR code response DTO.</returns>
+    /// <exception cref="ValidationException">Thrown when validation fails.</exception>
+    /// <exception cref="EntityNotFoundException{Guid}">Thrown when QR code is not found.</exception>
+    /// <exception cref="EntityUnauthorizedException">Thrown when user is not authorized.</exception>
+    Task<QrCodeResponseDto> ExtendQrCodeExpirationByUuidAsync(Guid uuid, int additionalMinutes, ClaimsPrincipal user);
 
     #endregion
 }

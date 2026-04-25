@@ -22,6 +22,7 @@ namespace attendance_monitoring.Repositories
                 .Include(s => s.Subject)
                 .Include(s => s.Classroom)
                 .Include(s => s.Section)
+                    .ThenInclude(section => section.Course)
                 .Include(s => s.Instructor)
                     .ThenInclude(i => i.User)
                 .ToListAsync();
@@ -36,6 +37,7 @@ namespace attendance_monitoring.Repositories
                 .Include(s => s.Subject)
                 .Include(s => s.Classroom)
                 .Include(s => s.Section)
+                    .ThenInclude(section => section.Course)
                 .Include(s => s.Instructor)
                     .ThenInclude(i => i.User)
                 .FirstOrDefaultAsync(s => s.Id == id);
@@ -49,9 +51,40 @@ namespace attendance_monitoring.Repositories
                 .Include(s => s.Subject)
                 .Include(s => s.Classroom)
                 .Include(s => s.Section)
+                    .ThenInclude(section => section.Course)
                 .Include(s => s.Instructor)
                     .ThenInclude(i => i.User)
                 .FirstOrDefaultAsync(s => s.Id == id);
+        }
+        #endregion
+
+        #region GetScheduleByUuidAsync
+        public async Task<Schedules?> GetScheduleByUuidAsync(Guid uuid)
+        {
+            var scheduleId = await context.Schedules
+                .AsNoTracking()
+                .Where(s => s.Uuid == uuid)
+                .Select(s => (int?)s.Id)
+                .SingleOrDefaultAsync();
+
+            return scheduleId.HasValue
+                ? await GetScheduleByIdAsync(scheduleId.Value)
+                : null;
+        }
+        #endregion
+
+        #region GetScheduleByUuidTrackedAsync
+        public async Task<Schedules?> GetScheduleByUuidTrackedAsync(Guid uuid)
+        {
+            var scheduleId = await context.Schedules
+                .AsNoTracking()
+                .Where(s => s.Uuid == uuid)
+                .Select(s => (int?)s.Id)
+                .SingleOrDefaultAsync();
+
+            return scheduleId.HasValue
+                ? await GetScheduleByIdTrackedAsync(scheduleId.Value)
+                : null;
         }
         #endregion
 
@@ -63,6 +96,7 @@ namespace attendance_monitoring.Repositories
                 .Include(s => s.Subject)
                 .Include(s => s.Classroom)
                 .Include(s => s.Section)
+                    .ThenInclude(section => section.Course)
                 .Include(s => s.Instructor)
                     .ThenInclude(i => i.User)
                 .Where(s => s.InstructorId == instructorId)
@@ -78,6 +112,7 @@ namespace attendance_monitoring.Repositories
                 .Include(s => s.Subject)
                 .Include(s => s.Classroom)
                 .Include(s => s.Section)
+                    .ThenInclude(section => section.Course)
                 .Include(s => s.Instructor)
                     .ThenInclude(i => i.User)
                 .Where(s => s.SectionId == sectionId)
@@ -111,6 +146,7 @@ namespace attendance_monitoring.Repositories
                 .AsNoTracking()
                 .Include(s => s.Subject)
                 .Include(s => s.Section)
+                    .ThenInclude(section => section.Course)
                 .Include(s => s.Classroom)
                 .Include(s => s.Instructor)
                 .Where(s => sectionIds.Contains(s.SectionId) && subjectIds.Contains(s.SubjectId))

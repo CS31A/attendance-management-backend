@@ -133,6 +133,12 @@ public class SessionRepositoryTest : IDisposable
         // Act
         var newerSession = await _context.Sessions
             .AsNoTracking()
+            .Include(session => session.Schedule)
+                .ThenInclude(schedule => schedule.Subject)
+            .Include(session => session.Schedule)
+                .ThenInclude(schedule => schedule.Section)
+            .Include(session => session.Schedule)
+                .ThenInclude(schedule => schedule.Classroom)
             .Include(session => session.AttendanceRecords)
             .Include(session => session.QrCodes)
             .SingleAsync(session => session.Id == 11);
@@ -144,11 +150,63 @@ public class SessionRepositoryTest : IDisposable
 
         // Assert
         Assert.NotEqual(Guid.Empty, newerSession.Uuid);
+        Assert.NotEqual(Guid.Empty, newerSession.Schedule.Uuid);
+        Assert.NotEqual(Guid.Empty, newerSession.Schedule.Subject.Uuid);
+        Assert.NotEqual(Guid.Empty, newerSession.Schedule.Section.Uuid);
+        Assert.NotEqual(Guid.Empty, newerSession.Schedule.Classroom.Uuid);
+        Assert.Equal(newerSession.Schedule.Subject.Name, reportRow.SubjectName);
+        Assert.Equal(newerSession.Schedule.Section.Name, reportRow.SectionName);
+        Assert.Equal(newerSession.Schedule.DayOfWeek, reportRow.DayOfWeek);
         Assert.All(newerSession.AttendanceRecords, record => Assert.NotEqual(Guid.Empty, record.Uuid));
 
         var qrCode = Assert.Single(newerSession.QrCodes);
         Assert.NotEqual(Guid.Empty, qrCode.Uuid);
         Assert.Equal(newerSession.Id, reportRow.SessionId);
+    }
+
+    [Fact]
+    public async Task SessionRepository_GetSessionByUuidAsync_ReturnsReadOnlyAndTrackedSession()
+    {
+        // Arrange
+        await SeedReportDataAsync();
+        _context.ChangeTracker.Clear();
+
+        var sessionUuid = await _context.Sessions
+            .AsNoTracking()
+            .Where(session => session.Id == 11)
+            .Select(session => session.Uuid)
+            .SingleAsync();
+
+        // Act
+        var readOnlySession = await _repository.GetSessionByUuidAsync(sessionUuid);
+        var trackedSession = await _repository.GetSessionByUuidTrackedAsync(sessionUuid);
+
+        // Assert
+        Assert.NotNull(readOnlySession);
+        Assert.Equal(11, readOnlySession.Id);
+        Assert.NotNull(readOnlySession.Schedule);
+        Assert.NotNull(readOnlySession.Schedule.Subject);
+        Assert.NotNull(readOnlySession.Schedule.Section);
+        Assert.NotNull(readOnlySession.Schedule.Classroom);
+        Assert.NotNull(readOnlySession.Schedule.Instructor);
+        Assert.NotNull(trackedSession);
+        Assert.Equal(EntityState.Unchanged, _context.Entry(trackedSession).State);
+    }
+
+    [Fact]
+    public async Task SessionRepository_GetSessionByUuidAsync_ReturnsNull_WhenNotFound()
+    {
+        // Arrange
+        await SeedReportDataAsync();
+        var missingUuid = Guid.NewGuid();
+
+        // Act
+        var readOnlySession = await _repository.GetSessionByUuidAsync(missingUuid);
+        var trackedSession = await _repository.GetSessionByUuidTrackedAsync(missingUuid);
+
+        // Assert
+        Assert.Null(readOnlySession);
+        Assert.Null(trackedSession);
     }
 
     private async Task SeedReportDataAsync()

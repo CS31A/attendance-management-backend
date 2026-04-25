@@ -95,6 +95,64 @@ public class CourseControllerTest
     }
 
     [Fact]
+    public async Task GetCourseByUuid_ReturnsOkResult_WhenCourseExists()
+    {
+        var courseUuid = Guid.NewGuid();
+        var expectedCourse = new Course
+        {
+            Id = 12,
+            Uuid = courseUuid,
+            Name = "Bachelor of Science in Data Science",
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+
+        _mockCourseService
+            .Setup(s => s.GetCourseByUuidAsync(courseUuid))
+            .ReturnsAsync(expectedCourse);
+
+        var result = await _controller.GetCourseByUuid(courseUuid);
+
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        var course = Assert.IsType<Course>(okResult.Value);
+        Assert.Equal(courseUuid, course.Uuid);
+        _mockCourseService.Verify(s => s.GetCourseByUuidAsync(courseUuid), Times.Once);
+    }
+
+    [Fact]
+    public async Task GetCourseByUuid_ReturnsNotFound_WhenCourseDoesNotExist()
+    {
+        var courseUuid = Guid.NewGuid();
+
+        _mockCourseService
+            .Setup(s => s.GetCourseByUuidAsync(courseUuid))
+            .ThrowsAsync(new EntityNotFoundException<Guid>("Course", courseUuid));
+
+        var result = await _controller.GetCourseByUuid(courseUuid);
+
+        var notFoundResult = Assert.IsType<NotFoundObjectResult>(result.Result);
+        Assert.Equal($"Course with UUID {courseUuid} not found", notFoundResult.Value);
+        _mockCourseService.Verify(s => s.GetCourseByUuidAsync(courseUuid), Times.Once);
+    }
+
+    [Fact]
+    public async Task GetCourseByUuid_ReturnsServerError_WhenServiceThrowsException()
+    {
+        var courseUuid = Guid.NewGuid();
+
+        _mockCourseService
+            .Setup(s => s.GetCourseByUuidAsync(courseUuid))
+            .ThrowsAsync(new EntityServiceException("Course", "GetCourseByUuid", "Unexpected failure"));
+
+        var result = await _controller.GetCourseByUuid(courseUuid);
+
+        var objectResult = Assert.IsType<ObjectResult>(result.Result);
+        Assert.Equal(500, objectResult.StatusCode);
+        Assert.Equal("An error occurred while retrieving the course", objectResult.Value);
+        _mockCourseService.Verify(s => s.GetCourseByUuidAsync(courseUuid), Times.Once);
+    }
+
+    [Fact]
     public async Task GetCourse_ReturnsNotFound_WhenCourseDoesNotExist()
     {
         // Arrange
@@ -234,6 +292,74 @@ public class CourseControllerTest
     }
 
     [Fact]
+    public async Task UpdateCourseByUuid_ReturnsOkResult_WhenUpdateSucceeds()
+    {
+        var courseUuid = Guid.NewGuid();
+        var updateCourse = new UpdateCourse { Name = "Bachelor of Science in Cybersecurity" };
+        var user = new ClaimsPrincipal(new ClaimsIdentity());
+        SetControllerUser(user);
+
+        var updatedCourse = new Course
+        {
+            Id = 19,
+            Uuid = courseUuid,
+            Name = updateCourse.Name,
+            CreatedAt = DateTime.UtcNow.AddDays(-7),
+            UpdatedAt = DateTime.UtcNow
+        };
+
+        _mockCourseService
+            .Setup(s => s.UpdateCourseByUuidAsync(courseUuid, updateCourse, user))
+            .ReturnsAsync(updatedCourse);
+
+        var result = await _controller.UpdateCourseByUuid(courseUuid, updateCourse);
+
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        var course = Assert.IsType<Course>(okResult.Value);
+        Assert.Equal(courseUuid, course.Uuid);
+        _mockCourseService.Verify(s => s.UpdateCourseByUuidAsync(courseUuid, updateCourse, user), Times.Once);
+    }
+
+    [Fact]
+    public async Task UpdateCourseByUuid_ReturnsNotFound_WhenCourseDoesNotExist()
+    {
+        var courseUuid = Guid.NewGuid();
+        var updateCourse = new UpdateCourse { Name = "Bachelor of Science in Cybersecurity" };
+        var user = new ClaimsPrincipal(new ClaimsIdentity());
+        SetControllerUser(user);
+
+        _mockCourseService
+            .Setup(s => s.UpdateCourseByUuidAsync(courseUuid, updateCourse, user))
+            .ThrowsAsync(new EntityNotFoundException<Guid>("Course", courseUuid));
+
+        var result = await _controller.UpdateCourseByUuid(courseUuid, updateCourse);
+
+        var notFoundResult = Assert.IsType<NotFoundObjectResult>(result.Result);
+        Assert.Equal($"Course with UUID {courseUuid} not found", notFoundResult.Value);
+        _mockCourseService.Verify(s => s.UpdateCourseByUuidAsync(courseUuid, updateCourse, user), Times.Once);
+    }
+
+    [Fact]
+    public async Task UpdateCourseByUuid_ReturnsBadRequest_WhenServiceException()
+    {
+        var courseUuid = Guid.NewGuid();
+        var updateCourse = new UpdateCourse { Name = "Bachelor of Science in Cybersecurity" };
+        var user = new ClaimsPrincipal(new ClaimsIdentity());
+        SetControllerUser(user);
+        const string errorMessage = "Unable to update course";
+
+        _mockCourseService
+            .Setup(s => s.UpdateCourseByUuidAsync(courseUuid, updateCourse, user))
+            .ThrowsAsync(new EntityServiceException("Course", "UpdateCourseByUuid", errorMessage));
+
+        var result = await _controller.UpdateCourseByUuid(courseUuid, updateCourse);
+
+        var badRequestResult = Assert.IsType<BadRequestObjectResult>(result.Result);
+        Assert.Equal(errorMessage, badRequestResult.Value);
+        _mockCourseService.Verify(s => s.UpdateCourseByUuidAsync(courseUuid, updateCourse, user), Times.Once);
+    }
+
+    [Fact]
     public async Task UpdateCourse_ReturnsNotFound_WhenCourseDoesNotExist()
     {
         // Arrange
@@ -296,6 +422,60 @@ public class CourseControllerTest
         // Assert
         Assert.IsType<NoContentResult>(result);
         _mockCourseService.Verify(s => s.DeleteCourseAsync(courseId, user), Times.Once);
+    }
+
+    [Fact]
+    public async Task DeleteCourseByUuid_ReturnsNoContent_WhenDeletionSucceeds()
+    {
+        var courseUuid = Guid.NewGuid();
+        var user = new ClaimsPrincipal(new ClaimsIdentity());
+        SetControllerUser(user);
+
+        _mockCourseService
+            .Setup(s => s.DeleteCourseByUuidAsync(courseUuid, user))
+            .Returns(Task.CompletedTask);
+
+        var result = await _controller.DeleteCourseByUuid(courseUuid);
+
+        Assert.IsType<NoContentResult>(result);
+        _mockCourseService.Verify(s => s.DeleteCourseByUuidAsync(courseUuid, user), Times.Once);
+    }
+
+    [Fact]
+    public async Task DeleteCourseByUuid_ReturnsNotFound_WhenCourseDoesNotExist()
+    {
+        var courseUuid = Guid.NewGuid();
+        var user = new ClaimsPrincipal(new ClaimsIdentity());
+        SetControllerUser(user);
+
+        _mockCourseService
+            .Setup(s => s.DeleteCourseByUuidAsync(courseUuid, user))
+            .ThrowsAsync(new EntityNotFoundException<Guid>("Course", courseUuid));
+
+        var result = await _controller.DeleteCourseByUuid(courseUuid);
+
+        var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
+        Assert.Equal($"Course with UUID {courseUuid} not found", notFoundResult.Value);
+        _mockCourseService.Verify(s => s.DeleteCourseByUuidAsync(courseUuid, user), Times.Once);
+    }
+
+    [Fact]
+    public async Task DeleteCourseByUuid_ReturnsBadRequest_WhenServiceException()
+    {
+        var courseUuid = Guid.NewGuid();
+        var user = new ClaimsPrincipal(new ClaimsIdentity());
+        SetControllerUser(user);
+        const string errorMessage = "Unable to delete course";
+
+        _mockCourseService
+            .Setup(s => s.DeleteCourseByUuidAsync(courseUuid, user))
+            .ThrowsAsync(new EntityServiceException("Course", "DeleteCourseByUuid", errorMessage));
+
+        var result = await _controller.DeleteCourseByUuid(courseUuid);
+
+        var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
+        Assert.Equal(errorMessage, badRequestResult.Value);
+        _mockCourseService.Verify(s => s.DeleteCourseByUuidAsync(courseUuid, user), Times.Once);
     }
 
     [Fact]

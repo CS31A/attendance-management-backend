@@ -23,12 +23,17 @@ This document lists all the API endpoints for the attendance monitoring system.
 
 - `POST /api/attendance`: Create a new attendance record manually (Admin, Instructor only). Returns `201 Created` for new records, `200 OK` for idempotent duplicate retries, `409 Conflict` for invalid attendance operations (for example, student not enrolled)
 - `GET /api/attendance/{id}`: Get a specific attendance record by ID
+- `GET /api/attendance/uuid/{uuid}`: Get a specific attendance record by UUID
 - `GET /api/attendance`: Get all attendance records with optional filtering and pagination
 - `GET /api/attendance/student/{studentId}`: Get attendance history for a specific student
+- `GET /api/attendance/student/uuid/{studentUuid}`: Get attendance history for a specific student by UUID
 - `GET /api/attendance/session/{sessionId}`: Get attendance overview for a specific session (Admin, Instructor only) - Requires PrivilegedPolicy authorization
+- `GET /api/attendance/session/uuid/{sessionUuid}`: Get attendance overview for a specific session by UUID (Admin, Instructor only) - Requires PrivilegedPolicy authorization
 - `GET /api/attendance/summary`: Get attendance summary statistics
 - `PUT /api/attendance/{id}`: Update an existing attendance record (Admin, Instructor only)
+- `PUT /api/attendance/uuid/{uuid}`: Update an existing attendance record by UUID (Admin, Instructor only)
 - `DELETE /api/attendance/{id}`: Delete an attendance record (Admin only)
+- `DELETE /api/attendance/uuid/{uuid}`: Delete an attendance record by UUID (Admin only)
 
 ## ClassroomController
 
@@ -101,14 +106,20 @@ This document lists all the API endpoints for the attendance monitoring system.
 
 - `GET /api/sessions`: Get all sessions
 - `GET /api/sessions/{id}`: Get a specific session by ID
+- `GET /api/sessions/uuid/{uuid}`: Get a specific session by UUID
 - `GET /api/sessions/schedule/{scheduleId}`: Get sessions for a specific schedule
+- `GET /api/sessions/schedule/uuid/{scheduleUuid}`: Get sessions for a specific schedule by UUID
 - `GET /api/sessions/status/{status}`: Get sessions by status (not_started, active, ended, cancelled)
 - `GET /api/sessions/date/{date}`: Get sessions for a specific date (YYYY-MM-DD format)
 - `POST /api/sessions`: Create a new session for a schedule (Instructor only)
 - `PATCH /api/sessions/{id}/start`: Start a session, marking it as active (Instructor only)
+- `PATCH /api/sessions/uuid/{uuid}/start`: Start a session by UUID, marking it as active (Instructor only)
 - `PATCH /api/sessions/{id}/end`: End an active session (Instructor only)
+- `PATCH /api/sessions/uuid/{uuid}/end`: End an active session by UUID (Instructor only)
 - `PATCH /api/sessions/{id}/room`: Update the actual room for a session (Instructor only)
+- `PATCH /api/sessions/uuid/{uuid}/room`: Update the actual room for a session by UUID (Instructor only)
 - `DELETE /api/sessions/{id}`: Cancel a session that has not started yet (Instructor only)
+- `DELETE /api/sessions/uuid/{uuid}`: Cancel a session by UUID that has not started yet (Instructor only)
 
 ## StudentController
 

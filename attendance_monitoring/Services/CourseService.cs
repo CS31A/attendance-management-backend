@@ -92,6 +92,34 @@ public class CourseService : ICourseService
     }
     #endregion
 
+    #region GetCourseByUuidAsync
+    public async Task<Course> GetCourseByUuidAsync(Guid uuid)
+    {
+        try
+        {
+            _logger.LogInformation("Retrieving course by UUID: {Uuid}", uuid);
+            var course = await _courseRepository.GetCourseByUuidAsync(uuid).ConfigureAwait(false);
+            if (course == null)
+            {
+                _logger.LogWarning("Course with UUID {Uuid} not found", uuid);
+                throw new EntityNotFoundException<Guid>("Course", uuid);
+            }
+
+            _logger.LogInformation("Successfully retrieved course with UUID: {Uuid}", uuid);
+            return course;
+        }
+        catch (EntityNotFoundException<Guid>)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error occurred while retrieving course with UUID: {Uuid}", uuid);
+            throw new EntityServiceException("Course", $"GetCourseByUuid: {uuid}", "An error occurred while retrieving the course", ex);
+        }
+    }
+    #endregion
+
     #endregion
 
     #region Create Operations
@@ -219,6 +247,14 @@ public class CourseService : ICourseService
     }
     #endregion
 
+    #region UpdateCourseByUuidAsync
+    public async Task<Course> UpdateCourseByUuidAsync(Guid uuid, UpdateCourse updateCourse, ClaimsPrincipal user)
+    {
+        var existingCourse = await GetCourseByUuidAsync(uuid).ConfigureAwait(false);
+        return await UpdateCourseAsync(existingCourse.Id, updateCourse, user).ConfigureAwait(false);
+    }
+    #endregion
+
     #endregion
 
     #region Delete Operations
@@ -281,6 +317,14 @@ public class CourseService : ICourseService
             _logger.LogError(ex, "Error occurred while deleting course with ID: {Id}", id);
             throw new EntityServiceException("Course", $"DeleteCourse: {id}", "An error occurred while deleting the course", ex);
         }
+    }
+    #endregion
+
+    #region DeleteCourseByUuidAsync
+    public async Task DeleteCourseByUuidAsync(Guid uuid, ClaimsPrincipal user)
+    {
+        var existingCourse = await GetCourseByUuidAsync(uuid).ConfigureAwait(false);
+        await DeleteCourseAsync(existingCourse.Id, user).ConfigureAwait(false);
     }
     #endregion
 

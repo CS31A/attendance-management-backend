@@ -45,6 +45,7 @@ public class ClassroomController(IClassroomService classroomService, ILogger<Cla
     /// <response code="500">Internal server error</response>
     // GET: api/Classrooms/5
     [HttpGet("{id:int}")]
+    [ApiExplorerSettings(IgnoreApi = true)]
     public async Task<ActionResult<Classroom>> GetClassroom(int id)
     {
         logger.LogInformation("Getting classroom with ID: {Id}", id);
@@ -60,6 +61,23 @@ public class ClassroomController(IClassroomService classroomService, ILogger<Cla
             return NotFound(new { message = ex.Message });
         }
         // No generic catch - global handler will manage unexpected errors
+    }
+
+    [HttpGet("{id:guid}")]
+    public async Task<ActionResult<Classroom>> GetClassroomByUuid([FromRoute(Name = "id")] Guid uuid)
+    {
+        logger.LogInformation("Getting classroom with UUID: {Uuid}", uuid);
+        try
+        {
+            var classroom = await classroomService.GetClassroomByUuidAsync(uuid);
+            logger.LogInformation("Successfully retrieved classroom with UUID: {Uuid}", uuid);
+            return Ok(classroom);
+        }
+        catch (EntityNotFoundException<Guid> ex)
+        {
+            logger.LogWarning(ex, "Classroom with UUID {Uuid} not found", uuid);
+            return NotFound(new { message = ex.Message });
+        }
     }
 
     #endregion
@@ -112,6 +130,7 @@ public class ClassroomController(IClassroomService classroomService, ILogger<Cla
     /// <response code="500">Internal server error</response>
     // PATCH: api/Classrooms/5
     [HttpPatch("{id:int}")]
+    [ApiExplorerSettings(IgnoreApi = true)]
     [Authorize(Policy = "AdminPolicy")]
     public async Task<ActionResult<Classroom>> UpdateClassroom(int id, UpdateClassroom updateClassroom)
     {
@@ -129,6 +148,23 @@ public class ClassroomController(IClassroomService classroomService, ILogger<Cla
         // Exceptions are handled by global exception handler
     }
 
+    [HttpPatch("{id:guid}")]
+    [Authorize(Policy = "AdminPolicy")]
+    public async Task<ActionResult<Classroom>> UpdateClassroomByUuid([FromRoute(Name = "id")] Guid uuid, UpdateClassroom updateClassroom)
+    {
+        logger.LogInformation("Updating classroom with UUID: {Uuid}", uuid);
+        if (!ModelState.IsValid)
+        {
+            logger.LogWarning("Classroom update failed due to invalid model state for classroom UUID: {Uuid}", uuid);
+            return BadRequest(ModelState);
+        }
+
+        var classroom = await classroomService.UpdateClassroomByUuidAsync(uuid, updateClassroom);
+
+        logger.LogInformation("Successfully updated classroom with UUID: {Uuid}", uuid);
+        return Ok(classroom);
+    }
+
     #endregion
 
     #region Delete Operations
@@ -144,6 +180,7 @@ public class ClassroomController(IClassroomService classroomService, ILogger<Cla
     /// <response code="500">Internal server error</response>
     // DELETE: api/Classrooms/5
     [HttpDelete("{id:int}")]
+    [ApiExplorerSettings(IgnoreApi = true)]
     [Authorize(Policy = "AdminPolicy")]
     public async Task<ActionResult> DeleteClassroom(int id)
     {
@@ -154,6 +191,18 @@ public class ClassroomController(IClassroomService classroomService, ILogger<Cla
         logger.LogInformation("Successfully deleted classroom with ID: {Id}", id);
         return NoContent();
         // Exceptions are handled by global exception handler
+    }
+
+    [HttpDelete("{id:guid}")]
+    [Authorize(Policy = "AdminPolicy")]
+    public async Task<ActionResult> DeleteClassroomByUuid([FromRoute(Name = "id")] Guid uuid)
+    {
+        logger.LogInformation("Deleting classroom with UUID: {Uuid}", uuid);
+
+        await classroomService.DeleteClassroomByUuidAsync(uuid);
+
+        logger.LogInformation("Successfully deleted classroom with UUID: {Uuid}", uuid);
+        return NoContent();
     }
 
     [Authorize(Policy = "PrivilegedPolicy")]

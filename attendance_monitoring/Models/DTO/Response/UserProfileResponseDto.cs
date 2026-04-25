@@ -56,15 +56,14 @@ public class UserProfileResponseDto
 /// </summary>
 public class StudentProfileInfo
 {
-    public int Id { get; set; }
-    public Guid Uuid { get; set; }
+    public Guid Id { get; set; }
     public string? Firstname { get; set; }
     public string? Lastname { get; set; }
     public bool IsRegular { get; set; }
-    public int SectionId { get; set; }
-    public string SectionName { get; set; } = string.Empty;
-    public int CourseId { get; set; }
-    public string CourseName { get; set; } = string.Empty;
+    public Guid? SectionId { get; set; }
+    public string? SectionName { get; set; }
+    public Guid? CourseId { get; set; }
+    public string? CourseName { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
 }
@@ -74,8 +73,7 @@ public class StudentProfileInfo
 /// </summary>
 public class InstructorProfileInfo
 {
-    public int Id { get; set; }
-    public Guid Uuid { get; set; }
+    public Guid Id { get; set; }
     public string? Firstname { get; set; }
     public string? Lastname { get; set; }
     public string? Department { get; set; }
@@ -88,8 +86,7 @@ public class InstructorProfileInfo
 /// </summary>
 public class AdminProfileInfo
 {
-    public int Id { get; set; }
-    public Guid Uuid { get; set; }
+    public Guid Id { get; set; }
     public string? Firstname { get; set; }
     public string? Lastname { get; set; }
     public string? Department { get; set; }

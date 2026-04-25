@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace attendance_monitoring.Models.DTO.Response;
 
 /// <summary>
@@ -8,12 +10,7 @@ public class InstructorHandledClassStudentDto
     /// <summary>
     /// Gets or sets the student's unique identifier.
     /// </summary>
-    public int StudentId { get; set; }
-
-    /// <summary>
-    /// Gets or sets the student's UUID.
-    /// </summary>
-    public Guid StudentUuid { get; set; }
+    public Guid StudentId { get; set; }
 
     /// <summary>
     /// Gets or sets the student's first name.
@@ -44,12 +41,7 @@ public class InstructorHandledClassDto
     /// <summary>
     /// Gets or sets the subject's unique identifier.
     /// </summary>
-    public int SubjectId { get; set; }
-
-    /// <summary>
-    /// Gets or sets the subject's UUID.
-    /// </summary>
-    public Guid SubjectUuid { get; set; }
+    public Guid SubjectId { get; set; }
 
     /// <summary>
     /// Gets or sets the subject name.
@@ -64,12 +56,7 @@ public class InstructorHandledClassDto
     /// <summary>
     /// Gets or sets the schedule's unique identifier.
     /// </summary>
-    public int ScheduleId { get; set; }
-
-    /// <summary>
-    /// Gets or sets the schedule's UUID.
-    /// </summary>
-    public Guid ScheduleUuid { get; set; }
+    public Guid ScheduleId { get; set; }
 
     /// <summary>
     /// Gets or sets the scheduled day of week.
@@ -89,12 +76,7 @@ public class InstructorHandledClassDto
     /// <summary>
     /// Gets or sets the classroom's unique identifier.
     /// </summary>
-    public int ClassroomId { get; set; }
-
-    /// <summary>
-    /// Gets or sets the classroom's UUID.
-    /// </summary>
-    public Guid ClassroomUuid { get; set; }
+    public Guid ClassroomId { get; set; }
 
     /// <summary>
     /// Gets or sets the classroom name.

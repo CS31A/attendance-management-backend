@@ -16,6 +16,20 @@ public interface ISessionRepository : ISaveableRepository
     Task<Session?> GetSessionByIdAsync(int id);
 
     /// <summary>
+    /// Retrieves a session by its UUID with all navigation properties loaded.
+    /// </summary>
+    /// <param name="uuid">The session UUID</param>
+    /// <returns>The session if found, null otherwise</returns>
+    Task<Session?> GetSessionByUuidAsync(Guid uuid);
+
+    /// <summary>
+    /// Retrieves a session by its UUID with all navigation properties loaded and tracking enabled.
+    /// </summary>
+    /// <param name="uuid">The session UUID</param>
+    /// <returns>The session if found, null otherwise</returns>
+    Task<Session?> GetSessionByUuidTrackedAsync(Guid uuid);
+
+    /// <summary>
     /// Retrieves all sessions with pagination support.
     /// </summary>
     /// <returns>Collection of all sessions</returns>

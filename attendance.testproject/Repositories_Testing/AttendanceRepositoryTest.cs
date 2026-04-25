@@ -63,6 +63,47 @@ public class AttendanceRepositoryTest : IDisposable
         Assert.NotEqual(page1.First().Id, page2.First().Id);
     }
 
+    [Fact]
+    public async Task AttendanceRepository_GetAttendanceByUuidAsync_ReturnsReadOnlyAndTrackedAttendance()
+    {
+        // Arrange
+        await SeedTestDataAsync();
+        var attendanceUuid = await _context.AttendanceRecords
+            .AsNoTracking()
+            .Where(a => a.Id == 1)
+            .Select(a => a.Uuid)
+            .SingleAsync();
+
+        // Act
+        var readOnlyRecord = await _repository.GetAttendanceByUuidAsync(attendanceUuid);
+        var trackedRecord = await _repository.GetAttendanceByUuidTrackedAsync(attendanceUuid);
+
+        // Assert
+        Assert.NotNull(readOnlyRecord);
+        Assert.NotNull(trackedRecord);
+        Assert.Equal(attendanceUuid, readOnlyRecord.Uuid);
+        Assert.Equal(attendanceUuid, trackedRecord.Uuid);
+        Assert.NotNull(readOnlyRecord.Student);
+        Assert.NotNull(readOnlyRecord.Session);
+        Assert.Equal(EntityState.Detached, _context.Entry(readOnlyRecord).State);
+        Assert.Equal(EntityState.Unchanged, _context.Entry(trackedRecord).State);
+    }
+
+    [Fact]
+    public async Task AttendanceRepository_GetAttendanceByUuidAsync_ReturnsNull_WhenNotFound()
+    {
+        // Arrange
+        await SeedTestDataAsync();
+
+        // Act
+        var readOnlyRecord = await _repository.GetAttendanceByUuidAsync(Guid.NewGuid());
+        var trackedRecord = await _repository.GetAttendanceByUuidTrackedAsync(Guid.NewGuid());
+
+        // Assert
+        Assert.Null(readOnlyRecord);
+        Assert.Null(trackedRecord);
+    }
+
     private async Task SeedTestDataAsync()
     {
         // Create test data
@@ -172,13 +213,13 @@ public class AttendanceRepositoryTest : IDisposable
         // Verify full result has StudentNumber properly mapped
         Assert.All(fullResult, item =>
         {
-            Assert.True(item.Id > 0);
+            Assert.NotEqual(Guid.Empty, item.Id);
             Assert.False(string.IsNullOrEmpty(item.StudentName));
             Assert.False(string.IsNullOrEmpty(item.StudentNumber));
             Assert.False(string.IsNullOrEmpty(item.SubjectName));
             Assert.False(string.IsNullOrEmpty(item.Status));
-            // StudentNumber should be the StudentId as string
-            Assert.Equal(item.StudentId.ToString(), item.StudentNumber);
+            // StudentNumber should be the legacy int student ID as string
+            Assert.True(int.TryParse(item.StudentNumber, out _));
         });
 
         // The optimized version should have fewer properties but same count

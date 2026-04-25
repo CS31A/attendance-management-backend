@@ -11,7 +11,7 @@ namespace attendance_monitoring.Controllers
     [Authorize(Policy = "UserPolicy")]
     [ApiController]
     [Route("api/sections")]
-    public class SectionController(ISectionService sectionService, ILogger<SectionController> logger) : ControllerBase
+    public class SectionController(ISectionService sectionService, ICourseService courseService, ILogger<SectionController> logger) : ControllerBase
     {
         private ErrorResponseDto CreateErrorResponse(string message, int statusCode)
         {
@@ -26,19 +26,13 @@ namespace attendance_monitoring.Controllers
         }
 
         [HttpGet("{id:int}")]
+        [ApiExplorerSettings(IgnoreApi = true)]
         public async Task<ActionResult<SectionResponseDto>> GetSection(int id)
         {
             try
             {
                 var section = await sectionService.GetSectionByIdAsync(id);
-                return Ok(new SectionResponseDto
-                {
-                    Id = section.Id,
-                    Name = section.Name,
-                    CourseId = section.CourseId,
-                    CreatedAt = section.CreatedAt,
-                    UpdatedAt = section.UpdatedAt
-                });
+                return Ok(MapSectionResponse(section));
             }
             catch (EntityNotFoundException<int> ex)
             {
@@ -48,6 +42,26 @@ namespace attendance_monitoring.Controllers
             catch (EntityServiceException ex)
             {
                 logger.LogError(ex, "Service error occurred while retrieving section with ID {SectionId}", id);
+                return StatusCode(500, "An error occurred while retrieving the section");
+            }
+        }
+
+        [HttpGet("{id:guid}")]
+        public async Task<ActionResult<SectionResponseDto>> GetSectionByUuid([FromRoute(Name = "id")] Guid uuid)
+        {
+            try
+            {
+                var section = await sectionService.GetSectionByUuidAsync(uuid);
+                return Ok(MapSectionResponse(section));
+            }
+            catch (EntityNotFoundException<Guid> ex)
+            {
+                logger.LogWarning(ex, "Section with UUID {SectionUuid} not found", uuid);
+                return NotFound($"Section with UUID {uuid} not found");
+            }
+            catch (EntityServiceException ex)
+            {
+                logger.LogError(ex, "Service error occurred while retrieving section with UUID {SectionUuid}", uuid);
                 return StatusCode(500, "An error occurred while retrieving the section");
             }
         }
@@ -77,24 +91,37 @@ namespace attendance_monitoring.Controllers
                 if (!ModelState.IsValid)
                     return BadRequest(ModelState);
 
+                var courseId = await ResolveCourseIdAsync(createSection).ConfigureAwait(false);
+
                 var section = new Section
                 {
                     Name = createSection.Name,
-                    CourseId = createSection.CourseId
+                    CourseId = courseId
                 };
 
                 var createdSection = await sectionService.CreateSectionAsync(section);
-                return CreatedAtAction(nameof(GetSection), new { id = createdSection.Id }, createdSection);
+                return CreatedAtAction(nameof(GetSectionByUuid), new { id = createdSection.Id }, createdSection);
             }
             catch (EntityServiceException ex)
             {
                 logger.LogError(ex, "Service error occurred while creating section with name {SectionName}", createSection.Name);
                 return BadRequest(ex.Message);
             }
+            catch (EntityNotFoundException<Guid> ex)
+            {
+                logger.LogWarning(ex, "Referenced course ID {CourseId} was not found while creating section", createSection.CourseId);
+                return NotFound(new { message = ex.Message });
+            }
+            catch (ValidationException ex)
+            {
+                logger.LogWarning(ex, "Invalid section create request for section {SectionName}", createSection.Name);
+                return BadRequest(new { message = ex.Message });
+            }
         }
 
         [Authorize(Policy = "AdminPolicy")]
         [HttpPut("{id:int}")]
+        [ApiExplorerSettings(IgnoreApi = true)]
         public async Task<ActionResult<SectionResponseDto>> UpdateSection(int id, [FromBody] CreateSection updateSection)
         {
             try
@@ -102,10 +129,12 @@ namespace attendance_monitoring.Controllers
                 if (!ModelState.IsValid)
                     return BadRequest(ModelState);
 
+                var courseId = await ResolveCourseIdAsync(updateSection).ConfigureAwait(false);
+
                 var section = new Section
                 {
                     Name = updateSection.Name,
-                    CourseId = updateSection.CourseId
+                    CourseId = courseId
                 };
 
                 var updatedSection = await sectionService.UpdateSectionAsync(id, section);
@@ -121,10 +150,58 @@ namespace attendance_monitoring.Controllers
                 logger.LogError(ex, "Service error occurred while updating section with ID {SectionId}", id);
                 return BadRequest(ex.Message);
             }
+            catch (EntityNotFoundException<Guid> ex)
+            {
+                logger.LogWarning(ex, "Referenced course ID {CourseId} was not found while updating section ID {SectionId}", updateSection.CourseId, id);
+                return NotFound(new { message = ex.Message });
+            }
+            catch (ValidationException ex)
+            {
+                logger.LogWarning(ex, "Invalid section update request for section ID {SectionId}", id);
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        [Authorize(Policy = "AdminPolicy")]
+        [HttpPut("{id:guid}")]
+        public async Task<ActionResult<SectionResponseDto>> UpdateSectionByUuid([FromRoute(Name = "id")] Guid uuid, [FromBody] CreateSection updateSection)
+        {
+            try
+            {
+                if (!ModelState.IsValid)
+                    return BadRequest(ModelState);
+
+                var courseId = await ResolveCourseIdAsync(updateSection).ConfigureAwait(false);
+
+                var section = new Section
+                {
+                    Name = updateSection.Name,
+                    CourseId = courseId
+                };
+
+                var updatedSection = await sectionService.UpdateSectionByUuidAsync(uuid, section);
+                return Ok(updatedSection);
+            }
+            catch (EntityNotFoundException<Guid> ex)
+            {
+                logger.LogWarning(ex, "Section or course UUID not found while updating section UUID {SectionUuid}", uuid);
+                return NotFound(new { message = ex.Message });
+            }
+            catch (EntityServiceException ex)
+            {
+                logger.LogError(ex, "Service error occurred while updating section with UUID {SectionUuid}", uuid);
+                return BadRequest(ex.Message);
+            }
+            catch (ValidationException ex)
+            {
+                logger.LogWarning(ex, "Invalid section update request for section UUID {SectionUuid}", uuid);
+                return BadRequest(new { message = ex.Message });
+            }
         }
 
         [Authorize(Policy = "AdminPolicy")]
         [HttpDelete("{id:int}")]
+        [ApiExplorerSettings(IgnoreApi = true)]
         public async Task<ActionResult> DeleteSection(int id)
         {
             try
@@ -145,6 +222,32 @@ namespace attendance_monitoring.Controllers
             catch (EntityServiceException ex)
             {
                 logger.LogError(ex, "Service error occurred while deleting section with ID {SectionId}", id);
+                return StatusCode(500, "An error occurred while deleting the section");
+            }
+        }
+
+        [Authorize(Policy = "AdminPolicy")]
+        [HttpDelete("{id:guid}")]
+        public async Task<ActionResult> DeleteSectionByUuid([FromRoute(Name = "id")] Guid uuid)
+        {
+            try
+            {
+                await sectionService.DeleteSectionByUuidAsync(uuid);
+                return NoContent();
+            }
+            catch (EntityNotFoundException<Guid> ex)
+            {
+                logger.LogWarning(ex, "Section with UUID {SectionUuid} not found for deletion", uuid);
+                return NotFound(new { message = ex.Message });
+            }
+            catch (EntityConflictException ex)
+            {
+                logger.LogWarning(ex, "Cannot delete section UUID {SectionUuid}: {ConflictReason}", uuid, ex.Message);
+                return Conflict(CreateErrorResponse(ex.Message, StatusCodes.Status409Conflict));
+            }
+            catch (EntityServiceException ex)
+            {
+                logger.LogError(ex, "Service error occurred while deleting section with UUID {SectionUuid}", uuid);
                 return StatusCode(500, "An error occurred while deleting the section");
             }
         }
@@ -257,6 +360,34 @@ namespace attendance_monitoring.Controllers
                 logger.LogError(ex, "Service error occurred while checking schedules for section with ID {SectionId}", sectionId);
                 return StatusCode(500, "An error occurred while checking section dependencies");
             }
+        }
+
+        private async Task<int> ResolveCourseIdAsync(CreateSection request)
+        {
+            if (!request.CourseId.HasValue || request.CourseId.Value == Guid.Empty)
+            {
+                throw new ValidationException("Course reference is required.");
+            }
+
+            var course = await courseService.GetCourseByUuidAsync(request.CourseId.Value).ConfigureAwait(false);
+            if (course == null)
+            {
+                throw new EntityNotFoundException<Guid>("Course", request.CourseId.Value);
+            }
+
+            return course.Id;
+        }
+
+        private static SectionResponseDto MapSectionResponse(Section section)
+        {
+            return new SectionResponseDto
+            {
+                Id = section.Uuid,
+                Name = section.Name,
+                CourseId = section.Course?.Uuid,
+                CreatedAt = section.CreatedAt,
+                UpdatedAt = section.UpdatedAt
+            };
         }
     }
 }

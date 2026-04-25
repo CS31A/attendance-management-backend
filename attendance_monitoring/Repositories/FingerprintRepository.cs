@@ -19,6 +19,13 @@ public class FingerprintRepository(ApplicationDbContext context, ILogger<Fingerp
             .FirstOrDefaultAsync(f => f.Id == id)
             .ConfigureAwait(false);
 
+    public async Task<Fingerprint?> GetFingerprintByUuidAsync(Guid uuid)
+        => await context.Fingerprints
+            .AsNoTracking()
+            .Include(f => f.User)
+            .FirstOrDefaultAsync(f => f.Uuid == uuid)
+            .ConfigureAwait(false);
+
     public async Task<Fingerprint?> GetFingerprintByUserIdAsync(string userId)
         => await context.Fingerprints
             .AsNoTracking()
@@ -146,6 +153,27 @@ public class FingerprintRepository(ApplicationDbContext context, ILogger<Fingerp
         await context.SaveChangesAsync().ConfigureAwait(false);
 
         logger.LogInformation("Soft deleted fingerprint with ID {FingerprintId}.", id);
+        return true;
+    }
+
+    public async Task<bool> SoftDeleteFingerprintByUuidAsync(Guid uuid)
+    {
+        var fingerprint = await context.Fingerprints
+            .FirstOrDefaultAsync(f => f.Uuid == uuid)
+            .ConfigureAwait(false);
+
+        if (fingerprint == null)
+        {
+            return false;
+        }
+
+        fingerprint.IsDeleted = true;
+        fingerprint.DeletedAt = DateTime.UtcNow;
+        fingerprint.UpdatedAt = DateTime.UtcNow;
+
+        await context.SaveChangesAsync().ConfigureAwait(false);
+
+        logger.LogInformation("Soft deleted fingerprint with UUID {FingerprintUuid}.", uuid);
         return true;
     }
 

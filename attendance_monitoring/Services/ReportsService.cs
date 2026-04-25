@@ -29,8 +29,14 @@ public class ReportsService(
     public Task<StudentAttendanceHistoryDto> GetStudentAttendanceReportAsync(int studentId, ClaimsPrincipal user)
         => attendanceService.GetStudentAttendanceHistoryAsync(studentId, user);
 
+    public Task<StudentAttendanceHistoryDto> GetStudentAttendanceReportAsync(Guid studentUuid, ClaimsPrincipal user)
+        => attendanceService.GetStudentAttendanceHistoryByUuidAsync(studentUuid, user);
+
     public Task<SessionAttendanceDto> GetSessionAttendanceReportAsync(int sessionId, ClaimsPrincipal user)
         => attendanceService.GetSessionAttendanceAsync(sessionId, user);
+
+    public Task<SessionAttendanceDto> GetSessionAttendanceReportAsync(Guid sessionUuid, ClaimsPrincipal user)
+        => attendanceService.GetSessionAttendanceByUuidAsync(sessionUuid, user);
 
     public async Task<ClassAttendanceSummaryDto> GetClassAttendanceReportAsync(
         int sectionId, AttendanceFilterRequest filter, ClaimsPrincipal user)
@@ -120,6 +126,16 @@ public class ReportsService(
             AttendanceRate = overallRate,
             Sessions = sessionStats,
         };
+    }
+
+    public async Task<ClassAttendanceSummaryDto> GetClassAttendanceReportAsync(
+        Guid sectionUuid, AttendanceFilterRequest filter, ClaimsPrincipal user)
+    {
+        var section = await sectionRepository.GetSectionByUuidAsync(sectionUuid).ConfigureAwait(false);
+        if (section == null)
+            throw new EntityNotFoundException<Guid>("Section", sectionUuid);
+
+        return await GetClassAttendanceReportAsync(section.Id, filter, user).ConfigureAwait(false);
     }
 
     public async Task<InstructorSessionsReportDto> GetInstructorSessionsReportAsync(

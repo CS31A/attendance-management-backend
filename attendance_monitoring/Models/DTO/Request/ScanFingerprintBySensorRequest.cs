@@ -14,7 +14,7 @@ public class ScanFingerprintBySensorRequest
     [Range(0, 255)]
     public int Confidence { get; set; }
 
-    public int? SessionId { get; set; }
+    public Guid? SessionId { get; set; }
 
     public DateTime? CapturedAt { get; set; }
 }

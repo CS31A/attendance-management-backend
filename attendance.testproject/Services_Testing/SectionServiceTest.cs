@@ -1,5 +1,6 @@
 using attendance_monitoring.Exceptions;
 using attendance_monitoring.IRepository;
+using attendance_monitoring.Classes;
 using attendance_monitoring.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -17,6 +18,34 @@ public class SectionServiceTest
         _mockSectionRepository = new Mock<ISectionRepository>();
         _mockLogger = new Mock<ILogger<SectionService>>();
         _service = new SectionService(_mockSectionRepository.Object, _mockLogger.Object);
+    }
+
+    [Fact]
+    public async Task GetSectionByUuidAsync_ReturnsSection_WhenFound()
+    {
+        var sectionUuid = Guid.NewGuid();
+        var section = new Section { Id = 1, Uuid = sectionUuid, Name = "CS-3A", CourseId = 2 };
+        _mockSectionRepository
+            .Setup(repository => repository.GetSectionByUuidAsync(sectionUuid))
+            .ReturnsAsync(section);
+
+        var result = await _service.GetSectionByUuidAsync(sectionUuid);
+
+        Assert.Same(section, result);
+    }
+
+    [Fact]
+    public async Task GetSectionByUuidAsync_ThrowsEntityNotFoundException_WhenMissing()
+    {
+        var sectionUuid = Guid.NewGuid();
+        _mockSectionRepository
+            .Setup(repository => repository.GetSectionByUuidAsync(sectionUuid))
+            .ReturnsAsync((Section?)null);
+
+        var exception = await Assert.ThrowsAsync<EntityNotFoundException<Guid>>(() => _service.GetSectionByUuidAsync(sectionUuid));
+
+        Assert.Equal("Section", exception.EntityName);
+        Assert.Equal(sectionUuid, exception.Key);
     }
 
     [Fact]

@@ -45,6 +45,7 @@ public class SubjectController(ISubjectService subjectService, ILogger<SubjectCo
     /// <response code="500">Internal server error</response>
     // GET: api/Subject/5
     [HttpGet("{id:int}")]
+    [ApiExplorerSettings(IgnoreApi = true)]
     public async Task<ActionResult<Subject>> GetSubject(int id)
     {
         logger.LogInformation("Getting subject with ID: {Id}", id);
@@ -60,6 +61,23 @@ public class SubjectController(ISubjectService subjectService, ILogger<SubjectCo
             return NotFound(new { message = ex.Message });
         }
         // No generic catch - global handler will manage unexpected errors
+    }
+
+    [HttpGet("{id:guid}")]
+    public async Task<ActionResult<Subject>> GetSubjectByUuid([FromRoute(Name = "id")] Guid uuid)
+    {
+        logger.LogInformation("Getting subject with UUID: {Uuid}", uuid);
+        try
+        {
+            var subject = await subjectService.GetSubjectByUuidAsync(uuid);
+            logger.LogInformation("Successfully retrieved subject with UUID: {Uuid}", uuid);
+            return Ok(subject);
+        }
+        catch (EntityNotFoundException<Guid> ex)
+        {
+            logger.LogWarning(ex, "Subject with UUID {Uuid} not found", uuid);
+            return NotFound(new { message = ex.Message });
+        }
     }
 
     #endregion
@@ -112,6 +130,7 @@ public class SubjectController(ISubjectService subjectService, ILogger<SubjectCo
     /// <response code="500">Internal server error</response>
     // PATCH: api/Subject/5
     [HttpPatch("{id:int}")]
+    [ApiExplorerSettings(IgnoreApi = true)]
     [Authorize(Policy = "AdminPolicy")]
     public async Task<ActionResult<Subject>> UpdateSubject(int id, UpdateSubject updateSubject)
     {
@@ -129,6 +148,23 @@ public class SubjectController(ISubjectService subjectService, ILogger<SubjectCo
         // Exceptions are handled by global exception handler
     }
 
+    [HttpPatch("{id:guid}")]
+    [Authorize(Policy = "AdminPolicy")]
+    public async Task<ActionResult<Subject>> UpdateSubjectByUuid([FromRoute(Name = "id")] Guid uuid, UpdateSubject updateSubject)
+    {
+        logger.LogInformation("Updating subject with UUID: {Uuid}", uuid);
+        if (!ModelState.IsValid)
+        {
+            logger.LogWarning("Subject update failed due to invalid model state for subject UUID: {Uuid}", uuid);
+            return BadRequest(ModelState);
+        }
+
+        var subject = await subjectService.UpdateSubjectByUuidAsync(uuid, updateSubject);
+
+        logger.LogInformation("Successfully updated subject with UUID: {Uuid}", uuid);
+        return Ok(subject);
+    }
+
     #endregion
 
     #region Delete Operations
@@ -144,6 +180,7 @@ public class SubjectController(ISubjectService subjectService, ILogger<SubjectCo
     /// <response code="500">Internal server error</response>
     // DELETE: api/Subject/5
     [HttpDelete("{id:int}")]
+    [ApiExplorerSettings(IgnoreApi = true)]
     [Authorize(Policy = "AdminPolicy")]
     public async Task<ActionResult> DeleteSubject(int id)
     {
@@ -154,6 +191,18 @@ public class SubjectController(ISubjectService subjectService, ILogger<SubjectCo
         logger.LogInformation("Successfully deleted subject with ID: {Id}", id);
         return NoContent();
         // Exceptions are handled by global exception handler
+    }
+
+    [HttpDelete("{id:guid}")]
+    [Authorize(Policy = "AdminPolicy")]
+    public async Task<ActionResult> DeleteSubjectByUuid([FromRoute(Name = "id")] Guid uuid)
+    {
+        logger.LogInformation("Deleting subject with UUID: {Uuid}", uuid);
+
+        await subjectService.DeleteSubjectByUuidAsync(uuid);
+
+        logger.LogInformation("Successfully deleted subject with UUID: {Uuid}", uuid);
+        return NoContent();
     }
 
     [Authorize(Policy = "PrivilegedPolicy")]

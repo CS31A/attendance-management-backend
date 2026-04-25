@@ -113,6 +113,7 @@ public class FingerprintServiceTest
         var student = new Student
         {
             Id = 1,
+            Uuid = Guid.NewGuid(),
             UserId = "user-1",
             Firstname = "John",
             Lastname = "Doe",
@@ -121,6 +122,9 @@ public class FingerprintServiceTest
 
         _mockStudentRepository
             .Setup(repository => repository.GetStudentByIdAsync(student.Id))
+            .ReturnsAsync(student);
+        _mockStudentRepository
+            .Setup(repository => repository.GetStudentByUuidAsync(student.Uuid))
             .ReturnsAsync(student);
 
         _mockFingerprintRepository
@@ -138,21 +142,23 @@ public class FingerprintServiceTest
         var response = await service.StartEnrollmentSessionAsync(
             new StartFingerprintEnrollmentSessionRequest
             {
-                StudentId = student.Id,
+                StudentId = student.Uuid,
                 DeviceId = "esp32-attendance-01"
             },
             CreatePrivilegedPrincipal());
 
         Assert.True(response.Success);
         Assert.Equal(2, response.AssignedSensorFingerprintId);
-        Assert.Equal(student.Id, response.StudentId);
+        Assert.Equal(student.Uuid, response.StudentId);
         Assert.Equal("John Doe", response.StudentName);
-        Assert.NotEqual(Guid.Empty, response.EnrollmentSessionId);
+        Assert.NotEqual(Guid.Empty, response.Id);
 
         var persistedSession = await _context.FingerprintEnrollmentSessions.SingleAsync();
         Assert.Equal("Pending", persistedSession.Status);
         Assert.Equal(2, persistedSession.AssignedSensorFingerprintId);
         Assert.NotEqual(Guid.Empty, persistedSession.Uuid);
+        Assert.NotEqual(Guid.Empty, persistedSession.EnrollmentSessionId);
+        Assert.NotEqual(persistedSession.Uuid, persistedSession.EnrollmentSessionId);
     }
 
     [Fact]
@@ -180,6 +186,7 @@ public class FingerprintServiceTest
         var student = new Student
         {
             Id = 1,
+            Uuid = Guid.NewGuid(),
             UserId = "user-1",
             Firstname = "John",
             Lastname = "Doe",
@@ -211,7 +218,8 @@ public class FingerprintServiceTest
 
         Assert.NotNull(response);
         Assert.True(response!.Success);
-        Assert.Equal(enrollmentSession.EnrollmentSessionId, response.EnrollmentSessionId);
+        Assert.Equal(enrollmentSession.Uuid, response.Id);
+        Assert.Equal(student.Uuid, response.StudentId);
         Assert.Equal("InProgress", response.Status);
     }
 
@@ -240,6 +248,7 @@ public class FingerprintServiceTest
         var student = new Student
         {
             Id = 1,
+            Uuid = Guid.NewGuid(),
             UserId = "user-1",
             Firstname = "John",
             Lastname = "Doe",
@@ -301,7 +310,7 @@ public class FingerprintServiceTest
         var response = await service.CompleteEnrollmentSessionAsync(
             new CompleteFingerprintEnrollmentRequest
             {
-                EnrollmentSessionId = enrollmentSession.EnrollmentSessionId,
+                Id = enrollmentSession.Uuid,
                 DeviceId = device.DeviceIdentifier,
                 SensorFingerprintId = enrollmentSession.AssignedSensorFingerprintId,
                 Success = true,
@@ -310,7 +319,8 @@ public class FingerprintServiceTest
             "device-secret");
 
         Assert.True(response.Success);
-        Assert.Equal(99, response.FingerprintId);
+        Assert.Equal(createdFingerprint?.Uuid, response.Id);
+        Assert.Equal(student.Uuid, response.StudentId);
 
         _mockFingerprintRepository.Verify(repository => repository.CreateFingerprintAsync(
             It.Is<Fingerprint>(fingerprint =>
@@ -327,6 +337,8 @@ public class FingerprintServiceTest
         Assert.NotNull(createdFingerprint);
         Assert.NotEqual(Guid.Empty, createdFingerprint!.Uuid);
         Assert.NotEqual(Guid.Empty, persistedSession.Uuid);
+        Assert.NotEqual(Guid.Empty, persistedSession.EnrollmentSessionId);
+        Assert.NotEqual(persistedSession.Uuid, persistedSession.EnrollmentSessionId);
     }
 
     [Fact]
@@ -366,6 +378,8 @@ public class FingerprintServiceTest
         Assert.Equal(device.Id, scanEvent.DeviceId);
         Assert.Equal(0.3451m, scanEvent.MatchScore);
         Assert.NotEqual(Guid.Empty, scanEvent.Uuid);
+        Assert.NotEqual(Guid.Empty, scanEvent.EventId);
+        Assert.NotEqual(scanEvent.Uuid, scanEvent.EventId);
     }
 
     [Fact]
@@ -383,6 +397,7 @@ public class FingerprintServiceTest
         var student = new Student
         {
             Id = 1,
+            Uuid = Guid.NewGuid(),
             UserId = "user-1",
             Firstname = "John",
             Lastname = "Doe",
@@ -392,6 +407,7 @@ public class FingerprintServiceTest
         var session = new Session
         {
             Id = 11,
+            Uuid = Guid.NewGuid(),
             ScheduleId = 20,
             SessionDate = DateTime.Now.Date,
             Status = SessionStatusConstants.Active,
@@ -430,6 +446,9 @@ public class FingerprintServiceTest
         _mockSessionRepository
             .Setup(repository => repository.GetSessionByIdAsync(session.Id))
             .ReturnsAsync(session);
+        _mockSessionRepository
+            .Setup(repository => repository.GetSessionByUuidAsync(session.Uuid))
+            .ReturnsAsync(session);
         _mockStudentEnrollmentRepository
             .Setup(repository => repository.GetByStudentSectionSubjectAsync(student.Id, session.Schedule.SectionId, session.Schedule.SubjectId))
             .ReturnsAsync(new StudentEnrollment
@@ -450,7 +469,7 @@ public class FingerprintServiceTest
                 DeviceId = device.DeviceIdentifier,
                 SensorFingerprintId = 5,
                 Confidence = 90,
-                SessionId = session.Id
+                SessionId = session.Uuid
             },
             "device-secret");
 
@@ -459,6 +478,116 @@ public class FingerprintServiceTest
 
         _mockAttendanceRepository.Verify(
             repository => repository.CreateAsync(It.IsAny<AttendanceRecord>()),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task ScanFingerprintBySensorAsync_WithUnknownRequestedSession_ReturnsSessionNotFound()
+    {
+        var service = CreateService();
+        var expectedSectionIds = new[] { 1 };
+        var expectedSubjectIds = new[] { 2 };
+        var unknownSessionUuid = Guid.NewGuid();
+        var device = new FingerprintDevice
+        {
+            Id = 7,
+            DeviceIdentifier = "esp32-attendance-01",
+            IsActive = true,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+        var now = DateTime.Now;
+        var student = new Student
+        {
+            Id = 1,
+            Uuid = Guid.NewGuid(),
+            UserId = "user-1",
+            Firstname = "John",
+            Lastname = "Doe",
+            SectionId = 1,
+            IsDeleted = false
+        };
+        var schedule = new Schedules
+        {
+            Id = 20,
+            SectionId = 1,
+            SubjectId = 2,
+            Section = new Section { Id = 1, Name = "BSCS 3A" },
+            Subject = new Subject { Id = 2, Name = "Software Engineering" },
+            Instructor = new Instructor { Id = 3, Firstname = "Ada", Lastname = "Lovelace", UserId = "inst-1" }
+        };
+        var activeSession = new Session
+        {
+            Id = 11,
+            Uuid = Guid.NewGuid(),
+            ScheduleId = schedule.Id,
+            SessionDate = now.Date,
+            Status = SessionStatusConstants.Active,
+            ActualStartTime = now.AddMinutes(-5),
+            ActualEndTime = now.AddMinutes(55),
+            Schedule = schedule
+        };
+
+        _context.FingerprintDevices.Add(device);
+        await _context.SaveChangesAsync();
+
+        _mockFingerprintRepository
+            .Setup(repository => repository.FindFingerprintByDeviceAndSensorIdAsync(device.DeviceIdentifier, 5))
+            .ReturnsAsync(new Fingerprint
+            {
+                Id = 42,
+                UserId = student.UserId,
+                DeviceId = device.DeviceIdentifier,
+                SensorFingerprintId = 5,
+                TemplateData = "ciphertext"
+            });
+        _mockStudentRepository
+            .Setup(repository => repository.GetStudentByUserIdAsync(student.UserId))
+            .ReturnsAsync(student);
+        _mockSessionRepository
+            .Setup(repository => repository.GetSessionByUuidAsync(unknownSessionUuid))
+            .ReturnsAsync((Session?)null);
+        _mockStudentEnrollmentRepository
+            .Setup(repository => repository.GetByStudentIdAsync(student.Id))
+            .ReturnsAsync(new[]
+            {
+                new StudentEnrollment
+                {
+                    Id = 55,
+                    StudentId = student.Id,
+                    SectionId = schedule.SectionId,
+                    SubjectId = schedule.SubjectId,
+                    IsActive = true
+                }
+            });
+        _mockScheduleRepository
+            .Setup(repository => repository.GetSchedulesBySectionsAndSubjectsAsync(
+                It.Is<IEnumerable<int>>(sectionIds => sectionIds.SequenceEqual(expectedSectionIds)),
+                It.Is<IEnumerable<int>>(subjectIds => subjectIds.SequenceEqual(expectedSubjectIds))))
+            .ReturnsAsync([schedule]);
+        _mockSessionRepository
+            .Setup(repository => repository.GetSessionsByScheduleIdAsync(schedule.Id))
+            .ReturnsAsync([activeSession]);
+
+        var response = await service.ScanFingerprintBySensorAsync(
+            new ScanFingerprintBySensorRequest
+            {
+                DeviceId = device.DeviceIdentifier,
+                SensorFingerprintId = 5,
+                Confidence = 90,
+                SessionId = unknownSessionUuid
+            },
+            "device-secret");
+
+        Assert.False(response.Success);
+        Assert.Equal("Session not found", response.Message);
+        Assert.False(response.AttendanceMarked);
+
+        _mockAttendanceRepository.Verify(
+            repository => repository.CreateAsync(It.IsAny<AttendanceRecord>()),
+            Times.Never);
+        _mockStudentEnrollmentRepository.Verify(
+            repository => repository.GetByStudentIdAsync(It.IsAny<int>()),
             Times.Never);
     }
 
@@ -480,6 +609,7 @@ public class FingerprintServiceTest
         var student = new Student
         {
             Id = 1,
+            Uuid = Guid.NewGuid(),
             UserId = "user-1",
             Firstname = "John",
             Lastname = "Doe",
@@ -498,6 +628,7 @@ public class FingerprintServiceTest
         var session = new Session
         {
             Id = 11,
+            Uuid = Guid.NewGuid(),
             ScheduleId = schedule.Id,
             SessionDate = now.Date,
             Status = SessionStatusConstants.Active,
@@ -555,6 +686,7 @@ public class FingerprintServiceTest
             .ReturnsAsync((AttendanceRecord attendanceRecord) =>
             {
                 attendanceRecord.Id = 100;
+                attendanceRecord.Uuid = Guid.NewGuid();
                 return attendanceRecord;
             });
 
@@ -569,7 +701,7 @@ public class FingerprintServiceTest
 
         Assert.True(response.Success);
         Assert.True(response.AttendanceMarked);
-        Assert.Equal(session.Id, response.SessionId);
+        Assert.Equal(session.Uuid, response.SessionId);
         Assert.Equal("Late", response.AttendanceStatus);
     }
 
@@ -588,6 +720,7 @@ public class FingerprintServiceTest
         var student = new Student
         {
             Id = 1,
+            Uuid = Guid.NewGuid(),
             UserId = "user-1",
             Firstname = "John",
             Lastname = "Doe",
@@ -597,6 +730,7 @@ public class FingerprintServiceTest
         var session = new Session
         {
             Id = 11,
+            Uuid = Guid.NewGuid(),
             ScheduleId = 20,
             SessionDate = DateTime.Now.Date,
             Status = SessionStatusConstants.Active,
@@ -615,6 +749,7 @@ public class FingerprintServiceTest
         var existingAttendance = new AttendanceRecord
         {
             Id = 99,
+            Uuid = Guid.NewGuid(),
             StudentId = student.Id,
             SessionId = session.Id,
             CheckInTime = DateTime.UtcNow,
@@ -646,6 +781,9 @@ public class FingerprintServiceTest
         _mockSessionRepository
             .Setup(repository => repository.GetSessionByIdAsync(session.Id))
             .ReturnsAsync(session);
+        _mockSessionRepository
+            .Setup(repository => repository.GetSessionByUuidAsync(session.Uuid))
+            .ReturnsAsync(session);
         _mockAttendanceRepository
             .SetupSequence(repository => repository.GetAttendanceByStudentAndSessionAsync(student.Id, session.Id))
             .ReturnsAsync((AttendanceRecord?)null)
@@ -655,6 +793,7 @@ public class FingerprintServiceTest
             .ReturnsAsync((AttendanceRecord record) =>
             {
                 record.Id = 100;
+                record.Uuid = Guid.NewGuid();
                 return record;
             });
         _mockAttendanceRepository
@@ -667,14 +806,14 @@ public class FingerprintServiceTest
                 DeviceId = device.DeviceIdentifier,
                 SensorFingerprintId = 5,
                 Confidence = 90,
-                SessionId = session.Id
+                SessionId = session.Uuid
             },
             "device-secret");
 
         Assert.True(response.Success);
         Assert.True(response.IsDuplicateScan);
         Assert.False(response.AttendanceMarked);
-        Assert.Equal(existingAttendance.Id, response.AttendanceRecordId);
+        Assert.Equal(existingAttendance.Uuid, response.AttendanceRecordId);
     }
 
     [Fact]
@@ -692,6 +831,7 @@ public class FingerprintServiceTest
         var student = new Student
         {
             Id = 1,
+            Uuid = Guid.NewGuid(),
             UserId = "user-1",
             Firstname = "John",
             Lastname = "Doe",
@@ -702,6 +842,7 @@ public class FingerprintServiceTest
         var session = new Session
         {
             Id = 11,
+            Uuid = Guid.NewGuid(),
             ScheduleId = 20,
             SessionDate = sessionDate,
             Status = SessionStatusConstants.Active,
@@ -743,6 +884,9 @@ public class FingerprintServiceTest
         _mockSessionRepository
             .Setup(repository => repository.GetSessionByIdAsync(session.Id))
             .ReturnsAsync(session);
+        _mockSessionRepository
+            .Setup(repository => repository.GetSessionByUuidAsync(session.Uuid))
+            .ReturnsAsync(session);
         _mockAttendanceRepository
             .Setup(repository => repository.GetAttendanceByStudentAndSessionAsync(student.Id, session.Id))
             .ReturnsAsync((AttendanceRecord?)null);
@@ -758,6 +902,7 @@ public class FingerprintServiceTest
             .ReturnsAsync((AttendanceRecord record) =>
             {
                 record.Id = 100;
+                record.Uuid = Guid.NewGuid();
                 return record;
             });
         _mockAttendanceRepository
@@ -770,7 +915,7 @@ public class FingerprintServiceTest
                 DeviceId = device.DeviceIdentifier,
                 SensorFingerprintId = 5,
                 Confidence = 90,
-                SessionId = session.Id
+                SessionId = session.Uuid
             },
             "device-secret");
 

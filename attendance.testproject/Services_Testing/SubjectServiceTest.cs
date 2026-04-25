@@ -128,6 +128,31 @@ public class SubjectServiceTest
         Assert.Same(expectedException, exception.InnerException);
     }
 
+    [Fact]
+    public async Task GetSubjectByUuidAsync_Success_ReturnsSubject()
+    {
+        var subjectUuid = Guid.NewGuid();
+        var subject = new Subject { Id = 1, Uuid = subjectUuid, Name = "Mathematics", Code = "MATH101" };
+        _mockSubjectRepository.Setup(r => r.GetSubjectByUuidAsync(subjectUuid)).ReturnsAsync(subject);
+
+        var result = await _service.GetSubjectByUuidAsync(subjectUuid);
+
+        Assert.NotNull(result);
+        Assert.Equal(subjectUuid, result.Uuid);
+    }
+
+    [Fact]
+    public async Task GetSubjectByUuidAsync_NotFound_ThrowsEntityNotFoundException()
+    {
+        var subjectUuid = Guid.NewGuid();
+        _mockSubjectRepository.Setup(r => r.GetSubjectByUuidAsync(subjectUuid)).ReturnsAsync((Subject?)null);
+
+        var exception = await Assert.ThrowsAsync<EntityNotFoundException<Guid>>(() => _service.GetSubjectByUuidAsync(subjectUuid));
+
+        Assert.Equal("Subject", exception.EntityName);
+        Assert.Equal(subjectUuid, exception.Key);
+    }
+
     #endregion
 
     #region CreateSubjectAsync Tests

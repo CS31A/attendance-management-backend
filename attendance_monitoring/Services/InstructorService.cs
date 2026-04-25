@@ -20,6 +20,7 @@ namespace attendance_monitoring.Services
     {
         private readonly IInstructorRepository _instructorRepository;
         private readonly ISectionRepository _sectionRepository;
+        private readonly IStudentRepository _studentRepository;
         private readonly IScheduleRepository _scheduleRepository;
         private readonly IUserContextService _userContextService;
         private readonly ILogger<InstructorService> _logger;
@@ -32,10 +33,11 @@ namespace attendance_monitoring.Services
         /// <param name="scheduleRepository">Repository for schedule data operations</param>
         /// <param name="userContextService">Service for managing user context and authorization</param>
         /// <param name="logger">Logger for logging operations</param>
-        public InstructorService(IInstructorRepository instructorRepository, ISectionRepository sectionRepository, IScheduleRepository scheduleRepository, IUserContextService userContextService, ILogger<InstructorService> logger)
+        public InstructorService(IInstructorRepository instructorRepository, ISectionRepository sectionRepository, IStudentRepository studentRepository, IScheduleRepository scheduleRepository, IUserContextService userContextService, ILogger<InstructorService> logger)
         {
             _instructorRepository = instructorRepository ?? throw new ArgumentNullException(nameof(instructorRepository));
             _sectionRepository = sectionRepository ?? throw new ArgumentNullException(nameof(sectionRepository));
+            _studentRepository = studentRepository ?? throw new ArgumentNullException(nameof(studentRepository));
             _scheduleRepository = scheduleRepository ?? throw new ArgumentNullException(nameof(scheduleRepository));
             _userContextService = userContextService ?? throw new ArgumentNullException(nameof(userContextService));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -129,7 +131,7 @@ namespace attendance_monitoring.Services
                 var subjects = await _scheduleRepository.GetSubjectsByInstructorIdAsync(instructorId).ConfigureAwait(false);
                 var subjectDtos = subjects.Select(s => new SubjectResponseDto
                 {
-                    Id = s.Id,
+                    Id = s.Uuid,
                     Name = s.Name,
                     Code = s.Code,
                     CreatedAt = s.CreatedAt,
@@ -186,7 +188,7 @@ namespace attendance_monitoring.Services
 
                 // Get schedules for instructor
                 var schedules = await _scheduleRepository.GetSchedulesByInstructorIdAsync(instructor.Id).ConfigureAwait(false);
-                var scheduleDtos = schedules.Select(ScheduleService.MapToResponseDto).ToList();
+                var scheduleDtos = schedules.Select(ScheduleServiceSupport.MapToResponseDto).ToList();
 
                 _logger.LogInformation("Successfully retrieved {Count} schedules for instructor ID: {InstructorId}",
                     scheduleDtos.Count, instructor.Id);
@@ -696,8 +698,7 @@ namespace attendance_monitoring.Services
                     _logger.LogInformation("No schedules found for instructor ID: {InstructorId}", instructor.Id);
                     return new InstructorSectionsWithStudentsResponseDto
                     {
-                        InstructorId = instructor.Id,
-                        InstructorUuid = instructor.Uuid,
+                        InstructorId = instructor.Uuid,
                         InstructorFirstname = instructor.Firstname ?? string.Empty,
                         InstructorLastname = instructor.Lastname ?? string.Empty,
                         Sections = new List<SectionWithStudentsDto>()
@@ -718,8 +719,7 @@ namespace attendance_monitoring.Services
                     var regularStudents = (await _instructorRepository.GetRegularStudentsBySectionIdAsync(section.Id).ConfigureAwait(false))
                         .Select(student => new StudentDto
                         {
-                            StudentId = student.Id,
-                            StudentUuid = student.Uuid,
+                            StudentId = student.Uuid,
                             Firstname = student.Firstname,
                             Lastname = student.Lastname,
                             IsRegular = true,
@@ -743,8 +743,7 @@ namespace attendance_monitoring.Services
                                     && se.Student.SectionId != section.Id)
                                 .Select(se => new StudentDto
                                 {
-                                    StudentId = se.Student.Id,
-                                    StudentUuid = se.Student.Uuid,
+                                    StudentId = se.Student.Uuid,
                                     Firstname = se.Student.Firstname,
                                     Lastname = se.Student.Lastname,
                                     IsRegular = false,
@@ -762,17 +761,14 @@ namespace attendance_monitoring.Services
 
                             return new SubjectScheduleDto
                             {
-                                SubjectId = schedule.Subject.Id,
-                                SubjectUuid = schedule.Subject.Uuid,
+                                SubjectId = schedule.Subject.Uuid,
                                 SubjectName = schedule.Subject.Name,
                                 SubjectCode = schedule.Subject.Code,
-                                ScheduleId = schedule.Id,
-                                ScheduleUuid = schedule.Uuid,
+                                ScheduleId = schedule.Uuid,
                                 DayOfWeek = schedule.DayOfWeek,
                                 TimeIn = schedule.TimeIn,
                                 TimeOut = schedule.TimeOut,
-                                ClassroomId = schedule.Classroom.Id,
-                                ClassroomUuid = schedule.Classroom.Uuid,
+                                ClassroomId = schedule.Classroom.Uuid,
                                 ClassroomName = schedule.Classroom.Name,
                                 Students = enrolledStudents
                             };
@@ -782,20 +778,17 @@ namespace attendance_monitoring.Services
 
                     sectionDtos.Add(new SectionWithStudentsDto
                     {
-                        SectionId = section.Id,
-                        SectionUuid = section.Uuid,
+                        SectionId = section.Uuid,
                         SectionName = section.Name,
-                        CourseId = section.Course.Id,
-                        CourseUuid = section.Course.Uuid,
-                        CourseName = section.Course.Name,
+                        CourseId = GetRequiredCourse(section).Uuid,
+                        CourseName = GetRequiredCourse(section).Name,
                         Subjects = subjectSchedules
                     });
                 }
 
                 var response = new InstructorSectionsWithStudentsResponseDto
                 {
-                    InstructorId = instructor.Id,
-                    InstructorUuid = instructor.Uuid,
+                    InstructorId = instructor.Uuid,
                     InstructorFirstname = instructor.Firstname ?? string.Empty,
                     InstructorLastname = instructor.Lastname ?? string.Empty,
                     Sections = sectionDtos.OrderBy(s => s.SectionName).ToList()
@@ -886,12 +879,10 @@ namespace attendance_monitoring.Services
 
                     overviewDtos.Add(new InstructorSectionOverviewDto
                     {
-                        SectionId = section.Id,
-                        SectionUuid = section.Uuid,
+                        SectionId = section.Uuid,
                         SectionName = section.Name,
-                        CourseId = section.Course.Id,
-                        CourseUuid = section.Course.Uuid,
-                        CourseName = section.Course.Name,
+                        CourseId = GetRequiredCourse(section).Uuid,
+                        CourseName = GetRequiredCourse(section).Name,
                         HandledClassCount = handledClassCount,
                         UniqueStudentCount = uniqueStudentCount
                     });
@@ -979,8 +970,7 @@ namespace attendance_monitoring.Services
                 var regularStudents = (await _instructorRepository.GetRegularStudentsBySectionIdAsync(sectionId).ConfigureAwait(false))
                     .Select(student => new InstructorHandledClassStudentDto
                     {
-                        StudentId = student.Id,
-                        StudentUuid = student.Uuid,
+                        StudentId = student.Uuid,
                         Firstname = student.Firstname,
                         Lastname = student.Lastname,
                         IsRegular = true,
@@ -999,8 +989,7 @@ namespace attendance_monitoring.Services
                             && se.Student.SectionId != sectionId)
                         .Select(se => new InstructorHandledClassStudentDto
                         {
-                            StudentId = se.Student.Id,
-                            StudentUuid = se.Student.Uuid,
+                            StudentId = se.Student.Uuid,
                             Firstname = se.Student.Firstname,
                             Lastname = se.Student.Lastname,
                             IsRegular = false,
@@ -1018,17 +1007,14 @@ namespace attendance_monitoring.Services
 
                     handledClasses.Add(new InstructorHandledClassDto
                     {
-                        SubjectId = schedule.Subject.Id,
-                        SubjectUuid = schedule.Subject.Uuid,
+                        SubjectId = schedule.Subject.Uuid,
                         SubjectName = schedule.Subject.Name,
                         SubjectCode = schedule.Subject.Code,
-                        ScheduleId = schedule.Id,
-                        ScheduleUuid = schedule.Uuid,
+                        ScheduleId = schedule.Uuid,
                         DayOfWeek = schedule.DayOfWeek,
                         TimeIn = schedule.TimeIn,
                         TimeOut = schedule.TimeOut,
-                        ClassroomId = schedule.Classroom.Id,
-                        ClassroomUuid = schedule.Classroom.Uuid,
+                        ClassroomId = schedule.Classroom.Uuid,
                         ClassroomName = schedule.Classroom.Name,
                         StudentCount = allStudents.Count,
                         Students = allStudents
@@ -1038,8 +1024,7 @@ namespace attendance_monitoring.Services
                 var homeSectionStudents = await _instructorRepository.GetHomeSectionStudentsAsync(sectionId).ConfigureAwait(false);
                 var homeSectionStudentDtos = homeSectionStudents.Select(student => new InstructorHomeSectionStudentDto
                 {
-                    StudentId = student.Id,
-                    StudentUuid = student.Uuid,
+                    StudentId = student.Uuid,
                     Firstname = student.Firstname,
                     Lastname = student.Lastname,
                     IsRegular = student.SectionId == sectionId,
@@ -1048,12 +1033,10 @@ namespace attendance_monitoring.Services
 
                 var detailDto = new InstructorSectionDetailDto
                 {
-                    SectionId = section.Id,
-                    SectionUuid = section.Uuid,
+                    SectionId = section.Uuid,
                     SectionName = section.Name,
-                    CourseId = section.Course.Id,
-                    CourseUuid = section.Course.Uuid,
-                    CourseName = section.Course.Name,
+                    CourseId = GetRequiredCourse(section).Uuid,
+                    CourseName = GetRequiredCourse(section).Name,
                     HandledClassCount = handledClasses.Count,
                     HomeSectionStudentCount = homeSectionStudentDtos.Count,
                     HandledClasses = handledClasses.OrderBy(h => h.SubjectName).ToList(),
@@ -1085,6 +1068,17 @@ namespace attendance_monitoring.Services
             }
         }
         #endregion
+
+        public async Task<InstructorSectionDetailDto> GetInstructorSectionDetailByUuidAsync(ClaimsPrincipal userPrincipal, Guid sectionUuid)
+        {
+            var section = await _sectionRepository.GetSectionByUuidAsync(sectionUuid).ConfigureAwait(false);
+            if (section == null)
+            {
+                throw new EntityNotFoundException<Guid>("Section", sectionUuid);
+            }
+
+            return await GetInstructorSectionDetailAsync(userPrincipal, section.Id).ConfigureAwait(false);
+        }
 
         #region GetInstructorStudentDetailAsync
         /// <summary>
@@ -1141,10 +1135,10 @@ namespace attendance_monitoring.Services
                     .Select(group => group.First())
                     .Select(schedule => new InstructorStudentEnrollmentDto
                     {
-                        SubjectId = schedule.SubjectId,
+                        SubjectId = schedule.Subject.Uuid,
                         SubjectName = schedule.Subject.Name,
                         SubjectCode = schedule.Subject.Code,
-                        SectionId = schedule.SectionId,
+                        SectionId = schedule.Section.Uuid,
                         SectionName = schedule.Section.Name,
                         EnrollmentType = EnrollmentTypeConstants.Regular
                     });
@@ -1153,10 +1147,10 @@ namespace attendance_monitoring.Services
                     .Where(se => se.IsActive)
                     .Select(se => new InstructorStudentEnrollmentDto
                     {
-                        SubjectId = se.SubjectId,
+                        SubjectId = se.Subject.Uuid,
                         SubjectName = se.Subject.Name,
                         SubjectCode = se.Subject.Code,
-                        SectionId = se.SectionId,
+                        SectionId = se.Section.Uuid,
                         SectionName = se.Section.Name,
                         EnrollmentType = se.EnrollmentType
                     });
@@ -1176,13 +1170,12 @@ namespace attendance_monitoring.Services
 
                 var detailDto = new InstructorStudentDetailDto
                 {
-                    StudentId = student.Id,
-                    StudentUuid = student.Uuid,
+                    StudentId = student.Uuid,
                     Firstname = student.Firstname,
                     Lastname = student.Lastname,
-                    SectionId = student.SectionId,
+                    SectionId = student.Section?.Uuid,
                     SectionName = student.Section?.Name,
-                    CourseId = student.Section?.CourseId,
+                    CourseId = student.Section?.Course?.Uuid,
                     CourseName = student.Section?.Course?.Name,
                     IsRegular = student.IsRegular,
                     EnrollmentType = student.IsRegular ? EnrollmentTypeConstants.Regular : EnrollmentTypeConstants.Irregular,
@@ -1241,6 +1234,17 @@ namespace attendance_monitoring.Services
         }
         #endregion
 
+        public async Task<InstructorStudentDetailDto> GetInstructorStudentDetailByUuidAsync(ClaimsPrincipal userPrincipal, Guid studentUuid)
+        {
+            var student = await _studentRepository.GetStudentByUuidAsync(studentUuid).ConfigureAwait(false);
+            if (student == null)
+            {
+                throw new EntityNotFoundException<Guid>("Student", studentUuid);
+            }
+
+            return await GetInstructorStudentDetailAsync(userPrincipal, student.Id).ConfigureAwait(false);
+        }
+
         #region Helper Methods
 
         #region IsValidEmail
@@ -1262,6 +1266,12 @@ namespace attendance_monitoring.Services
             }
         }
         #endregion
+
+        private static Course GetRequiredCourse(Section section)
+        {
+            return section.Course
+                ?? throw new InvalidOperationException($"Section {section.Id} is missing required course data.");
+        }
 
         #endregion
     }

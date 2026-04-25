@@ -21,11 +21,25 @@ public interface ISubjectRepository : ISaveableRepository
     Task<Subject?> GetSubjectByIdAsync(int id);
 
     /// <summary>
+    /// Retrieves a subject by its UUID.
+    /// </summary>
+    /// <param name="uuid">The subject UUID.</param>
+    /// <returns>The subject if found; otherwise, null.</returns>
+    Task<Subject?> GetSubjectByUuidAsync(Guid uuid);
+
+    /// <summary>
     /// Retrieves a subject by its ID with change tracking enabled for updates.
     /// </summary>
     /// <param name="id">The subject ID.</param>
     /// <returns>The subject if found; otherwise, null.</returns>
     Task<Subject?> GetSubjectByIdTrackedAsync(int id);
+
+    /// <summary>
+    /// Retrieves a subject by its UUID with change tracking enabled for updates.
+    /// </summary>
+    /// <param name="uuid">The subject UUID.</param>
+    /// <returns>The subject if found; otherwise, null.</returns>
+    Task<Subject?> GetSubjectByUuidTrackedAsync(Guid uuid);
 
     /// <summary>
     /// Creates a new subject.

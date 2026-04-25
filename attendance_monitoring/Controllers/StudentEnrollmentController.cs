@@ -1,9 +1,10 @@
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
+using attendance_monitoring.Classes;
+using attendance_monitoring.Exceptions;
 using attendance_monitoring.IServices;
 using attendance_monitoring.Models.DTO.Request;
 using attendance_monitoring.Models.DTO.Response;
-using attendance_monitoring.Exceptions;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 
 namespace attendance_monitoring.Controllers;
 
@@ -35,40 +36,18 @@ public class StudentEnrollmentController : ControllerBase
             _logger.LogInformation("Enrolling student {StudentId} in section {SectionId} for subject {SubjectId}",
                 request.StudentId, request.SectionId, request.SubjectId);
 
-            var enrollment = await _enrollmentService.EnrollStudentAsync(
-                request.StudentId,
-                request.SectionId,
-                request.SubjectId,
-                request.EnrollmentType,
-                request.AcademicYear,
-                request.Semester);
-
-            var response = new StudentEnrollmentResponseDto
-            {
-                Id = enrollment.Id,
-                StudentId = enrollment.StudentId,
-                StudentFirstname = enrollment.Student?.Firstname,
-                StudentLastname = enrollment.Student?.Lastname,
-                StudentEmail = enrollment.Student?.User?.Email,
-                SectionId = enrollment.SectionId,
-                SectionName = enrollment.Section?.Name,
-                SubjectId = enrollment.SubjectId,
-                SubjectName = enrollment.Subject?.Name,
-                SubjectCode = enrollment.Subject?.Code,
-                IsActive = enrollment.IsActive,
-                EnrollmentType = enrollment.EnrollmentType,
-                AcademicYear = enrollment.AcademicYear,
-                Semester = enrollment.Semester,
-                EnrolledAt = enrollment.EnrolledAt,
-                DroppedAt = enrollment.DroppedAt,
-                CreatedAt = enrollment.CreatedAt,
-                UpdatedAt = enrollment.UpdatedAt
-            };
+            var enrollment = await _enrollmentService.EnrollStudentAsync(request);
+            var response = MapEnrollmentResponse(enrollment);
 
             _logger.LogInformation("Successfully enrolled student {StudentId}", request.StudentId);
             return Ok(response);
         }
         catch (EntityNotFoundException<int> ex)
+        {
+            _logger.LogWarning(ex, "Entity not found while enrolling student {StudentId}", request.StudentId);
+            return NotFound(new { message = ex.Message });
+        }
+        catch (EntityNotFoundException<Guid> ex)
         {
             _logger.LogWarning(ex, "Entity not found while enrolling student {StudentId}", request.StudentId);
             return NotFound(new { message = ex.Message });
@@ -88,87 +67,88 @@ public class StudentEnrollmentController : ControllerBase
             _logger.LogWarning(ex, "Invalid enrollment request for student {StudentId}", request.StudentId);
             return BadRequest(new { message = ex.Message });
         }
-        // No generic catch - let global exception handler handle unexpected errors
     }
 
     /// <summary>
     /// Get all enrollments for a specific student
     /// </summary>
-    [HttpGet("student/{studentId}")]
+    [HttpGet("student/{studentId:int}")]
+    [ApiExplorerSettings(IgnoreApi = true)]
     [Authorize(Roles = "Admin,Instructor,Student")]
     public async Task<ActionResult<StudentSectionsResponseDto>> GetStudentEnrollments(int studentId)
     {
         _logger.LogInformation("Retrieving enrollments for student {StudentId}", studentId);
 
-        var enrollments = await _enrollmentService.GetStudentEnrollmentsAsync(studentId);
-
-        var response = new StudentSectionsResponseDto
+        Student student;
+        try
         {
-            StudentId = studentId,
-            Enrollments = enrollments.Select(e => new EnrollmentSummaryDto
-            {
-                EnrollmentId = e.Id,
-                SectionId = e.SectionId,
-                SectionName = e.Section?.Name,
-                SubjectId = e.SubjectId,
-                SubjectName = e.Subject?.Name,
-                SubjectCode = e.Subject?.Code,
-                EnrollmentType = e.EnrollmentType,
-                IsActive = e.IsActive,
-                EnrolledAt = e.EnrolledAt
-            }).ToList()
-        };
+            student = await _enrollmentService.GetStudentByIdAsync(studentId).ConfigureAwait(false);
+        }
+        catch (EntityNotFoundException<int> ex)
+        {
+            _logger.LogWarning(ex, "Student {StudentId} not found while retrieving enrollments", studentId);
+            return NotFound(new { message = ex.Message });
+        }
+
+        var enrollments = await _enrollmentService.GetStudentEnrollmentsAsync(studentId);
+        var response = MapStudentSectionsResponse(student.Uuid, enrollments);
 
         _logger.LogInformation("Successfully retrieved {Count} enrollments for student {StudentId}",
             response.Enrollments.Count, studentId);
 
         return Ok(response);
-        // No try-catch - let global exception handler handle any errors
+    }
+
+    [HttpGet("student/{id:guid}")]
+    [Authorize(Roles = "Admin,Instructor,Student")]
+    public async Task<ActionResult<StudentSectionsResponseDto>> GetStudentEnrollmentsByUuid([FromRoute(Name = "id")] Guid studentId)
+    {
+        _logger.LogInformation("Retrieving enrollments for student ID {StudentId}", studentId);
+
+        var enrollments = await _enrollmentService.GetStudentEnrollmentsByStudentUuidAsync(studentId);
+        var response = MapStudentSectionsResponse(studentId, enrollments);
+
+        _logger.LogInformation("Successfully retrieved {Count} enrollments for student ID {StudentId}",
+            response.Enrollments.Count, studentId);
+
+        return Ok(response);
     }
 
     /// <summary>
     /// Get all active students enrolled in a specific section
     /// </summary>
-    [HttpGet("section/{sectionId}/students")]
+    [HttpGet("section/{sectionId:int}/students")]
+    [ApiExplorerSettings(IgnoreApi = true)]
     [Authorize(Roles = "Admin,Instructor")]
     public async Task<ActionResult<IEnumerable<StudentEnrollmentResponseDto>>> GetSectionStudents(int sectionId)
     {
         _logger.LogInformation("Retrieving active students for section {SectionId}", sectionId);
 
-        // Get only active enrollments from database (database-level filtering, no in-memory filtering)
         var enrollments = await _enrollmentService.GetActiveSectionEnrollmentsAsync(sectionId);
-
-        var response = enrollments.Select(e => new StudentEnrollmentResponseDto
-        {
-            Id = e.Id,
-            StudentId = e.StudentId,
-            StudentFirstname = e.Student?.Firstname,
-            StudentLastname = e.Student?.Lastname,
-            StudentEmail = e.Student?.User?.Email,
-            SectionId = e.SectionId,
-            SectionName = e.Section?.Name,
-            SubjectId = e.SubjectId,
-            SubjectName = e.Subject?.Name,
-            SubjectCode = e.Subject?.Code,
-            IsActive = e.IsActive,
-            EnrollmentType = e.EnrollmentType,
-            AcademicYear = e.AcademicYear,
-            Semester = e.Semester,
-            EnrolledAt = e.EnrolledAt,
-            DroppedAt = e.DroppedAt,
-            CreatedAt = e.CreatedAt,
-            UpdatedAt = e.UpdatedAt
-        });
+        var response = enrollments.Select(MapEnrollmentResponse);
 
         _logger.LogInformation("Successfully retrieved students for section {SectionId}", sectionId);
         return Ok(response);
-        // No try-catch - let global exception handler handle any errors
+    }
+
+    [HttpGet("section/{id:guid}/students")]
+    [Authorize(Roles = "Admin,Instructor")]
+    public async Task<ActionResult<IEnumerable<StudentEnrollmentResponseDto>>> GetSectionStudentsByUuid([FromRoute(Name = "id")] Guid sectionId)
+    {
+        _logger.LogInformation("Retrieving active students for section ID {SectionId}", sectionId);
+
+        var enrollments = await _enrollmentService.GetActiveSectionEnrollmentsBySectionUuidAsync(sectionId);
+        var response = enrollments.Select(MapEnrollmentResponse);
+
+        _logger.LogInformation("Successfully retrieved students for section ID {SectionId}", sectionId);
+        return Ok(response);
     }
 
     /// <summary>
     /// Drop a student from a specific enrollment (deactivate)
     /// </summary>
-    [HttpPatch("{enrollmentId}/drop")]
+    [HttpPatch("{enrollmentId:int}/drop")]
+    [ApiExplorerSettings(IgnoreApi = true)]
     [Authorize(Roles = "Admin")]
     public async Task<ActionResult> DropStudent(int enrollmentId)
     {
@@ -191,13 +171,38 @@ public class StudentEnrollmentController : ControllerBase
             _logger.LogWarning(ex, "Enrollment {EnrollmentId} not found", enrollmentId);
             return NotFound(new { message = ex.Message });
         }
-        // No generic catch - let global exception handler handle unexpected errors
+    }
+
+    [HttpPatch("{id:guid}/drop")]
+    [Authorize(Roles = "Admin")]
+    public async Task<ActionResult> DropStudentByUuid([FromRoute(Name = "id")] Guid uuid)
+    {
+        try
+        {
+            _logger.LogInformation("Dropping student from enrollment UUID {EnrollmentUuid}", uuid);
+            var success = await _enrollmentService.DropStudentFromSubjectAsync(uuid);
+
+            if (!success)
+            {
+                _logger.LogWarning("Enrollment UUID {EnrollmentUuid} not found", uuid);
+                return NotFound(new { message = "Enrollment not found" });
+            }
+
+            _logger.LogInformation("Successfully dropped student from enrollment UUID {EnrollmentUuid}", uuid);
+            return Ok(new { message = "Student successfully dropped from enrollment" });
+        }
+        catch (EntityNotFoundException<Guid> ex)
+        {
+            _logger.LogWarning(ex, "Enrollment UUID {EnrollmentUuid} not found", uuid);
+            return NotFound(new { message = ex.Message });
+        }
     }
 
     /// <summary>
     /// Re-enroll a student (reactivate enrollment)
     /// </summary>
-    [HttpPatch("{enrollmentId}/reenroll")]
+    [HttpPatch("{enrollmentId:int}/reenroll")]
+    [ApiExplorerSettings(IgnoreApi = true)]
     [Authorize(Roles = "Admin")]
     public async Task<ActionResult> ReenrollStudent(int enrollmentId)
     {
@@ -220,13 +225,37 @@ public class StudentEnrollmentController : ControllerBase
             _logger.LogWarning(ex, "Enrollment {EnrollmentId} not found", enrollmentId);
             return NotFound(new { message = ex.Message });
         }
-        // No generic catch - let global exception handler handle unexpected errors
+    }
+
+    [HttpPatch("{id:guid}/reenroll")]
+    [Authorize(Roles = "Admin")]
+    public async Task<ActionResult> ReenrollStudentByUuid([FromRoute(Name = "id")] Guid uuid)
+    {
+        try
+        {
+            _logger.LogInformation("Re-enrolling student for enrollment UUID {EnrollmentUuid}", uuid);
+            var success = await _enrollmentService.ReenrollStudentAsync(uuid);
+
+            if (!success)
+            {
+                _logger.LogWarning("Enrollment UUID {EnrollmentUuid} not found", uuid);
+                return NotFound(new { message = "Enrollment not found" });
+            }
+
+            _logger.LogInformation("Successfully re-enrolled student for enrollment UUID {EnrollmentUuid}", uuid);
+            return Ok(new { message = "Student successfully re-enrolled" });
+        }
+        catch (EntityNotFoundException<Guid> ex)
+        {
+            _logger.LogWarning(ex, "Enrollment UUID {EnrollmentUuid} not found", uuid);
+            return NotFound(new { message = ex.Message });
+        }
     }
 
     /// <summary>
     /// Check if a student is enrolled in a specific section-subject combination
     /// </summary>
-    [HttpGet("check")]
+    [HttpGet("check/legacy")]
     [Authorize(Roles = "Admin,Instructor,Student")]
     public async Task<ActionResult<bool>> CheckEnrollment([FromQuery] int studentId, [FromQuery] int sectionId, [FromQuery] int subjectId)
     {
@@ -236,6 +265,68 @@ public class StudentEnrollmentController : ControllerBase
         var isEnrolled = await _enrollmentService.IsStudentEnrolledInSectionSubjectAsync(studentId, sectionId, subjectId);
 
         return Ok(new { isEnrolled });
-        // No try-catch - let global exception handler handle any errors
+    }
+
+    [HttpGet("check")]
+    [Authorize(Roles = "Admin,Instructor,Student")]
+    public async Task<ActionResult<bool>> CheckEnrollmentByUuid([FromQuery] Guid studentId, [FromQuery] Guid sectionId, [FromQuery] Guid subjectId)
+    {
+        _logger.LogInformation("Checking enrollment for student ID {StudentId}, section ID {SectionId}, subject ID {SubjectId}",
+            studentId, sectionId, subjectId);
+
+        var isEnrolled = await _enrollmentService.IsStudentEnrolledInSectionSubjectByUuidAsync(studentId, sectionId, subjectId);
+
+        return Ok(new { isEnrolled });
+    }
+
+    private static StudentEnrollmentResponseDto MapEnrollmentResponse(StudentEnrollment enrollment)
+    {
+        return new StudentEnrollmentResponseDto
+        {
+            Id = enrollment.Uuid,
+            StudentId = enrollment.Student?.Uuid ?? Guid.Empty,
+            StudentFirstname = enrollment.Student?.Firstname,
+            StudentLastname = enrollment.Student?.Lastname,
+            StudentEmail = enrollment.Student?.User?.Email,
+            SectionId = enrollment.Section?.Uuid ?? Guid.Empty,
+            SectionName = enrollment.Section?.Name,
+            SubjectId = enrollment.Subject?.Uuid ?? Guid.Empty,
+            SubjectName = enrollment.Subject?.Name,
+            SubjectCode = enrollment.Subject?.Code,
+            IsActive = enrollment.IsActive,
+            EnrollmentType = enrollment.EnrollmentType,
+            AcademicYear = enrollment.AcademicYear,
+            Semester = enrollment.Semester,
+            EnrolledAt = enrollment.EnrolledAt,
+            DroppedAt = enrollment.DroppedAt,
+            CreatedAt = enrollment.CreatedAt,
+            UpdatedAt = enrollment.UpdatedAt
+        };
+    }
+
+    private static StudentSectionsResponseDto MapStudentSectionsResponse(Guid studentId, IEnumerable<StudentEnrollment> enrollments)
+    {
+        var enrollmentList = enrollments.ToList();
+        var student = enrollmentList.FirstOrDefault()?.Student;
+
+        return new StudentSectionsResponseDto
+        {
+            StudentId = studentId,
+            StudentFirstname = student?.Firstname,
+            StudentLastname = student?.Lastname,
+            IsRegular = student?.IsRegular ?? false,
+            Enrollments = enrollmentList.Select(e => new EnrollmentSummaryDto
+            {
+                EnrollmentId = e.Uuid,
+                SectionId = e.Section?.Uuid ?? Guid.Empty,
+                SectionName = e.Section?.Name,
+                SubjectId = e.Subject?.Uuid ?? Guid.Empty,
+                SubjectName = e.Subject?.Name,
+                SubjectCode = e.Subject?.Code,
+                EnrollmentType = e.EnrollmentType,
+                IsActive = e.IsActive,
+                EnrolledAt = e.EnrolledAt
+            }).ToList()
+        };
     }
 }

@@ -5,8 +5,8 @@ namespace attendance_monitoring.Models.DTO.Response;
 /// </summary>
 public class QrCodeResponseDto
 {
-    public int Id { get; set; }
-    public int SessionId { get; set; }
+    public Guid Id { get; set; }
+    public Guid SessionId { get; set; }
     public string QrHash { get; set; } = string.Empty;
     public DateTime GeneratedAt { get; set; }
     public DateTime ExpiresAt { get; set; }
@@ -17,7 +17,7 @@ public class QrCodeResponseDto
     public DateTime UpdatedAt { get; set; }
 
     // Session information (from Session entity)
-    public int? ScheduleId { get; set; }
+    public Guid? ScheduleId { get; set; }
     public DateTime? SessionDate { get; set; }
     public string? SessionStatus { get; set; }
 

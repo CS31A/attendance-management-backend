@@ -6,6 +6,7 @@ namespace attendance_monitoring.IServices
     public interface ISectionService
     {
         Task<Section> GetSectionByIdAsync(int sectionId);
+        Task<Section> GetSectionByUuidAsync(Guid uuid);
         Task<IEnumerable<SectionResponseDto>> GetAllSectionsAsync();
 
         /// <summary>
@@ -24,7 +25,9 @@ namespace attendance_monitoring.IServices
 
         Task<SectionResponseDto> CreateSectionAsync(Section section);
         Task<SectionResponseDto> UpdateSectionAsync(int id, Section section);
+        Task<SectionResponseDto> UpdateSectionByUuidAsync(Guid uuid, Section section);
         Task DeleteSectionAsync(int id);
+        Task DeleteSectionByUuidAsync(Guid uuid);
         Task<bool> HasStudentsInSectionAsync(int sectionId);
         Task<bool> HasStudentEnrollmentsInSectionAsync(int sectionId);
         Task<bool> HasSchedulesInSectionAsync(int sectionId);

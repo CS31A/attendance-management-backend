@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using attendance_monitoring.Attributes;
 
 namespace attendance_monitoring.Models.DTO.Request
 {
@@ -15,15 +16,19 @@ namespace attendance_monitoring.Models.DTO.Request
         public string DayOfWeek { get; set; } = string.Empty;
 
         [Required]
-        public int SubjectId { get; set; }
+        [NotEmptyGuid(ErrorMessage = "SubjectId is required")]
+        public Guid SubjectId { get; set; }
 
         [Required]
-        public int ClassroomId { get; set; }
+        [NotEmptyGuid(ErrorMessage = "ClassroomId is required")]
+        public Guid ClassroomId { get; set; }
 
         [Required]
-        public int SectionId { get; set; }
+        [NotEmptyGuid(ErrorMessage = "SectionId is required")]
+        public Guid SectionId { get; set; }
 
         [Required]
-        public int InstructorId { get; set; }
+        [NotEmptyGuid(ErrorMessage = "InstructorId is required")]
+        public Guid InstructorId { get; set; }
     }
 }

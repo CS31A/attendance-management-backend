@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using attendance_monitoring.Attributes;
 
 namespace attendance_monitoring.Models.DTO.Request;
 
@@ -8,11 +9,11 @@ namespace attendance_monitoring.Models.DTO.Request;
 public class QrCodeRequest
 {
     /// <summary>
-    /// The session ID this QR code belongs to.
+    /// The session UUID this QR code belongs to.
     /// Session must be in 'active' status.
     /// </summary>
-    [Required]
-    public int SessionId { get; set; }
+    [NotEmptyGuid(ErrorMessage = "SessionId is required")]
+    public Guid SessionId { get; set; }
 
     /// <summary>
     /// How many minutes until the QR code expires (1-1440 minutes / 24 hours)

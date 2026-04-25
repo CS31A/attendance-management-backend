@@ -16,8 +16,8 @@ public class SessionDtoSerializationTest
     {
         var dto = new SessionResponseDto
         {
-            Id = 1,
-            ScheduleId = 2,
+            Id = Guid.NewGuid(),
+            ScheduleId = Guid.NewGuid(),
             RowVersion = [1, 2, 3, 4]
         };
 
@@ -36,7 +36,7 @@ public class SessionDtoSerializationTest
         var startJson = JsonSerializer.Serialize(new StartSession { RowVersion = [1, 2, 3, 4] }, ApiJsonOptions);
         var endJson = JsonSerializer.Serialize(new EndSession { RowVersion = [1, 2, 3, 4] }, ApiJsonOptions);
         var cancelJson = JsonSerializer.Serialize(new CancelSession { Reason = "Room issue", RowVersion = [1, 2, 3, 4] }, ApiJsonOptions);
-        var roomJson = JsonSerializer.Serialize(new UpdateSessionRoom { ActualRoomId = 5, RowVersion = [1, 2, 3, 4] }, ApiJsonOptions);
+        var roomJson = JsonSerializer.Serialize(new UpdateSessionRoom { ActualRoomId = Guid.NewGuid(), RowVersion = [1, 2, 3, 4] }, ApiJsonOptions);
 
         Assert.Contains("\"rowVersion\":\"AQIDBA==\"", startJson);
         Assert.Equal([1, 2, 3, 4], JsonSerializer.Deserialize<StartSession>(startJson, ApiJsonOptions)!.RowVersion);

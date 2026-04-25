@@ -213,16 +213,16 @@ public class InstructorController(IInstructorService instructorService, ILogger<
         }
     }
 
-    // GET: api/instructors/me/sections/{sectionId:int}
-    [HttpGet("me/sections/{sectionId:int}")]
+    // GET: api/instructors/me/sections/{id:guid}
+    [HttpGet("me/sections/{id:guid}")]
     [Authorize(Policy = "PrivilegedPolicy")]
-    public async Task<ActionResult<InstructorSectionDetailDto>> GetMySectionDetail(int sectionId)
+    public async Task<ActionResult<InstructorSectionDetailDto>> GetMySectionDetail([FromRoute(Name = "id")] Guid sectionId)
     {
         try
         {
-            logger.LogInformation("Getting section detail for section ID: {SectionId}", sectionId);
-            var sectionDetail = await instructorService.GetInstructorSectionDetailAsync(User, sectionId);
-            logger.LogInformation("Successfully retrieved section detail for section ID: {SectionId}", sectionId);
+            logger.LogInformation("Getting section detail for section UUID: {SectionId}", sectionId);
+            var sectionDetail = await instructorService.GetInstructorSectionDetailByUuidAsync(User, sectionId);
+            logger.LogInformation("Successfully retrieved section detail for section UUID: {SectionId}", sectionId);
             return Ok(sectionDetail);
         }
         catch (EntityNotFoundException<string> ex)
@@ -230,7 +230,7 @@ public class InstructorController(IInstructorService instructorService, ILogger<
             logger.LogWarning(ex, "Instructor not found for authenticated user");
             return NotFound("No instructor record found for the current user");
         }
-        catch (EntityNotFoundException<int> ex)
+        catch (EntityNotFoundException<Guid> ex)
         {
             logger.LogWarning(ex, "Section with ID {SectionId} not found", sectionId);
             return NotFound($"Section with ID {sectionId} not found");
@@ -247,16 +247,16 @@ public class InstructorController(IInstructorService instructorService, ILogger<
         }
     }
 
-    // GET: api/instructors/me/students/{studentId:int}
-    [HttpGet("me/students/{studentId:int}")]
+    // GET: api/instructors/me/students/{id:guid}
+    [HttpGet("me/students/{id:guid}")]
     [Authorize(Policy = "PrivilegedPolicy")]
-    public async Task<ActionResult<InstructorStudentDetailDto>> GetMyStudentDetail(int studentId)
+    public async Task<ActionResult<InstructorStudentDetailDto>> GetMyStudentDetail([FromRoute(Name = "id")] Guid studentId)
     {
         try
         {
-            logger.LogInformation("Getting student detail for student ID: {StudentId}", studentId);
-            var studentDetail = await instructorService.GetInstructorStudentDetailAsync(User, studentId);
-            logger.LogInformation("Successfully retrieved student detail for student ID: {StudentId}", studentId);
+            logger.LogInformation("Getting student detail for student UUID: {StudentId}", studentId);
+            var studentDetail = await instructorService.GetInstructorStudentDetailByUuidAsync(User, studentId);
+            logger.LogInformation("Successfully retrieved student detail for student UUID: {StudentId}", studentId);
             return Ok(studentDetail);
         }
         catch (EntityNotFoundException<string> ex)
@@ -264,7 +264,7 @@ public class InstructorController(IInstructorService instructorService, ILogger<
             logger.LogWarning(ex, "Instructor not found for authenticated user");
             return NotFound("No instructor record found for the current user");
         }
-        catch (EntityNotFoundException<int> ex)
+        catch (EntityNotFoundException<Guid> ex)
         {
             logger.LogWarning(ex, "Student with ID {StudentId} not found", studentId);
             return NotFound($"Student with ID {studentId} not found");
