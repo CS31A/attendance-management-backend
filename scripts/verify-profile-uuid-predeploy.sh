@@ -17,12 +17,52 @@ username=""
 password=""
 trust_server_certificate=""
 
-IFS=';' read -r -a connection_parts <<< "$ATTENDANCE_TEST_SQLSERVER_CONNECTION"
-for part in "${connection_parts[@]}"; do
-  [[ -z "${part// }" ]] && continue
+connection_string="$ATTENDANCE_TEST_SQLSERVER_CONNECTION"
 
-  key="${part%%=*}"
-  value="${part#*=}"
+while [[ -n "$connection_string" ]]; do
+  # Trim leading whitespace and semicolons
+  connection_string="${connection_string#"${connection_string%%[![:space:];]*}"}"
+  [[ -z "$connection_string" ]] && break
+
+  # Need at least one equals sign to form a key-value pair
+  if [[ "$connection_string" != *"="* ]]; then
+    break
+  fi
+
+  key="${connection_string%%=*}"
+  rest="${connection_string#*=}"
+
+  # Determine if value is quoted and extract accordingly
+  if [[ "$rest" == \'* ]]; then
+    rest="${rest#\'}"
+    if [[ "$rest" == *\'* ]]; then
+      IFS="'" read -r prefix _ <<< "$rest"
+      value="$prefix"
+      connection_string="${rest:$(( ${#prefix} + 1 ))}"
+      connection_string="${connection_string#;}"
+    else
+      # Missing closing quote – consume rest as value
+      value="$rest"
+      connection_string=""
+    fi
+  elif [[ "$rest" == \"* ]]; then
+    rest="${rest#\"}"
+    if [[ "$rest" == *\"* ]]; then
+      IFS='"' read -r prefix _ <<< "$rest"
+      value="$prefix"
+      connection_string="${rest:$(( ${#prefix} + 1 ))}"
+      connection_string="${connection_string#;}"
+    else
+      value="$rest"
+      connection_string=""
+    fi
+  else
+    # Unquoted value – terminated by semicolon or end of string
+    value="${rest%%;*}"
+    connection_string="${rest:$(( ${#value} ))}"
+    connection_string="${connection_string#;}"
+  fi
+
   normalized_key="$(printf '%s' "$key" | tr '[:upper:]' '[:lower:]' | tr -d ' ')"
 
   case "$normalized_key" in
