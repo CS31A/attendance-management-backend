@@ -6,16 +6,14 @@ namespace attendance_monitoring.Models.DTO.Response;
 public class QrCodeScanHistoryItemDto
 {
     /// <summary>
-    /// Attendance record ID (primary key)
+    /// Attendance record ID
     /// </summary>
-    public int AttendanceRecordId { get; set; }
-    public Guid? AttendanceRecordUuid { get; set; }
+    public Guid AttendanceRecordId { get; set; }
 
     /// <summary>
     /// Student ID who scanned the QR code
     /// </summary>
-    public int StudentId { get; set; }
-    public Guid? StudentUuid { get; set; }
+    public Guid StudentId { get; set; }
 
     /// <summary>
     /// Student email address
@@ -40,8 +38,7 @@ public class QrCodeScanHistoryItemDto
     /// <summary>
     /// Session ID associated with this scan
     /// </summary>
-    public int SessionId { get; set; }
-    public Guid? SessionUuid { get; set; }
+    public Guid SessionId { get; set; }
 
     /// <summary>
     /// Session date and time

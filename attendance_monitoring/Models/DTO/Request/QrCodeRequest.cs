@@ -8,15 +8,10 @@ namespace attendance_monitoring.Models.DTO.Request;
 public class QrCodeRequest
 {
     /// <summary>
-    /// The session ID this QR code belongs to.
+    /// The session UUID this QR code belongs to.
     /// Session must be in 'active' status.
     /// </summary>
-    public int SessionId { get; set; }
-
-    /// <summary>
-    /// The session UUID this QR code belongs to (alternative to SessionId)
-    /// </summary>
-    public Guid? SessionUuid { get; set; }
+    public Guid SessionId { get; set; }
 
     /// <summary>
     /// How many minutes until the QR code expires (1-1440 minutes / 24 hours)

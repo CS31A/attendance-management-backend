@@ -214,10 +214,10 @@ namespace attendance_monitoring.Services
                 }
 
                 // Validate relationships if needed
-                var subjectId = await ScheduleServiceSupport.ResolveSubjectIdAsync(context, createSchedule.SubjectId, createSchedule.SubjectUuid).ConfigureAwait(false);
-                var classroomId = await ScheduleServiceSupport.ResolveClassroomIdAsync(context, createSchedule.ClassroomId, createSchedule.ClassroomUuid).ConfigureAwait(false);
-                var sectionId = await ScheduleServiceSupport.ResolveSectionIdAsync(context, createSchedule.SectionId, createSchedule.SectionUuid).ConfigureAwait(false);
-                var instructorId = await ScheduleServiceSupport.ResolveInstructorIdAsync(context, createSchedule.InstructorId, createSchedule.InstructorUuid).ConfigureAwait(false);
+                var subjectId = await ScheduleServiceSupport.ResolveSubjectIdAsync(context, createSchedule.SubjectId).ConfigureAwait(false);
+                var classroomId = await ScheduleServiceSupport.ResolveClassroomIdAsync(context, createSchedule.ClassroomId).ConfigureAwait(false);
+                var sectionId = await ScheduleServiceSupport.ResolveSectionIdAsync(context, createSchedule.SectionId).ConfigureAwait(false);
+                var instructorId = await ScheduleServiceSupport.ResolveInstructorIdAsync(context, createSchedule.InstructorId).ConfigureAwait(false);
 
                 var schedule = new Schedules
                 {
@@ -291,24 +291,24 @@ namespace attendance_monitoring.Services
                 }
 
                 // Validate and update relationships only if provided
-                if (updateSchedule.SubjectId.HasValue || (updateSchedule.SubjectUuid.HasValue && updateSchedule.SubjectUuid.Value != Guid.Empty))
+                if (updateSchedule.SubjectId.HasValue && updateSchedule.SubjectId.Value != Guid.Empty)
                 {
-                    existingSchedule.SubjectId = await ScheduleServiceSupport.ResolveSubjectIdAsync(context, updateSchedule.SubjectId, updateSchedule.SubjectUuid).ConfigureAwait(false);
+                    existingSchedule.SubjectId = await ScheduleServiceSupport.ResolveSubjectIdAsync(context, updateSchedule.SubjectId.Value).ConfigureAwait(false);
                 }
 
-                if (updateSchedule.ClassroomId.HasValue || (updateSchedule.ClassroomUuid.HasValue && updateSchedule.ClassroomUuid.Value != Guid.Empty))
+                if (updateSchedule.ClassroomId.HasValue && updateSchedule.ClassroomId.Value != Guid.Empty)
                 {
-                    existingSchedule.ClassroomId = await ScheduleServiceSupport.ResolveClassroomIdAsync(context, updateSchedule.ClassroomId, updateSchedule.ClassroomUuid).ConfigureAwait(false);
+                    existingSchedule.ClassroomId = await ScheduleServiceSupport.ResolveClassroomIdAsync(context, updateSchedule.ClassroomId.Value).ConfigureAwait(false);
                 }
 
-                if (updateSchedule.SectionId.HasValue || (updateSchedule.SectionUuid.HasValue && updateSchedule.SectionUuid.Value != Guid.Empty))
+                if (updateSchedule.SectionId.HasValue && updateSchedule.SectionId.Value != Guid.Empty)
                 {
-                    existingSchedule.SectionId = await ScheduleServiceSupport.ResolveSectionIdAsync(context, updateSchedule.SectionId, updateSchedule.SectionUuid).ConfigureAwait(false);
+                    existingSchedule.SectionId = await ScheduleServiceSupport.ResolveSectionIdAsync(context, updateSchedule.SectionId.Value).ConfigureAwait(false);
                 }
 
-                if (updateSchedule.InstructorId.HasValue || (updateSchedule.InstructorUuid.HasValue && updateSchedule.InstructorUuid.Value != Guid.Empty))
+                if (updateSchedule.InstructorId.HasValue && updateSchedule.InstructorId.Value != Guid.Empty)
                 {
-                    existingSchedule.InstructorId = await ScheduleServiceSupport.ResolveInstructorIdAsync(context, updateSchedule.InstructorId, updateSchedule.InstructorUuid).ConfigureAwait(false);
+                    existingSchedule.InstructorId = await ScheduleServiceSupport.ResolveInstructorIdAsync(context, updateSchedule.InstructorId.Value).ConfigureAwait(false);
                 }
 
                 // Update simple fields only if provided

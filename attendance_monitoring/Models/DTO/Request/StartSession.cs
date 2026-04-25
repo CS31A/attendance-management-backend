@@ -8,15 +8,9 @@ namespace attendance_monitoring.Models.DTO.Request;
 public class StartSession
 {
     /// <summary>
-    /// The actual room ID where the session is being held (if different from scheduled room).
-    /// </summary>
-    [Range(1, int.MaxValue, ErrorMessage = "Room ID must be a positive integer")]
-    public int? ActualRoomId { get; set; }
-
-    /// <summary>
     /// The actual room UUID where the session is being held (if different from scheduled room).
     /// </summary>
-    public Guid? ActualRoomUuid { get; set; }
+    public Guid? ActualRoomId { get; set; }
 
     /// <summary>
     /// The number of minutes after the scheduled start time before attendance is considered late.

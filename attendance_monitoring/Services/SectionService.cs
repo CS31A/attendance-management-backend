@@ -84,11 +84,9 @@ namespace attendance_monitoring.Services
                 var sections = await sectionRepository.GetAllSectionsAsync().ConfigureAwait(false);
                 var sectionDtos = sections.Select(s => new SectionResponseDto
                 {
-                    Id = s.Id,
-                    Uuid = s.Uuid,
+                    Id = s.Uuid,
                     Name = s.Name,
-                    CourseId = s.CourseId,
-                    CourseUuid = s.Course?.Uuid,
+                    CourseId = s.Course?.Uuid ?? Guid.Empty,
                     CreatedAt = s.CreatedAt,
                     UpdatedAt = s.UpdatedAt
                 }).ToList();
@@ -122,11 +120,9 @@ namespace attendance_monitoring.Services
 
                 var sectionDto = new SectionResponseDto
                 {
-                    Id = createdSection.Id,
-                    Uuid = createdSection.Uuid,
+                    Id = createdSection.Uuid,
                     Name = createdSection.Name,
-                    CourseId = createdSection.CourseId,
-                    CourseUuid = createdSection.Course?.Uuid,
+                    CourseId = createdSection.Course?.Uuid ?? Guid.Empty,
                     CreatedAt = createdSection.CreatedAt,
                     UpdatedAt = createdSection.UpdatedAt
                 };
@@ -168,11 +164,9 @@ namespace attendance_monitoring.Services
 
                 var sectionDto = new SectionResponseDto
                 {
-                    Id = updatedSection.Id,
-                    Uuid = updatedSection.Uuid,
+                    Id = updatedSection.Uuid,
                     Name = updatedSection.Name,
-                    CourseId = updatedSection.CourseId,
-                    CourseUuid = updatedSection.Course?.Uuid,
+                    CourseId = updatedSection.Course?.Uuid ?? Guid.Empty,
                     CreatedAt = updatedSection.CreatedAt,
                     UpdatedAt = updatedSection.UpdatedAt
                 };

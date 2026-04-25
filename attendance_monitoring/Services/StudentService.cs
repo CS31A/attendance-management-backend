@@ -544,8 +544,7 @@ namespace attendance_monitoring.Services
                 {
                     Subject = new SubjectResponseDto
                     {
-                        Id = data.Subject.Id,
-                        Uuid = data.Subject.Uuid,
+                        Id = data.Subject.Uuid,
                         Name = data.Subject.Name,
                         Code = data.Subject.Code,
                         CreatedAt = data.Subject.CreatedAt,
@@ -553,23 +552,21 @@ namespace attendance_monitoring.Services
                     },
                     Schedule = new StudentSubjectScheduleDto
                     {
-                        Id = data.Schedule.Id,
+                        Id = data.Schedule.Uuid,
                         TimeIn = data.Schedule.TimeIn,
                         TimeOut = data.Schedule.TimeOut,
                         DayOfWeek = data.Schedule.DayOfWeek
                     },
                     Instructor = new InstructorResponseDto
                     {
-                        Id = data.Instructor.Id,
-                        Uuid = data.Instructor.Uuid,
+                        Id = data.Instructor.Uuid,
                         Firstname = data.Instructor.Firstname,
                         Lastname = data.Instructor.Lastname,
                         Email = data.Instructor.User?.Email
                     },
                     Classroom = new ClassroomResponseDto
                     {
-                        Id = data.Classroom.Id,
-                        Uuid = data.Classroom.Uuid,
+                        Id = data.Classroom.Uuid,
                         Name = data.Classroom.Name,
                         CreatedAt = data.Classroom.CreatedAt,
                         UpdatedAt = data.Classroom.UpdatedAt
