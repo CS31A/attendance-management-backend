@@ -6,9 +6,9 @@ namespace attendance_monitoring.Models.DTO.Response;
 public class FingerprintResponseDto
 {
     /// <summary>
-    /// The fingerprint ID.
+    /// The fingerprint UUID.
     /// </summary>
-    public int Id { get; set; }
+    public Guid Id { get; set; }
 
     /// <summary>
     /// The associated user ID.
@@ -16,9 +16,9 @@ public class FingerprintResponseDto
     public string UserId { get; set; } = string.Empty;
 
     /// <summary>
-    /// The associated student ID.
+    /// The associated student UUID.
     /// </summary>
-    public int? StudentId { get; set; }
+    public Guid? StudentId { get; set; }
 
     /// <summary>
     /// The device ID that registered this fingerprint.

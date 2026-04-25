@@ -5,7 +5,7 @@ namespace attendance_monitoring.Models.DTO.Request;
 public class CompleteFingerprintEnrollmentRequest
 {
     [Required]
-    public Guid EnrollmentSessionId { get; set; }
+    public Guid Id { get; set; }
 
     [Required]
     [MaxLength(100)]

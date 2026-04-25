@@ -16,14 +16,14 @@ public class FingerprintRegistrationResponseDto
     public string Message { get; set; } = string.Empty;
 
     /// <summary>
-    /// The ID of the newly registered fingerprint.
+    /// The UUID of the newly registered fingerprint.
     /// </summary>
-    public int? FingerprintId { get; set; }
+    public Guid? Id { get; set; }
 
     /// <summary>
-    /// The student ID the fingerprint was registered for.
+    /// The student UUID the fingerprint was registered for.
     /// </summary>
-    public int? StudentId { get; set; }
+    public Guid? StudentId { get; set; }
 
     /// <summary>
     /// The student's name.

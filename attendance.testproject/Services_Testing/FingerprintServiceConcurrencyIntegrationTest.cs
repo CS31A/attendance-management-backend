@@ -105,6 +105,9 @@ public sealed class FingerprintServiceConcurrencyIntegrationTest : IDisposable
         mockSessionRepository
             .Setup(repository => repository.GetSessionByIdAsync(seed.Session.Id))
             .ReturnsAsync(seed.Session);
+        mockSessionRepository
+            .Setup(repository => repository.GetSessionByUuidAsync(seed.Session.Uuid))
+            .ReturnsAsync(seed.Session);
 
         mockAttendanceService
             .Setup(service => service.DetermineAttendanceStatus(
@@ -148,7 +151,7 @@ public sealed class FingerprintServiceConcurrencyIntegrationTest : IDisposable
                 DeviceId = seed.Device.DeviceIdentifier,
                 SensorFingerprintId = 5,
                 Confidence = 96,
-                SessionId = seed.Session.Id
+                SessionId = seed.Session.Uuid
             },
             "device-secret");
 
@@ -169,7 +172,7 @@ public sealed class FingerprintServiceConcurrencyIntegrationTest : IDisposable
         Assert.Single(persistedAttendance);
         Assert.Single(persistedScanEvents);
 
-        Assert.Equal(persistedAttendance[0].Id, response.AttendanceRecordId);
+        Assert.Equal(persistedAttendance[0].Uuid, response.AttendanceRecordId);
         Assert.Equal("Duplicate", persistedScanEvents[0].Status);
         Assert.Equal(seed.Session.Id, persistedScanEvents[0].SessionId);
         Assert.Equal(persistedAttendance[0].Id, persistedScanEvents[0].AttendanceRecordId);
@@ -227,6 +230,9 @@ public sealed class FingerprintServiceConcurrencyIntegrationTest : IDisposable
 
         mockSessionRepository
             .Setup(repository => repository.GetSessionByIdAsync(seed.Session.Id))
+            .ReturnsAsync(seed.Session);
+        mockSessionRepository
+            .Setup(repository => repository.GetSessionByUuidAsync(seed.Session.Uuid))
             .ReturnsAsync(seed.Session);
 
         mockAttendanceService
@@ -304,7 +310,7 @@ public sealed class FingerprintServiceConcurrencyIntegrationTest : IDisposable
                 DeviceId = seed.Device.DeviceIdentifier,
                 SensorFingerprintId = 5,
                 Confidence = 96,
-                SessionId = seed.Session.Id
+                SessionId = seed.Session.Uuid
             },
             "device-secret");
 
@@ -325,7 +331,7 @@ public sealed class FingerprintServiceConcurrencyIntegrationTest : IDisposable
         Assert.Single(persistedScanEvents);
         Assert.Equal(seed.Session.Id, persistedScanEvents[0].SessionId);
         Assert.Equal(persistedAttendance[0].Id, persistedScanEvents[0].AttendanceRecordId);
-        Assert.Equal(persistedAttendance[0].Id, response.AttendanceRecordId);
+        Assert.Equal(persistedAttendance[0].Uuid, response.AttendanceRecordId);
         Assert.NotEqual(Guid.Empty, persistedScanEvents[0].Uuid);
         Assert.NotEqual(Guid.Empty, persistedScanEvents[0].EventId);
         Assert.NotEqual(persistedScanEvents[0].Uuid, persistedScanEvents[0].EventId);

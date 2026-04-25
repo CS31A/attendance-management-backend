@@ -17,6 +17,13 @@ public interface IFingerprintRepository : ISaveableRepository
     Task<Fingerprint?> GetFingerprintByIdAsync(int id);
 
     /// <summary>
+    /// Retrieves a fingerprint by its UUID.
+    /// </summary>
+    /// <param name="uuid">The fingerprint UUID.</param>
+    /// <returns>The fingerprint if found; otherwise, null.</returns>
+    Task<Fingerprint?> GetFingerprintByUuidAsync(Guid uuid);
+
+    /// <summary>
     /// Retrieves a fingerprint by the associated user ID.
     /// </summary>
     /// <param name="userId">The user ID.</param>
@@ -111,6 +118,13 @@ public interface IFingerprintRepository : ISaveableRepository
     /// <param name="id">The fingerprint ID.</param>
     /// <returns>True if the fingerprint was deleted; otherwise, false.</returns>
     Task<bool> SoftDeleteFingerprintAsync(int id);
+
+    /// <summary>
+    /// Soft deletes a fingerprint by UUID.
+    /// </summary>
+    /// <param name="uuid">The fingerprint UUID.</param>
+    /// <returns>True if the fingerprint was deleted; otherwise, false.</returns>
+    Task<bool> SoftDeleteFingerprintByUuidAsync(Guid uuid);
 
     /// <summary>
     /// Soft deletes a fingerprint by user ID.

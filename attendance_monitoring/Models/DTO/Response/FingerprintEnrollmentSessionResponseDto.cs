@@ -6,9 +6,9 @@ public class FingerprintEnrollmentSessionResponseDto
 
     public string Message { get; set; } = string.Empty;
 
-    public Guid EnrollmentSessionId { get; set; }
+    public Guid Id { get; set; }
 
-    public int StudentId { get; set; }
+    public Guid StudentId { get; set; }
 
     public string StudentName { get; set; } = string.Empty;
 

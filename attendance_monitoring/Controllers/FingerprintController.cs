@@ -26,29 +26,29 @@ public class FingerprintController(
     /// Removes (soft deletes) a fingerprint registration.
     /// Requires Admin or Instructor role.
     /// </summary>
-    /// <param name="fingerprintId">The fingerprint ID to remove.</param>
+    /// <param name="id">The fingerprint UUID to remove.</param>
     /// <returns>Removal result.</returns>
     /// <response code="200">Fingerprint removed successfully</response>
     /// <response code="401">User not authenticated</response>
     /// <response code="403">User not authorized</response>
     /// <response code="404">Fingerprint not found</response>
-    [HttpDelete("{fingerprintId}")]
+    [HttpDelete("{id:guid}")]
     [Authorize(Policy = "PrivilegedPolicy")]
     [ProducesResponseType(typeof(FingerprintRegistrationResponseDto), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(FingerprintRegistrationResponseDto), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(FingerprintRegistrationResponseDto), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(FingerprintRegistrationResponseDto), StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<FingerprintRegistrationResponseDto>> RemoveFingerprint(int fingerprintId)
+    public async Task<ActionResult<FingerprintRegistrationResponseDto>> RemoveFingerprint(Guid id)
     {
-        logger.LogInformation("Fingerprint removal request for ID: {FingerprintId}", fingerprintId);
+        logger.LogInformation("Fingerprint removal request for ID: {FingerprintId}", id);
 
         try
         {
-            var response = await fingerprintService.RemoveFingerprintAsync(fingerprintId, User);
-            logger.LogInformation("Fingerprint removed successfully for ID: {FingerprintId}", fingerprintId);
+            var response = await fingerprintService.RemoveFingerprintAsync(id, User);
+            logger.LogInformation("Fingerprint removed successfully for ID: {FingerprintId}", id);
             return Ok(response);
         }
-        catch (EntityNotFoundException<int> ex)
+        catch (EntityNotFoundException<Guid> ex)
         {
             logger.LogWarning(ex, "Fingerprint not found for removal");
             return NotFound(new FingerprintRegistrationResponseDto
@@ -100,7 +100,7 @@ public class FingerprintController(
             var response = await fingerprintService.StartEnrollmentSessionAsync(request, User);
             return Ok(response);
         }
-        catch (EntityNotFoundException<int> ex)
+        catch (EntityNotFoundException<Guid> ex)
         {
             return NotFound(new FingerprintEnrollmentSessionResponseDto
             {
@@ -268,35 +268,35 @@ public class FingerprintController(
     /// Gets fingerprint information for a student.
     /// Students can only view their own fingerprint. Admin/Instructors can view any.
     /// </summary>
-    /// <param name="studentId">The student ID.</param>
+    /// <param name="id">The student UUID.</param>
     /// <returns>Fingerprint information.</returns>
     /// <response code="200">Fingerprint retrieved successfully</response>
     /// <response code="401">User not authenticated</response>
     /// <response code="403">User not authorized</response>
     /// <response code="404">Fingerprint not found</response>
-    [HttpGet("student/{studentId}")]
+    [HttpGet("student/{id:guid}")]
     [Authorize]
     [ProducesResponseType(typeof(FingerprintResponseDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<FingerprintResponseDto>> GetFingerprintByStudentId(int studentId)
+    public async Task<ActionResult<FingerprintResponseDto>> GetFingerprintByStudentId(Guid id)
     {
-        logger.LogInformation("Retrieving fingerprint for student ID: {StudentId}", studentId);
+        logger.LogInformation("Retrieving fingerprint for student ID: {StudentId}", id);
 
         try
         {
-            var response = await fingerprintService.GetFingerprintByStudentIdAsync(studentId, User);
+            var response = await fingerprintService.GetFingerprintByStudentIdAsync(id, User);
             return Ok(response);
         }
-        catch (EntityNotFoundException<int> ex)
+        catch (EntityNotFoundException<Guid> ex)
         {
-            logger.LogWarning(ex, "Fingerprint not found for student {StudentId}", studentId);
+            logger.LogWarning(ex, "Fingerprint not found for student {StudentId}", id);
             return NotFound(new { message = ex.Message });
         }
         catch (EntityUnauthorizedException ex)
         {
-            logger.LogWarning(ex, "Unauthorized attempt to view fingerprint for student {StudentId}", studentId);
+            logger.LogWarning(ex, "Unauthorized attempt to view fingerprint for student {StudentId}", id);
             return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
         }
     }
@@ -363,20 +363,20 @@ public class FingerprintController(
     /// <summary>
     /// Checks if a student has a registered fingerprint.
     /// </summary>
-    /// <param name="studentId">The student ID.</param>
+    /// <param name="id">The student UUID.</param>
     /// <returns>True if the student has a registered fingerprint.</returns>
     /// <response code="200">Check completed successfully</response>
     /// <response code="401">User not authenticated</response>
-    [HttpGet("check/{studentId}")]
+    [HttpGet("check/{id:guid}")]
     [Authorize]
     [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    public async Task<ActionResult> CheckStudentHasFingerprint(int studentId)
+    public async Task<ActionResult> CheckStudentHasFingerprint(Guid id)
     {
-        logger.LogInformation("Checking if student {StudentId} has a fingerprint", studentId);
+        logger.LogInformation("Checking if student {StudentId} has a fingerprint", id);
 
-        var hasFingerprint = await fingerprintService.StudentHasFingerprintAsync(studentId);
-        return Ok(new { studentId, hasFingerprint });
+        var hasFingerprint = await fingerprintService.StudentHasFingerprintAsync(id);
+        return Ok(new { studentId = id, hasFingerprint });
     }
 
     #endregion
