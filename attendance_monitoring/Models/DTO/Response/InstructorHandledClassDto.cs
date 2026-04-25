@@ -31,6 +31,21 @@ public class InstructorHandledClassStudentDto
     /// Gets or sets the student's enrollment type.
     /// </summary>
     public string EnrollmentType { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Gets or sets a value indicating whether the student has a registered fingerprint.
+    /// </summary>
+    public bool HasFingerprint { get; set; }
+
+    /// <summary>
+    /// Gets or sets the fingerprint device identifier, if the student has a registered fingerprint.
+    /// </summary>
+    public string? FingerprintDeviceId { get; set; }
+
+    /// <summary>
+    /// Gets or sets the fingerprint device name, if the student has a registered fingerprint.
+    /// </summary>
+    public string? FingerprintDeviceName { get; set; }
 }
 
 /// <summary>

@@ -22,6 +22,7 @@ namespace attendance_monitoring.Services
         private readonly ISectionRepository _sectionRepository;
         private readonly IStudentRepository _studentRepository;
         private readonly IScheduleRepository _scheduleRepository;
+        private readonly IFingerprintRepository _fingerprintRepository;
         private readonly IUserContextService _userContextService;
         private readonly ILogger<InstructorService> _logger;
 
@@ -30,15 +31,18 @@ namespace attendance_monitoring.Services
         /// </summary>
         /// <param name="instructorRepository">Repository for instructor data operations</param>
         /// <param name="sectionRepository">Repository for section data operations</param>
+        /// <param name="studentRepository">Repository for student data operations</param>
         /// <param name="scheduleRepository">Repository for schedule data operations</param>
+        /// <param name="fingerprintRepository">Repository for fingerprint data operations</param>
         /// <param name="userContextService">Service for managing user context and authorization</param>
         /// <param name="logger">Logger for logging operations</param>
-        public InstructorService(IInstructorRepository instructorRepository, ISectionRepository sectionRepository, IStudentRepository studentRepository, IScheduleRepository scheduleRepository, IUserContextService userContextService, ILogger<InstructorService> logger)
+        public InstructorService(IInstructorRepository instructorRepository, ISectionRepository sectionRepository, IStudentRepository studentRepository, IScheduleRepository scheduleRepository, IFingerprintRepository fingerprintRepository, IUserContextService userContextService, ILogger<InstructorService> logger)
         {
             _instructorRepository = instructorRepository ?? throw new ArgumentNullException(nameof(instructorRepository));
             _sectionRepository = sectionRepository ?? throw new ArgumentNullException(nameof(sectionRepository));
             _studentRepository = studentRepository ?? throw new ArgumentNullException(nameof(studentRepository));
             _scheduleRepository = scheduleRepository ?? throw new ArgumentNullException(nameof(scheduleRepository));
+            _fingerprintRepository = fingerprintRepository ?? throw new ArgumentNullException(nameof(fingerprintRepository));
             _userContextService = userContextService ?? throw new ArgumentNullException(nameof(userContextService));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
@@ -968,13 +972,20 @@ namespace attendance_monitoring.Services
 
                 var handledClasses = new List<InstructorHandledClassDto>();
                 var regularStudents = (await _instructorRepository.GetRegularStudentsBySectionIdAsync(sectionId).ConfigureAwait(false))
-                    .Select(student => new InstructorHandledClassStudentDto
+                    .Select(student =>
                     {
-                        StudentId = student.Uuid,
-                        Firstname = student.Firstname,
-                        Lastname = student.Lastname,
-                        IsRegular = true,
-                        EnrollmentType = EnrollmentTypeConstants.Regular
+                        var fingerprint = _fingerprintRepository.GetFingerprintByStudentIdAsync(student.Id).GetAwaiter().GetResult();
+                        return new InstructorHandledClassStudentDto
+                        {
+                            StudentId = student.Uuid,
+                            Firstname = student.Firstname,
+                            Lastname = student.Lastname,
+                            IsRegular = true,
+                            EnrollmentType = EnrollmentTypeConstants.Regular,
+                            HasFingerprint = fingerprint != null && !fingerprint.IsDeleted,
+                            FingerprintDeviceId = fingerprint?.DeviceId,
+                            FingerprintDeviceName = null
+                        };
                     })
                     .ToList();
 
@@ -987,13 +998,20 @@ namespace attendance_monitoring.Services
                             && !se.Student.IsDeleted
                             && se.IsActive
                             && se.Student.SectionId != sectionId)
-                        .Select(se => new InstructorHandledClassStudentDto
+                        .Select(se =>
                         {
-                            StudentId = se.Student.Uuid,
-                            Firstname = se.Student.Firstname,
-                            Lastname = se.Student.Lastname,
-                            IsRegular = false,
-                            EnrollmentType = se.EnrollmentType
+                            var fingerprint = _fingerprintRepository.GetFingerprintByStudentIdAsync(se.Student.Id).GetAwaiter().GetResult();
+                            return new InstructorHandledClassStudentDto
+                            {
+                                StudentId = se.Student.Uuid,
+                                Firstname = se.Student.Firstname,
+                                Lastname = se.Student.Lastname,
+                                IsRegular = false,
+                                EnrollmentType = se.EnrollmentType,
+                                HasFingerprint = fingerprint != null && !fingerprint.IsDeleted,
+                                FingerprintDeviceId = fingerprint?.DeviceId,
+                                FingerprintDeviceName = null
+                            };
                         })
                         .ToList();
 
@@ -1022,13 +1040,20 @@ namespace attendance_monitoring.Services
                 }
 
                 var homeSectionStudents = await _instructorRepository.GetHomeSectionStudentsAsync(sectionId).ConfigureAwait(false);
-                var homeSectionStudentDtos = homeSectionStudents.Select(student => new InstructorHomeSectionStudentDto
+                var homeSectionStudentDtos = homeSectionStudents.Select(student =>
                 {
-                    StudentId = student.Uuid,
-                    Firstname = student.Firstname,
-                    Lastname = student.Lastname,
-                    IsRegular = student.SectionId == sectionId,
-                    EnrollmentType = student.SectionId == sectionId ? EnrollmentTypeConstants.Regular : EnrollmentTypeConstants.Irregular
+                    var fingerprint = _fingerprintRepository.GetFingerprintByStudentIdAsync(student.Id).GetAwaiter().GetResult();
+                    return new InstructorHomeSectionStudentDto
+                    {
+                        StudentId = student.Uuid,
+                        Firstname = student.Firstname,
+                        Lastname = student.Lastname,
+                        IsRegular = student.SectionId == sectionId,
+                        EnrollmentType = student.SectionId == sectionId ? EnrollmentTypeConstants.Regular : EnrollmentTypeConstants.Irregular,
+                        HasFingerprint = fingerprint != null && !fingerprint.IsDeleted,
+                        FingerprintDeviceId = fingerprint?.DeviceId,
+                        FingerprintDeviceName = null
+                    };
                 }).ToList();
 
                 var detailDto = new InstructorSectionDetailDto
@@ -1168,6 +1193,20 @@ namespace attendance_monitoring.Services
                 var lateCount = attendanceList.Count(ar => ar.Status == "Late");
                 var attendanceRate = totalSessions > 0 ? (double)(presentCount + lateCount) / totalSessions * 100 : 0;
 
+                var fingerprint = await _fingerprintRepository.GetFingerprintByStudentIdAsync(studentId).ConfigureAwait(false);
+                InstructorStudentFingerprintDto? fingerprintDto = null;
+                if (fingerprint != null && !fingerprint.IsDeleted)
+                {
+                    fingerprintDto = new InstructorStudentFingerprintDto
+                    {
+                        Id = fingerprint.Uuid,
+                        DeviceId = fingerprint.DeviceId,
+                        DeviceName = fingerprint.DeviceId,
+                        DeviceLocation = string.Empty,
+                        EnrolledAt = fingerprint.CreatedAt
+                    };
+                }
+
                 var detailDto = new InstructorStudentDetailDto
                 {
                     StudentId = student.Uuid,
@@ -1187,7 +1226,8 @@ namespace attendance_monitoring.Services
                         AbsentCount = absentCount,
                         LateCount = lateCount,
                         AttendanceRate = Math.Round(attendanceRate, 2)
-                    }
+                    },
+                    Fingerprint = fingerprintDto
                 };
 
                 _logger.LogInformation("Successfully retrieved student detail for student ID: {StudentId}, instructor ID: {InstructorId}",

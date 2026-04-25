@@ -24,6 +24,7 @@ public class InstructorServiceTest
     private readonly Mock<ISectionRepository> _mockSectionRepository;
     private readonly Mock<IStudentRepository> _mockStudentRepository;
     private readonly Mock<IScheduleRepository> _mockScheduleRepository;
+    private readonly Mock<IFingerprintRepository> _mockFingerprintRepository;
     private readonly Mock<IUserContextService> _mockUserContextService;
     private readonly Mock<ILogger<InstructorService>> _mockLogger;
     private readonly InstructorService _service;
@@ -35,6 +36,7 @@ public class InstructorServiceTest
         _mockSectionRepository = new Mock<ISectionRepository>();
         _mockStudentRepository = new Mock<IStudentRepository>();
         _mockScheduleRepository = new Mock<IScheduleRepository>();
+        _mockFingerprintRepository = new Mock<IFingerprintRepository>();
         _mockUserContextService = new Mock<IUserContextService>();
         _mockLogger = new Mock<ILogger<InstructorService>>();
 
@@ -47,6 +49,7 @@ public class InstructorServiceTest
             _mockSectionRepository.Object,
             _mockStudentRepository.Object,
             _mockScheduleRepository.Object,
+            _mockFingerprintRepository.Object,
             _mockUserContextService.Object,
             _mockLogger.Object
         );
@@ -66,12 +69,13 @@ public class InstructorServiceTest
     public void Constructor_NullDependency_ThrowsArgumentNullException()
     {
         // Arrange & Act & Assert
-        Assert.Throws<ArgumentNullException>(() => new InstructorService(null!, _mockSectionRepository.Object, _mockStudentRepository.Object, _mockScheduleRepository.Object, _mockUserContextService.Object, _mockLogger.Object));
-        Assert.Throws<ArgumentNullException>(() => new InstructorService(_mockInstructorRepository.Object, null!, _mockStudentRepository.Object, _mockScheduleRepository.Object, _mockUserContextService.Object, _mockLogger.Object));
-        Assert.Throws<ArgumentNullException>(() => new InstructorService(_mockInstructorRepository.Object, _mockSectionRepository.Object, null!, _mockScheduleRepository.Object, _mockUserContextService.Object, _mockLogger.Object));
-        Assert.Throws<ArgumentNullException>(() => new InstructorService(_mockInstructorRepository.Object, _mockSectionRepository.Object, _mockStudentRepository.Object, null!, _mockUserContextService.Object, _mockLogger.Object));
-        Assert.Throws<ArgumentNullException>(() => new InstructorService(_mockInstructorRepository.Object, _mockSectionRepository.Object, _mockStudentRepository.Object, _mockScheduleRepository.Object, null!, _mockLogger.Object));
-        Assert.Throws<ArgumentNullException>(() => new InstructorService(_mockInstructorRepository.Object, _mockSectionRepository.Object, _mockStudentRepository.Object, _mockScheduleRepository.Object, _mockUserContextService.Object, null!));
+        Assert.Throws<ArgumentNullException>(() => new InstructorService(null!, _mockSectionRepository.Object, _mockStudentRepository.Object, _mockScheduleRepository.Object, _mockFingerprintRepository.Object, _mockUserContextService.Object, _mockLogger.Object));
+        Assert.Throws<ArgumentNullException>(() => new InstructorService(_mockInstructorRepository.Object, null!, _mockStudentRepository.Object, _mockScheduleRepository.Object, _mockFingerprintRepository.Object, _mockUserContextService.Object, _mockLogger.Object));
+        Assert.Throws<ArgumentNullException>(() => new InstructorService(_mockInstructorRepository.Object, _mockSectionRepository.Object, null!, _mockScheduleRepository.Object, _mockFingerprintRepository.Object, _mockUserContextService.Object, _mockLogger.Object));
+        Assert.Throws<ArgumentNullException>(() => new InstructorService(_mockInstructorRepository.Object, _mockSectionRepository.Object, _mockStudentRepository.Object, null!, _mockFingerprintRepository.Object, _mockUserContextService.Object, _mockLogger.Object));
+        Assert.Throws<ArgumentNullException>(() => new InstructorService(_mockInstructorRepository.Object, _mockSectionRepository.Object, _mockStudentRepository.Object, _mockScheduleRepository.Object, null!, _mockUserContextService.Object, _mockLogger.Object));
+        Assert.Throws<ArgumentNullException>(() => new InstructorService(_mockInstructorRepository.Object, _mockSectionRepository.Object, _mockStudentRepository.Object, _mockScheduleRepository.Object, _mockFingerprintRepository.Object, null!, _mockLogger.Object));
+        Assert.Throws<ArgumentNullException>(() => new InstructorService(_mockInstructorRepository.Object, _mockSectionRepository.Object, _mockStudentRepository.Object, _mockScheduleRepository.Object, _mockFingerprintRepository.Object, _mockUserContextService.Object, null!));
     }
 
     #endregion

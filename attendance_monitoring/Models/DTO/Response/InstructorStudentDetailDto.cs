@@ -126,4 +126,40 @@ public class InstructorStudentDetailDto
     /// Gets or sets the student's aggregate attendance summary.
     /// </summary>
     public InstructorStudentAttendanceSummaryDto AttendanceSummary { get; set; } = new();
+
+    /// <summary>
+    /// Gets or sets the student's fingerprint information, if registered.
+    /// </summary>
+    public InstructorStudentFingerprintDto? Fingerprint { get; set; }
+}
+
+/// <summary>
+/// Represents fingerprint information for a student.
+/// </summary>
+public class InstructorStudentFingerprintDto
+{
+    /// <summary>
+    /// Gets or sets the fingerprint's unique identifier.
+    /// </summary>
+    public Guid Id { get; set; }
+
+    /// <summary>
+    /// Gets or sets the device identifier where the fingerprint is registered.
+    /// </summary>
+    public string DeviceId { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Gets or sets the device name where the fingerprint is registered.
+    /// </summary>
+    public string DeviceName { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Gets or sets the device location where the fingerprint is registered.
+    /// </summary>
+    public string DeviceLocation { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Gets or sets the timestamp when the fingerprint was enrolled.
+    /// </summary>
+    public DateTime EnrolledAt { get; set; }
 }

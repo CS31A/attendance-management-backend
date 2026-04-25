@@ -2,6 +2,7 @@ using System.Security.Claims;
 using attendance_monitoring.Classes;
 using attendance_monitoring.Constants;
 using attendance_monitoring.Controllers;
+using attendance_monitoring.Exceptions;
 using attendance_monitoring.IServices;
 using attendance_monitoring.Models.DTO.Response;
 using Microsoft.AspNetCore.Http;
@@ -61,7 +62,7 @@ public class FingerprintControllerTest
         {
             Success = true,
             Message = "Fingerprint enrollment session ready",
-            Id = enrollmentSessionId,
+            EnrollmentSessionId = enrollmentSessionId,
             StudentId = Guid.NewGuid(),
             StudentName = "John Doe",
             DeviceId = "esp32-attendance-01",
@@ -80,8 +81,100 @@ public class FingerprintControllerTest
 
         var okResult = Assert.IsType<OkObjectResult>(result.Result);
         var dto = Assert.IsType<FingerprintEnrollmentSessionResponseDto>(okResult.Value);
-        Assert.Equal(enrollmentSessionId, dto.Id);
+        Assert.Equal(enrollmentSessionId, dto.EnrollmentSessionId);
         _mockFingerprintService.Verify(service => service.GetPendingEnrollmentSessionAsync("esp32-attendance-01", "device-secret"), Times.Once);
+    }
+
+    [Fact]
+    public async Task GetEnrollmentSession_ReturnsSession_WhenFound()
+    {
+        var sessionId = Guid.NewGuid();
+        var response = new FingerprintEnrollmentSessionResponseDto
+        {
+            Success = true,
+            Message = "Fingerprint enrollment session ready",
+            EnrollmentSessionId = sessionId,
+            StudentId = Guid.NewGuid(),
+            StudentName = "Test Student",
+            DeviceId = "esp32-test",
+            AssignedSensorFingerprintId = 5,
+            Status = "Pending",
+            ExpiresAt = DateTime.UtcNow.AddMinutes(5)
+        };
+
+        _mockFingerprintService
+            .Setup(service => service.GetEnrollmentSessionAsync(sessionId, It.IsAny<ClaimsPrincipal>()))
+            .ReturnsAsync(response);
+
+        var result = await _controller.GetEnrollmentSession(sessionId);
+
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        var dto = Assert.IsType<FingerprintEnrollmentSessionResponseDto>(okResult.Value);
+        Assert.Equal(sessionId, dto.EnrollmentSessionId);
+        Assert.Equal("Test Student", dto.StudentName);
+    }
+
+    [Fact]
+    public async Task GetEnrollmentSession_Returns404_WhenNotFound()
+    {
+        var sessionId = Guid.NewGuid();
+        _mockFingerprintService
+            .Setup(service => service.GetEnrollmentSessionAsync(sessionId, It.IsAny<ClaimsPrincipal>()))
+            .ThrowsAsync(new EntityNotFoundException<Guid>("FingerprintEnrollmentSession", sessionId));
+
+        var result = await _controller.GetEnrollmentSession(sessionId);
+
+        var notFoundResult = Assert.IsType<NotFoundObjectResult>(result.Result);
+        var dto = Assert.IsType<FingerprintEnrollmentSessionResponseDto>(notFoundResult.Value);
+        Assert.False(dto.Success);
+    }
+
+    [Fact]
+    public async Task GetEnrollmentSession_Returns403_WhenUnauthorized()
+    {
+        var sessionId = Guid.NewGuid();
+        _mockFingerprintService
+            .Setup(service => service.GetEnrollmentSessionAsync(sessionId, It.IsAny<ClaimsPrincipal>()))
+            .ThrowsAsync(new EntityUnauthorizedException("FingerprintEnrollmentSession", "monitor fingerprint enrollment", "admin-1"));
+
+        var result = await _controller.GetEnrollmentSession(sessionId);
+
+        var objectResult = Assert.IsType<ObjectResult>(result.Result);
+        Assert.Equal(StatusCodes.Status403Forbidden, objectResult.StatusCode);
+        var dto = Assert.IsType<FingerprintEnrollmentSessionResponseDto>(objectResult.Value);
+        Assert.False(dto.Success);
+    }
+
+    [Fact]
+    public async Task GetDevices_ReturnsActiveDevices()
+    {
+        var deviceUuid = Guid.NewGuid();
+        var devices = new List<FingerprintDevice>
+        {
+            new()
+            {
+                Uuid = deviceUuid,
+                DeviceIdentifier = "esp32-01",
+                Name = "Lab Scanner",
+                Location = "Lab 201",
+                IsActive = true,
+                LastSeenAt = DateTime.UtcNow
+            }
+        };
+
+        _mockFingerprintService
+            .Setup(service => service.GetDevicesAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(devices);
+
+        var result = await _controller.GetDevices(CancellationToken.None);
+
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        var dtos = Assert.IsAssignableFrom<IEnumerable<FingerprintDeviceResponseDto>>(okResult.Value);
+        var dto = Assert.Single(dtos);
+        Assert.Equal(deviceUuid, dto.Id);
+        Assert.Equal("esp32-01", dto.DeviceIdentifier);
+        Assert.Equal("Lab Scanner", dto.Name);
+        Assert.Equal("Lab 201", dto.Location);
     }
 
     private void SetUserContext()
