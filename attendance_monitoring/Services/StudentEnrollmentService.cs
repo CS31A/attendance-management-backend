@@ -62,6 +62,13 @@ public class StudentEnrollmentService : IStudentEnrollmentService
                 throw new EntityAlreadyExistsException<string>("Enrollment", "Combination", "Student is already in this section as their primary section. Additional enrollment not needed.");
             }
 
+            // Validate enrollment type for cross-section enrollments
+            // Cross-section enrollments must be Irregular or Retake, not Regular
+            if (student.SectionId != sectionId && normalizedEnrollmentType == EnrollmentTypeConstants.Regular)
+            {
+                throw new ValidationException($"Cross-section enrollments cannot be 'Regular'. Student's primary section is {student.SectionId}, but enrollment section is {sectionId}. Use 'Irregular' or 'Retake' instead.");
+            }
+
             // Check if student is already enrolled in this specific combination
             var existingEnrollment = await _enrollmentRepository.GetEnrollmentAsync(studentId, sectionId, subjectId);
             if (existingEnrollment != null)
