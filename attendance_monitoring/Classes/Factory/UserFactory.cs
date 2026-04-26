@@ -223,6 +223,7 @@ public class UserFactory(
             Firstname = firstName,
             Lastname = lastName,
             IsRegular = true,
+            Usn = Student.CreatePendingUsn(),
             SectionId = section.Id,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow

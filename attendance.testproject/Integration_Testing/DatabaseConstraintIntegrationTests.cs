@@ -122,6 +122,53 @@ public class DatabaseConstraintIntegrationTests : IDisposable
     }
 
     [Fact]
+    public async Task UserFactory_CreateStudent_WithValidData_AssignsPendingUsn()
+    {
+        // Arrange
+        Student? capturedStudent = null;
+
+        _mockAccountRepository
+            .Setup(r => r.CreateUserAsync(It.IsAny<IdentityUser>(), It.IsAny<string>()))
+            .ReturnsAsync(IdentityResult.Success);
+
+        _mockAccountRepository
+            .Setup(r => r.AddUserToRoleAsync(It.IsAny<IdentityUser>(), It.IsAny<string>()))
+            .Returns(Task.CompletedTask);
+
+        _mockAccountRepository
+            .Setup(r => r.CreateStudentProfileAsync(It.IsAny<Student>()))
+            .Callback<Student>(student => capturedStudent = student)
+            .Returns(Task.CompletedTask);
+
+        _mockAccountRepository
+            .Setup(r => r.SaveChangesAsync())
+            .ReturnsAsync(1);
+
+        var sectionUuid = Guid.NewGuid();
+        _mockSectionRepository
+            .Setup(r => r.GetSectionByUuidAsync(sectionUuid))
+            .ReturnsAsync(new Section { Id = sectionUuid, Name = "Test Section" });
+
+        var factory = new UserFactory(_mockAccountRepository.Object, _mockSectionRepository.Object, _mockLogger.Object);
+
+        // Act
+        var result = await factory.CreateUserAsync(
+            "test@student.com",
+            "test@student.com",
+            "Password123!",
+            "Student",
+            "Test",
+            "Student",
+            sectionUuid);
+
+        // Assert
+        Assert.True(result.Success);
+        Assert.NotNull(capturedStudent);
+        Assert.StartsWith("PENDING-", capturedStudent.Usn);
+        Assert.True(Guid.TryParseExact(capturedStudent.Usn["PENDING-".Length..], "N", out _));
+    }
+
+    [Fact]
     public async Task UserFactory_CreateStudent_WithoutSectionId_ShouldFail()
     {
         // Arrange

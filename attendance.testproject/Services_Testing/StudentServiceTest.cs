@@ -181,6 +181,40 @@ public class StudentServiceTest
     }
 
     [Fact]
+    public async Task CreateStudentAsync_ValidInput_AssignsPendingUsn()
+    {
+        // Arrange
+        const string userId = "test-user-id";
+        var sectionId = Guid.NewGuid();
+        var createStudent = new CreateStudent
+        {
+            Firstname = "John",
+            Lastname = "Doe",
+            IsRegular = true,
+            SectionId = sectionId
+        };
+
+        Student? capturedStudent = null;
+
+        _mockSectionRepository.Setup(r => r.GetSectionByIdAsync(sectionId)).ReturnsAsync(new Section { Id = sectionId, Name = "CS-3A", CourseId = Guid.NewGuid() });
+        _mockUserContextService.Setup(s => s.GetUserIdAsync(_testUserPrincipal)).ReturnsAsync(userId);
+        _mockStudentRepository.Setup(r => r.GetStudentByUserIdAsync(userId)).ReturnsAsync((Student?)null);
+        _mockStudentRepository
+            .Setup(r => r.CreateStudent(It.IsAny<Student>()))
+            .Callback<Student>(student => capturedStudent = student)
+            .ReturnsAsync((Student student) => student);
+        _mockStudentRepository.Setup(r => r.SaveChangesAsync()).ReturnsAsync(1);
+
+        // Act
+        await _service.CreateStudentAsync(createStudent, _testUserPrincipal);
+
+        // Assert
+        Assert.NotNull(capturedStudent);
+        Assert.StartsWith("PENDING-", capturedStudent.Usn);
+        Assert.True(Guid.TryParseExact(capturedStudent.Usn["PENDING-".Length..], "N", out _));
+    }
+
+    [Fact]
     public async Task CreateStudentAsync_RepositoryFailure_WrapsInEntityServiceException()
     {
         // Arrange

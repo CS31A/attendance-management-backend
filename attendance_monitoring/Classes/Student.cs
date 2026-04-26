@@ -11,6 +11,8 @@ namespace attendance_monitoring.Classes;
 [Index(nameof(Usn), IsUnique = true)]
 public class Student
 {
+    public static string CreatePendingUsn() => $"PENDING-{Guid.NewGuid():N}";
+
     [Key]
     public Guid Id { get; set; }
 

@@ -192,6 +192,7 @@ namespace attendance_monitoring.Services
                     Firstname = createStudent.Firstname,
                     Lastname = createStudent.Lastname,
                     IsRegular = createStudent.IsRegular,
+                    Usn = Student.CreatePendingUsn(),
                     UserId = userId,
                     SectionId = createStudent.SectionId,
                     CreatedAt = DateTime.UtcNow,
