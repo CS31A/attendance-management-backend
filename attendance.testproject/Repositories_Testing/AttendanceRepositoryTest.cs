@@ -217,7 +217,6 @@ public class AttendanceRepositoryTest : IDisposable
             Assert.False(string.IsNullOrEmpty(item.StudentNumber));
             Assert.False(string.IsNullOrEmpty(item.SubjectName));
             Assert.False(string.IsNullOrEmpty(item.Status));
-            Assert.True(Guid.TryParse(item.StudentNumber, out _));
         });
 
         // The optimized version should have fewer properties but same count

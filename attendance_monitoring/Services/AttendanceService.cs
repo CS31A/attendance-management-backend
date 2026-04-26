@@ -393,7 +393,7 @@ public class AttendanceService(
             {
                 StudentId = enrollment.Student.Id,
                 StudentName = $"{enrollment.Student.Firstname} {enrollment.Student.Lastname}",
-                StudentNumber = enrollment.Student.Id.ToString(),
+                StudentNumber = enrollment.Student.Usn,
                 AttendanceRecordId = attendanceRecord?.Id,
                 Status = attendanceRecord?.Status ?? "Absent",
                 CheckInTime = attendanceRecord?.CheckInTime,

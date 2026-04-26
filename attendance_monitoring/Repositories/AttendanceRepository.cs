@@ -103,7 +103,7 @@ public class AttendanceRepository(ApplicationDbContext context) : IAttendanceRep
                 Id = a.Id,
                 StudentId = a.Student.Id,
                 StudentName = $"{a.Student.Firstname ?? ""} {a.Student.Lastname ?? ""}".Trim(),
-                StudentNumber = a.Student.Id.ToString(),
+                StudentNumber = a.Student.Usn,
                 SessionId = a.Session.Id,
                 SessionDate = a.Session.SessionDate,
                 QrCodeId = a.QrCode != null ? a.QrCode.Id : null,
