@@ -171,10 +171,8 @@ public class StudentEnrollmentServiceTest
     }
 
     [Theory]
-    [InlineData("Regular")]
     [InlineData("Irregular")]
     [InlineData("Retake")]
-    [InlineData("regular")]
     public async Task EnrollStudentAsync_KnownEnrollmentTypes_AcceptsAndNormalizes(string enrollmentType)
     {
         // Arrange
@@ -198,6 +196,30 @@ public class StudentEnrollmentServiceTest
 
         // Assert
         Assert.Equal(EnrollmentTypeConstants.Normalize(enrollmentType), result.EnrollmentType);
+    }
+
+    [Theory]
+    [InlineData("Regular")]
+    [InlineData("regular")]
+    public async Task EnrollStudentAsync_RegularEnrollmentTypeInCrossSection_ThrowsValidationException(string enrollmentType)
+    {
+        // Arrange
+        var studentId = Guid.NewGuid();
+        var sectionId = Guid.NewGuid();
+        var subjectId = Guid.NewGuid();
+        var student = new Student { Id = studentId, SectionId = Guid.NewGuid(), IsDeleted = false };
+        var section = new Section { Id = sectionId };
+        var subject = new Subject { Id = subjectId };
+
+        _mockStudentRepo.Setup(r => r.GetStudentByIdAsync(studentId)).ReturnsAsync(student);
+        _mockSectionRepo.Setup(r => r.GetSectionByIdAsync(sectionId)).ReturnsAsync(section);
+        _mockSubjectRepo.Setup(r => r.GetSubjectByIdAsync(subjectId)).ReturnsAsync(subject);
+
+        // Act & Assert
+        var exception = await Assert.ThrowsAsync<ValidationException>(
+            () => _service.EnrollStudentAsync(studentId, sectionId, subjectId, enrollmentType));
+
+        Assert.Contains("Cross-section enrollments cannot be 'Regular'", exception.Message);
     }
 
     [Fact]
