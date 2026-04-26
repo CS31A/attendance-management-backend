@@ -190,7 +190,7 @@ namespace attendance_monitoring.Controllers
             var schedule = await scheduleService.CreateScheduleAsync(createSchedule);
 
             logger.LogInformation("Successfully created schedule with ID: {Id} and TimeIn: {TimeIn}, TimeOut: {TimeOut}", schedule.Id, schedule.TimeIn, schedule.TimeOut);
-            return CreatedAtAction(nameof(GetSchedule), new { id = schedule.Id }, schedule);
+            return CreatedAtAction(nameof(GetScheduleByUuid), new { id = schedule.Id }, schedule);
             // Exceptions are handled by global exception handler
         }
 

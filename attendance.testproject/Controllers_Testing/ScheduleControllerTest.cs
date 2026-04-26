@@ -205,7 +205,7 @@ public class ScheduleControllerTest
 
         // Assert
         var createdAtActionResult = Assert.IsType<CreatedAtActionResult>(result.Result);
-        Assert.Equal(nameof(_scheduleController.GetSchedule), createdAtActionResult.ActionName);
+        Assert.Equal(nameof(_scheduleController.GetScheduleByUuid), createdAtActionResult.ActionName);
         var schedule = Assert.IsType<Schedules>(createdAtActionResult.Value);
         Assert.NotEqual(Guid.Empty, schedule.Id);
 

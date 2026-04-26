@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using attendance.testproject.Integration_Testing.Support;
 using attendance_monitoring.Classes;
+using attendance_monitoring.Models.DTO.Request;
 using attendance_monitoring.Models.DTO.Response;
 using Microsoft.EntityFrameworkCore;
 
@@ -156,6 +157,42 @@ public sealed class UuidRouteIntegrationTests
         Assert.Equal(expected.Section.Id, uuidPayload.Section.Id);
         Assert.Equal(expected.Section.Course!.Id, uuidPayload.Section.CourseId);
         Assert.Equal(expected.Instructor.Id, uuidPayload.Instructor.Id);
+    }
+
+    [Fact]
+    public async Task CreateSchedule_ReturnsCreatedWithUuidLocation()
+    {
+        await using var host = await ApiIntegrationHost.CreateAttendanceQrAsync(AttendanceQrSeedData.ValidAttendanceCreate);
+        host.AuthenticateAs(userId: host.AttendanceQrScenario!.AdminUserId, username: "integration-admin", role: "Admin");
+
+        var request = await host.ExecuteDbContextAsync(async (dbContext, cancellationToken) =>
+        {
+            var seededSchedule = await dbContext.Schedules
+                .AsNoTracking()
+                .SingleAsync(schedule => schedule.Id == dbContext.Sessions
+                    .Where(session => session.Id == host.AttendanceQrScenario!.SessionId)
+                    .Select(session => session.ScheduleId)
+                    .Single(), cancellationToken);
+
+            return new CreateSchedule
+            {
+                DayOfWeek = "Saturday",
+                TimeIn = new TimeOnly(14, 0),
+                TimeOut = new TimeOnly(15, 0),
+                SubjectId = seededSchedule.SubjectId,
+                ClassroomId = seededSchedule.ClassroomId,
+                SectionId = seededSchedule.SectionId,
+                InstructorId = seededSchedule.InstructorId
+            };
+        });
+
+        var response = await host.Client.PostAsJsonAsync("/api/schedules", request);
+        var payload = await response.Content.ReadFromJsonAsync<Schedules>();
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        Assert.NotNull(payload);
+        Assert.NotEqual(Guid.Empty, payload.Id);
+        Assert.Equal($"/api/schedules/{payload.Id}", response.Headers.Location?.AbsolutePath);
     }
 
     [Fact]
