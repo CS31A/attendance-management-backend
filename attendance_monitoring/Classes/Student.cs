@@ -8,6 +8,7 @@ namespace attendance_monitoring.Classes;
 
 [Index(nameof(UserId), IsUnique = true)]
 [Index(nameof(IsDeleted))]
+[Index(nameof(Usn), IsUnique = true)]
 public class Student
 {
     [Key]
