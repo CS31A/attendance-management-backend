@@ -50,6 +50,13 @@ public interface ISessionRepository : ISaveableRepository
     Task<IEnumerable<Session>> GetSessionsByStatusAsync(string status);
 
     /// <summary>
+    /// Retrieves sessions matching any of the specified statuses.
+    /// </summary>
+    /// <param name="statuses">Session statuses to include</param>
+    /// <returns>Collection of sessions with any matching status</returns>
+    Task<IEnumerable<Session>> GetSessionsByStatusesAsync(IReadOnlyCollection<string> statuses);
+
+    /// <summary>
     /// Retrieves sessions for a specific date.
     /// </summary>
     /// <param name="date">The session date</param>

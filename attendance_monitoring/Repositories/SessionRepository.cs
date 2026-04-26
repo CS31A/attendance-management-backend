@@ -159,6 +159,31 @@ public class SessionRepository(ApplicationDbContext context) : ISessionRepositor
     }
 
     /// <summary>
+    /// Retrieves sessions by any matching status.
+    /// </summary>
+    public async Task<IEnumerable<Session>> GetSessionsByStatusesAsync(IReadOnlyCollection<string> statuses)
+    {
+        return await context.Sessions
+            .AsNoTracking()
+            .AsSplitQuery()
+            .Include(s => s.Schedule)
+                .ThenInclude(sch => sch.Subject)
+            .Include(s => s.Schedule)
+                .ThenInclude(sch => sch.Section)
+            .Include(s => s.Schedule)
+                .ThenInclude(sch => sch.Classroom)
+            .Include(s => s.Schedule)
+                .ThenInclude(sch => sch.Instructor)
+            .Include(s => s.ActualRoom)
+            .Include(s => s.InstructorWhoStarted)
+            .Include(s => s.InstructorWhoEnded)
+            .Where(s => statuses.Contains(s.Status))
+            .OrderByDescending(s => s.SessionDate)
+            .ToListAsync()
+            .ConfigureAwait(false);
+    }
+
+    /// <summary>
     /// Retrieves sessions for a specific date.
     /// </summary>
     public async Task<IEnumerable<Session>> GetSessionsByDateAsync(DateTime date)

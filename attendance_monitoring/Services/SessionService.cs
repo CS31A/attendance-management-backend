@@ -165,8 +165,15 @@ public class SessionService : ISessionService
 
         try
         {
+            // When requesting "ended" sessions, fetch both Active and Ended statuses.
+            // Active sessions are needed for NormalizeExpiredSessionsAsync which converts
+            // expired active sessions to ended status. Cancelled and not_started sessions
+            // are not needed for this operation.
             var sessions = status == SessionStatusConstants.Ended
-                ? await _sessionRepository.GetAllSessionsAsync().ConfigureAwait(false)
+                ? await _sessionRepository.GetSessionsByStatusesAsync([
+                    SessionStatusConstants.Active,
+                    SessionStatusConstants.Ended
+                ]).ConfigureAwait(false)
                 : await _sessionRepository.GetSessionsByStatusAsync(status).ConfigureAwait(false);
             var sessionList = sessions.ToList();
 

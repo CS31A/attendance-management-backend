@@ -319,10 +319,11 @@ public class SessionServiceTest
             sessionDate: expiredActiveSession.SessionDate);
 
         _mockSessionRepository
-            .Setup(r => r.GetSessionsByStatusAsync(status))
-            .ReturnsAsync([endedSession]);
-        _mockSessionRepository
-            .Setup(r => r.GetAllSessionsAsync())
+            .Setup(r => r.GetSessionsByStatusesAsync(
+                It.Is<IReadOnlyCollection<string>>(statuses =>
+                    statuses.Contains(SessionStatusConstants.Active) &&
+                    statuses.Contains(SessionStatusConstants.Ended) &&
+                    statuses.Count == 2)))
             .ReturnsAsync([endedSession, expiredActiveSession]);
         _mockAutomaticSessionEndService
             .Setup(service => service.AutoEndIfExpiredAsync(It.Is<Session>(session => session.Id == expiredActiveSession.Id)))
@@ -333,6 +334,7 @@ public class SessionServiceTest
         Assert.Equal(2, result.Count);
         Assert.Contains(result, session => session.Id == endedSession.Id);
         Assert.Contains(result, session => session.Id == expiredActiveSession.Id);
+        _mockSessionRepository.Verify(r => r.GetAllSessionsAsync(), Times.Never);
     }
 
     #endregion

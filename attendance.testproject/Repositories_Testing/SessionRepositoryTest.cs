@@ -1,4 +1,5 @@
 using attendance_monitoring.Classes;
+using attendance_monitoring.Constants;
 using attendance_monitoring.Data;
 using attendance_monitoring.Repositories;
 using System.ComponentModel.DataAnnotations;
@@ -227,6 +228,59 @@ public class SessionRepositoryTest : IDisposable
         // Assert
         Assert.Null(readOnlySession);
         Assert.Null(trackedSession);
+    }
+
+    [Fact]
+    public async Task GetSessionsByStatusesAsync_ReturnsOnlyMatchingStatuses()
+    {
+        // Arrange
+        await SeedReportDataAsync();
+        var scheduleId = await _context.Schedules.AsNoTracking().Select(schedule => schedule.Id).SingleAsync();
+        var activeSessionId = Guid.NewGuid();
+        var endedSessionId = Guid.NewGuid();
+        var cancelledSessionId = Guid.NewGuid();
+
+        _context.Sessions.AddRange(
+            new Session
+            {
+                Id = activeSessionId,
+                ScheduleId = scheduleId,
+                SessionDate = new DateTime(2026, 4, 24),
+                Status = SessionStatusConstants.Active,
+                RowVersion = [3],
+            },
+            new Session
+            {
+                Id = endedSessionId,
+                ScheduleId = scheduleId,
+                SessionDate = new DateTime(2026, 4, 23),
+                Status = SessionStatusConstants.Ended,
+                RowVersion = [4],
+            },
+            new Session
+            {
+                Id = cancelledSessionId,
+                ScheduleId = scheduleId,
+                SessionDate = new DateTime(2026, 4, 25),
+                Status = SessionStatusConstants.Cancelled,
+                RowVersion = [5],
+            });
+        await _context.SaveChangesAsync();
+        _context.ChangeTracker.Clear();
+
+        // Act
+        var result = (await _repository.GetSessionsByStatusesAsync([
+            SessionStatusConstants.Active,
+            SessionStatusConstants.Ended
+        ])).ToList();
+
+        // Assert
+        Assert.Equal(2, result.Count);
+        Assert.Contains(result, session => session.Id == activeSessionId);
+        Assert.Contains(result, session => session.Id == endedSessionId);
+        Assert.DoesNotContain(result, session => session.Id == cancelledSessionId);
+        var expectedStatuses = new[] { SessionStatusConstants.Active, SessionStatusConstants.Ended };
+        Assert.All(result, session => Assert.Contains(session.Status, expectedStatuses));
     }
 
     private async Task SeedReportDataAsync()
