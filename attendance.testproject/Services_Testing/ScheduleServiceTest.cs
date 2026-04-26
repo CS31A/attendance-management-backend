@@ -55,7 +55,7 @@ public class ScheduleServiceTest : IDisposable
     {
         var subject = new Subject
         {
-            Id = 1,
+            Id = Guid.NewGuid(),
             Name = "Mathematics",
             Code = "MATH101",
             CreatedAt = DateTime.UtcNow,
@@ -64,7 +64,7 @@ public class ScheduleServiceTest : IDisposable
 
         var classroom = new Classroom
         {
-            Id = 1,
+            Id = Guid.NewGuid(),
             Name = "Room 101",
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
@@ -72,7 +72,7 @@ public class ScheduleServiceTest : IDisposable
 
         var course = new Course
         {
-            Id = 1,
+            Id = Guid.NewGuid(),
             Name = "Computer Science",
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
@@ -80,9 +80,9 @@ public class ScheduleServiceTest : IDisposable
 
         var section = new Section
         {
-            Id = 1,
+            Id = Guid.NewGuid(),
             Name = "CS-3A",
-            CourseId = 1,
+            CourseId = Guid.NewGuid(),
             Course = course,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
@@ -90,7 +90,7 @@ public class ScheduleServiceTest : IDisposable
 
         var instructor = new Instructor
         {
-            Id = 1,
+            Id = Guid.NewGuid(),
             Firstname = "John",
             Lastname = "Doe",
             UserId = "instructor-123",
@@ -105,6 +105,11 @@ public class ScheduleServiceTest : IDisposable
         _context.Instructors.Add(instructor);
         _context.SaveChanges();
     }
+
+    private Guid SubjectUuid => _context.Subjects.Single().Id;
+    private Guid ClassroomUuid => _context.Classrooms.Single().Id;
+    private Guid SectionUuid => _context.Sections.Single().Id;
+    private Guid InstructorUuid => _context.Instructors.Single().Id;
 
     public void Dispose()
     {
@@ -123,10 +128,10 @@ public class ScheduleServiceTest : IDisposable
             TimeIn = TimeOnly.FromTimeSpan(TimeSpan.FromHours(8)),
             TimeOut = TimeOnly.FromTimeSpan(TimeSpan.FromHours(10)),
             DayOfWeek = "InvalidDay",
-            SubjectId = 1,
-            ClassroomId = 1,
-            SectionId = 1,
-            InstructorId = 1
+            SubjectId = SubjectUuid,
+            ClassroomId = ClassroomUuid,
+            SectionId = SectionUuid,
+            InstructorId = InstructorUuid
         };
 
         // Act & Assert
@@ -142,10 +147,10 @@ public class ScheduleServiceTest : IDisposable
             TimeIn = TimeOnly.FromTimeSpan(TimeSpan.FromHours(10)),
             TimeOut = TimeOnly.FromTimeSpan(TimeSpan.FromHours(8)),
             DayOfWeek = "Monday",
-            SubjectId = 1,
-            ClassroomId = 1,
-            SectionId = 1,
-            InstructorId = 1
+            SubjectId = SubjectUuid,
+            ClassroomId = ClassroomUuid,
+            SectionId = SectionUuid,
+            InstructorId = InstructorUuid
         };
 
         // Act & Assert
@@ -161,10 +166,10 @@ public class ScheduleServiceTest : IDisposable
             TimeIn = TimeOnly.FromTimeSpan(TimeSpan.FromHours(8)),
             TimeOut = TimeOnly.FromTimeSpan(TimeSpan.FromHours(8)),
             DayOfWeek = "Monday",
-            SubjectId = 1,
-            ClassroomId = 1,
-            SectionId = 1,
-            InstructorId = 1
+            SubjectId = SubjectUuid,
+            ClassroomId = ClassroomUuid,
+            SectionId = SectionUuid,
+            InstructorId = InstructorUuid
         };
 
         // Act & Assert
@@ -175,84 +180,88 @@ public class ScheduleServiceTest : IDisposable
     public async Task CreateScheduleAsync_SubjectNotFound_ThrowsEntityNotFoundException()
     {
         // Arrange
+        var missingSubjectId = Guid.NewGuid();
         var createSchedule = new CreateSchedule
         {
             TimeIn = TimeOnly.FromTimeSpan(TimeSpan.FromHours(8)),
             TimeOut = TimeOnly.FromTimeSpan(TimeSpan.FromHours(10)),
             DayOfWeek = "Monday",
-            SubjectId = 999,
-            ClassroomId = 1,
-            SectionId = 1,
-            InstructorId = 1
+            SubjectId = missingSubjectId,
+            ClassroomId = ClassroomUuid,
+            SectionId = SectionUuid,
+            InstructorId = InstructorUuid
         };
 
         // Act & Assert
-        var exception = await Assert.ThrowsAsync<EntityNotFoundException<int>>(() => _service.CreateScheduleAsync(createSchedule));
+        var exception = await Assert.ThrowsAsync<EntityNotFoundException<Guid>>(() => _service.CreateScheduleAsync(createSchedule));
         Assert.Equal("Subject", exception.EntityName);
-        Assert.Equal(999, exception.Key);
+        Assert.Equal(missingSubjectId, exception.Key);
     }
 
     [Fact]
     public async Task CreateScheduleAsync_ClassroomNotFound_ThrowsEntityNotFoundException()
     {
         // Arrange
+        var missingClassroomId = Guid.NewGuid();
         var createSchedule = new CreateSchedule
         {
             TimeIn = TimeOnly.FromTimeSpan(TimeSpan.FromHours(8)),
             TimeOut = TimeOnly.FromTimeSpan(TimeSpan.FromHours(10)),
             DayOfWeek = "Monday",
-            SubjectId = 1,
-            ClassroomId = 999,
-            SectionId = 1,
-            InstructorId = 1
+            SubjectId = SubjectUuid,
+            ClassroomId = missingClassroomId,
+            SectionId = SectionUuid,
+            InstructorId = InstructorUuid
         };
 
         // Act & Assert
-        var exception = await Assert.ThrowsAsync<EntityNotFoundException<int>>(() => _service.CreateScheduleAsync(createSchedule));
+        var exception = await Assert.ThrowsAsync<EntityNotFoundException<Guid>>(() => _service.CreateScheduleAsync(createSchedule));
         Assert.Equal("Classroom", exception.EntityName);
-        Assert.Equal(999, exception.Key);
+        Assert.Equal(missingClassroomId, exception.Key);
     }
 
     [Fact]
     public async Task CreateScheduleAsync_SectionNotFound_ThrowsEntityNotFoundException()
     {
         // Arrange
+        var missingSectionId = Guid.NewGuid();
         var createSchedule = new CreateSchedule
         {
             TimeIn = TimeOnly.FromTimeSpan(TimeSpan.FromHours(8)),
             TimeOut = TimeOnly.FromTimeSpan(TimeSpan.FromHours(10)),
             DayOfWeek = "Monday",
-            SubjectId = 1,
-            ClassroomId = 1,
-            SectionId = 999,
-            InstructorId = 1
+            SubjectId = SubjectUuid,
+            ClassroomId = ClassroomUuid,
+            SectionId = missingSectionId,
+            InstructorId = InstructorUuid
         };
 
         // Act & Assert
-        var exception = await Assert.ThrowsAsync<EntityNotFoundException<int>>(() => _service.CreateScheduleAsync(createSchedule));
+        var exception = await Assert.ThrowsAsync<EntityNotFoundException<Guid>>(() => _service.CreateScheduleAsync(createSchedule));
         Assert.Equal("Section", exception.EntityName);
-        Assert.Equal(999, exception.Key);
+        Assert.Equal(missingSectionId, exception.Key);
     }
 
     [Fact]
     public async Task CreateScheduleAsync_InstructorNotFound_ThrowsEntityNotFoundException()
     {
         // Arrange
+        var missingInstructorId = Guid.NewGuid();
         var createSchedule = new CreateSchedule
         {
             TimeIn = TimeOnly.FromTimeSpan(TimeSpan.FromHours(8)),
             TimeOut = TimeOnly.FromTimeSpan(TimeSpan.FromHours(10)),
             DayOfWeek = "Monday",
-            SubjectId = 1,
-            ClassroomId = 1,
-            SectionId = 1,
-            InstructorId = 999
+            SubjectId = SubjectUuid,
+            ClassroomId = ClassroomUuid,
+            SectionId = SectionUuid,
+            InstructorId = missingInstructorId
         };
 
         // Act & Assert
-        var exception = await Assert.ThrowsAsync<EntityNotFoundException<int>>(() => _service.CreateScheduleAsync(createSchedule));
+        var exception = await Assert.ThrowsAsync<EntityNotFoundException<Guid>>(() => _service.CreateScheduleAsync(createSchedule));
         Assert.Equal("Instructor", exception.EntityName);
-        Assert.Equal(999, exception.Key);
+        Assert.Equal(missingInstructorId, exception.Key);
     }
 
     [Fact]
@@ -264,22 +273,22 @@ public class ScheduleServiceTest : IDisposable
             TimeIn = TimeOnly.FromTimeSpan(TimeSpan.FromHours(8)),
             TimeOut = TimeOnly.FromTimeSpan(TimeSpan.FromHours(10)),
             DayOfWeek = "Monday",
-            SubjectId = 1,
-            ClassroomId = 1,
-            SectionId = 1,
-            InstructorId = 1
+            SubjectId = SubjectUuid,
+            ClassroomId = ClassroomUuid,
+            SectionId = SectionUuid,
+            InstructorId = InstructorUuid
         };
 
         var expectedSchedule = new Schedules
         {
-            Id = 1,
+            Id = Guid.NewGuid(),
             TimeIn = createSchedule.TimeIn,
             TimeOut = createSchedule.TimeOut,
             DayOfWeek = createSchedule.DayOfWeek,
-            SubjectId = createSchedule.SubjectId,
-            ClassroomId = createSchedule.ClassroomId,
-            SectionId = createSchedule.SectionId,
-            InstructorId = createSchedule.InstructorId,
+            SubjectId = Guid.NewGuid(),
+            ClassroomId = Guid.NewGuid(),
+            SectionId = Guid.NewGuid(),
+            InstructorId = Guid.NewGuid(),
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
@@ -295,11 +304,65 @@ public class ScheduleServiceTest : IDisposable
         Assert.Equal(createSchedule.TimeIn, result.TimeIn);
         Assert.Equal(createSchedule.TimeOut, result.TimeOut);
         Assert.Equal(createSchedule.DayOfWeek, result.DayOfWeek);
-        Assert.Equal(createSchedule.SubjectId, result.SubjectId);
-        Assert.Equal(createSchedule.ClassroomId, result.ClassroomId);
-        Assert.Equal(createSchedule.SectionId, result.SectionId);
-        Assert.Equal(createSchedule.InstructorId, result.InstructorId);
+        Assert.NotEqual(Guid.Empty, result.SubjectId);
+        Assert.NotEqual(Guid.Empty, result.ClassroomId);
+        Assert.NotEqual(Guid.Empty, result.SectionId);
+        Assert.NotEqual(Guid.Empty, result.InstructorId);
         _mockScheduleRepository.Verify(r => r.AddScheduleAsync(It.IsAny<Schedules>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task CreateScheduleAsync_CanonicalGuidIds_ResolvesToGuidIdentifiers()
+    {
+        var createSchedule = new CreateSchedule
+        {
+            TimeIn = TimeOnly.FromTimeSpan(TimeSpan.FromHours(8)),
+            TimeOut = TimeOnly.FromTimeSpan(TimeSpan.FromHours(10)),
+            DayOfWeek = "Monday",
+            SubjectId = SubjectUuid,
+            ClassroomId = ClassroomUuid,
+            SectionId = SectionUuid,
+            InstructorId = InstructorUuid,
+        };
+
+        _mockScheduleRepository
+            .Setup(r => r.AddScheduleAsync(It.IsAny<Schedules>()))
+            .ReturnsAsync((Schedules schedule) => schedule);
+
+        var result = await _service.CreateScheduleAsync(createSchedule);
+
+        Assert.NotEqual(Guid.Empty, result.SubjectId);
+        Assert.NotEqual(Guid.Empty, result.ClassroomId);
+        Assert.NotEqual(Guid.Empty, result.SectionId);
+        Assert.NotEqual(Guid.Empty, result.InstructorId);
+    }
+
+    [Fact]
+    public async Task GetScheduleByUuidAsync_ReturnsMappedSchedule_WhenFound()
+    {
+        var scheduleUuid = Guid.NewGuid();
+        var schedule = new Schedules
+        {
+            Id = scheduleUuid,
+            TimeIn = TimeOnly.FromTimeSpan(TimeSpan.FromHours(8)),
+            TimeOut = TimeOnly.FromTimeSpan(TimeSpan.FromHours(10)),
+            DayOfWeek = "Monday",
+            SubjectId = Guid.NewGuid(),
+            Subject = new Subject { Id = Guid.NewGuid(), Name = "Mathematics", Code = "MATH101" },
+            ClassroomId = Guid.NewGuid(),
+            Classroom = new Classroom { Id = Guid.NewGuid(), Name = "Room 101" },
+            SectionId = Guid.NewGuid(),
+            Section = new Section { Id = Guid.NewGuid(), Name = "CS-3A", CourseId = Guid.NewGuid() },
+            InstructorId = Guid.NewGuid(),
+            Instructor = new Instructor { Id = Guid.NewGuid(), Firstname = "Ada", Lastname = "Lovelace", UserId = "instructor-1" },
+        };
+
+        _mockScheduleRepository.Setup(r => r.GetScheduleByUuidAsync(scheduleUuid)).ReturnsAsync(schedule);
+
+        var result = await _service.GetScheduleByUuidAsync(scheduleUuid);
+
+        Assert.Equal(schedule.Id, result.Id);
+        Assert.Equal(schedule.DayOfWeek, result.DayOfWeek);
     }
 
     #endregion
@@ -310,7 +373,7 @@ public class ScheduleServiceTest : IDisposable
     public async Task UpdateScheduleAsync_ScheduleNotFound_ThrowsEntityNotFoundException()
     {
         // Arrange
-        const int scheduleId = 999;
+        var scheduleId = Guid.NewGuid();
         var updateSchedule = new UpdateSchedule
         {
             DayOfWeek = "Tuesday"
@@ -319,7 +382,7 @@ public class ScheduleServiceTest : IDisposable
         _mockScheduleRepository.Setup(r => r.GetScheduleByIdAsync(scheduleId)).ReturnsAsync((Schedules?)null);
 
         // Act & Assert
-        var exception = await Assert.ThrowsAsync<EntityNotFoundException<int>>(() => _service.UpdateScheduleAsync(scheduleId, updateSchedule));
+        var exception = await Assert.ThrowsAsync<EntityNotFoundException<Guid>>(() => _service.UpdateScheduleAsync(scheduleId, updateSchedule));
         Assert.Equal("Schedule", exception.EntityName);
         Assert.Equal(scheduleId, exception.Key);
     }
@@ -328,17 +391,17 @@ public class ScheduleServiceTest : IDisposable
     public async Task UpdateScheduleAsync_InvalidDayOfWeek_ThrowsValidationException()
     {
         // Arrange
-        const int scheduleId = 1;
+        var scheduleId = Guid.NewGuid();
         var existingSchedule = new Schedules
         {
             Id = scheduleId,
             TimeIn = TimeOnly.FromTimeSpan(TimeSpan.FromHours(8)),
             TimeOut = TimeOnly.FromTimeSpan(TimeSpan.FromHours(10)),
             DayOfWeek = "Monday",
-            SubjectId = 1,
-            ClassroomId = 1,
-            SectionId = 1,
-            InstructorId = 1,
+            SubjectId = Guid.NewGuid(),
+            ClassroomId = Guid.NewGuid(),
+            SectionId = Guid.NewGuid(),
+            InstructorId = Guid.NewGuid(),
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
@@ -358,17 +421,17 @@ public class ScheduleServiceTest : IDisposable
     public async Task UpdateScheduleAsync_PartialUpdateCausingInvalidTimeRange_ThrowsValidationException()
     {
         // Arrange
-        const int scheduleId = 1;
+        var scheduleId = Guid.NewGuid();
         var existingSchedule = new Schedules
         {
             Id = scheduleId,
             TimeIn = TimeOnly.FromTimeSpan(TimeSpan.FromHours(8)),
             TimeOut = TimeOnly.FromTimeSpan(TimeSpan.FromHours(10)),
             DayOfWeek = "Monday",
-            SubjectId = 1,
-            ClassroomId = 1,
-            SectionId = 1,
-            InstructorId = 1,
+            SubjectId = Guid.NewGuid(),
+            ClassroomId = Guid.NewGuid(),
+            SectionId = Guid.NewGuid(),
+            InstructorId = Guid.NewGuid(),
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
@@ -388,145 +451,137 @@ public class ScheduleServiceTest : IDisposable
     public async Task UpdateScheduleAsync_ChangedSubjectIdNotFound_ThrowsEntityNotFoundException()
     {
         // Arrange
-        const int scheduleId = 1;
+        var scheduleId = Guid.NewGuid();
         var existingSchedule = new Schedules
         {
             Id = scheduleId,
             TimeIn = TimeOnly.FromTimeSpan(TimeSpan.FromHours(8)),
             TimeOut = TimeOnly.FromTimeSpan(TimeSpan.FromHours(10)),
             DayOfWeek = "Monday",
-            SubjectId = 1,
-            ClassroomId = 1,
-            SectionId = 1,
-            InstructorId = 1,
+            SubjectId = Guid.NewGuid(),
+            ClassroomId = Guid.NewGuid(),
+            SectionId = Guid.NewGuid(),
+            InstructorId = Guid.NewGuid(),
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
 
-        var updateSchedule = new UpdateSchedule
-        {
-            SubjectId = 999
-        };
+        var missingSubjectId = Guid.NewGuid();
+        var updateSchedule = new UpdateSchedule { SubjectId = missingSubjectId };
 
         _mockScheduleRepository.Setup(r => r.GetScheduleByIdAsync(scheduleId)).ReturnsAsync(existingSchedule);
 
         // Act & Assert
-        var exception = await Assert.ThrowsAsync<EntityNotFoundException<int>>(() => _service.UpdateScheduleAsync(scheduleId, updateSchedule));
+        var exception = await Assert.ThrowsAsync<EntityNotFoundException<Guid>>(() => _service.UpdateScheduleAsync(scheduleId, updateSchedule));
         Assert.Equal("Subject", exception.EntityName);
-        Assert.Equal(999, exception.Key);
+        Assert.Equal(missingSubjectId, exception.Key);
     }
 
     [Fact]
     public async Task UpdateScheduleAsync_ChangedClassroomIdNotFound_ThrowsEntityNotFoundException()
     {
         // Arrange
-        const int scheduleId = 1;
+        var scheduleId = Guid.NewGuid();
         var existingSchedule = new Schedules
         {
             Id = scheduleId,
             TimeIn = TimeOnly.FromTimeSpan(TimeSpan.FromHours(8)),
             TimeOut = TimeOnly.FromTimeSpan(TimeSpan.FromHours(10)),
             DayOfWeek = "Monday",
-            SubjectId = 1,
-            ClassroomId = 1,
-            SectionId = 1,
-            InstructorId = 1,
+            SubjectId = Guid.NewGuid(),
+            ClassroomId = Guid.NewGuid(),
+            SectionId = Guid.NewGuid(),
+            InstructorId = Guid.NewGuid(),
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
 
-        var updateSchedule = new UpdateSchedule
-        {
-            ClassroomId = 999
-        };
+        var missingClassroomId = Guid.NewGuid();
+        var updateSchedule = new UpdateSchedule { ClassroomId = missingClassroomId };
 
         _mockScheduleRepository.Setup(r => r.GetScheduleByIdAsync(scheduleId)).ReturnsAsync(existingSchedule);
 
         // Act & Assert
-        var exception = await Assert.ThrowsAsync<EntityNotFoundException<int>>(() => _service.UpdateScheduleAsync(scheduleId, updateSchedule));
+        var exception = await Assert.ThrowsAsync<EntityNotFoundException<Guid>>(() => _service.UpdateScheduleAsync(scheduleId, updateSchedule));
         Assert.Equal("Classroom", exception.EntityName);
-        Assert.Equal(999, exception.Key);
+        Assert.Equal(missingClassroomId, exception.Key);
     }
 
     [Fact]
     public async Task UpdateScheduleAsync_ChangedSectionIdNotFound_ThrowsEntityNotFoundException()
     {
         // Arrange
-        const int scheduleId = 1;
+        var scheduleId = Guid.NewGuid();
         var existingSchedule = new Schedules
         {
             Id = scheduleId,
             TimeIn = TimeOnly.FromTimeSpan(TimeSpan.FromHours(8)),
             TimeOut = TimeOnly.FromTimeSpan(TimeSpan.FromHours(10)),
             DayOfWeek = "Monday",
-            SubjectId = 1,
-            ClassroomId = 1,
-            SectionId = 1,
-            InstructorId = 1,
+            SubjectId = Guid.NewGuid(),
+            ClassroomId = Guid.NewGuid(),
+            SectionId = Guid.NewGuid(),
+            InstructorId = Guid.NewGuid(),
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
 
-        var updateSchedule = new UpdateSchedule
-        {
-            SectionId = 999
-        };
+        var missingSectionId = Guid.NewGuid();
+        var updateSchedule = new UpdateSchedule { SectionId = missingSectionId };
 
         _mockScheduleRepository.Setup(r => r.GetScheduleByIdAsync(scheduleId)).ReturnsAsync(existingSchedule);
 
         // Act & Assert
-        var exception = await Assert.ThrowsAsync<EntityNotFoundException<int>>(() => _service.UpdateScheduleAsync(scheduleId, updateSchedule));
+        var exception = await Assert.ThrowsAsync<EntityNotFoundException<Guid>>(() => _service.UpdateScheduleAsync(scheduleId, updateSchedule));
         Assert.Equal("Section", exception.EntityName);
-        Assert.Equal(999, exception.Key);
+        Assert.Equal(missingSectionId, exception.Key);
     }
 
     [Fact]
     public async Task UpdateScheduleAsync_ChangedInstructorIdNotFound_ThrowsEntityNotFoundException()
     {
         // Arrange
-        const int scheduleId = 1;
+        var scheduleId = Guid.NewGuid();
         var existingSchedule = new Schedules
         {
             Id = scheduleId,
             TimeIn = TimeOnly.FromTimeSpan(TimeSpan.FromHours(8)),
             TimeOut = TimeOnly.FromTimeSpan(TimeSpan.FromHours(10)),
             DayOfWeek = "Monday",
-            SubjectId = 1,
-            ClassroomId = 1,
-            SectionId = 1,
-            InstructorId = 1,
+            SubjectId = Guid.NewGuid(),
+            ClassroomId = Guid.NewGuid(),
+            SectionId = Guid.NewGuid(),
+            InstructorId = Guid.NewGuid(),
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
 
-        var updateSchedule = new UpdateSchedule
-        {
-            InstructorId = 999
-        };
+        var missingInstructorId = Guid.NewGuid();
+        var updateSchedule = new UpdateSchedule { InstructorId = missingInstructorId };
 
         _mockScheduleRepository.Setup(r => r.GetScheduleByIdAsync(scheduleId)).ReturnsAsync(existingSchedule);
 
         // Act & Assert
-        var exception = await Assert.ThrowsAsync<EntityNotFoundException<int>>(() => _service.UpdateScheduleAsync(scheduleId, updateSchedule));
+        var exception = await Assert.ThrowsAsync<EntityNotFoundException<Guid>>(() => _service.UpdateScheduleAsync(scheduleId, updateSchedule));
         Assert.Equal("Instructor", exception.EntityName);
-        Assert.Equal(999, exception.Key);
+        Assert.Equal(missingInstructorId, exception.Key);
     }
 
     [Fact]
     public async Task UpdateScheduleAsync_ValidPartialUpdate_OnlyProvidedFieldsChange()
     {
         // Arrange
-        const int scheduleId = 1;
+        var scheduleId = Guid.NewGuid();
         var existingSchedule = new Schedules
         {
             Id = scheduleId,
             TimeIn = TimeOnly.FromTimeSpan(TimeSpan.FromHours(8)),
             TimeOut = TimeOnly.FromTimeSpan(TimeSpan.FromHours(10)),
             DayOfWeek = "Monday",
-            SubjectId = 1,
-            ClassroomId = 1,
-            SectionId = 1,
-            InstructorId = 1,
+            SubjectId = Guid.NewGuid(),
+            ClassroomId = Guid.NewGuid(),
+            SectionId = Guid.NewGuid(),
+            InstructorId = Guid.NewGuid(),
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
@@ -542,10 +597,10 @@ public class ScheduleServiceTest : IDisposable
             TimeIn = TimeOnly.FromTimeSpan(TimeSpan.FromHours(8)),
             TimeOut = TimeOnly.FromTimeSpan(TimeSpan.FromHours(10)),
             DayOfWeek = "Tuesday",
-            SubjectId = 1,
-            ClassroomId = 1,
-            SectionId = 1,
-            InstructorId = 1,
+            SubjectId = Guid.NewGuid(),
+            ClassroomId = Guid.NewGuid(),
+            SectionId = Guid.NewGuid(),
+            InstructorId = Guid.NewGuid(),
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
@@ -561,10 +616,10 @@ public class ScheduleServiceTest : IDisposable
         Assert.Equal("Tuesday", result.DayOfWeek);
         Assert.Equal(TimeOnly.FromTimeSpan(TimeSpan.FromHours(8)), result.TimeIn);
         Assert.Equal(TimeOnly.FromTimeSpan(TimeSpan.FromHours(10)), result.TimeOut);
-        Assert.Equal(1, result.SubjectId);
-        Assert.Equal(1, result.ClassroomId);
-        Assert.Equal(1, result.SectionId);
-        Assert.Equal(1, result.InstructorId);
+        Assert.NotEqual(Guid.Empty, result.SubjectId);
+        Assert.NotEqual(Guid.Empty, result.ClassroomId);
+        Assert.NotEqual(Guid.Empty, result.SectionId);
+        Assert.NotEqual(Guid.Empty, result.InstructorId);
         _mockScheduleRepository.Verify(r => r.UpdateScheduleAsync(It.IsAny<Schedules>()), Times.Once);
     }
 
@@ -572,17 +627,17 @@ public class ScheduleServiceTest : IDisposable
     public async Task UpdateScheduleAsync_RepositoryUpdateReturnsNull_ThrowsEntityServiceException()
     {
         // Arrange
-        const int scheduleId = 1;
+        var scheduleId = Guid.NewGuid();
         var existingSchedule = new Schedules
         {
             Id = scheduleId,
             TimeIn = TimeOnly.FromTimeSpan(TimeSpan.FromHours(8)),
             TimeOut = TimeOnly.FromTimeSpan(TimeSpan.FromHours(10)),
             DayOfWeek = "Monday",
-            SubjectId = 1,
-            ClassroomId = 1,
-            SectionId = 1,
-            InstructorId = 1,
+            SubjectId = Guid.NewGuid(),
+            ClassroomId = Guid.NewGuid(),
+            SectionId = Guid.NewGuid(),
+            InstructorId = Guid.NewGuid(),
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };

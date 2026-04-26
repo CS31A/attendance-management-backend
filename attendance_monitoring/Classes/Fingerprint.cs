@@ -8,8 +8,7 @@ namespace attendance_monitoring.Classes;
 public class Fingerprint
 {
     [Key]
-    [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
-    public int Id { get; set; }/*  */
+    public Guid Id { get; set; }
     
     // Foreign key to Identity user - should not be nullable
     public string UserId { get; set; } = string.Empty;

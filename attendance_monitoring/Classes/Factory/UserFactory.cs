@@ -9,7 +9,10 @@ namespace attendance_monitoring.Classes.Factory;
 /// Factory for creating users with their associated profiles.
 /// Implements compensating transactions to prevent orphaned users.
 /// </summary>
-public class UserFactory(IAccountRepository accountRepository, ILogger<UserFactory> logger) : IUserFactory
+public class UserFactory(
+    IAccountRepository accountRepository,
+    ISectionRepository sectionRepository,
+    ILogger<UserFactory> logger) : IUserFactory
 {
     /// <summary>
     /// Creates a new user with the specified role and profile.
@@ -22,7 +25,7 @@ public class UserFactory(IAccountRepository accountRepository, ILogger<UserFacto
         string role,
         string? firstName = null,
         string? lastName = null,
-        int? sectionId = null)
+        Guid? sectionId = null)
     {
         // Validate inputs at the factory level for additional security
         if (string.IsNullOrWhiteSpace(username))
@@ -163,9 +166,9 @@ public class UserFactory(IAccountRepository accountRepository, ILogger<UserFacto
         };
     }
 
-    private async Task<UserCreationResult> CreateStudentProfileAsync(IdentityUser identityUser, string? firstName, string? lastName, string email, int? sectionId)
+    private async Task<UserCreationResult> CreateStudentProfileAsync(IdentityUser identityUser, string? firstName, string? lastName, string email, Guid? sectionId)
     {
-        if (sectionId is null or <= 0)
+        if (!sectionId.HasValue || sectionId == Guid.Empty)
         {
             // If sectionId is not provided for student, return an error
             logger.LogWarning("SectionId is required for student registration. Cleaning up user {Email}.", email);
@@ -175,6 +178,18 @@ public class UserFactory(IAccountRepository accountRepository, ILogger<UserFacto
                 Success = false,
                 Errors =
                 ["SectionId is required for student registration"]
+            };
+        }
+
+        var section = await sectionRepository.GetSectionByUuidAsync(sectionId.Value).ConfigureAwait(false);
+        if (section == null)
+        {
+            logger.LogWarning("SectionId {SectionId} was not found for student registration. Cleaning up user {Email}.", sectionId, email);
+            await CleanupUserSafelyAsync(identityUser, email);
+            return new UserCreationResult
+            {
+                Success = false,
+                Errors = [$"SectionId {sectionId} does not exist"]
             };
         }
 
@@ -208,7 +223,8 @@ public class UserFactory(IAccountRepository accountRepository, ILogger<UserFacto
             Firstname = firstName,
             Lastname = lastName,
             IsRegular = true,
-            SectionId = sectionId.Value,
+            Usn = Student.CreatePendingUsn(),
+            SectionId = section.Id,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };

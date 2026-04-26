@@ -13,7 +13,21 @@ public interface ISessionRepository : ISaveableRepository
     /// </summary>
     /// <param name="id">The session ID</param>
     /// <returns>The session if found, null otherwise</returns>
-    Task<Session?> GetSessionByIdAsync(int id);
+    Task<Session?> GetSessionByIdAsync(Guid id);
+
+    /// <summary>
+    /// Retrieves a session by its UUID with all navigation properties loaded.
+    /// </summary>
+    /// <param name="id">The session UUID</param>
+    /// <returns>The session if found, null otherwise</returns>
+    Task<Session?> GetSessionByUuidAsync(Guid id);
+
+    /// <summary>
+    /// Retrieves a session by its UUID with all navigation properties loaded and tracking enabled.
+    /// </summary>
+    /// <param name="id">The session UUID</param>
+    /// <returns>The session if found, null otherwise</returns>
+    Task<Session?> GetSessionByUuidTrackedAsync(Guid id);
 
     /// <summary>
     /// Retrieves all sessions with pagination support.
@@ -26,7 +40,7 @@ public interface ISessionRepository : ISaveableRepository
     /// </summary>
     /// <param name="scheduleId">The schedule ID</param>
     /// <returns>Collection of sessions for the schedule</returns>
-    Task<IEnumerable<Session>> GetSessionsByScheduleIdAsync(int scheduleId);
+    Task<IEnumerable<Session>> GetSessionsByScheduleIdAsync(Guid scheduleId);
 
     /// <summary>
     /// Retrieves sessions by status.
@@ -62,21 +76,21 @@ public interface ISessionRepository : ISaveableRepository
     /// <param name="scheduleId">The schedule ID</param>
     /// <param name="sessionDate">The session date</param>
     /// <returns>True if a session exists, false otherwise</returns>
-    Task<bool> SessionExistsForScheduleAndDateAsync(int scheduleId, DateTime sessionDate);
+    Task<bool> SessionExistsForScheduleAndDateAsync(Guid scheduleId, DateTime sessionDate);
 
     /// <summary>
     /// Retrieves active sessions for a specific instructor.
     /// </summary>
     /// <param name="instructorId">The instructor ID</param>
     /// <returns>Collection of active sessions for the instructor</returns>
-    Task<IEnumerable<Session>> GetActiveSessionsByInstructorIdAsync(int instructorId);
+    Task<IEnumerable<Session>> GetActiveSessionsByInstructorIdAsync(Guid instructorId);
 
     /// <summary>
     /// Retrieves all sessions for a specific instructor (all statuses).
     /// </summary>
     /// <param name="instructorId">The instructor ID</param>
     /// <returns>Collection of all sessions for the instructor</returns>
-    Task<IEnumerable<Session>> GetSessionsByInstructorIdAsync(int instructorId);
+    Task<IEnumerable<Session>> GetSessionsByInstructorIdAsync(Guid instructorId);
 
     /// <summary>
     /// Retrieves projected report rows for all sessions in a section with aggregated attendance counts.
@@ -85,7 +99,7 @@ public interface ISessionRepository : ISaveableRepository
     /// <param name="startDate">Optional inclusive start date</param>
     /// <param name="endDate">Optional inclusive end date</param>
     /// <returns>Projected session report rows</returns>
-    Task<List<SessionReportRowDto>> GetSectionSessionReportRowsAsync(int sectionId, DateTime? startDate, DateTime? endDate);
+    Task<List<SessionReportRowDto>> GetSectionSessionReportRowsAsync(Guid sectionId, DateTime? startDate, DateTime? endDate);
 
     /// <summary>
     /// Retrieves projected report rows for all sessions owned by an instructor with aggregated attendance counts.
@@ -94,12 +108,12 @@ public interface ISessionRepository : ISaveableRepository
     /// <param name="startDate">Optional inclusive start date</param>
     /// <param name="endDate">Optional inclusive end date</param>
     /// <returns>Projected session report rows</returns>
-    Task<List<SessionReportRowDto>> GetInstructorSessionReportRowsAsync(int instructorId, DateTime? startDate, DateTime? endDate);
+    Task<List<SessionReportRowDto>> GetInstructorSessionReportRowsAsync(Guid instructorId, DateTime? startDate, DateTime? endDate);
 
     /// <summary>
     /// Retrieves a session by its ID without tracking (for read-only operations).
     /// </summary>
     /// <param name="id">The session ID</param>
     /// <returns>The session if found, null otherwise</returns>
-    Task<Session?> GetSessionByIdNoTrackingAsync(int id);
+    Task<Session?> GetSessionByIdNoTrackingAsync(Guid id);
 }

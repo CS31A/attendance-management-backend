@@ -72,7 +72,7 @@ public class InstructorController(IInstructorService instructorService, ILogger<
 
     // GET: api/Instructor/5
     [HttpGet("{id:int}")]
-    public async Task<ActionResult<Instructor>> GetInstructor(int id)
+    public async Task<ActionResult<Instructor>> GetInstructor(Guid id)
     {
         try
         {
@@ -81,7 +81,7 @@ public class InstructorController(IInstructorService instructorService, ILogger<
             logger.LogInformation("Successfully retrieved instructor with ID: {Id}", id);
             return Ok(instructor);
         }
-        catch (EntityNotFoundException<int> ex)
+        catch (EntityNotFoundException<Guid> ex)
         {
             logger.LogWarning(ex, "Instructor with ID {Id} not found", id);
             return NotFound($"Instructor with ID {id} not found");
@@ -95,7 +95,7 @@ public class InstructorController(IInstructorService instructorService, ILogger<
 
     // GET: api/instructors/{instructorId}/subjects
     [HttpGet("{instructorId:int}/subjects")]
-    public async Task<ActionResult<IEnumerable<SubjectResponseDto>>> GetInstructorSubjects(int instructorId)
+    public async Task<ActionResult<IEnumerable<SubjectResponseDto>>> GetInstructorSubjects(Guid instructorId)
     {
         try
         {
@@ -104,7 +104,7 @@ public class InstructorController(IInstructorService instructorService, ILogger<
             logger.LogInformation("Successfully retrieved subjects for instructor ID: {InstructorId}", instructorId);
             return Ok(subjects);
         }
-        catch (EntityNotFoundException<int> ex)
+        catch (EntityNotFoundException<Guid> ex)
         {
             logger.LogWarning(ex, "Instructor with ID {InstructorId} not found", instructorId);
             return NotFound($"Instructor with ID {instructorId} not found");
@@ -165,6 +165,122 @@ public class InstructorController(IInstructorService instructorService, ILogger<
         }
     }
 
+    // GET: api/instructors/me/sections-with-students
+    [HttpGet("me/sections-with-students")]
+    [Authorize(Policy = "PrivilegedPolicy")]
+    public async Task<ActionResult<InstructorSectionsWithStudentsResponseDto>> GetMySectionsWithStudents()
+    {
+        try
+        {
+            logger.LogInformation("Getting sections with students for authenticated instructor");
+            var response = await instructorService.GetSectionsWithStudentsByInstructorAsync(User);
+            logger.LogInformation("Successfully retrieved sections with students for instructor ID: {InstructorId}", response.InstructorId);
+            return Ok(response);
+        }
+        catch (EntityNotFoundException<string> ex)
+        {
+            logger.LogWarning(ex, "Instructor not found for authenticated user");
+            return NotFound("No instructor record found for the current user");
+        }
+        catch (EntityServiceException ex)
+        {
+            logger.LogError(ex, "Service error occurred while retrieving sections with students");
+            return StatusCode(500, "An error occurred while retrieving sections");
+        }
+    }
+
+    // GET: api/instructors/me/sections
+    [HttpGet("me/sections")]
+    [Authorize(Policy = "PrivilegedPolicy")]
+    public async Task<ActionResult<List<InstructorSectionOverviewDto>>> GetMySectionsOverview()
+    {
+        try
+        {
+            logger.LogInformation("Getting sections overview for authenticated instructor");
+            var sections = await instructorService.GetInstructorSectionsOverviewAsync(User);
+            logger.LogInformation("Successfully retrieved {Count} section overviews for authenticated instructor", sections.Count);
+            return Ok(sections);
+        }
+        catch (EntityNotFoundException<string> ex)
+        {
+            logger.LogWarning(ex, "Instructor not found for authenticated user");
+            return NotFound("No instructor record found for the current user");
+        }
+        catch (EntityServiceException ex)
+        {
+            logger.LogError(ex, "Service error occurred while retrieving sections overview");
+            return StatusCode(500, "An error occurred while retrieving sections overview");
+        }
+    }
+
+    // GET: api/instructors/me/sections/{id:guid}
+    [HttpGet("me/sections/{id:guid}")]
+    [Authorize(Policy = "PrivilegedPolicy")]
+    public async Task<ActionResult<InstructorSectionDetailDto>> GetMySectionDetail([FromRoute(Name = "id")] Guid sectionId)
+    {
+        try
+        {
+            logger.LogInformation("Getting section detail for section UUID: {SectionId}", sectionId);
+            var sectionDetail = await instructorService.GetInstructorSectionDetailByUuidAsync(User, sectionId);
+            logger.LogInformation("Successfully retrieved section detail for section UUID: {SectionId}", sectionId);
+            return Ok(sectionDetail);
+        }
+        catch (EntityNotFoundException<string> ex)
+        {
+            logger.LogWarning(ex, "Instructor not found for authenticated user");
+            return NotFound("No instructor record found for the current user");
+        }
+        catch (EntityNotFoundException<Guid> ex)
+        {
+            logger.LogWarning(ex, "Section with ID {SectionId} not found", sectionId);
+            return NotFound($"Section with ID {sectionId} not found");
+        }
+        catch (EntityUnauthorizedException ex)
+        {
+            logger.LogWarning(ex, "User not authorized to view section with ID {SectionId}", sectionId);
+            return StatusCode(StatusCodes.Status403Forbidden, ex.Message);
+        }
+        catch (EntityServiceException ex)
+        {
+            logger.LogError(ex, "Service error occurred while retrieving section detail for section ID: {SectionId}", sectionId);
+            return StatusCode(500, "An error occurred while retrieving section detail");
+        }
+    }
+
+    // GET: api/instructors/me/students/{id:guid}
+    [HttpGet("me/students/{id:guid}")]
+    [Authorize(Policy = "PrivilegedPolicy")]
+    public async Task<ActionResult<InstructorStudentDetailDto>> GetMyStudentDetail([FromRoute(Name = "id")] Guid studentId)
+    {
+        try
+        {
+            logger.LogInformation("Getting student detail for student UUID: {StudentId}", studentId);
+            var studentDetail = await instructorService.GetInstructorStudentDetailByUuidAsync(User, studentId);
+            logger.LogInformation("Successfully retrieved student detail for student UUID: {StudentId}", studentId);
+            return Ok(studentDetail);
+        }
+        catch (EntityNotFoundException<string> ex)
+        {
+            logger.LogWarning(ex, "Instructor not found for authenticated user");
+            return NotFound("No instructor record found for the current user");
+        }
+        catch (EntityNotFoundException<Guid> ex)
+        {
+            logger.LogWarning(ex, "Student with ID {StudentId} not found", studentId);
+            return NotFound($"Student with ID {studentId} not found");
+        }
+        catch (EntityUnauthorizedException ex)
+        {
+            logger.LogWarning(ex, "User not authorized to view student with ID {StudentId}", studentId);
+            return StatusCode(StatusCodes.Status403Forbidden, ex.Message);
+        }
+        catch (EntityServiceException ex)
+        {
+            logger.LogError(ex, "Service error occurred while retrieving student detail for student ID: {StudentId}", studentId);
+            return StatusCode(500, "An error occurred while retrieving student detail");
+        }
+    }
+
     #endregion
 
     #region Update Operations
@@ -198,7 +314,7 @@ public class InstructorController(IInstructorService instructorService, ILogger<
     // PATCH: api/Instructor/{id}
     [HttpPatch("{id:int}")]
     [Authorize(Policy = "PrivilegedPolicy")]
-    public async Task<ActionResult<Instructor>> PatchInstructor(int id, UpdateInstructor updateInstructor)
+    public async Task<ActionResult<Instructor>> PatchInstructor(Guid id, UpdateInstructor updateInstructor)
     {
         try
         {
@@ -213,7 +329,7 @@ public class InstructorController(IInstructorService instructorService, ILogger<
             logger.LogInformation("Successfully updated instructor with ID: {Id}", id);
             return Ok(instructor);
         }
-        catch (EntityNotFoundException<int> ex)
+        catch (EntityNotFoundException<Guid> ex)
         {
             logger.LogWarning(ex, "Instructor with ID {Id} not found", id);
             return NotFound($"Instructor with ID {id} not found");
@@ -221,7 +337,7 @@ public class InstructorController(IInstructorService instructorService, ILogger<
         catch (EntityUnauthorizedException ex)
         {
             logger.LogWarning(ex, "User not authorized to update instructor with ID {Id}", id);
-            return Unauthorized(ex.Message);
+            return StatusCode(StatusCodes.Status403Forbidden, ex.Message);
         }
         catch (EntityServiceException ex)
         {
@@ -237,7 +353,7 @@ public class InstructorController(IInstructorService instructorService, ILogger<
     // PATCH: api/Instructor/{id}/soft-delete
     [HttpPatch("{id:int}/soft-delete")]
     [Authorize(Policy = "PrivilegedPolicy")]
-    public async Task<ActionResult<SoftDeleteResponse>> SoftDeleteInstructor(int id)
+    public async Task<ActionResult<SoftDeleteResponse>> SoftDeleteInstructor(Guid id)
     {
         try
         {
@@ -250,7 +366,7 @@ public class InstructorController(IInstructorService instructorService, ILogger<
                 Message = "Instructor marked as deleted successfully"
             });
         }
-        catch (EntityNotFoundException<int> ex)
+        catch (EntityNotFoundException<Guid> ex)
         {
             logger.LogWarning(ex, "Instructor with ID {Id} not found", id);
             return NotFound(new SoftDeleteResponse
@@ -262,7 +378,7 @@ public class InstructorController(IInstructorService instructorService, ILogger<
         catch (EntityUnauthorizedException ex)
         {
             logger.LogWarning(ex, "User not authorized to delete instructor with ID {Id}", id);
-            return Unauthorized(new SoftDeleteResponse
+            return StatusCode(StatusCodes.Status403Forbidden, new SoftDeleteResponse
             {
                 Success = false,
                 Message = ex.Message
@@ -282,7 +398,7 @@ public class InstructorController(IInstructorService instructorService, ILogger<
     // DELETE: api/Instructor/{id}
     [HttpDelete("{id:int}")]
     [Authorize(Policy = "AdminPolicy")]
-    public async Task<ActionResult<SoftDeleteResponse>> HardDeleteInstructor(int id)
+    public async Task<ActionResult<SoftDeleteResponse>> HardDeleteInstructor(Guid id)
     {
         logger.LogInformation("Hard deleting instructor with ID: {Id}", id);
         await instructorService.HardDeleteInstructorAsync(id, User);
@@ -298,7 +414,7 @@ public class InstructorController(IInstructorService instructorService, ILogger<
     // PATCH: api/Instructor/{id}/restore
     [HttpPatch("{id:int}/restore")]
     [Authorize(Policy = "AdminPolicy")]
-    public async Task<ActionResult<SoftDeleteResponse>> RestoreInstructor(int id)
+    public async Task<ActionResult<SoftDeleteResponse>> RestoreInstructor(Guid id)
     {
         logger.LogInformation("Restoring instructor with ID: {Id}", id);
         await instructorService.RestoreInstructorAsync(id, User);

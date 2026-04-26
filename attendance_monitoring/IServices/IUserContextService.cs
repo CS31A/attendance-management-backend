@@ -19,7 +19,7 @@ public interface IUserContextService
     /// </summary>
     /// <param name="userPrincipal">The user's claims principal</param>
     /// <returns>Instructor ID if user is an instructor, null otherwise</returns>
-    Task<int?> GetInstructorIdAsync(ClaimsPrincipal userPrincipal);
+    Task<Guid?> GetInstructorIdAsync(ClaimsPrincipal userPrincipal);
 
     /// <summary>
     /// Checks if the user is authorized to perform an action on a resource

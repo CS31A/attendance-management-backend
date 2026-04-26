@@ -10,27 +10,27 @@ public class AttendanceFilterRequest
     /// <summary>
     /// Filter by student ID.
     /// </summary>
-    public int? StudentId { get; set; }
+    public Guid? StudentId { get; set; }
 
     /// <summary>
     /// Filter by session ID.
     /// </summary>
-    public int? SessionId { get; set; }
+    public Guid? SessionId { get; set; }
 
     /// <summary>
     /// Filter by schedule ID.
     /// </summary>
-    public int? ScheduleId { get; set; }
+    public Guid? ScheduleId { get; set; }
 
     /// <summary>
     /// Filter by section ID.
     /// </summary>
-    public int? SectionId { get; set; }
+    public Guid? SectionId { get; set; }
 
     /// <summary>
     /// Filter by subject ID.
     /// </summary>
-    public int? SubjectId { get; set; }
+    public Guid? SubjectId { get; set; }
 
     /// <summary>
     /// Filter by attendance status.

@@ -135,7 +135,7 @@ public class AttendanceAuthorizationTests
     {
         // Arrange
         var userId = "user-123";
-        var studentId = 1;
+        var studentId = Guid.NewGuid();
         var studentUser = CreateStudentUser(userId);
         var filter = new AttendanceFilterRequest();
 
@@ -154,13 +154,13 @@ public class AttendanceAuthorizationTests
         // Mock AttendanceRepository to return filtered results
         var attendanceRecords = new List<AttendanceRecord>
         {
-            CreateTestAttendanceRecord(1, studentId, 1)
+            CreateTestAttendanceRecord(Guid.NewGuid(), studentId, Guid.NewGuid())
         };
         _mockAttendanceRepository
             .Setup(ar => ar.GetFilteredAsync(
-                It.Is<int?>(id => id == studentId), // Verify studentId is set in filter
-                It.IsAny<int?>(), It.IsAny<int?>(), It.IsAny<int?>(),
-                It.IsAny<int?>(), It.IsAny<string?>(), It.IsAny<DateTime?>(),
+                It.Is<Guid?>(id => id == studentId), // Verify studentId is set in filter
+                It.IsAny<Guid?>(), It.IsAny<Guid?>(), It.IsAny<Guid?>(),
+                It.IsAny<Guid?>(), It.IsAny<string?>(), It.IsAny<DateTime?>(),
                 It.IsAny<DateTime?>(), It.IsAny<bool?>(), It.IsAny<int>(), It.IsAny<int>()))
             .ReturnsAsync((attendanceRecords, 1));
 
@@ -171,7 +171,7 @@ public class AttendanceAuthorizationTests
         Assert.NotNull(result);
         Assert.Equal(1, result.TotalCount);
         Assert.Single(result.Items);
-        Assert.Equal(studentId, result.Items[0].StudentId);
+        Assert.Equal(student.Id, result.Items[0].StudentId);
     }
 
     #endregion
@@ -230,7 +230,7 @@ public class AttendanceAuthorizationTests
     {
         // Arrange
         var userId = "user-123";
-        var studentId = 1;
+        var studentId = Guid.NewGuid();
         var studentUser = CreateStudentUser(userId);
         var filter = new AttendanceFilterRequest();
 
@@ -249,9 +249,9 @@ public class AttendanceAuthorizationTests
         // Mock AttendanceRepository to return statistics
         _mockAttendanceRepository
             .Setup(ar => ar.GetStatisticsAsync(
-                It.Is<int?>(id => id == studentId), // Verify studentId is set in filter
-                It.IsAny<int?>(), It.IsAny<int?>(), It.IsAny<int?>(),
-                It.IsAny<int?>(), It.IsAny<string?>(), It.IsAny<DateTime?>(),
+                It.Is<Guid?>(id => id == studentId), // Verify studentId is set in filter
+                It.IsAny<Guid?>(), It.IsAny<Guid?>(), It.IsAny<Guid?>(),
+                It.IsAny<Guid?>(), It.IsAny<string?>(), It.IsAny<DateTime?>(),
                 It.IsAny<DateTime?>(), It.IsAny<bool?>()))
             .ReturnsAsync((10, 8, 1, 1, 0, 0L));
 
@@ -272,7 +272,7 @@ public class AttendanceAuthorizationTests
     public async Task GetStudentAttendanceHistoryAsync_StudentWithNullUserId_ThrowsUnauthorized()
     {
         // Arrange - Create user with only role claim (no NameIdentifier)
-        var studentId = 1;
+        var studentId = Guid.NewGuid();
         var studentUser = CreateStudentUserWithoutUserId();
 
         // Mock student exists
@@ -298,7 +298,7 @@ public class AttendanceAuthorizationTests
     public async Task GetStudentAttendanceHistoryAsync_StudentViewingOtherStudent_ThrowsUnauthorized()
     {
         // Arrange
-        var studentId = 1;
+        var studentId = Guid.NewGuid();
         var userId = "user-123";
         var otherUserId = "other-user-456";
         var studentUser = CreateStudentUser(userId);
@@ -327,7 +327,7 @@ public class AttendanceAuthorizationTests
     public async Task GetStudentAttendanceHistoryAsync_StudentViewingOwnHistory_Succeeds()
     {
         // Arrange
-        var studentId = 1;
+        var studentId = Guid.NewGuid();
         var userId = "user-123";
         var studentUser = CreateStudentUser(userId);
 
@@ -346,7 +346,7 @@ public class AttendanceAuthorizationTests
         // Mock attendance records
         var attendanceRecords = new List<AttendanceRecord>
         {
-            CreateTestAttendanceRecord(1, studentId, 1)
+            CreateTestAttendanceRecord(Guid.NewGuid(), studentId, Guid.NewGuid())
         };
         _mockAttendanceRepository
             .Setup(ar => ar.GetByStudentIdAsync(studentId))
@@ -357,7 +357,7 @@ public class AttendanceAuthorizationTests
 
         // Assert
         Assert.NotNull(result);
-        Assert.Equal(studentId, result.StudentId);
+        Assert.Equal(student.Id, result.StudentId);
         Assert.Single(result.AttendanceRecords);
     }
 
@@ -369,9 +369,9 @@ public class AttendanceAuthorizationTests
     public async Task GetAttendanceById_StudentWithNullUserId_ThrowsUnauthorized()
     {
         // Arrange
-        var attendanceId = 1;
+        var attendanceId = Guid.NewGuid();
         var studentUser = CreateStudentUserWithoutUserId();
-        var attendanceRecord = CreateTestAttendanceRecord(attendanceId, 1, 1);
+        var attendanceRecord = CreateTestAttendanceRecord(attendanceId, Guid.NewGuid(), Guid.NewGuid());
 
         _mockAttendanceRepository
             .Setup(ar => ar.GetByIdAsync(attendanceId))
@@ -394,10 +394,10 @@ public class AttendanceAuthorizationTests
     public async Task GetAttendanceById_StudentWithoutProfile_ThrowsNotFoundException()
     {
         // Arrange
-        var attendanceId = 1;
+        var attendanceId = Guid.NewGuid();
         var userId = "user-123";
         var studentUser = CreateStudentUser(userId);
-        var attendanceRecord = CreateTestAttendanceRecord(attendanceId, 1, 1);
+        var attendanceRecord = CreateTestAttendanceRecord(attendanceId, Guid.NewGuid(), Guid.NewGuid());
 
         _mockAttendanceRepository
             .Setup(ar => ar.GetByIdAsync(attendanceId))
@@ -446,7 +446,7 @@ public class AttendanceAuthorizationTests
         }, "TestAuthentication"));
     }
 
-    private static Student CreateTestStudent(int id, string userId)
+    private static Student CreateTestStudent(Guid id, string userId)
     {
         return new Student
         {
@@ -464,12 +464,12 @@ public class AttendanceAuthorizationTests
     {
         return new Section
         {
-            Id = 1,
+            Id = Guid.NewGuid(),
             Name = "CS-3A"
         };
     }
 
-    private static AttendanceRecord CreateTestAttendanceRecord(int id, int studentId, int sessionId)
+    private static AttendanceRecord CreateTestAttendanceRecord(Guid id, Guid studentId, Guid sessionId)
     {
         return new AttendanceRecord
         {
@@ -484,11 +484,11 @@ public class AttendanceAuthorizationTests
         };
     }
 
-    private static Session CreateTestSession(int id)
+    private static Session CreateTestSession(Guid id)
     {
         var instructor = new Instructor
         {
-            Id = 1,
+            Id = Guid.NewGuid(),
             UserId = "instructor-123",
             Firstname = "Jane",
             Lastname = "Smith",
@@ -497,13 +497,13 @@ public class AttendanceAuthorizationTests
 
         var classroom = new Classroom
         {
-            Id = 1,
+            Id = Guid.NewGuid(),
             Name = "Room 101"
         };
 
         var subject = new Subject
         {
-            Id = 1,
+            Id = Guid.NewGuid(),
             Name = "Computer Science",
             Code = "CS101"
         };
@@ -512,11 +512,11 @@ public class AttendanceAuthorizationTests
 
         var schedule = new Schedules
         {
-            Id = 1,
-            SubjectId = 1,
-            SectionId = 1,
-            InstructorId = 1,
-            ClassroomId = 1,
+            Id = Guid.NewGuid(),
+            SubjectId = Guid.NewGuid(),
+            SectionId = Guid.NewGuid(),
+            InstructorId = Guid.NewGuid(),
+            ClassroomId = Guid.NewGuid(),
             TimeIn = TimeOnly.Parse("08:00"),
             TimeOut = TimeOnly.Parse("09:30"),
             Subject = subject,
@@ -528,7 +528,7 @@ public class AttendanceAuthorizationTests
         return new Session
         {
             Id = id,
-            ScheduleId = 1,
+            ScheduleId = Guid.NewGuid(),
             SessionDate = DateTime.Today,
             Status = SessionStatusConstants.Active,
             Schedule = schedule,

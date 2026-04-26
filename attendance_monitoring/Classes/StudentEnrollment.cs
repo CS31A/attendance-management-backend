@@ -18,20 +18,19 @@ namespace attendance_monitoring.Classes;
 public class StudentEnrollment
 {
     [Key]
-    [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
-    public int Id { get; set; }
+    public Guid Id { get; set; }
 
     // Foreign key to Student
     [Required]
-    public int StudentId { get; set; }
+    public Guid StudentId { get; set; }
 
     // Foreign key to Section  
     [Required]
-    public int SectionId { get; set; }
+    public Guid SectionId { get; set; }
 
     // Foreign key to Subject (for granular control)
     [Required]
-    public int SubjectId { get; set; }
+    public Guid SubjectId { get; set; }
 
     // Enrollment status
     public bool IsActive { get; set; } = true;

@@ -64,7 +64,7 @@ public class CourseService : ICourseService
     /// <returns>The course with the specified ID</returns>
     /// <exception cref="T:attendance_monitoring.Exceptions.EntityNotFoundException{System.Int32}">Thrown when the course is not found</exception>
     /// <exception cref="EntityServiceException">Thrown when an error occurs during retrieval</exception>
-    public async Task<Course> GetCourseByIdAsync(int id)
+    public async Task<Course> GetCourseByIdAsync(Guid id)
     {
         try
         {
@@ -73,13 +73,13 @@ public class CourseService : ICourseService
             if (course == null)
             {
                 _logger.LogWarning("Course with ID {Id} not found", id);
-                throw new EntityNotFoundException<int>("Course", id);
+                throw new EntityNotFoundException<Guid>("Course", id);
             }
 
             _logger.LogInformation("Successfully retrieved course with ID: {Id}", id);
             return course;
         }
-        catch (EntityNotFoundException<int>)
+        catch (EntityNotFoundException<Guid>)
         {
             // Re-throw EntityNotFoundException as-is
             throw;
@@ -88,6 +88,34 @@ public class CourseService : ICourseService
         {
             _logger.LogError(ex, "Error occurred while retrieving course with ID: {Id}", id);
             throw new EntityServiceException("Course", $"GetCourseById: {id}", "An error occurred while retrieving the course", ex);
+        }
+    }
+    #endregion
+
+    #region GetCourseByUuidAsync
+    public async Task<Course> GetCourseByUuidAsync(Guid id)
+    {
+        try
+        {
+            _logger.LogInformation("Retrieving course by UUID: {Id}", id);
+            var course = await _courseRepository.GetCourseByUuidAsync(id).ConfigureAwait(false);
+            if (course == null)
+            {
+                _logger.LogWarning("Course with UUID {Id} not found", id);
+                throw new EntityNotFoundException<Guid>("Course", id);
+            }
+
+            _logger.LogInformation("Successfully retrieved course with UUID: {Id}", id);
+            return course;
+        }
+        catch (EntityNotFoundException<Guid>)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error occurred while retrieving course with UUID: {Id}", id);
+            throw new EntityServiceException("Course", $"GetCourseByUuid: {id}", "An error occurred while retrieving the course", ex);
         }
     }
     #endregion
@@ -161,7 +189,7 @@ public class CourseService : ICourseService
     /// <returns>The updated course</returns>
     /// <exception cref="T:attendance_monitoring.Exceptions.EntityNotFoundException{System.Int32}">Thrown when the course is not found</exception>
     /// <exception cref="EntityServiceException">Thrown when course update fails</exception>
-    public async Task<Course> UpdateCourseAsync(int id, UpdateCourse updateCourse, ClaimsPrincipal user)
+    public async Task<Course> UpdateCourseAsync(Guid id, UpdateCourse updateCourse, ClaimsPrincipal user)
     {
         try
         {
@@ -185,7 +213,7 @@ public class CourseService : ICourseService
             if (existingCourse == null)
             {
                 _logger.LogWarning("Course update failed: Course with ID {Id} not found", id);
-                throw new EntityNotFoundException<int>("Course", id);
+                throw new EntityNotFoundException<Guid>("Course", id);
             }
 
             if (!string.IsNullOrEmpty(updateCourse.Name))
@@ -201,7 +229,7 @@ public class CourseService : ICourseService
             _logger.LogInformation("Successfully updated course with ID: {Id}", id);
             return updatedCourse;
         }
-        catch (EntityNotFoundException<int>)
+        catch (EntityNotFoundException<Guid>)
         {
             // Re-throw EntityNotFoundException as-is
             throw;
@@ -219,6 +247,14 @@ public class CourseService : ICourseService
     }
     #endregion
 
+    #region UpdateCourseByUuidAsync
+    public async Task<Course> UpdateCourseByUuidAsync(Guid id, UpdateCourse updateCourse, ClaimsPrincipal user)
+    {
+        var existingCourse = await GetCourseByUuidAsync(id).ConfigureAwait(false);
+        return await UpdateCourseAsync(existingCourse.Id, updateCourse, user).ConfigureAwait(false);
+    }
+    #endregion
+
     #endregion
 
     #region Delete Operations
@@ -230,7 +266,7 @@ public class CourseService : ICourseService
     /// <param name="user">The claims principal of the current user</param>
     /// <exception cref="T:attendance_monitoring.Exceptions.EntityNotFoundException{System.Int32}">Thrown when the course is not found</exception>
     /// <exception cref="EntityServiceException">Thrown when course deletion fails</exception>
-    public async Task DeleteCourseAsync(int id, ClaimsPrincipal user)
+    public async Task DeleteCourseAsync(Guid id, ClaimsPrincipal user)
     {
         try
         {
@@ -247,7 +283,7 @@ public class CourseService : ICourseService
             if (existingCourse == null)
             {
                 _logger.LogWarning("Course deletion failed: Course with ID {Id} not found", id);
-                throw new EntityNotFoundException<int>("Course", id);
+                throw new EntityNotFoundException<Guid>("Course", id);
             }
 
             var result = await _courseRepository.DeleteCourseAsync(id).ConfigureAwait(false);
@@ -260,7 +296,7 @@ public class CourseService : ICourseService
             await _courseRepository.SaveChangesAsync().ConfigureAwait(false);
             _logger.LogInformation("Successfully deleted course with ID: {Id}", id);
         }
-        catch (EntityNotFoundException<int>)
+        catch (EntityNotFoundException<Guid>)
         {
             // Re-throw EntityNotFoundException as-is
             throw;
@@ -284,8 +320,16 @@ public class CourseService : ICourseService
     }
     #endregion
 
+    #region DeleteCourseByUuidAsync
+    public async Task DeleteCourseByUuidAsync(Guid id, ClaimsPrincipal user)
+    {
+        var existingCourse = await GetCourseByUuidAsync(id).ConfigureAwait(false);
+        await DeleteCourseAsync(existingCourse.Id, user).ConfigureAwait(false);
+    }
+    #endregion
+
     #region Dependency Check Operations
-    public async Task<bool> HasSectionsInCourseAsync(int id)
+    public async Task<bool> HasSectionsInCourseAsync(Guid id)
     {
         try
         {

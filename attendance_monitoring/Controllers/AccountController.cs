@@ -52,7 +52,7 @@ namespace attendance_monitoring.Controllers
                 logger.LogWarning("Registration failed for {Username}: {Error}", registerDto.Username, ex.Message);
                 return Conflict(new RegisterResponseDto { Success = false, Message = ex.Message });
             }
-            catch (EntityNotFoundException<int> ex)
+            catch (EntityNotFoundException<Guid> ex)
             {
                 logger.LogWarning("Registration failed for {Username}: {Error}", registerDto.Username, ex.Message);
                 return NotFound(new RegisterResponseDto { Success = false, Message = ex.Message });
@@ -559,7 +559,7 @@ namespace attendance_monitoring.Controllers
                 logger.LogWarning("Profile update failed for user {UserId}: {Error}", userId, ex.Message);
                 return NotFound(new UpdateProfileResponse { Success = false, Message = ex.Message });
             }
-            catch (EntityNotFoundException<int> ex)
+            catch (EntityNotFoundException<Guid> ex)
             {
                 logger.LogWarning("Profile update failed for user {UserId}: {Error}", userId, ex.Message);
                 return NotFound(new UpdateProfileResponse { Success = false, Message = ex.Message });
@@ -635,7 +635,7 @@ namespace attendance_monitoring.Controllers
                 logger.LogWarning("Admin profile update failed for user {TargetUserId}: {Error}", userId, ex.Message);
                 return NotFound(new UpdateProfileResponse { Success = false, Message = ex.Message });
             }
-            catch (EntityNotFoundException<int> ex)
+            catch (EntityNotFoundException<Guid> ex)
             {
                 logger.LogWarning("Admin profile update failed for user {TargetUserId}: {Error}", userId, ex.Message);
                 return NotFound(new UpdateProfileResponse { Success = false, Message = ex.Message });

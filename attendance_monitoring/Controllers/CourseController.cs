@@ -49,7 +49,8 @@ public class CourseController(ICourseService courseService, ILogger<CourseContro
     /// <response code="500">Internal server error</response>
     // GET: api/Course/5
     [HttpGet("{id:int}")]
-    public async Task<ActionResult<Course>> GetCourse(int id)
+    [ApiExplorerSettings(IgnoreApi = true)]
+    public async Task<ActionResult<Course>> GetCourse(Guid id)
     {
         try
         {
@@ -58,7 +59,7 @@ public class CourseController(ICourseService courseService, ILogger<CourseContro
             logger.LogInformation("Successfully retrieved course with ID: {Id}", id);
             return Ok(course);
         }
-        catch (EntityNotFoundException<int> ex)
+        catch (EntityNotFoundException<Guid> ex)
         {
             logger.LogWarning(ex, "Course with ID {Id} not found", id);
             return NotFound($"Course with ID {id} not found");
@@ -66,6 +67,28 @@ public class CourseController(ICourseService courseService, ILogger<CourseContro
         catch (EntityServiceException ex)
         {
             logger.LogError(ex, "Service error occurred while retrieving course with ID: {Id}", id);
+            return StatusCode(500, "An error occurred while retrieving the course");
+        }
+    }
+
+    [HttpGet("{id:guid}")]
+    public async Task<ActionResult<Course>> GetCourseByUuid([FromRoute(Name = "id")] Guid id)
+    {
+        try
+        {
+            logger.LogInformation("Getting course with UUID: {Id}", id);
+            var course = await courseService.GetCourseByUuidAsync(id);
+            logger.LogInformation("Successfully retrieved course with UUID: {Id}", id);
+            return Ok(course);
+        }
+        catch (EntityNotFoundException<Guid> ex)
+        {
+            logger.LogWarning(ex, "Course with UUID {Id} not found", id);
+            return NotFound($"Course with UUID {id} not found");
+        }
+        catch (EntityServiceException ex)
+        {
+            logger.LogError(ex, "Service error occurred while retrieving course with UUID: {Id}", id);
             return StatusCode(500, "An error occurred while retrieving the course");
         }
     }
@@ -116,9 +139,10 @@ public class CourseController(ICourseService courseService, ILogger<CourseContro
     /// <response code="401">Not authorized to update this course</response>
     /// <response code="500">Internal server error</response>
     // PUT: api/Course/5
-    [HttpPut("{id}")]
+    [HttpPut("{id:int}")]
+    [ApiExplorerSettings(IgnoreApi = true)]
     [Authorize(Policy = "AdminPolicy")]
-    public async Task<ActionResult<Course>> UpdateCourse(int id, UpdateCourse updateCourse)
+    public async Task<ActionResult<Course>> UpdateCourse(Guid id, UpdateCourse updateCourse)
     {
         try
         {
@@ -133,7 +157,7 @@ public class CourseController(ICourseService courseService, ILogger<CourseContro
             logger.LogInformation("Successfully updated course with ID: {Id}", id);
             return Ok(course);
         }
-        catch (EntityNotFoundException<int> ex)
+        catch (EntityNotFoundException<Guid> ex)
         {
             logger.LogWarning(ex, "Course with ID {Id} not found", id);
             return NotFound($"Course with ID {id} not found");
@@ -141,6 +165,35 @@ public class CourseController(ICourseService courseService, ILogger<CourseContro
         catch (EntityServiceException ex)
         {
             logger.LogError(ex, "Service error occurred while updating course with ID: {Id}", id);
+            return BadRequest(ex.Message);
+        }
+    }
+
+    [HttpPut("{id:guid}")]
+    [Authorize(Policy = "AdminPolicy")]
+    public async Task<ActionResult<Course>> UpdateCourseByUuid([FromRoute(Name = "id")] Guid id, UpdateCourse updateCourse)
+    {
+        try
+        {
+            logger.LogInformation("Updating course with UUID: {Id}", id);
+            if (!ModelState.IsValid)
+            {
+                logger.LogWarning("Course update failed due to invalid model state for course UUID: {Id}", id);
+                return BadRequest(ModelState);
+            }
+
+            var course = await courseService.UpdateCourseByUuidAsync(id, updateCourse, User);
+            logger.LogInformation("Successfully updated course with UUID: {Id}", id);
+            return Ok(course);
+        }
+        catch (EntityNotFoundException<Guid> ex)
+        {
+            logger.LogWarning(ex, "Course with UUID {Id} not found", id);
+            return NotFound($"Course with UUID {id} not found");
+        }
+        catch (EntityServiceException ex)
+        {
+            logger.LogError(ex, "Service error occurred while updating course with UUID: {Id}", id);
             return BadRequest(ex.Message);
         }
     }
@@ -155,9 +208,10 @@ public class CourseController(ICourseService courseService, ILogger<CourseContro
     /// <response code="401">Not authorized to delete courses</response>
     /// <response code="500">Internal server error</response>
     // DELETE: api/Course/5
-    [HttpDelete("{id}")]
+    [HttpDelete("{id:int}")]
+    [ApiExplorerSettings(IgnoreApi = true)]
     [Authorize(Policy = "AdminPolicy")]
-    public async Task<ActionResult> DeleteCourse(int id)
+    public async Task<ActionResult> DeleteCourse(Guid id)
     {
         try
         {
@@ -166,7 +220,7 @@ public class CourseController(ICourseService courseService, ILogger<CourseContro
             logger.LogInformation("Successfully deleted course with ID: {Id}", id);
             return NoContent();
         }
-        catch (EntityNotFoundException<int> ex)
+        catch (EntityNotFoundException<Guid> ex)
         {
             logger.LogWarning(ex, "Course with ID {Id} not found", id);
             return NotFound($"Course with ID {id} not found");
@@ -178,13 +232,36 @@ public class CourseController(ICourseService courseService, ILogger<CourseContro
         }
     }
 
-    [Authorize(Policy = "PrivilegedPolicy")]
-    [HttpGet("{id:int}/has-sections")]
-    public async Task<ActionResult<bool>> HasSectionsInCourse(int id)
+    [HttpDelete("{id:guid}")]
+    [Authorize(Policy = "AdminPolicy")]
+    public async Task<ActionResult> DeleteCourseByUuid([FromRoute(Name = "id")] Guid id)
     {
         try
         {
-            if (id <= 0)
+            logger.LogInformation("Deleting course with UUID: {Id}", id);
+            await courseService.DeleteCourseByUuidAsync(id, User);
+            logger.LogInformation("Successfully deleted course with UUID: {Id}", id);
+            return NoContent();
+        }
+        catch (EntityNotFoundException<Guid> ex)
+        {
+            logger.LogWarning(ex, "Course with UUID {Id} not found", id);
+            return NotFound($"Course with UUID {id} not found");
+        }
+        catch (EntityServiceException ex)
+        {
+            logger.LogError(ex, "Service error occurred while deleting course with UUID: {Id}", id);
+            return BadRequest(ex.Message);
+        }
+    }
+
+    [Authorize(Policy = "PrivilegedPolicy")]
+    [HttpGet("{id:int}/has-sections")]
+    public async Task<ActionResult<bool>> HasSectionsInCourse(Guid id)
+    {
+        try
+        {
+            if (id == Guid.Empty)
             {
                 logger.LogWarning("Invalid course ID {CourseId} provided for dependency check.", id);
                 return BadRequest("Course ID must be greater than 0.");

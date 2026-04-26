@@ -88,8 +88,8 @@ public class StudentController(IStudentService studentService, ILogger<StudentCo
     /// <response code="500">Internal server error</response>
     // GET: api/Student/5
     [Authorize(Policy = "PrivilegedPolicy")]
-    [HttpGet("{id:int}")]
-    public async Task<ActionResult<Student>> GetStudent(int id)
+    [HttpGet("{id:guid}")]
+    public async Task<ActionResult<Student>> GetStudent(Guid id)
     {
         try
         {
@@ -98,7 +98,7 @@ public class StudentController(IStudentService studentService, ILogger<StudentCo
             logger.LogInformation("Successfully retrieved student with ID: {Id}", id);
             return Ok(student);
         }
-        catch (EntityNotFoundException<int> ex)
+        catch (EntityNotFoundException<Guid> ex)
         {
             logger.LogWarning(ex, "Student with ID {Id} not found", id);
             return NotFound($"Student with ID {id} not found");
@@ -130,8 +130,8 @@ public class StudentController(IStudentService studentService, ILogger<StudentCo
     /// <response code="500">Internal server error</response>
     // PATCH: api/Student/{id}
     [Authorize(Policy = "PrivilegedPolicy")]
-    [HttpPatch("{id:int}")]
-    public async Task<ActionResult<Student>> PatchStudent(int id, UpdateStudent updateStudent)
+    [HttpPatch("{id:guid}")]
+    public async Task<ActionResult<Student>> PatchStudent(Guid id, UpdateStudent updateStudent)
     {
         try
         {
@@ -146,7 +146,7 @@ public class StudentController(IStudentService studentService, ILogger<StudentCo
             logger.LogInformation("Successfully updated student with ID: {Id}", id);
             return Ok(student);
         }
-        catch (EntityNotFoundException<int> ex)
+        catch (EntityNotFoundException<Guid> ex)
         {
             logger.LogWarning(ex, "Student with ID {Id} not found", id);
             return NotFound($"Student with ID {id} not found");
@@ -174,8 +174,8 @@ public class StudentController(IStudentService studentService, ILogger<StudentCo
     /// <response code="500">Internal server error</response>
     // PATCH: api/Student/{id}/soft-delete
     [Authorize(Policy = "AdminPolicy")]
-    [HttpPatch("{id:int}/soft-delete")]
-    public async Task<ActionResult<SoftDeleteResponse>> SoftDeleteStudent(int id)
+    [HttpPatch("{id:guid}/soft-delete")]
+    public async Task<ActionResult<SoftDeleteResponse>> SoftDeleteStudent(Guid id)
     {
         try
         {
@@ -188,7 +188,7 @@ public class StudentController(IStudentService studentService, ILogger<StudentCo
                 Message = "Student marked as deleted successfully"
             });
         }
-        catch (EntityNotFoundException<int> ex)
+        catch (EntityNotFoundException<Guid> ex)
         {
             logger.LogWarning(ex, "Student with ID {Id} not found", id);
             return NotFound(new SoftDeleteResponse
@@ -226,9 +226,9 @@ public class StudentController(IStudentService studentService, ILogger<StudentCo
     /// <response code="404">Student not found</response>
     /// <response code="401">Not authorized to permanently delete this student</response>
     // DELETE: api/Student/{id}
-    [HttpDelete("{id:int}")]
+    [HttpDelete("{id:guid}")]
     [Authorize(Policy = "AdminPolicy")]
-    public async Task<ActionResult<SoftDeleteResponse>> HardDeleteStudent(int id)
+    public async Task<ActionResult<SoftDeleteResponse>> HardDeleteStudent(Guid id)
     {
         logger.LogInformation("Hard deleting student with ID: {Id}", id);
         var error = await studentService.HardDeleteStudentAsync(id, User);
@@ -245,9 +245,9 @@ public class StudentController(IStudentService studentService, ILogger<StudentCo
     /// <response code="404">Student not found</response>
     /// <response code="401">Not authorized to restore this student</response>
     // PATCH: api/Students/{id}/restore
-    [HttpPatch("{id:int}/restore")]
+    [HttpPatch("{id:guid}/restore")]
     [Authorize(Policy = "AdminPolicy")]
-    public async Task<ActionResult<SoftDeleteResponse>> RestoreStudent(int id)
+    public async Task<ActionResult<SoftDeleteResponse>> RestoreStudent(Guid id)
     {
         logger.LogInformation("Restoring student with ID: {Id}", id);
         var error = await studentService.RestoreStudentAsync(id, User);

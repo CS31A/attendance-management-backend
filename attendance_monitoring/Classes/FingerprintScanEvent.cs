@@ -12,19 +12,18 @@ namespace attendance_monitoring.Classes;
 public class FingerprintScanEvent
 {
     [Key]
-    [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
-    public int Id { get; set; }
+    public Guid Id { get; set; }
 
     public Guid EventId { get; set; } = Guid.NewGuid();
 
     [Required]
-    public int DeviceId { get; set; }
+    public Guid DeviceId { get; set; }
 
-    public int? MatchedStudentId { get; set; }
+    public Guid? MatchedStudentId { get; set; }
 
-    public int? SessionId { get; set; }
+    public Guid? SessionId { get; set; }
 
-    public int? AttendanceRecordId { get; set; }
+    public Guid? AttendanceRecordId { get; set; }
 
     [Precision(5, 4)]
     public decimal? MatchScore { get; set; }

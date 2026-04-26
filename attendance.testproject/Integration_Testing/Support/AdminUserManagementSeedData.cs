@@ -54,6 +54,7 @@ internal static class AdminUserManagementSeedData
         var archivedStudentUser = await CreateUserAsync(userManager, "archived-student", "student.archived@gmail.com", "Student");
         var activeInstructorUser = await CreateUserAsync(userManager, "active-instructor", "instructor.active@gmail.com", "Instructor");
         var conflictStudentUser = await CreateUserAsync(userManager, "conflict-student", "student.conflict@gmail.com", "Student");
+        var orphanedUser = await CreateUserAsync(userManager, "orphaned-user", "orphaned.user@gmail.com", "Student");
 
         dbContext.Admins.Add(new Admin
         {
@@ -71,6 +72,7 @@ internal static class AdminUserManagementSeedData
                 Lastname = "Active",
                 IsRegular = true,
                 SectionId = primarySection.Id,
+                Usn = "TEST-ACTIVE-001",
                 CreatedAt = now,
                 UpdatedAt = now
             },
@@ -81,6 +83,7 @@ internal static class AdminUserManagementSeedData
                 Lastname = "Archived",
                 IsRegular = false,
                 SectionId = primarySection.Id,
+                Usn = "TEST-ARCHIVE-001",
                 CreatedAt = now.AddDays(-3),
                 UpdatedAt = now.AddDays(-1),
                 IsDeleted = true,
@@ -93,6 +96,7 @@ internal static class AdminUserManagementSeedData
                 Lastname = "Conflict",
                 IsRegular = true,
                 SectionId = alternateSection.Id,
+                Usn = "TEST-CONFLICT-001",
                 CreatedAt = now,
                 UpdatedAt = now
             });
@@ -145,8 +149,12 @@ internal static class AdminUserManagementSeedData
             ActiveInstructorEmail = activeInstructorUser.Email!,
             ConflictStudentUserId = conflictStudentUser.Id,
             ConflictStudentEmail = conflictStudentUser.Email!,
+            OrphanedUserId = orphanedUser.Id,
+            OrphanedUserEmail = orphanedUser.Email!,
             PrimarySectionId = primarySection.Id,
+            PrimarySectionUuid = primarySection.Id,
             AlternateSectionId = alternateSection.Id,
+            AlternateSectionUuid = alternateSection.Id,
             ActiveStudentRefreshTokenId = activeStudentRefreshTokenId,
             ControlRefreshTokenId = controlRefreshTokenId
         };

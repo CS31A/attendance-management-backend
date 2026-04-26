@@ -29,7 +29,7 @@ public class AdminDataServiceTests
     public async Task PreviewImport_UsersCsv_WithKnownSection_ReturnsReadyRows()
     {
         await using var context = CreateContext();
-        context.Sections.Add(new Section { Id = 12, Name = "BSCS-1A", CourseId = 4, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow });
+        context.Sections.Add(new Section { Id = Guid.NewGuid(), Name = "BSCS-1A", CourseId = Guid.NewGuid(), CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow });
         await context.SaveChangesAsync();
 
         var accountService = new Mock<IAccountService>();
@@ -54,7 +54,7 @@ public class AdminDataServiceTests
     public async Task PreviewImport_UsersCsv_WithExistingUser_ReturnsDuplicateRow()
     {
         await using var context = CreateContext();
-        context.Sections.Add(new Section { Id = 8, Name = "BSIT-1B", CourseId = 3, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow });
+        context.Sections.Add(new Section { Id = Guid.NewGuid(), Name = "BSIT-1B", CourseId = Guid.NewGuid(), CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow });
         await context.SaveChangesAsync();
 
         var accountService = new Mock<IAccountService>();
@@ -87,9 +87,14 @@ public class AdminDataServiceTests
         await using var context = CreateContext();
         var now = DateTime.UtcNow;
 
+        var subjectId = Guid.NewGuid();
+        var classroomId = Guid.NewGuid();
+        var sectionId = Guid.NewGuid();
+        var instructorId = Guid.NewGuid();
+
         context.Subjects.Add(new Subject
         {
-            Id = 11,
+            Id = subjectId,
             Code = "CS101",
             Name = "Intro to Computing",
             CreatedAt = now,
@@ -97,16 +102,16 @@ public class AdminDataServiceTests
         });
         context.Classrooms.Add(new Classroom
         {
-            Id = 7,
+            Id = classroomId,
             Name = "Lab 1",
             CreatedAt = now,
             UpdatedAt = now,
         });
         context.Sections.Add(new Section
         {
-            Id = 5,
+            Id = sectionId,
             Name = "BSCS-1A",
-            CourseId = 2,
+            CourseId = Guid.NewGuid(),
             CreatedAt = now,
             UpdatedAt = now,
         });
@@ -118,7 +123,7 @@ public class AdminDataServiceTests
         });
         context.Instructors.Add(new Instructor
         {
-            Id = 3,
+            Id = instructorId,
             UserId = "inst-1",
             Firstname = "Ada",
             Lastname = "Lovelace",
@@ -146,7 +151,7 @@ public class AdminDataServiceTests
     public async Task ImportAsync_UsersCsv_ImportsAllRowsBeyondPreviewLimit()
     {
         await using var context = CreateContext();
-        context.Sections.Add(new Section { Id = 12, Name = "BSCS-1A", CourseId = 4, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow });
+        context.Sections.Add(new Section { Id = Guid.NewGuid(), Name = "BSCS-1A", CourseId = Guid.NewGuid(), CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow });
         await context.SaveChangesAsync();
 
         var accountService = new Mock<IAccountService>();
@@ -181,10 +186,14 @@ public class AdminDataServiceTests
     {
         await using var context = CreateContext();
         var now = DateTime.UtcNow;
+        var subjectId = Guid.NewGuid();
+        var classroomId = Guid.NewGuid();
+        var sectionId = Guid.NewGuid();
+        var instructorId = Guid.NewGuid();
 
         context.Subjects.Add(new Subject
         {
-            Id = 11,
+            Id = subjectId,
             Code = "CS101",
             Name = "Intro to Computing",
             CreatedAt = now,
@@ -192,16 +201,16 @@ public class AdminDataServiceTests
         });
         context.Classrooms.Add(new Classroom
         {
-            Id = 7,
+            Id = classroomId,
             Name = "Lab 1",
             CreatedAt = now,
             UpdatedAt = now,
         });
         context.Sections.Add(new Section
         {
-            Id = 5,
+            Id = sectionId,
             Name = "BSCS-1A",
-            CourseId = 2,
+            CourseId = Guid.NewGuid(),
             CreatedAt = now,
             UpdatedAt = now,
         });
@@ -213,7 +222,7 @@ public class AdminDataServiceTests
         });
         context.Instructors.Add(new Instructor
         {
-            Id = 3,
+            Id = instructorId,
             UserId = "inst-1",
             Firstname = "Ada",
             Lastname = "Lovelace",
@@ -222,14 +231,14 @@ public class AdminDataServiceTests
         });
         context.Schedules.Add(new Schedules
         {
-            Id = 19,
+            Id = Guid.NewGuid(),
             DayOfWeek = "Monday",
             TimeIn = new TimeOnly(8, 0),
             TimeOut = new TimeOnly(16, 0),
-            SubjectId = 11,
-            ClassroomId = 7,
-            SectionId = 5,
-            InstructorId = 3,
+            SubjectId = subjectId,
+            ClassroomId = classroomId,
+            SectionId = sectionId,
+            InstructorId = instructorId,
             CreatedAt = now,
             UpdatedAt = now,
         });
@@ -354,12 +363,17 @@ public class AdminDataServiceTests
         await using var context = CreateContext();
         var now = DateTime.UtcNow;
 
-        context.Subjects.Add(new Subject { Id = 10, Code = "CS101", Name = "Computing", CreatedAt = now, UpdatedAt = now });
-        context.Classrooms.Add(new Classroom { Id = 5, Name = "Room A", CreatedAt = now, UpdatedAt = now });
-        context.Sections.Add(new Section { Id = 3, Name = "BSCS-1A", CourseId = 1, CreatedAt = now, UpdatedAt = now });
+        context.Subjects.Add(new Subject { Id = Guid.NewGuid(), Code = "CS101", Name = "Computing", CreatedAt = now, UpdatedAt = now });
+        context.Classrooms.Add(new Classroom { Id = Guid.NewGuid(), Name = "Room A", CreatedAt = now, UpdatedAt = now });
+        context.Sections.Add(new Section { Id = Guid.NewGuid(), Name = "BSCS-1A", CourseId = Guid.NewGuid(), CreatedAt = now, UpdatedAt = now });
         context.Users.Add(new IdentityUser { Id = "i-1", Email = "prof@x.com", UserName = "prof@x.com" });
-        context.Instructors.Add(new Instructor { Id = 2, UserId = "i-1", Firstname = "P", Lastname = "Q", CreatedAt = now, UpdatedAt = now });
+        context.Instructors.Add(new Instructor { Id = Guid.NewGuid(), UserId = "i-1", Firstname = "P", Lastname = "Q", CreatedAt = now, UpdatedAt = now });
         await context.SaveChangesAsync();
+
+        var expectedSubjectId = await context.Subjects.Select(subject => subject.Id).SingleAsync();
+        var expectedClassroomId = await context.Classrooms.Select(classroom => classroom.Id).SingleAsync();
+        var expectedSectionId = await context.Sections.Select(section => section.Id).SingleAsync();
+        var expectedInstructorId = await context.Instructors.Select(instructor => instructor.Id).SingleAsync();
 
         var accountService = new Mock<IAccountService>();
         accountService.Setup(s => s.GetAllUsersAsync(It.IsAny<UserStatus>()))
@@ -386,18 +400,18 @@ public class AdminDataServiceTests
         var secondCall = scheduleService.Invocations[1].Arguments[0] as CreateSchedule;
         Assert.NotNull(firstCall);
         Assert.NotNull(secondCall);
-        Assert.Equal(10, firstCall.SubjectId);
-        Assert.Equal(5, firstCall.ClassroomId);
-        Assert.Equal(3, firstCall.SectionId);
-        Assert.Equal(2, firstCall.InstructorId);
-        Assert.Equal(10, secondCall.SubjectId);
+        Assert.Equal(expectedSubjectId, firstCall.SubjectId);
+        Assert.Equal(expectedClassroomId, firstCall.ClassroomId);
+        Assert.Equal(expectedSectionId, firstCall.SectionId);
+        Assert.Equal(expectedInstructorId, firstCall.InstructorId);
+        Assert.Equal(expectedSubjectId, secondCall.SubjectId);
     }
 
     [Fact]
     public async Task ImportAsync_SectionsCsv_UsesLookupCacheInsteadOfPerRowQueries()
     {
         await using var context = CreateContext();
-        context.Courses.Add(new Course { Id = 7, Name = "CS", CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow });
+        context.Courses.Add(new Course { Id = Guid.NewGuid(), Name = "CS", CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow });
         await context.SaveChangesAsync();
 
         var accountService = new Mock<IAccountService>();
@@ -420,8 +434,9 @@ public class AdminDataServiceTests
         var secondSection = sectionService.Invocations[1].Arguments[0] as Section;
         Assert.NotNull(firstSection);
         Assert.NotNull(secondSection);
-        Assert.Equal(7, firstSection.CourseId);
-        Assert.Equal(7, secondSection.CourseId);
+        var expectedCourseId = await context.Courses.Select(course => course.Id).SingleAsync();
+        Assert.Equal(expectedCourseId, firstSection.CourseId);
+        Assert.Equal(expectedCourseId, secondSection.CourseId);
     }
 
     [Fact]
@@ -431,9 +446,9 @@ public class AdminDataServiceTests
         var now = DateTime.UtcNow;
 
         context.Users.Add(new IdentityUser { Id = "s-1", Email = "student@x.com", UserName = "student@x.com" });
-        context.Students.Add(new Student { Id = 20, UserId = "s-1", SectionId = 3, CreatedAt = now, UpdatedAt = now });
-        context.Sections.Add(new Section { Id = 3, Name = "BSCS-1A", CourseId = 1, CreatedAt = now, UpdatedAt = now });
-        context.Subjects.Add(new Subject { Id = 11, Code = "CS101", Name = "Computing", CreatedAt = now, UpdatedAt = now });
+        context.Students.Add(new Student { Id = Guid.NewGuid(), UserId = "s-1", SectionId = Guid.NewGuid(), CreatedAt = now, UpdatedAt = now });
+        context.Sections.Add(new Section { Id = Guid.NewGuid(), Name = "BSCS-1A", CourseId = Guid.NewGuid(), CreatedAt = now, UpdatedAt = now });
+        context.Subjects.Add(new Subject { Id = Guid.NewGuid(), Code = "CS101", Name = "Computing", CreatedAt = now, UpdatedAt = now });
         await context.SaveChangesAsync();
 
         var accountService = new Mock<IAccountService>();
@@ -441,7 +456,7 @@ public class AdminDataServiceTests
             .ReturnsAsync(Array.Empty<GetAllUsersDto>());
 
         var enrollmentService = new Mock<IStudentEnrollmentService>();
-        enrollmentService.Setup(s => s.EnrollStudentAsync(It.IsAny<int>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<string?>()))
+        enrollmentService.Setup(s => s.EnrollStudentAsync(It.IsAny<CreateStudentEnrollment>()))
             .ReturnsAsync(new StudentEnrollment());
 
         var service = CreateService(context, accountService.Object, enrollmentService: enrollmentService.Object);
@@ -454,14 +469,18 @@ public class AdminDataServiceTests
         Assert.True(result.Success);
         Assert.Equal(1, result.CreatedRows);
 
-        enrollmentService.Verify(s => s.EnrollStudentAsync(20, 3, 11, "Regular", "2024-2025", "1st"), Times.Once);
+        enrollmentService.Verify(s => s.EnrollStudentAsync(It.Is<CreateStudentEnrollment>(e =>
+            e.EnrollmentType == "Regular" &&
+            e.AcademicYear == "2024-2025" &&
+            e.Semester == "1st")), Times.Once);
     }
 
     [Fact]
     public async Task ImportAsync_UsersCsv_UsesLookupCacheForSectionId()
     {
         await using var context = CreateContext();
-        context.Sections.Add(new Section { Id = 12, Name = "BSCS-1A", CourseId = 4, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow });
+        var sectionUuid = Guid.Parse("aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee");
+        context.Sections.Add(new Section { Id = sectionUuid, Name = "BSCS-1A", CourseId = Guid.NewGuid(), CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow });
         await context.SaveChangesAsync();
 
         var accountService = new Mock<IAccountService>();
@@ -483,7 +502,7 @@ public class AdminDataServiceTests
         var registerDto = accountService.Invocations
             .First(i => i.Method.Name == "RegisterAsync").Arguments[0] as RegisterDto;
         Assert.NotNull(registerDto);
-        Assert.Equal(12, registerDto.SectionId);
+        Assert.Equal(sectionUuid, registerDto.SectionId);
     }
 
     // === Atomicity tests (use SQLite for real transaction support) ===
@@ -515,7 +534,7 @@ public class AdminDataServiceTests
             {
                 Id = section.Id,
                 Name = section.Name,
-                CourseId = section.CourseId,
+                CourseId = section.Course?.Id,
             });
 
         var service = CreateService(context, accountService.Object, sectionService: sectionService.Object);
@@ -563,7 +582,7 @@ public class AdminDataServiceTests
             {
                 Id = section.Id,
                 Name = section.Name,
-                CourseId = section.CourseId,
+                CourseId = section.Course?.Id,
             });
 
         var service = CreateService(context, accountService.Object, sectionService: sectionService.Object);
@@ -608,7 +627,7 @@ public class AdminDataServiceTests
             {
                 Id = section.Id,
                 Name = section.Name,
-                CourseId = section.CourseId,
+                CourseId = section.Course?.Id,
             });
 
         var service = CreateService(context, accountService.Object, sectionService: sectionService.Object);
@@ -657,7 +676,7 @@ public class AdminDataServiceTests
             {
                 Id = section.Id,
                 Name = section.Name,
-                CourseId = section.CourseId,
+                CourseId = section.Course?.Id,
             });
 
         var service = CreateService(context, accountService.Object, sectionService: sectionService.Object);
@@ -715,7 +734,7 @@ public class AdminDataServiceTests
             {
                 Id = section.Id,
                 Name = section.Name,
-                CourseId = section.CourseId,
+                CourseId = section.Course?.Id,
             });
 
         var service = CreateService(context, accountService.Object, sectionService: sectionService.Object);
@@ -853,7 +872,7 @@ public class AdminDataServiceTests
     public async Task ImportAsync_WhenAnalysisContainsInvalidRows_DoesNotInvokeCreateServices()
     {
         await using var context = CreateContext();
-        context.Sections.Add(new Section { Id = 12, Name = "BSCS-1A", CourseId = 4, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow });
+        context.Sections.Add(new Section { Id = Guid.NewGuid(), Name = "BSCS-1A", CourseId = Guid.NewGuid(), CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow });
         await context.SaveChangesAsync();
 
         var accountService = new Mock<IAccountService>();
@@ -882,7 +901,7 @@ public class AdminDataServiceTests
         var uniqueCourseName = $"Course-{Guid.NewGuid()}";
         var courseService = new Mock<ICourseService>();
         courseService.Setup(s => s.CreateCourseAsync(It.IsAny<CreateCourse>(), It.IsAny<ClaimsPrincipal>()))
-            .ReturnsAsync(new Course { Id = 1, Name = uniqueCourseName, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow });
+            .ReturnsAsync(new Course { Id = Guid.NewGuid(), Name = uniqueCourseName, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow });
 
         var principal = CreatePrincipal();
         var service = CreateService(context, accountService.Object, courseService: courseService.Object);
@@ -905,7 +924,7 @@ public class AdminDataServiceTests
 
         var subjectService = new Mock<ISubjectService>();
         subjectService.Setup(s => s.CreateSubjectAsync(It.IsAny<CreateSubject>()))
-            .ReturnsAsync(new Subject { Id = 1, Code = "CS101", Name = "Intro to Computing", CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow });
+            .ReturnsAsync(new Subject { Id = Guid.NewGuid(), Code = "CS101", Name = "Intro to Computing", CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow });
 
         var service = CreateService(context, accountService.Object, subjectService: subjectService.Object);
         var file = CreateFormFile("subjects.csv", "code,name\nCS101,Intro to Computing\n");
@@ -924,9 +943,9 @@ public class AdminDataServiceTests
         var now = DateTime.UtcNow;
 
         context.Users.Add(new IdentityUser { Id = "s-1", Email = "student@x.com", UserName = "student@x.com" });
-        context.Students.Add(new Student { Id = 20, UserId = "s-1", SectionId = 3, CreatedAt = now, UpdatedAt = now });
-        context.Sections.Add(new Section { Id = 3, Name = "BSCS-1A", CourseId = 1, CreatedAt = now, UpdatedAt = now });
-        context.Subjects.Add(new Subject { Id = 11, Code = "CS101", Name = "Computing", CreatedAt = now, UpdatedAt = now });
+        context.Students.Add(new Student { Id = Guid.NewGuid(), UserId = "s-1", SectionId = Guid.NewGuid(), CreatedAt = now, UpdatedAt = now });
+        context.Sections.Add(new Section { Id = Guid.NewGuid(), Name = "BSCS-1A", CourseId = Guid.NewGuid(), CreatedAt = now, UpdatedAt = now });
+        context.Subjects.Add(new Subject { Id = Guid.NewGuid(), Code = "CS101", Name = "Computing", CreatedAt = now, UpdatedAt = now });
         await context.SaveChangesAsync();
 
         var accountService = new Mock<IAccountService>();
@@ -934,7 +953,7 @@ public class AdminDataServiceTests
             .ReturnsAsync(Array.Empty<GetAllUsersDto>());
 
         var enrollmentService = new Mock<IStudentEnrollmentService>();
-        enrollmentService.Setup(s => s.EnrollStudentAsync(It.IsAny<int>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<string?>()))
+        enrollmentService.Setup(s => s.EnrollStudentAsync(It.IsAny<CreateStudentEnrollment>()))
             .ReturnsAsync(new StudentEnrollment());
 
         var service = CreateService(context, accountService.Object, enrollmentService: enrollmentService.Object);
@@ -944,7 +963,10 @@ public class AdminDataServiceTests
 
         Assert.True(result.Success);
         Assert.Equal(1, result.CreatedRows);
-        enrollmentService.Verify(s => s.EnrollStudentAsync(20, 3, 11, "Regular", null, null), Times.Once);
+        enrollmentService.Verify(s => s.EnrollStudentAsync(It.Is<CreateStudentEnrollment>(e =>
+            e.EnrollmentType == "Regular" &&
+            e.AcademicYear == null &&
+            e.Semester == null)), Times.Once);
     }
 
     [Fact]
@@ -957,8 +979,8 @@ public class AdminDataServiceTests
         subjectService.Setup(s => s.GetAllSubjectsAsync())
             .ReturnsAsync(new[]
             {
-                new Subject { Id = 1, Code = "CS101", Name = "Intro to Computing", CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow },
-                new Subject { Id = 2, Code = "CS102", Name = "Data Structures", CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow },
+                new Subject { Id = Guid.NewGuid(), Code = "CS101", Name = "Intro to Computing", CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow },
+                new Subject { Id = Guid.NewGuid(), Code = "CS102", Name = "Data Structures", CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow },
             });
 
         var service = CreateService(context, accountService.Object, subjectService: subjectService.Object);
@@ -988,8 +1010,8 @@ public class AdminDataServiceTests
         courseService.Setup(s => s.GetAllCoursesAsync())
             .ReturnsAsync(new[]
             {
-                new Course { Id = 1, Name = "Computer Science", CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow },
-                new Course { Id = 2, Name = "Information Technology", CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow },
+                new Course { Id = Guid.NewGuid(), Name = "Computer Science", CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow },
+                new Course { Id = Guid.NewGuid(), Name = "Information Technology", CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow },
             });
 
         var service = CreateService(context, accountService.Object, courseService: courseService.Object);
@@ -1013,9 +1035,10 @@ public class AdminDataServiceTests
         await using var context = CreateContext();
         var now = DateTime.UtcNow;
 
-        context.Courses.Add(new Course { Id = 1, Name = "Computer Science", CreatedAt = now, UpdatedAt = now });
-        context.Sections.Add(new Section { Id = 1, Name = "BSCS-1A", CourseId = 1, CreatedAt = now, UpdatedAt = now });
-        context.Sections.Add(new Section { Id = 2, Name = "BSCS-1B", CourseId = 1, CreatedAt = now, UpdatedAt = now });
+        var courseId = Guid.NewGuid();
+        context.Courses.Add(new Course { Id = courseId, Name = "Computer Science", CreatedAt = now, UpdatedAt = now });
+        context.Sections.Add(new Section { Id = Guid.NewGuid(), Name = "BSCS-1A", CourseId = courseId, CreatedAt = now, UpdatedAt = now });
+        context.Sections.Add(new Section { Id = Guid.NewGuid(), Name = "BSCS-1B", CourseId = courseId, CreatedAt = now, UpdatedAt = now });
         await context.SaveChangesAsync();
 
         var accountService = new Mock<IAccountService>();
@@ -1048,8 +1071,8 @@ public class AdminDataServiceTests
         classroomService.Setup(s => s.GetAllClassroomsAsync())
             .ReturnsAsync(new[]
             {
-                new Classroom { Id = 1, Name = "Lab 1", CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow },
-                new Classroom { Id = 2, Name = "Lab 2", CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow },
+                new Classroom { Id = Guid.NewGuid(), Name = "Lab 1", CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow },
+                new Classroom { Id = Guid.NewGuid(), Name = "Lab 2", CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow },
             });
 
         var service = CreateService(context, accountService.Object, classroomService: classroomService.Object);
@@ -1073,11 +1096,11 @@ public class AdminDataServiceTests
         await using var context = CreateContext();
         var now = DateTime.UtcNow;
 
-        context.Subjects.Add(new Subject { Id = 1, Code = "CS101", Name = "Intro to Computing", CreatedAt = now, UpdatedAt = now });
-        context.Classrooms.Add(new Classroom { Id = 1, Name = "Lab 1", CreatedAt = now, UpdatedAt = now });
-        context.Sections.Add(new Section { Id = 1, Name = "BSCS-1A", CourseId = 1, CreatedAt = now, UpdatedAt = now });
+        context.Subjects.Add(new Subject { Id = Guid.NewGuid(), Code = "CS101", Name = "Intro to Computing", CreatedAt = now, UpdatedAt = now });
+        context.Classrooms.Add(new Classroom { Id = Guid.NewGuid(), Name = "Lab 1", CreatedAt = now, UpdatedAt = now });
+        context.Sections.Add(new Section { Id = Guid.NewGuid(), Name = "BSCS-1A", CourseId = Guid.NewGuid(), CreatedAt = now, UpdatedAt = now });
         context.Users.Add(new IdentityUser { Id = "inst-1", Email = "teacher@example.com", UserName = "teacher@example.com" });
-        context.Instructors.Add(new Instructor { Id = 1, UserId = "inst-1", Firstname = "Ada", Lastname = "Lovelace", CreatedAt = now, UpdatedAt = now });
+        context.Instructors.Add(new Instructor { Id = Guid.NewGuid(), UserId = "inst-1", Firstname = "Ada", Lastname = "Lovelace", CreatedAt = now, UpdatedAt = now });
         await context.SaveChangesAsync();
 
         var accountService = new Mock<IAccountService>();
@@ -1090,14 +1113,14 @@ public class AdminDataServiceTests
             {
                 new ScheduleResponseDto
                 {
-                    Id = 1,
+                    Id = Guid.Parse("11111111-1111-1111-1111-111111111111"),
                     DayOfWeek = "Monday",
                     TimeIn = new TimeOnly(8, 0),
                     TimeOut = new TimeOnly(10, 0),
-                    Subject = new SubjectResponseDto { Id = 1, Code = "CS101", Name = "Intro to Computing", CreatedAt = now, UpdatedAt = now },
-                    Section = new SectionResponseDto { Id = 1, Name = "BSCS-1A", CourseId = 1, CreatedAt = now, UpdatedAt = now },
-                    Classroom = new ClassroomResponseDto { Id = 1, Name = "Lab 1", CreatedAt = now, UpdatedAt = now },
-                    Instructor = new InstructorResponseDto { Id = 1, Firstname = "Ada", Lastname = "Lovelace", Email = "teacher@example.com" },
+                    Subject = new SubjectResponseDto { Id = Guid.Parse("22222222-2222-2222-2222-222222222222"), Code = "CS101", Name = "Intro to Computing", CreatedAt = now, UpdatedAt = now },
+                    Section = new SectionResponseDto { Id = Guid.Parse("33333333-3333-3333-3333-333333333333"), Name = "BSCS-1A", CourseId = Guid.Parse("44444444-4444-4444-4444-444444444444"), CreatedAt = now, UpdatedAt = now },
+                    Classroom = new ClassroomResponseDto { Id = Guid.Parse("55555555-5555-5555-5555-555555555555"), Name = "Lab 1", CreatedAt = now, UpdatedAt = now },
+                    Instructor = new InstructorResponseDto { Id = Guid.Parse("66666666-6666-6666-6666-666666666666"), Firstname = "Ada", Lastname = "Lovelace", Email = "teacher@example.com" },
                     CreatedAt = now,
                     UpdatedAt = now,
                 },
@@ -1188,16 +1211,19 @@ public class AdminDataServiceTests
         await using var context = CreateContext();
         var now = DateTime.UtcNow;
 
+        var studentId = Guid.NewGuid();
+        var sectionId = Guid.NewGuid();
+        var subjectId = Guid.NewGuid();
         context.Users.Add(new IdentityUser { Id = "s-1", Email = "student@x.com", UserName = "student@x.com" });
-        context.Students.Add(new Student { Id = 20, UserId = "s-1", SectionId = 3, CreatedAt = now, UpdatedAt = now });
-        context.Sections.Add(new Section { Id = 3, Name = "BSCS-1A", CourseId = 1, CreatedAt = now, UpdatedAt = now });
-        context.Subjects.Add(new Subject { Id = 11, Code = "CS101", Name = "Computing", CreatedAt = now, UpdatedAt = now });
+        context.Students.Add(new Student { Id = studentId, UserId = "s-1", SectionId = sectionId, CreatedAt = now, UpdatedAt = now });
+        context.Sections.Add(new Section { Id = sectionId, Name = "BSCS-1A", CourseId = Guid.NewGuid(), CreatedAt = now, UpdatedAt = now });
+        context.Subjects.Add(new Subject { Id = subjectId, Code = "CS101", Name = "Computing", CreatedAt = now, UpdatedAt = now });
         context.StudentEnrollments.Add(new StudentEnrollment
         {
-            Id = 1,
-            StudentId = 20,
-            SectionId = 3,
-            SubjectId = 11,
+            Id = Guid.NewGuid(),
+            StudentId = studentId,
+            SectionId = sectionId,
+            SubjectId = subjectId,
             EnrollmentType = "Regular",
             AcademicYear = "2024-2025",
             Semester = "1st",
@@ -1235,17 +1261,21 @@ public class AdminDataServiceTests
         await using var context = CreateContext();
         var now = DateTime.UtcNow;
 
+        var studentId = Guid.NewGuid();
+        var sectionAId = Guid.NewGuid();
+        var sectionBId = Guid.NewGuid();
+        var subjectId = Guid.NewGuid();
         context.Users.Add(new IdentityUser { Id = "s-1", Email = "student@x.com", UserName = "student@x.com" });
-        context.Students.Add(new Student { Id = 20, UserId = "s-1", SectionId = 3, CreatedAt = now, UpdatedAt = now });
-        context.Sections.Add(new Section { Id = 3, Name = "BSCS-1A", CourseId = 1, CreatedAt = now, UpdatedAt = now });
-        context.Sections.Add(new Section { Id = 4, Name = "BSCS-1B", CourseId = 1, CreatedAt = now, UpdatedAt = now });
-        context.Subjects.Add(new Subject { Id = 11, Code = "CS101", Name = "Computing", CreatedAt = now, UpdatedAt = now });
+        context.Students.Add(new Student { Id = studentId, UserId = "s-1", SectionId = sectionAId, CreatedAt = now, UpdatedAt = now });
+        context.Sections.Add(new Section { Id = sectionAId, Name = "BSCS-1A", CourseId = Guid.NewGuid(), CreatedAt = now, UpdatedAt = now });
+        context.Sections.Add(new Section { Id = sectionBId, Name = "BSCS-1B", CourseId = Guid.NewGuid(), CreatedAt = now, UpdatedAt = now });
+        context.Subjects.Add(new Subject { Id = subjectId, Code = "CS101", Name = "Computing", CreatedAt = now, UpdatedAt = now });
         context.StudentEnrollments.Add(new StudentEnrollment
         {
-            Id = 1,
-            StudentId = 20,
-            SectionId = 3,
-            SubjectId = 11,
+            Id = Guid.NewGuid(),
+            StudentId = studentId,
+            SectionId = sectionAId,
+            SubjectId = subjectId,
             EnrollmentType = "Regular",
             AcademicYear = "2024-2025",
             Semester = "1st",
@@ -1254,10 +1284,10 @@ public class AdminDataServiceTests
         });
         context.StudentEnrollments.Add(new StudentEnrollment
         {
-            Id = 2,
-            StudentId = 20,
-            SectionId = 4,
-            SubjectId = 11,
+            Id = Guid.NewGuid(),
+            StudentId = studentId,
+            SectionId = sectionBId,
+            SubjectId = subjectId,
             EnrollmentType = "Regular",
             AcademicYear = "2024-2025",
             Semester = "1st",
@@ -1290,10 +1320,10 @@ public class AdminDataServiceTests
         var now = DateTime.UtcNow;
 
         context.Users.Add(new IdentityUser { Id = "s-1", Email = "student@x.com", UserName = "student@x.com" });
-        context.Students.Add(new Student { Id = 20, UserId = "s-1", SectionId = 3, CreatedAt = now, UpdatedAt = now });
-        context.Sections.Add(new Section { Id = 3, Name = "BSCS-1A", CourseId = 1, CreatedAt = now, UpdatedAt = now });
-        context.Sections.Add(new Section { Id = 4, Name = "BSCS-1B", CourseId = 1, CreatedAt = now, UpdatedAt = now });
-        context.Subjects.Add(new Subject { Id = 11, Code = "CS101", Name = "Computing", CreatedAt = now, UpdatedAt = now });
+        context.Students.Add(new Student { Id = Guid.NewGuid(), UserId = "s-1", SectionId = Guid.NewGuid(), CreatedAt = now, UpdatedAt = now });
+        context.Sections.Add(new Section { Id = Guid.NewGuid(), Name = "BSCS-1A", CourseId = Guid.NewGuid(), CreatedAt = now, UpdatedAt = now });
+        context.Sections.Add(new Section { Id = Guid.NewGuid(), Name = "BSCS-1B", CourseId = Guid.NewGuid(), CreatedAt = now, UpdatedAt = now });
+        context.Subjects.Add(new Subject { Id = Guid.NewGuid(), Code = "CS101", Name = "Computing", CreatedAt = now, UpdatedAt = now });
         await context.SaveChangesAsync();
 
         var accountService = new Mock<IAccountService>();
@@ -1413,7 +1443,7 @@ public class AdminDataServiceTests
         await setupContext.Database.EnsureCreatedAsync();
 
         // Pre-seed the course that all section import tests depend on
-        setupContext.Courses.Add(new Course { Id = 1, Name = "CS", CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow });
+        setupContext.Courses.Add(new Course { Id = Guid.NewGuid(), Name = "CS", CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow });
         await setupContext.SaveChangesAsync();
 
         return new SqliteTestDatabase(connection, options);

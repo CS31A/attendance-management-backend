@@ -7,6 +7,7 @@ namespace attendance_monitoring.Exceptions
     /// Generic exception thrown when an entity is not found
     /// </summary>
     /// <typeparam name="TKey">The type of the entity's identifier (e.g., int, string, Guid)</typeparam>
+    [Serializable]
     public class EntityNotFoundException<TKey> : Exception
     {
         public string EntityName { get; } = null!;

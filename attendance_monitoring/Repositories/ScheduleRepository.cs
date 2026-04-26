@@ -22,6 +22,7 @@ namespace attendance_monitoring.Repositories
                 .Include(s => s.Subject)
                 .Include(s => s.Classroom)
                 .Include(s => s.Section)
+                    .ThenInclude(section => section.Course)
                 .Include(s => s.Instructor)
                     .ThenInclude(i => i.User)
                 .ToListAsync();
@@ -29,13 +30,14 @@ namespace attendance_monitoring.Repositories
         #endregion
 
         #region GetScheduleByIdAsync
-        public async Task<Schedules?> GetScheduleByIdAsync(int id)
+        public async Task<Schedules?> GetScheduleByIdAsync(Guid id)
         {
             return await context.Schedules
                 .AsNoTracking()
                 .Include(s => s.Subject)
                 .Include(s => s.Classroom)
                 .Include(s => s.Section)
+                    .ThenInclude(section => section.Course)
                 .Include(s => s.Instructor)
                     .ThenInclude(i => i.User)
                 .FirstOrDefaultAsync(s => s.Id == id);
@@ -43,26 +45,58 @@ namespace attendance_monitoring.Repositories
         #endregion
 
         #region GetScheduleByIdTrackedAsync
-        public async Task<Schedules?> GetScheduleByIdTrackedAsync(int id)
+        public async Task<Schedules?> GetScheduleByIdTrackedAsync(Guid id)
         {
             return await context.Schedules
                 .Include(s => s.Subject)
                 .Include(s => s.Classroom)
                 .Include(s => s.Section)
+                    .ThenInclude(section => section.Course)
                 .Include(s => s.Instructor)
                     .ThenInclude(i => i.User)
                 .FirstOrDefaultAsync(s => s.Id == id);
         }
         #endregion
 
+        #region GetScheduleByUuidAsync
+        public async Task<Schedules?> GetScheduleByUuidAsync(Guid id)
+        {
+            var scheduleId = await context.Schedules
+                .AsNoTracking()
+                .Where(s => s.Id == id)
+                .Select(s => (Guid?)s.Id)
+                .SingleOrDefaultAsync();
+
+            return scheduleId.HasValue
+                ? await GetScheduleByIdAsync(scheduleId.Value)
+                : null;
+        }
+        #endregion
+
+        #region GetScheduleByUuidTrackedAsync
+        public async Task<Schedules?> GetScheduleByUuidTrackedAsync(Guid id)
+        {
+            var scheduleId = await context.Schedules
+                .AsNoTracking()
+                .Where(s => s.Id == id)
+                .Select(s => (Guid?)s.Id)
+                .SingleOrDefaultAsync();
+
+            return scheduleId.HasValue
+                ? await GetScheduleByIdTrackedAsync(scheduleId.Value)
+                : null;
+        }
+        #endregion
+
         #region GetSchedulesByInstructorIdAsync
-        public async Task<IEnumerable<Schedules>> GetSchedulesByInstructorIdAsync(int instructorId)
+        public async Task<IEnumerable<Schedules>> GetSchedulesByInstructorIdAsync(Guid instructorId)
         {
             return await context.Schedules
                 .AsNoTracking()
                 .Include(s => s.Subject)
                 .Include(s => s.Classroom)
                 .Include(s => s.Section)
+                    .ThenInclude(section => section.Course)
                 .Include(s => s.Instructor)
                     .ThenInclude(i => i.User)
                 .Where(s => s.InstructorId == instructorId)
@@ -71,13 +105,14 @@ namespace attendance_monitoring.Repositories
         #endregion
 
         #region GetSchedulesBySectionIdAsync
-        public async Task<IEnumerable<Schedules>> GetSchedulesBySectionIdAsync(int sectionId)
+        public async Task<IEnumerable<Schedules>> GetSchedulesBySectionIdAsync(Guid sectionId)
         {
             return await context.Schedules
                 .AsNoTracking()
                 .Include(s => s.Subject)
                 .Include(s => s.Classroom)
                 .Include(s => s.Section)
+                    .ThenInclude(section => section.Course)
                 .Include(s => s.Instructor)
                     .ThenInclude(i => i.User)
                 .Where(s => s.SectionId == sectionId)
@@ -86,7 +121,7 @@ namespace attendance_monitoring.Repositories
         #endregion
 
         #region GetSubjectsByInstructorIdAsync
-        public async Task<IEnumerable<Subject>> GetSubjectsByInstructorIdAsync(int instructorId)
+        public async Task<IEnumerable<Subject>> GetSubjectsByInstructorIdAsync(Guid instructorId)
         {
             return await context.Schedules
                 .AsNoTracking()
@@ -104,13 +139,14 @@ namespace attendance_monitoring.Repositories
         /// Used for finding active sessions for a student.
         /// </summary>
         public async Task<IEnumerable<Schedules>> GetSchedulesBySectionsAndSubjectsAsync(
-            IEnumerable<int> sectionIds,
-            IEnumerable<int> subjectIds)
+            IEnumerable<Guid> sectionIds,
+            IEnumerable<Guid> subjectIds)
         {
             return await context.Schedules
                 .AsNoTracking()
                 .Include(s => s.Subject)
                 .Include(s => s.Section)
+                    .ThenInclude(section => section.Course)
                 .Include(s => s.Classroom)
                 .Include(s => s.Instructor)
                 .Where(s => sectionIds.Contains(s.SectionId) && subjectIds.Contains(s.SubjectId))
@@ -147,7 +183,7 @@ namespace attendance_monitoring.Repositories
         #endregion
 
         #region DeleteScheduleAsync
-        public async Task<bool> DeleteScheduleAsync(int id)
+        public async Task<bool> DeleteScheduleAsync(Guid id)
         {
             var schedule = await context.Schedules.FindAsync(id);
             if (schedule == null)
@@ -161,7 +197,7 @@ namespace attendance_monitoring.Repositories
         #endregion
 
         #region HasSessionsInScheduleAsync
-        public async Task<bool> HasSessionsInScheduleAsync(int id)
+        public async Task<bool> HasSessionsInScheduleAsync(Guid id)
         {
             return await context.Sessions
                 .AsNoTracking()

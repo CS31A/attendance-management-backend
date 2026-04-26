@@ -9,12 +9,13 @@ public interface IStudentService
 {
     Task<IList<Student>> GetAllStudentsAsync();
     Task<IList<StudentListDto>> GetAllNonDeletedStudentsAsync();
-    Task<Student> GetStudentByIdAsync(int id);
+    Task<Student> GetStudentByIdAsync(Guid id);
+    Task<Student> GetStudentByUuidAsync(Guid id);
     Task<Student> CreateStudentAsync(CreateStudent createStudent, ClaimsPrincipal user);
-    Task<Student> UpdateStudentAsync(int id, UpdateStudent updateStudent, ClaimsPrincipal user);
-    Task SoftDeleteStudentAsync(int id, ClaimsPrincipal user);
-    Task<string?> HardDeleteStudentAsync(int id, ClaimsPrincipal user);
-    Task<string?> RestoreStudentAsync(int id, ClaimsPrincipal user);
+    Task<Student> UpdateStudentAsync(Guid id, UpdateStudent updateStudent, ClaimsPrincipal user);
+    Task SoftDeleteStudentAsync(Guid id, ClaimsPrincipal user);
+    Task<string?> HardDeleteStudentAsync(Guid id, ClaimsPrincipal user);
+    Task<string?> RestoreStudentAsync(Guid id, ClaimsPrincipal user);
     Task<IEnumerable<StudentSubjectResponseDto>> GetStudentSubjectsAsync(ClaimsPrincipal user);
     Task<IEnumerable<StudentListDto>> SearchStudentsByNameAsync(string searchTerm, int pageNumber, int pageSize);
     Task<IEnumerable<StudentListDto>> SearchStudentsByEmailAsync(string searchTerm, int pageNumber, int pageSize);

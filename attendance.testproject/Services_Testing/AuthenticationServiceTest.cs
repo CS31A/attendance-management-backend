@@ -74,7 +74,6 @@ public class AuthenticationServiceTest : IDisposable
     {
         return new RefreshToken
         {
-            Id = 1,
             UserId = userId,
             TokenHash = "hashed-token",
             ExpiresAt = expiresAt ?? DateTime.UtcNow.AddDays(7),
@@ -1060,9 +1059,7 @@ public class AuthenticationServiceTest : IDisposable
 
         // Add active refresh tokens to the database with unique IDs
         var token1 = CreateTestRefreshToken(userId, isRevoked: false);
-        token1.Id = 1;
         var token2 = CreateTestRefreshToken(userId, isRevoked: false);
-        token2.Id = 2;
         _context.RefreshTokens.Add(token1);
         _context.RefreshTokens.Add(token2);
         await _context.SaveChangesAsync();
@@ -1105,9 +1102,7 @@ public class AuthenticationServiceTest : IDisposable
 
         // Add active refresh tokens to the database with unique IDs
         var token1 = CreateTestRefreshToken(userId, isRevoked: false);
-        token1.Id = 3;
         var token2 = CreateTestRefreshToken(userId, isRevoked: false);
-        token2.Id = 4;
         _context.RefreshTokens.Add(token1);
         _context.RefreshTokens.Add(token2);
         await _context.SaveChangesAsync();
@@ -1172,7 +1167,6 @@ public class AuthenticationServiceTest : IDisposable
 
         // Add active refresh tokens to the database with unique ID
         var token1 = CreateTestRefreshToken(userId, isRevoked: false);
-        token1.Id = 5;
         _context.RefreshTokens.Add(token1);
         await _context.SaveChangesAsync();
 
@@ -1232,7 +1226,6 @@ public class AuthenticationServiceTest : IDisposable
         var accessToken = GenerateTestJwt(userId);
 
         var token1 = CreateTestRefreshToken(userId, isRevoked: false);
-        token1.Id = 10;
         _context.RefreshTokens.Add(token1);
         await _context.SaveChangesAsync();
 
@@ -1257,7 +1250,6 @@ public class AuthenticationServiceTest : IDisposable
         var accessToken = GenerateTestJwt(userId);
 
         var token1 = CreateTestRefreshToken(userId, isRevoked: false);
-        token1.Id = 11;
         _context.RefreshTokens.Add(token1);
         await _context.SaveChangesAsync();
 
@@ -1282,7 +1274,6 @@ public class AuthenticationServiceTest : IDisposable
         var invalidAccessToken = "invalid.jwt.token";
 
         var token1 = CreateTestRefreshToken(userId, isRevoked: false);
-        token1.Id = 12;
         _context.RefreshTokens.Add(token1);
         await _context.SaveChangesAsync();
 
@@ -1303,7 +1294,6 @@ public class AuthenticationServiceTest : IDisposable
         var accessToken = GenerateTestJwt(userId);
 
         var token1 = CreateTestRefreshToken(userId, isRevoked: false);
-        token1.Id = 13;
         _context.RefreshTokens.Add(token1);
         await _context.SaveChangesAsync();
 
@@ -1328,7 +1318,6 @@ public class AuthenticationServiceTest : IDisposable
         var accessToken = GenerateTestJwt(userId);
 
         var token1 = CreateTestRefreshToken(userId, isRevoked: false);
-        token1.Id = 14;
         _context.RefreshTokens.Add(token1);
         await _context.SaveChangesAsync();
 
@@ -1353,7 +1342,6 @@ public class AuthenticationServiceTest : IDisposable
         var invalidAccessToken = "invalid.jwt.token";
 
         var token1 = CreateTestRefreshToken(userId, isRevoked: false);
-        token1.Id = 15;
         _context.RefreshTokens.Add(token1);
         await _context.SaveChangesAsync();
 

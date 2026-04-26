@@ -6,10 +6,13 @@ namespace attendance_monitoring.IServices;
 public interface ISubjectService
 {
     Task<IEnumerable<Subject>> GetAllSubjectsAsync();
-    Task<Subject?> GetSubjectByIdAsync(int id);
+    Task<Subject?> GetSubjectByIdAsync(Guid id);
+    Task<Subject?> GetSubjectByUuidAsync(Guid id);
     Task<Subject> CreateSubjectAsync(CreateSubject createSubject);
-    Task<Subject> UpdateSubjectAsync(int id, UpdateSubject updateSubject);
-    Task DeleteSubjectAsync(int id);
-    Task<bool> HasSchedulesInSubjectAsync(int id);
-    Task<bool> HasEnrollmentsInSubjectAsync(int id);
+    Task<Subject> UpdateSubjectAsync(Guid id, UpdateSubject updateSubject);
+    Task<Subject> UpdateSubjectByUuidAsync(Guid id, UpdateSubject updateSubject);
+    Task DeleteSubjectAsync(Guid id);
+    Task DeleteSubjectByUuidAsync(Guid id);
+    Task<bool> HasSchedulesInSubjectAsync(Guid id);
+    Task<bool> HasEnrollmentsInSubjectAsync(Guid id);
 }

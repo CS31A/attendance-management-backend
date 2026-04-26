@@ -37,14 +37,28 @@ public interface IStudentRepository : ISaveableRepository
     /// </summary>
     /// <param name="id">The student ID.</param>
     /// <returns>The student if found; otherwise, null.</returns>
-    Task<Student?> GetStudentByIdAsync(int id);
+    Task<Student?> GetStudentByIdAsync(Guid id);
+
+    /// <summary>
+    /// Retrieves a student by their UUID.
+    /// </summary>
+    /// <param name="id">The student UUID.</param>
+    /// <returns>The student if found; otherwise, null.</returns>
+    Task<Student?> GetStudentByUuidAsync(Guid id);
 
     /// <summary>
     /// Retrieves a student by their ID with change tracking enabled for updates.
     /// </summary>
     /// <param name="id">The student ID.</param>
     /// <returns>The student if found; otherwise, null.</returns>
-    Task<Student?> GetStudentByIdTrackedAsync(int id);
+    Task<Student?> GetStudentByIdTrackedAsync(Guid id);
+
+    /// <summary>
+    /// Retrieves a student by their UUID with change tracking enabled for updates.
+    /// </summary>
+    /// <param name="id">The student UUID.</param>
+    /// <returns>The student if found; otherwise, null.</returns>
+    Task<Student?> GetStudentByUuidTrackedAsync(Guid id);
 
     /// <summary>
     /// Retrieves a student by their user ID.
@@ -72,28 +86,28 @@ public interface IStudentRepository : ISaveableRepository
     /// </summary>
     /// <param name="id">The student ID.</param>
     /// <returns>True if the student was soft deleted; otherwise, false.</returns>
-    Task<bool> SoftDeleteStudentAsync(int id);
+    Task<bool> SoftDeleteStudentAsync(Guid id);
 
     /// <summary>
     /// Hard deletes a student by their ID.
     /// </summary>
     /// <param name="id">The student ID.</param>
     /// <returns>True if the student was hard deleted; otherwise, false.</returns>
-    Task<bool> HardDeleteStudentAsync(int id);
+    Task<bool> HardDeleteStudentAsync(Guid id);
 
     /// <summary>
     /// Restores a soft deleted student by their ID.
     /// </summary>
     /// <param name="id">The student ID.</param>
     /// <returns>True if the student was restored; otherwise, false.</returns>
-    Task<bool> RestoreStudentAsync(int id);
+    Task<bool> RestoreStudentAsync(Guid id);
 
     /// <summary>
     /// Retrieves a student by their ID, ignoring the delete status.
     /// </summary>
     /// <param name="id">The student ID.</param>
     /// <returns>The student if found; otherwise, null.</returns>
-    Task<Student?> GetStudentByIdIgnoreDeleteStatus(int id);
+    Task<Student?> GetStudentByIdIgnoreDeleteStatus(Guid id);
 
     /// <summary>
     /// Retrieves all subjects assigned to a student by their user ID.

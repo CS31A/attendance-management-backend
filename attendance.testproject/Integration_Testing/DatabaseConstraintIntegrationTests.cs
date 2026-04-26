@@ -22,6 +22,7 @@ public class DatabaseConstraintIntegrationTests : IDisposable
 {
     private readonly ApplicationDbContext _context;
     private readonly Mock<IAccountRepository> _mockAccountRepository;
+    private readonly Mock<ISectionRepository> _mockSectionRepository;
     private readonly Mock<ILogger<UserFactory>> _mockLogger;
     private readonly Mock<IServiceScopeFactory> _mockScopeFactory;
     private readonly Mock<IServiceScope> _mockScope;
@@ -40,6 +41,7 @@ public class DatabaseConstraintIntegrationTests : IDisposable
 
         // Setup mocks
         _mockAccountRepository = new Mock<IAccountRepository>();
+        _mockSectionRepository = new Mock<ISectionRepository>();
         _mockLogger = new Mock<ILogger<UserFactory>>();
         _mockScopeFactory = new Mock<IServiceScopeFactory>();
         _mockScope = new Mock<IServiceScope>();
@@ -97,7 +99,12 @@ public class DatabaseConstraintIntegrationTests : IDisposable
             .Setup(r => r.SaveChangesAsync())
             .ReturnsAsync(1);
 
-        var factory = new UserFactory(_mockAccountRepository.Object, _mockLogger.Object);
+        var sectionUuid = Guid.NewGuid();
+        _mockSectionRepository
+            .Setup(r => r.GetSectionByUuidAsync(sectionUuid))
+            .ReturnsAsync(new Section { Id = sectionUuid, Name = "Test Section" });
+
+        var factory = new UserFactory(_mockAccountRepository.Object, _mockSectionRepository.Object, _mockLogger.Object);
 
         // Act
         var result = await factory.CreateUserAsync(
@@ -107,11 +114,58 @@ public class DatabaseConstraintIntegrationTests : IDisposable
             "Student",
             "Test",
             "Student",
-            1);
+            sectionUuid);
 
         // Assert
         Assert.True(result.Success);
         Assert.NotNull(result.UserId);
+    }
+
+    [Fact]
+    public async Task UserFactory_CreateStudent_WithValidData_AssignsPendingUsn()
+    {
+        // Arrange
+        Student? capturedStudent = null;
+
+        _mockAccountRepository
+            .Setup(r => r.CreateUserAsync(It.IsAny<IdentityUser>(), It.IsAny<string>()))
+            .ReturnsAsync(IdentityResult.Success);
+
+        _mockAccountRepository
+            .Setup(r => r.AddUserToRoleAsync(It.IsAny<IdentityUser>(), It.IsAny<string>()))
+            .Returns(Task.CompletedTask);
+
+        _mockAccountRepository
+            .Setup(r => r.CreateStudentProfileAsync(It.IsAny<Student>()))
+            .Callback<Student>(student => capturedStudent = student)
+            .Returns(Task.CompletedTask);
+
+        _mockAccountRepository
+            .Setup(r => r.SaveChangesAsync())
+            .ReturnsAsync(1);
+
+        var sectionUuid = Guid.NewGuid();
+        _mockSectionRepository
+            .Setup(r => r.GetSectionByUuidAsync(sectionUuid))
+            .ReturnsAsync(new Section { Id = sectionUuid, Name = "Test Section" });
+
+        var factory = new UserFactory(_mockAccountRepository.Object, _mockSectionRepository.Object, _mockLogger.Object);
+
+        // Act
+        var result = await factory.CreateUserAsync(
+            "test@student.com",
+            "test@student.com",
+            "Password123!",
+            "Student",
+            "Test",
+            "Student",
+            sectionUuid);
+
+        // Assert
+        Assert.True(result.Success);
+        Assert.NotNull(capturedStudent);
+        Assert.StartsWith("PENDING-", capturedStudent.Usn);
+        Assert.True(Guid.TryParseExact(capturedStudent.Usn["PENDING-".Length..], "N", out _));
     }
 
     [Fact]
@@ -132,7 +186,7 @@ public class DatabaseConstraintIntegrationTests : IDisposable
             .Setup(r => r.DeleteUserAsync(It.IsAny<IdentityUser>()))
             .ReturnsAsync(IdentityResult.Success);
 
-        var factory = new UserFactory(_mockAccountRepository.Object, _mockLogger.Object);
+        var factory = new UserFactory(_mockAccountRepository.Object, _mockSectionRepository.Object, _mockLogger.Object);
 
         // Act - Create student without sectionId
         var result = await factory.CreateUserAsync(
@@ -170,7 +224,12 @@ public class DatabaseConstraintIntegrationTests : IDisposable
             .Setup(r => r.DeleteUserAsync(It.IsAny<IdentityUser>()))
             .ReturnsAsync(IdentityResult.Success);
 
-        var factory = new UserFactory(_mockAccountRepository.Object, _mockLogger.Object);
+        var sectionUuid = Guid.NewGuid();
+        _mockSectionRepository
+            .Setup(r => r.GetSectionByUuidAsync(sectionUuid))
+            .ReturnsAsync(new Section { Id = sectionUuid, Name = "Test Section" });
+
+        var factory = new UserFactory(_mockAccountRepository.Object, _mockSectionRepository.Object, _mockLogger.Object);
 
         // Act
         var result = await factory.CreateUserAsync(
@@ -180,7 +239,7 @@ public class DatabaseConstraintIntegrationTests : IDisposable
             "Student",
             null, // Missing firstname
             "Student",
-            1);
+            sectionUuid);
 
         // Assert
         Assert.False(result.Success);
@@ -216,7 +275,7 @@ public class DatabaseConstraintIntegrationTests : IDisposable
             .Setup(r => r.DeleteUserAsync(It.IsAny<IdentityUser>()))
             .ReturnsAsync(IdentityResult.Success);
 
-        var factory = new UserFactory(_mockAccountRepository.Object, _mockLogger.Object);
+        var factory = new UserFactory(_mockAccountRepository.Object, _mockSectionRepository.Object, _mockLogger.Object);
 
         // Act
         var result = await factory.CreateUserAsync(
@@ -263,7 +322,7 @@ public class DatabaseConstraintIntegrationTests : IDisposable
             .Setup(r => r.DeleteUserAsync(It.IsAny<IdentityUser>()))
             .ReturnsAsync(IdentityResult.Success);
 
-        var factory = new UserFactory(_mockAccountRepository.Object, _mockLogger.Object);
+        var factory = new UserFactory(_mockAccountRepository.Object, _mockSectionRepository.Object, _mockLogger.Object);
 
         // Act
         var result = await factory.CreateUserAsync(
@@ -304,7 +363,7 @@ public class DatabaseConstraintIntegrationTests : IDisposable
             .Setup(r => r.DeleteUserAsync(It.IsAny<IdentityUser>()))
             .ReturnsAsync(IdentityResult.Success);
 
-        var factory = new UserFactory(_mockAccountRepository.Object, _mockLogger.Object);
+        var factory = new UserFactory(_mockAccountRepository.Object, _mockSectionRepository.Object, _mockLogger.Object);
 
         // Act
         var result = await factory.CreateUserAsync(
@@ -364,7 +423,8 @@ public class DatabaseConstraintIntegrationTests : IDisposable
             Firstname = "Test",
             Lastname = "Student",
             UserId = userId,
-            SectionId = 1,
+            SectionId = Guid.NewGuid(),
+            Usn = "CONSTRAINT-TEST-001",
             IsDeleted = false
         };
 
@@ -400,7 +460,8 @@ public class DatabaseConstraintIntegrationTests : IDisposable
             Firstname = "Test",
             Lastname = "Student",
             UserId = userId,
-            SectionId = 1,
+            SectionId = Guid.NewGuid(),
+            Usn = "HEALTHY-TEST-001",
             IsDeleted = false,
             DeletedAt = null // Consistent soft delete state
         };

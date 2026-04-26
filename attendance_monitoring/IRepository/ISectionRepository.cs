@@ -12,7 +12,21 @@ namespace attendance_monitoring.IRepository
         /// </summary>
         /// <param name="sectionId">The section ID.</param>
         /// <returns>The section if found; otherwise, null.</returns>
-        Task<Section?> GetSectionByIdAsync(int sectionId);
+        Task<Section?> GetSectionByIdAsync(Guid sectionId);
+
+        /// <summary>
+        /// Retrieves a section by its UUID.
+        /// </summary>
+        /// <param name="id">The section UUID.</param>
+        /// <returns>The section if found; otherwise, null.</returns>
+        Task<Section?> GetSectionByUuidAsync(Guid id);
+
+        /// <summary>
+        /// Retrieves a section by its UUID with change tracking enabled for updates.
+        /// </summary>
+        /// <param name="id">The section UUID.</param>
+        /// <returns>The section if found; otherwise, null.</returns>
+        Task<Section?> GetSectionByUuidTrackedAsync(Guid id);
 
         /// <summary>
         /// Retrieves all sections.
@@ -25,14 +39,14 @@ namespace attendance_monitoring.IRepository
         /// </summary>
         /// <param name="sectionId">The section ID.</param>
         /// <returns>A collection of active students in the specified section.</returns>
-        Task<IEnumerable<Student>> GetActiveStudentsBySectionIdAsync(int sectionId);
+        Task<IEnumerable<Student>> GetActiveStudentsBySectionIdAsync(Guid sectionId);
 
         /// <summary>
         /// Retrieves all students in a specific section by section ID.
         /// </summary>
         /// <param name="sectionId">The section ID.</param>
         /// <returns>A collection of all students in the specified section.</returns>
-        Task<IEnumerable<Student>> GetAllStudentsBySectionIdAsync(int sectionId);
+        Task<IEnumerable<Student>> GetAllStudentsBySectionIdAsync(Guid sectionId);
 
         /// <summary>
         /// Creates a new section.
@@ -47,35 +61,35 @@ namespace attendance_monitoring.IRepository
         /// <param name="id">The section ID.</param>
         /// <param name="section">The section to update.</param>
         /// <returns>The updated section if found; otherwise, null.</returns>
-        Task<Section?> UpdateSectionAsync(int id, Section section);
+        Task<Section?> UpdateSectionAsync(Guid id, Section section);
 
         /// <summary>
         /// Deletes a section by its ID.
         /// </summary>
         /// <param name="id">The section ID.</param>
         /// <returns>True if the section was deleted; otherwise, false.</returns>
-        Task<bool> DeleteSectionAsync(int id);
+        Task<bool> DeleteSectionAsync(Guid id);
 
         /// <summary>
         /// Checks if there are any students assigned to this section.
         /// </summary>
         /// <param name="sectionId">The section ID.</param>
         /// <returns>True if students exist in this section; otherwise, false.</returns>
-        Task<bool> HasStudentsInSectionAsync(int sectionId);
+        Task<bool> HasStudentsInSectionAsync(Guid sectionId);
 
         /// <summary>
         /// Checks if there are any student enrollments for this section.
         /// </summary>
         /// <param name="sectionId">The section ID.</param>
         /// <returns>True if student enrollments exist for this section; otherwise, false.</returns>
-        Task<bool> HasStudentEnrollmentsInSectionAsync(int sectionId);
+        Task<bool> HasStudentEnrollmentsInSectionAsync(Guid sectionId);
 
         /// <summary>
         /// Checks if there are any schedules assigned to this section.
         /// </summary>
         /// <param name="sectionId">The section ID.</param>
         /// <returns>True if schedules exist for this section; otherwise, false.</returns>
-        Task<bool> HasSchedulesInSectionAsync(int sectionId);
+        Task<bool> HasSchedulesInSectionAsync(Guid sectionId);
 
     }
 }

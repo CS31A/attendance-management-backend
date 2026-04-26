@@ -174,7 +174,7 @@ internal sealed class AdminService : IAdminService
                     Section? section;
                     try
                     {
-                        section = await _sectionRepository.GetSectionByIdAsync(adminUpdateDto.SectionId.Value).ConfigureAwait(false);
+                        section = await _sectionRepository.GetSectionByUuidAsync(adminUpdateDto.SectionId.Value).ConfigureAwait(false);
                     }
                     catch (Exception ex)
                     {
@@ -188,9 +188,9 @@ internal sealed class AdminService : IAdminService
                     if (section == null)
                     {
                         _logger.LogWarning("Admin profile update failed: Section {SectionId} does not exist", adminUpdateDto.SectionId.Value);
-                        throw new EntityNotFoundException<int>("Section", adminUpdateDto.SectionId.Value);
+                        throw new EntityNotFoundException<Guid>("Section", adminUpdateDto.SectionId.Value);
                     }
-                    student.SectionId = adminUpdateDto.SectionId.Value;
+                    student.SectionId = section.Id;
                 }
                 if (adminUpdateDto.IsRegular.HasValue)
                 {
@@ -225,6 +225,28 @@ internal sealed class AdminService : IAdminService
                 }
 
                 await _accountRepository.UpdateInstructorProfileAsync(instructor).ConfigureAwait(false);
+            }
+        }
+        else if (targetRole.Equals("Admin", StringComparison.OrdinalIgnoreCase))
+        {
+            var adminProfile = await _accountRepository.GetAdminByUserIdAsync(adminUpdateDto.UserId).ConfigureAwait(false);
+            if (adminProfile != null)
+            {
+                if (!string.IsNullOrEmpty(adminUpdateDto.Firstname))
+                {
+                    adminProfile.Firstname = adminUpdateDto.Firstname;
+                }
+                if (!string.IsNullOrEmpty(adminUpdateDto.Lastname))
+                {
+                    adminProfile.Lastname = adminUpdateDto.Lastname;
+                }
+                if (adminUpdateDto.IsDeleted.HasValue)
+                {
+                    adminProfile.IsDeleted = adminUpdateDto.IsDeleted.Value;
+                    adminProfile.DeletedAt = adminUpdateDto.IsDeleted.Value ? DateTime.UtcNow : null;
+                }
+
+                await _accountRepository.UpdateAdminProfileAsync(adminProfile).ConfigureAwait(false);
             }
         }
 

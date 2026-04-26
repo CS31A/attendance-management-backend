@@ -30,23 +30,23 @@ namespace attendance_monitoring.Models.DTO.Request
         public string? DayOfWeek { get; set; }
 
         /// <summary>
-        /// The ID of the subject for this schedule.
+        /// The UUID of the subject for this schedule.
         /// </summary>
-        public int? SubjectId { get; set; }
+        public Guid? SubjectId { get; set; }
 
         /// <summary>
-        /// The ID of the classroom where the schedule takes place.
+        /// The UUID of the classroom where the schedule takes place.
         /// </summary>
-        public int? ClassroomId { get; set; }
+        public Guid? ClassroomId { get; set; }
 
         /// <summary>
-        /// The ID of the section assigned to this schedule.
+        /// The UUID of the section assigned to this schedule.
         /// </summary>
-        public int? SectionId { get; set; }
+        public Guid? SectionId { get; set; }
 
         /// <summary>
-        /// The ID of the instructor assigned to this schedule.
+        /// The UUID of the instructor assigned to this schedule.
         /// </summary>
-        public int? InstructorId { get; set; }
+        public Guid? InstructorId { get; set; }
     }
 }

@@ -5,7 +5,7 @@ namespace attendance_monitoring.Models.DTO.Response;
 /// </summary>
 public sealed class SessionReportRowDto
 {
-    public int SessionId { get; set; }
+    public Guid SessionId { get; set; }
     public DateTime SessionDate { get; set; }
     public string Status { get; set; } = string.Empty;
     public string SubjectName { get; set; } = string.Empty;

@@ -11,16 +11,15 @@ namespace attendance_monitoring.Classes;
 public class FingerprintEnrollmentSession
 {
     [Key]
-    [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
-    public int Id { get; set; }
+    public Guid Id { get; set; }
 
     public Guid EnrollmentSessionId { get; set; } = Guid.NewGuid();
 
     [Required]
-    public int DeviceId { get; set; }
+    public Guid DeviceId { get; set; }
 
     [Required]
-    public int StudentId { get; set; }
+    public Guid StudentId { get; set; }
 
     [Required]
     [StringLength(450)]

@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using attendance_monitoring.Classes;
 using attendance_monitoring.Exceptions;
 using attendance_monitoring.Models.DTO.Request;
 using attendance_monitoring.Models.DTO.Response;
@@ -15,12 +16,12 @@ public interface IFingerprintService
     /// <summary>
     /// Removes (soft deletes) a fingerprint registration.
     /// </summary>
-    /// <param name="fingerprintId">The fingerprint ID to remove.</param>
+    /// <param name="fingerprintId">The fingerprint UUID to remove.</param>
     /// <param name="user">The authenticated user making the request.</param>
     /// <returns>A response with the removal result.</returns>
-    /// <exception cref="EntityNotFoundException{Int32}">Thrown when fingerprint is not found.</exception>
+    /// <exception cref="EntityNotFoundException{Guid}">Thrown when fingerprint is not found.</exception>
     /// <exception cref="EntityUnauthorizedException">Thrown when user is not authorized.</exception>
-    Task<FingerprintRegistrationResponseDto> RemoveFingerprintAsync(int fingerprintId, ClaimsPrincipal user);
+    Task<FingerprintRegistrationResponseDto> RemoveFingerprintAsync(Guid fingerprintId, ClaimsPrincipal user);
 
     /// <summary>
     /// Starts a backend-driven fingerprint enrollment session for a device.
@@ -39,6 +40,14 @@ public interface IFingerprintService
     /// <param name="apiKey">The device API key.</param>
     /// <returns>The pending enrollment session if one exists; otherwise null.</returns>
     Task<FingerprintEnrollmentSessionResponseDto?> GetPendingEnrollmentSessionAsync(string deviceId, string apiKey);
+
+    /// <summary>
+    /// Gets an enrollment session by its public UUID for instructor monitoring.
+    /// </summary>
+    /// <param name="sessionId">The public enrollment session UUID.</param>
+    /// <param name="user">The authenticated admin or instructor querying the session.</param>
+    /// <returns>The enrollment session metadata.</returns>
+    Task<FingerprintEnrollmentSessionResponseDto> GetEnrollmentSessionAsync(Guid sessionId, ClaimsPrincipal user);
 
     /// <summary>
     /// Completes an enrollment session after device-side enrollment succeeds or fails.
@@ -69,12 +78,12 @@ public interface IFingerprintService
     /// <summary>
     /// Gets fingerprint information for a student.
     /// </summary>
-    /// <param name="studentId">The student ID.</param>
+    /// <param name="studentId">The student UUID.</param>
     /// <param name="user">The authenticated user making the request.</param>
     /// <returns>The fingerprint response DTO if found.</returns>
-    /// <exception cref="EntityNotFoundException{Int32}">Thrown when fingerprint is not found.</exception>
+    /// <exception cref="EntityNotFoundException{Guid}">Thrown when fingerprint is not found.</exception>
     /// <exception cref="EntityUnauthorizedException">Thrown when user is not authorized.</exception>
-    Task<FingerprintResponseDto> GetFingerprintByStudentIdAsync(int studentId, ClaimsPrincipal user);
+    Task<FingerprintResponseDto> GetFingerprintByStudentIdAsync(Guid studentId, ClaimsPrincipal user);
 
     /// <summary>
     /// Gets all fingerprints registered for a specific device.
@@ -96,9 +105,16 @@ public interface IFingerprintService
     /// <summary>
     /// Checks if a student has a registered fingerprint.
     /// </summary>
-    /// <param name="studentId">The student ID.</param>
+    /// <param name="studentId">The student UUID.</param>
     /// <returns>True if the student has a registered fingerprint; otherwise, false.</returns>
-    Task<bool> StudentHasFingerprintAsync(int studentId);
+    Task<bool> StudentHasFingerprintAsync(Guid studentId);
+
+    /// <summary>
+    /// Gets all active fingerprint devices ordered by name.
+    /// </summary>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>A list of active fingerprint devices.</returns>
+    Task<List<FingerprintDevice>> GetDevicesAsync(CancellationToken cancellationToken = default);
 
     #endregion
 }

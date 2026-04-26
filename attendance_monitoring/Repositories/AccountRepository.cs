@@ -100,7 +100,7 @@ namespace attendance_monitoring.Repositories
                     Firstname = student.Firstname,
                     Lastname = student.Lastname,
                     IsRegular = student.IsRegular,
-                    SectionId = student.SectionId,
+                    SectionId = student.Section != null ? student.Section.Id : null,
                     SectionName = student.Section != null ? student.Section.Name : null,
                     CourseId = student.Section != null && student.Section.Course != null ? student.Section.Course.Id : null,
                     CourseName = student.Section != null && student.Section.Course != null ? student.Section.Course.Name : null,
@@ -158,12 +158,12 @@ namespace attendance_monitoring.Repositories
                 Username = r.Username,
                 Email = r.Email,
                 Role = string.IsNullOrEmpty(r.Role) ? "Unknown" : RoleConstants.NormalizeRole(r.Role),
-                StudentProfile = r.Role.Equals("Student", StringComparison.OrdinalIgnoreCase) ? new StudentProfileDto
+                StudentProfile = r.Role.Equals("Student", StringComparison.OrdinalIgnoreCase) && r.ProfileId.HasValue ? new StudentProfileDto
                 {
-                    Id = r.ProfileId ?? 0,
+                    Id = r.ProfileId ?? Guid.Empty,
                     Firstname = r.Firstname ?? string.Empty,
                     Lastname = r.Lastname ?? string.Empty,
-                    SectionId = r.SectionId ?? 0,
+                    SectionId = r.SectionId,
                     SectionName = r.SectionName,
                     CourseId = r.CourseId,
                     CourseName = r.CourseName,
@@ -173,9 +173,9 @@ namespace attendance_monitoring.Repositories
                     IsDeleted = r.IsDeleted ?? false,
                     DeletedAt = r.DeletedAt
                 } : null,
-                InstructorProfile = RoleConstants.IsInstructorRole(r.Role) ? new InstructorProfileDto
+                InstructorProfile = RoleConstants.IsInstructorRole(r.Role) && r.ProfileId.HasValue ? new InstructorProfileDto
                 {
-                    Id = r.ProfileId ?? 0,
+                    Id = r.ProfileId ?? Guid.Empty,
                     Firstname = r.Firstname,
                     Lastname = r.Lastname,
                     Department = r.Department,
@@ -184,9 +184,9 @@ namespace attendance_monitoring.Repositories
                     IsDeleted = r.IsDeleted ?? false,
                     DeletedAt = r.DeletedAt
                 } : null,
-                AdminProfile = r.Role.Equals("Admin", StringComparison.OrdinalIgnoreCase) ? new AdminProfileDto
+                AdminProfile = r.Role.Equals("Admin", StringComparison.OrdinalIgnoreCase) && r.ProfileId.HasValue ? new AdminProfileDto
                 {
-                    Id = r.ProfileId ?? 0,
+                    Id = r.ProfileId ?? Guid.Empty,
                     Firstname = r.Firstname,
                     Lastname = r.Lastname,
                     CreatedAt = r.CreatedAt ?? DateTime.UtcNow,
@@ -208,13 +208,13 @@ namespace attendance_monitoring.Repositories
             public string Username { get; set; } = string.Empty;
             public string Email { get; set; } = string.Empty;
             public string Role { get; set; } = string.Empty;
-            public int? ProfileId { get; set; }
+            public Guid? ProfileId { get; set; }
             public string? Firstname { get; set; }
             public string? Lastname { get; set; }
             public string? Department { get; set; }
-            public int? SectionId { get; set; }
+            public Guid? SectionId { get; set; }
             public string? SectionName { get; set; }
-            public int? CourseId { get; set; }
+            public Guid? CourseId { get; set; }
             public string? CourseName { get; set; }
             public bool? IsRegular { get; set; }
             public DateTime? CreatedAt { get; set; }
@@ -403,6 +403,26 @@ namespace attendance_monitoring.Repositories
         }
         #endregion
 
+        #region GetAdminByUserIdAsync
+        public async Task<Admin?> GetAdminByUserIdAsync(string userId)
+        {
+            return await context.Admins
+                .AsNoTracking()
+                .FirstOrDefaultAsync(a => a.UserId == userId && !a.IsDeleted)
+                .ConfigureAwait(false);
+        }
+        #endregion
+
+        #region GetAdminByUuidAsync
+        public async Task<Admin?> GetAdminByUuidAsync(Guid id)
+        {
+            return await context.Admins
+                .AsNoTracking()
+                .FirstOrDefaultAsync(a => a.Id == id && !a.IsDeleted)
+                .ConfigureAwait(false);
+        }
+        #endregion
+
         #region UpdateStudentProfileAsync
         public Task UpdateStudentProfileAsync(Student student)
         {
@@ -417,6 +437,15 @@ namespace attendance_monitoring.Repositories
         {
             instructor.UpdatedAt = DateTime.UtcNow;
             context.Instructors.Update(instructor);
+            return Task.CompletedTask;
+        }
+        #endregion
+
+        #region UpdateAdminProfileAsync
+        public Task UpdateAdminProfileAsync(Admin admin)
+        {
+            admin.UpdatedAt = DateTime.UtcNow;
+            context.Admins.Update(admin);
             return Task.CompletedTask;
         }
         #endregion
@@ -498,97 +527,6 @@ namespace attendance_monitoring.Repositories
             }
 
             return (false, "No response from stored procedure");
-        }
-
-        /// <summary>
-        /// Updates user profile using stored procedure
-        /// </summary>
-        public async Task<(bool Success, GetAllUsersDto? User, string Message)> UpdateUserAsyncSP(
-            string userId,
-            string? email = null,
-            string? firstname = null,
-            string? lastname = null,
-            int? sectionId = null,
-            bool? isRegular = null)
-        {
-            try
-            {
-                var parameters = new
-                {
-                    UserId = userId,
-                    Email = email,
-                    Firstname = firstname,
-                    Lastname = lastname,
-                    SectionId = sectionId,
-                    IsRegular = isRegular
-                };
-                var result = await QueryFirstOrDefaultStoredProcedureAsync<dynamic>(
-                    "sp_UpdateUser",
-                    parameters).ConfigureAwait(false);
-
-                if (result != null)
-                {
-                    bool success = result.Success;
-                    string message = result.Message ?? "Unknown error";
-
-                    if (success)
-                    {
-                        var userDto = new GetAllUsersDto
-                        {
-                            UserId = result.UserId,
-                            Username = result.Username,
-                            Email = result.Email,
-                            Role = result.Role
-                        };
-
-                        // Populate appropriate profile based on role
-                        string role = result.Role?.ToString() ?? "";
-                        if (role.Equals("Student", StringComparison.OrdinalIgnoreCase))
-                        {
-                            userDto.StudentProfile = new StudentProfileDto
-                            {
-                                Id = result.ProfileId,
-                                Firstname = result.Firstname ?? string.Empty,
-                                Lastname = result.Lastname ?? string.Empty,
-                                CreatedAt = result.CreatedAt,
-                                UpdatedAt = result.UpdatedAt
-                            };
-                        }
-                        else if (RoleConstants.IsInstructorRole(role))
-                        {
-                            userDto.InstructorProfile = new InstructorProfileDto
-                            {
-                                Id = result.ProfileId,
-                                Firstname = result.Firstname,
-                                Lastname = result.Lastname,
-                                CreatedAt = result.CreatedAt,
-                                UpdatedAt = result.UpdatedAt
-                            };
-                        }
-                        else if (role.Equals("Admin", StringComparison.OrdinalIgnoreCase))
-                        {
-                            userDto.AdminProfile = new AdminProfileDto
-                            {
-                                Id = result.ProfileId,
-                                Firstname = result.Firstname,
-                                Lastname = result.Lastname,
-                                CreatedAt = result.CreatedAt,
-                                UpdatedAt = result.UpdatedAt
-                            };
-                        }
-
-                        return (true, userDto, message);
-                    }
-
-                    return (false, null, message);
-                }
-
-                return (false, null, "No response from stored procedure");
-            }
-            catch (Exception ex)
-            {
-                return (false, null, $"Database error: {ex.Message}");
-            }
         }
         #endregion
 

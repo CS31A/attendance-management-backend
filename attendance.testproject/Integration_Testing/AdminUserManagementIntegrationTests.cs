@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Text.Json;
 using attendance.testproject.Integration_Testing.Support;
 using attendance_monitoring.Classes;
 using attendance_monitoring.Data;
@@ -97,13 +98,64 @@ public sealed class AdminUserManagementIntegrationTests
         await using var host = await ApiIntegrationHost.CreateAdminUserManagementAsync();
         var scenario = AuthenticateAsAdmin(host);
 
-        var users = await GetUsersAsync(host, "/api/users?status=2");
+        var response = await host.Client.GetAsync("/api/users?status=2");
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var payloadJson = await response.Content.ReadAsStringAsync();
+        var users = JsonSerializer.Deserialize<List<GetAllUsersDto>>(payloadJson, new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        Assert.NotNull(users);
 
         Assert.Contains(users, user => user.UserId == scenario.ActiveStudentUserId);
         Assert.Contains(users, user => user.UserId == scenario.ArchivedStudentUserId);
         Assert.Contains(users, user => user.UserId == scenario.ActiveInstructorUserId);
         Assert.Contains(users, user => user.UserId == scenario.ConflictStudentUserId);
         Assert.Contains(users, user => user.UserId == scenario.AdminUserId);
+
+        var activeStudent = Assert.Single(users, user => user.UserId == scenario.ActiveStudentUserId);
+        var activeInstructor = Assert.Single(users, user => user.UserId == scenario.ActiveInstructorUserId);
+        var admin = Assert.Single(users, user => user.UserId == scenario.AdminUserId);
+
+        Assert.NotNull(activeStudent.StudentProfile);
+        Assert.NotEqual(Guid.Empty, activeStudent.StudentProfile!.Id);
+        Assert.Equal(scenario.PrimarySectionUuid, activeStudent.StudentProfile.SectionId);
+        Assert.NotNull(activeStudent.StudentProfile.CourseId);
+        Assert.NotEqual(Guid.Empty, activeStudent.StudentProfile.CourseId!.Value);
+        Assert.NotNull(activeInstructor.InstructorProfile);
+        Assert.NotEqual(Guid.Empty, activeInstructor.InstructorProfile!.Id);
+        Assert.NotNull(admin.AdminProfile);
+        Assert.NotEqual(Guid.Empty, admin.AdminProfile!.Id);
+
+        using var document = JsonDocument.Parse(payloadJson);
+        foreach (var userElement in document.RootElement.EnumerateArray())
+        {
+            AssertNestedProfileUsesCanonicalId(userElement, "studentProfile");
+            AssertNestedProfileUsesCanonicalId(userElement, "instructorProfile");
+            AssertNestedProfileUsesCanonicalId(userElement, "adminProfile");
+        }
+    }
+
+    [RequiresEnvironmentVariableFact("ATTENDANCE_TEST_SQLSERVER_CONNECTION")]
+    public async Task GetApiUsers_WithAllStatus_PreservesOrphanedUser_WithNullProfile()
+    {
+        await using var host = await ApiIntegrationHost.CreateAdminUserManagementAsync();
+        var scenario = AuthenticateAsAdmin(host);
+
+        var users = await GetUsersAsync(host, "/api/users?status=2");
+
+        // The orphaned user must survive as a top-level row
+        var orphanedUser = Assert.Single(users, user => user.UserId == scenario.OrphanedUserId);
+        Assert.Equal("Student", orphanedUser.Role);
+
+        // The orphaned user's nested profile must be honestly null, not fabricated
+        Assert.Null(orphanedUser.StudentProfile);
+        Assert.Null(orphanedUser.InstructorProfile);
+        Assert.Null(orphanedUser.AdminProfile);
+
+        // Non-orphaned users still preserve the UUID-valued canonical Id contract.
+        var activeStudent = Assert.Single(users, user => user.UserId == scenario.ActiveStudentUserId);
+        Assert.NotNull(activeStudent.StudentProfile);
+        Assert.NotEqual(Guid.Empty, activeStudent.StudentProfile!.Id);
+        Assert.Equal(scenario.PrimarySectionUuid, activeStudent.StudentProfile.SectionId);
     }
 
     [RequiresEnvironmentVariableFact("ATTENDANCE_TEST_SQLSERVER_CONNECTION")]
@@ -120,7 +172,7 @@ public sealed class AdminUserManagementIntegrationTests
                 Firstname = "Routed",
                 Lastname = "Target",
                 Email = "student.active.updated@gmail.com",
-                SectionId = scenario.AlternateSectionId,
+                SectionId = scenario.AlternateSectionUuid,
                 IsRegular = false
             })
         });
@@ -133,7 +185,7 @@ public sealed class AdminUserManagementIntegrationTests
         Assert.Equal(scenario.ActiveStudentUserId, payload.UpdatedProfile.UserId);
         Assert.Equal("student.active.updated@gmail.com", payload.UpdatedProfile.Email);
         Assert.Equal("Routed", payload.UpdatedProfile.StudentProfile?.Firstname);
-        Assert.Equal(scenario.AlternateSectionId, payload.UpdatedProfile.StudentProfile?.SectionId);
+        Assert.Equal(scenario.AlternateSectionUuid, payload.UpdatedProfile.StudentProfile?.SectionId);
 
         var dbAssertion = await host.ExecuteDbContextAsync(async (dbContext, cancellationToken) =>
         {
@@ -224,7 +276,7 @@ public sealed class AdminUserManagementIntegrationTests
             Content = JsonContent.Create(new AdminUpdateUser
             {
                 UserId = scenario.ActiveStudentUserId,
-                SectionId = int.MaxValue
+                SectionId = Guid.NewGuid()
             })
         });
         var payload = await response.Content.ReadFromJsonAsync<UpdateProfileResponse>();
@@ -413,5 +465,18 @@ public sealed class AdminUserManagementIntegrationTests
         var payload = await response.Content.ReadFromJsonAsync<List<GetAllUsersDto>>();
         Assert.NotNull(payload);
         return payload;
+    }
+
+    private static void AssertNestedProfileUsesCanonicalId(JsonElement userElement, string propertyName)
+    {
+        if (!userElement.TryGetProperty(propertyName, out var profileElement) || profileElement.ValueKind == JsonValueKind.Null)
+        {
+            return;
+        }
+
+        Assert.True(profileElement.TryGetProperty("id", out var idElement), $"{propertyName} should expose an id field during Phase 6.");
+        Assert.True(Guid.TryParse(idElement.GetString(), out var parsedId), $"{propertyName}.id should be a valid GUID.");
+        Assert.NotEqual(Guid.Empty, parsedId);
+        Assert.False(profileElement.TryGetProperty("uuid", out _), $"{propertyName} should not expose a legacy uuid field during Phase 6.");
     }
 }

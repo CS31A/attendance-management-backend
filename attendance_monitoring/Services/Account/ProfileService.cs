@@ -85,24 +85,36 @@ internal sealed class ProfileService : IProfileService
                 .FirstOrDefaultAsync(s => s.UserId == userId && !s.IsDeleted)
                 .ConfigureAwait(false);
 
-            if (student != null)
+            if (student == null)
             {
-                profile.StudentProfile = new StudentProfileInfo
-                {
-                    Id = student.Id,
-                    Firstname = student.Firstname,
-                    Lastname = student.Lastname,
-                    IsRegular = student.IsRegular,
-                    SectionId = student.SectionId,
-                    SectionName = student.Section?.Name ?? string.Empty,
-                    CourseId = student.Section?.CourseId ?? 0,
-                    CourseName = student.Section?.Course?.Name ?? string.Empty,
-                    CreatedAt = student.CreatedAt,
-                    UpdatedAt = student.UpdatedAt
-                };
-                profile.CreatedAt = student.CreatedAt;
-                profile.UpdatedAt = student.UpdatedAt;
+                throw new InvalidOperationException($"User {userId} has Student role but is missing required student profile data.");
             }
+
+            if (student.Section == null)
+            {
+                throw new InvalidOperationException($"Student {student.Id} is missing required section data.");
+            }
+
+            if (student.Section.Course == null)
+            {
+                throw new InvalidOperationException($"Student {student.Id} section {student.SectionId} is missing required course data.");
+            }
+
+            profile.StudentProfile = new StudentProfileInfo
+            {
+                Id = student.Id,
+                Firstname = student.Firstname,
+                Lastname = student.Lastname,
+                IsRegular = student.IsRegular,
+                SectionId = student.Section.Id,
+                SectionName = student.Section.Name,
+                CourseId = student.Section.Course.Id,
+                CourseName = student.Section.Course.Name,
+                CreatedAt = student.CreatedAt,
+                UpdatedAt = student.UpdatedAt
+            };
+            profile.CreatedAt = student.CreatedAt;
+            profile.UpdatedAt = student.UpdatedAt;
         }
         else if (role.Equals(RoleConstants.Instructor, StringComparison.OrdinalIgnoreCase))
         {
@@ -124,10 +136,7 @@ internal sealed class ProfileService : IProfileService
         }
         else if (role.Equals("Admin", StringComparison.OrdinalIgnoreCase))
         {
-            var admin = await _context.Admins
-                .AsNoTracking()
-                .FirstOrDefaultAsync(a => a.UserId == userId && !a.IsDeleted)
-                .ConfigureAwait(false);
+            var admin = await _accountRepository.GetAdminByUserIdAsync(userId).ConfigureAwait(false);
 
             if (admin != null)
             {
@@ -289,7 +298,7 @@ internal sealed class ProfileService : IProfileService
                         Section? section;
                         try
                         {
-                            section = await _sectionRepository.GetSectionByIdAsync(updateProfileDto.SectionId.Value).ConfigureAwait(false);
+                            section = await _sectionRepository.GetSectionByUuidAsync(updateProfileDto.SectionId.Value).ConfigureAwait(false);
                         }
                         catch (Exception ex)
                         {
@@ -303,9 +312,9 @@ internal sealed class ProfileService : IProfileService
                         if (section == null)
                         {
                             _logger.LogWarning("Profile update failed: Section {SectionId} does not exist", updateProfileDto.SectionId.Value);
-                            throw new EntityNotFoundException<int>("Section", updateProfileDto.SectionId.Value);
+                            throw new EntityNotFoundException<Guid>("Section", updateProfileDto.SectionId.Value);
                         }
-                        student.SectionId = updateProfileDto.SectionId.Value;
+                        student.SectionId = section.Id;
                     }
                     if (updateProfileDto.IsRegular.HasValue)
                     {

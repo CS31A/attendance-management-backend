@@ -17,14 +17,28 @@ public class SubjectRepository(ApplicationDbContext context) : ISubjectRepositor
     #endregion
 
     #region GetSubjectByIdAsync
-    public async Task<Subject?> GetSubjectByIdAsync(int id)
+    public async Task<Subject?> GetSubjectByIdAsync(Guid id)
+    {
+        return await context.Subjects.AsNoTracking().FirstOrDefaultAsync(s => s.Id == id).ConfigureAwait(false);
+    }
+    #endregion
+
+    #region GetSubjectByUuidAsync
+    public async Task<Subject?> GetSubjectByUuidAsync(Guid id)
     {
         return await context.Subjects.AsNoTracking().FirstOrDefaultAsync(s => s.Id == id).ConfigureAwait(false);
     }
     #endregion
 
     #region GetSubjectByIdTrackedAsync
-    public async Task<Subject?> GetSubjectByIdTrackedAsync(int id)
+    public async Task<Subject?> GetSubjectByIdTrackedAsync(Guid id)
+    {
+        return await context.Subjects.FirstOrDefaultAsync(s => s.Id == id).ConfigureAwait(false);
+    }
+    #endregion
+
+    #region GetSubjectByUuidTrackedAsync
+    public async Task<Subject?> GetSubjectByUuidTrackedAsync(Guid id)
     {
         return await context.Subjects.FirstOrDefaultAsync(s => s.Id == id).ConfigureAwait(false);
     }
@@ -59,7 +73,7 @@ public class SubjectRepository(ApplicationDbContext context) : ISubjectRepositor
     #endregion
 
     #region DeleteSubjectAsync
-    public async Task<bool> DeleteSubjectAsync(int id)
+    public async Task<bool> DeleteSubjectAsync(Guid id)
     {
         var subject = await context.Subjects.FindAsync(id).ConfigureAwait(false);
         if (subject == null) return false;
@@ -70,7 +84,7 @@ public class SubjectRepository(ApplicationDbContext context) : ISubjectRepositor
     #endregion
 
     #region HasSchedulesInSubjectAsync
-    public async Task<bool> HasSchedulesInSubjectAsync(int id)
+    public async Task<bool> HasSchedulesInSubjectAsync(Guid id)
     {
         return await context.Schedules
             .AsNoTracking()
@@ -80,7 +94,7 @@ public class SubjectRepository(ApplicationDbContext context) : ISubjectRepositor
     #endregion
 
     #region HasEnrollmentsInSubjectAsync
-    public async Task<bool> HasEnrollmentsInSubjectAsync(int id)
+    public async Task<bool> HasEnrollmentsInSubjectAsync(Guid id)
     {
         return await context.StudentEnrollments
             .AsNoTracking()

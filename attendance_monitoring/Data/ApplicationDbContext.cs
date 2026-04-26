@@ -2,6 +2,7 @@ using attendance_monitoring.Classes;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.ValueGeneration;
 
 namespace attendance_monitoring.Data
 {
@@ -46,6 +47,86 @@ namespace attendance_monitoring.Data
             builder.Entity<RefreshToken>()
                 .HasIndex(r => r.TokenHash)
                 .IsUnique();
+
+            var studentId = builder.Entity<Student>()
+                .Property(s => s.Id)
+                .HasColumnType("uniqueidentifier")
+                .ValueGeneratedOnAdd();
+
+            var instructorId = builder.Entity<Instructor>()
+                .Property(i => i.Id)
+                .HasColumnType("uniqueidentifier")
+                .ValueGeneratedOnAdd();
+
+            var adminId = builder.Entity<Admin>()
+                .Property(a => a.Id)
+                .HasColumnType("uniqueidentifier")
+                .ValueGeneratedOnAdd();
+
+            var courseId = builder.Entity<Course>()
+                .Property(c => c.Id)
+                .HasColumnType("uniqueidentifier")
+                .ValueGeneratedOnAdd();
+
+            var subjectId = builder.Entity<Subject>()
+                .Property(s => s.Id)
+                .HasColumnType("uniqueidentifier")
+                .ValueGeneratedOnAdd();
+
+            var sectionId = builder.Entity<Section>()
+                .Property(s => s.Id)
+                .HasColumnType("uniqueidentifier")
+                .ValueGeneratedOnAdd();
+
+            var classroomId = builder.Entity<Classroom>()
+                .Property(c => c.Id)
+                .HasColumnType("uniqueidentifier")
+                .ValueGeneratedOnAdd();
+
+            var scheduleId = builder.Entity<Schedules>()
+                .Property(s => s.Id)
+                .HasColumnType("uniqueidentifier")
+                .ValueGeneratedOnAdd();
+
+            var studentEnrollmentId = builder.Entity<StudentEnrollment>()
+                .Property(se => se.Id)
+                .HasColumnType("uniqueidentifier")
+                .ValueGeneratedOnAdd();
+
+            var sessionId = builder.Entity<Session>()
+                .Property(s => s.Id)
+                .HasColumnType("uniqueidentifier")
+                .ValueGeneratedOnAdd();
+
+            var attendanceRecordId = builder.Entity<AttendanceRecord>()
+                .Property(a => a.Id)
+                .HasColumnType("uniqueidentifier")
+                .ValueGeneratedOnAdd();
+
+            var qrCodeId = builder.Entity<QrCode>()
+                .Property(q => q.Id)
+                .HasColumnType("uniqueidentifier")
+                .ValueGeneratedOnAdd();
+
+            var fingerprintId = builder.Entity<Fingerprint>()
+                .Property(f => f.Id)
+                .HasColumnType("uniqueidentifier")
+                .ValueGeneratedOnAdd();
+
+            var fingerprintDeviceId = builder.Entity<FingerprintDevice>()
+                .Property(d => d.Id)
+                .HasColumnType("uniqueidentifier")
+                .ValueGeneratedOnAdd();
+
+            var fingerprintEnrollmentSessionId = builder.Entity<FingerprintEnrollmentSession>()
+                .Property(e => e.Id)
+                .HasColumnType("uniqueidentifier")
+                .ValueGeneratedOnAdd();
+
+            var fingerprintScanEventId = builder.Entity<FingerprintScanEvent>()
+                .Property(e => e.Id)
+                .HasColumnType("uniqueidentifier")
+                .ValueGeneratedOnAdd();
 
             // Configure Schedules relationships
             builder.Entity<Schedules>()
@@ -123,10 +204,56 @@ namespace attendance_monitoring.Data
                 .HasForeignKey(s => s.EndedBy)
                 .OnDelete(DeleteBehavior.Restrict);
 
+            if (Database.IsSqlServer())
+            {
+                studentId.HasDefaultValueSql("NEWSEQUENTIALID()");
+                instructorId.HasDefaultValueSql("NEWSEQUENTIALID()");
+                adminId.HasDefaultValueSql("NEWSEQUENTIALID()");
+                courseId.HasDefaultValueSql("NEWSEQUENTIALID()");
+                subjectId.HasDefaultValueSql("NEWSEQUENTIALID()");
+                sectionId.HasDefaultValueSql("NEWSEQUENTIALID()");
+                classroomId.HasDefaultValueSql("NEWSEQUENTIALID()");
+                scheduleId.HasDefaultValueSql("NEWSEQUENTIALID()");
+                studentEnrollmentId.HasDefaultValueSql("NEWSEQUENTIALID()");
+                sessionId.HasDefaultValueSql("NEWSEQUENTIALID()");
+                attendanceRecordId.HasDefaultValueSql("NEWSEQUENTIALID()");
+                qrCodeId.HasDefaultValueSql("NEWSEQUENTIALID()");
+                fingerprintId.HasDefaultValueSql("NEWSEQUENTIALID()");
+                fingerprintDeviceId.HasDefaultValueSql("NEWSEQUENTIALID()");
+                fingerprintEnrollmentSessionId.HasDefaultValueSql("NEWSEQUENTIALID()");
+                fingerprintScanEventId.HasDefaultValueSql("NEWSEQUENTIALID()");
+            }
+            else
+            {
+                // Non-SQL Server test providers cannot execute NEWSEQUENTIALID(), so generate GUIDs client-side.
+                studentId.HasValueGenerator<GuidValueGenerator>();
+                instructorId.HasValueGenerator<GuidValueGenerator>();
+                adminId.HasValueGenerator<GuidValueGenerator>();
+                courseId.HasValueGenerator<GuidValueGenerator>();
+                subjectId.HasValueGenerator<GuidValueGenerator>();
+                sectionId.HasValueGenerator<GuidValueGenerator>();
+                classroomId.HasValueGenerator<GuidValueGenerator>();
+                scheduleId.HasValueGenerator<GuidValueGenerator>();
+                studentEnrollmentId.HasValueGenerator<GuidValueGenerator>();
+                sessionId.HasValueGenerator<GuidValueGenerator>();
+                attendanceRecordId.HasValueGenerator<GuidValueGenerator>();
+                qrCodeId.HasValueGenerator<GuidValueGenerator>();
+                fingerprintId.HasValueGenerator<GuidValueGenerator>();
+                fingerprintDeviceId.HasValueGenerator<GuidValueGenerator>();
+                fingerprintEnrollmentSessionId.HasValueGenerator<GuidValueGenerator>();
+                fingerprintScanEventId.HasValueGenerator<GuidValueGenerator>();
+            }
+
             if (Database.ProviderName == "Microsoft.EntityFrameworkCore.Sqlite")
             {
                 builder.Entity<Session>()
                     .Property(s => s.RowVersion)
+                    .IsRequired(false)
+                    .ValueGeneratedNever()
+                    .IsConcurrencyToken(false);
+
+                builder.Entity<FingerprintScanEvent>()
+                    .Property(e => e.RowVersion)
                     .IsRequired(false)
                     .ValueGeneratedNever()
                     .IsConcurrencyToken(false);
@@ -135,6 +262,10 @@ namespace attendance_monitoring.Data
             {
                 builder.Entity<Session>()
                     .Property(s => s.RowVersion)
+                    .IsRowVersion();
+
+                builder.Entity<FingerprintScanEvent>()
+                    .Property(e => e.RowVersion)
                     .IsRowVersion();
             }
 
@@ -270,10 +401,6 @@ namespace attendance_monitoring.Data
                 .IsUnique()
                 .HasFilter("[AttendanceRecordId] IS NOT NULL")
                 .HasDatabaseName("IX_FingerprintScanEvents_AttendanceRecordId");
-
-            builder.Entity<FingerprintScanEvent>()
-                .Property(e => e.RowVersion)
-                .IsRowVersion();
 
             builder.Entity<FingerprintScanEvent>()
                 .Property(e => e.MatchScore)

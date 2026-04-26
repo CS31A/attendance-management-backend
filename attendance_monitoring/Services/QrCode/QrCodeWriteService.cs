@@ -24,7 +24,7 @@ internal sealed class QrCodeWriteService
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
-    public async Task<QrCodeResponseDto> UpdateQrCodeAsync(int id, UpdateQrCode updateQrCode, ClaimsPrincipal user)
+    public async Task<QrCodeResponseDto> UpdateQrCodeAsync(Guid id, UpdateQrCode updateQrCode, ClaimsPrincipal user)
     {
         try
         {
@@ -50,7 +50,7 @@ internal sealed class QrCodeWriteService
             if (existingQrCode == null)
             {
                 _logger.LogWarning("QR code update failed: QR code not found");
-                throw new EntityNotFoundException<int>("QrCode", id);
+                throw new EntityNotFoundException<Guid>("QrCode", id);
             }
 
             if (updateQrCode.ExpiresAt.HasValue) existingQrCode.ExpiresAt = updateQrCode.ExpiresAt.Value;
@@ -67,7 +67,7 @@ internal sealed class QrCodeWriteService
         }
         catch (ValidationException) { throw; }
         catch (EntityUnauthorizedException) { throw; }
-        catch (EntityNotFoundException<int>) { throw; }
+        catch (EntityNotFoundException<Guid>) { throw; }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error occurred while updating QR code with ID: {QrCodeId}", id);
@@ -75,7 +75,7 @@ internal sealed class QrCodeWriteService
         }
     }
 
-    public async Task DeactivateQrCodeAsync(int id, ClaimsPrincipal user)
+    public async Task DeactivateQrCodeAsync(Guid id, ClaimsPrincipal user)
     {
         try
         {
@@ -101,7 +101,7 @@ internal sealed class QrCodeWriteService
             if (!result)
             {
                 _logger.LogWarning("QR code deactivation failed: QR code not found");
-                throw new EntityNotFoundException<int>("QrCode", id);
+                throw new EntityNotFoundException<Guid>("QrCode", id);
             }
 
             await _qrCodeRepository.SaveChangesAsync().ConfigureAwait(false);
@@ -109,7 +109,7 @@ internal sealed class QrCodeWriteService
         }
         catch (ValidationException) { throw; }
         catch (EntityUnauthorizedException) { throw; }
-        catch (EntityNotFoundException<int>) { throw; }
+        catch (EntityNotFoundException<Guid>) { throw; }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error occurred while deactivating QR code with ID: {QrCodeId}", id);
@@ -117,7 +117,7 @@ internal sealed class QrCodeWriteService
         }
     }
 
-    public async Task RevokeQrCodeAsync(int id, string? reason, ClaimsPrincipal user)
+    public async Task RevokeQrCodeAsync(Guid id, string? reason, ClaimsPrincipal user)
     {
         try
         {
@@ -143,7 +143,7 @@ internal sealed class QrCodeWriteService
             if (qrCode == null)
             {
                 _logger.LogWarning("QR code revocation failed: QR code not found");
-                throw new EntityNotFoundException<int>("QrCode", id);
+                throw new EntityNotFoundException<Guid>("QrCode", id);
             }
 
             qrCode.IsActive = false;
@@ -159,7 +159,7 @@ internal sealed class QrCodeWriteService
         }
         catch (ValidationException) { throw; }
         catch (EntityUnauthorizedException) { throw; }
-        catch (EntityNotFoundException<int>) { throw; }
+        catch (EntityNotFoundException<Guid>) { throw; }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error occurred while revoking QR code with ID: {QrCodeId}", id);
@@ -259,7 +259,7 @@ internal sealed class QrCodeWriteService
         }
     }
 
-    public async Task ReactivateQrCodeAsync(int id, ClaimsPrincipal user)
+    public async Task ReactivateQrCodeAsync(Guid id, ClaimsPrincipal user)
     {
         try
         {
@@ -285,7 +285,7 @@ internal sealed class QrCodeWriteService
             if (qrCode == null)
             {
                 _logger.LogWarning("QR code reactivation failed: QR code not found");
-                throw new EntityNotFoundException<int>("QrCode", id);
+                throw new EntityNotFoundException<Guid>("QrCode", id);
             }
 
             if (qrCode.ExpiresAt <= DateTime.UtcNow)
@@ -298,14 +298,14 @@ internal sealed class QrCodeWriteService
             if (!result)
             {
                 _logger.LogWarning("QR code reactivation failed: QR code not found");
-                throw new EntityNotFoundException<int>("QrCode", id);
+                throw new EntityNotFoundException<Guid>("QrCode", id);
             }
 
             await _qrCodeRepository.SaveChangesAsync().ConfigureAwait(false);
             _logger.LogInformation("Successfully reactivated QR code with ID: {QrCodeId} by user: {UserId}", id, userId);
         }
         catch (ValidationException) { throw; }
-        catch (EntityNotFoundException<int>) { throw; }
+        catch (EntityNotFoundException<Guid>) { throw; }
         catch (EntityUnauthorizedException) { throw; }
         catch (Exception ex)
         {
@@ -369,7 +369,7 @@ internal sealed class QrCodeWriteService
         }
     }
 
-    public async Task DeleteQrCodeAsync(int id, ClaimsPrincipal user)
+    public async Task DeleteQrCodeAsync(Guid id, ClaimsPrincipal user)
     {
         try
         {
@@ -395,13 +395,13 @@ internal sealed class QrCodeWriteService
             if (!result)
             {
                 _logger.LogWarning("QR code deletion failed: QR code not found");
-                throw new EntityNotFoundException<int>("QrCode", id);
+                throw new EntityNotFoundException<Guid>("QrCode", id);
             }
 
             await _qrCodeRepository.SaveChangesAsync().ConfigureAwait(false);
             _logger.LogInformation("Successfully deleted QR code with ID: {QrCodeId}", id);
         }
-        catch (EntityNotFoundException<int>) { throw; }
+        catch (EntityNotFoundException<Guid>) { throw; }
         catch (EntityUnauthorizedException) { throw; }
         catch (Exception ex)
         {
@@ -410,7 +410,7 @@ internal sealed class QrCodeWriteService
         }
     }
 
-    public async Task<QrCodeResponseDto> ExtendQrCodeExpirationAsync(int id, int additionalMinutes, ClaimsPrincipal user)
+    public async Task<QrCodeResponseDto> ExtendQrCodeExpirationAsync(Guid id, int additionalMinutes, ClaimsPrincipal user)
     {
         try
         {
@@ -436,7 +436,7 @@ internal sealed class QrCodeWriteService
             if (qrCode == null)
             {
                 _logger.LogWarning("QR code expiration extension failed: QR code not found");
-                throw new EntityNotFoundException<int>("QrCode", id);
+                throw new EntityNotFoundException<Guid>("QrCode", id);
             }
 
             qrCode.ExpiresAt = qrCode.ExpiresAt.AddMinutes(additionalMinutes);
@@ -449,7 +449,7 @@ internal sealed class QrCodeWriteService
 
             return responseDto;
         }
-        catch (EntityNotFoundException<int>) { throw; }
+        catch (EntityNotFoundException<Guid>) { throw; }
         catch (EntityUnauthorizedException) { throw; }
         catch (Exception ex)
         {
@@ -460,6 +460,265 @@ internal sealed class QrCodeWriteService
             throw ExceptionHandlingHelper.CreateServiceException("QrCode", "ExtendExpiration", ex);
         }
     }
+
+    #region UUID Entrypoints
+
+    public async Task<QrCodeResponseDto> UpdateQrCodeByUuidAsync(Guid id, UpdateQrCode updateQrCode, ClaimsPrincipal user)
+    {
+        try
+        {
+            _logger.LogInformation("Updating QR code with UUID: {QrCodeUuid}", id);
+
+            var userId = await _authorizationService.UserContext.GetUserIdAsync(user).ConfigureAwait(false);
+            if (string.IsNullOrEmpty(userId))
+            {
+                _logger.LogWarning("QR code update failed: User ID not found in token");
+                throw new ValidationException("User ID not found in token");
+            }
+
+            var isAuthorized = await _authorizationService.UserContext
+                .IsAuthorizedAsync(user, userId, RoleConstants.Admin, RoleConstants.Instructor)
+                .ConfigureAwait(false);
+            if (!isAuthorized)
+            {
+                _logger.LogWarning("QR code update failed: User not authorized");
+                throw new EntityUnauthorizedException("QrCode", "Update", userId);
+            }
+
+            var existingQrCode = await _qrCodeRepository.GetQrCodeByUuidAsync(id).ConfigureAwait(false);
+            if (existingQrCode == null)
+            {
+                _logger.LogWarning("QR code update failed: QR code not found");
+                throw new EntityNotFoundException<Guid>("QrCode", id);
+            }
+
+            if (updateQrCode.ExpiresAt.HasValue) existingQrCode.ExpiresAt = updateQrCode.ExpiresAt.Value;
+            if (updateQrCode.IsActive.HasValue) existingQrCode.IsActive = updateQrCode.IsActive.Value;
+            if (updateQrCode.MaxUsage.HasValue) existingQrCode.MaxUsage = updateQrCode.MaxUsage.Value;
+
+            var updatedQrCode = await _qrCodeRepository.UpdateQrCodeAsync(existingQrCode).ConfigureAwait(false);
+            await _qrCodeRepository.SaveChangesAsync().ConfigureAwait(false);
+
+            var responseDto = QrCodeMapper.MapToResponseDto(updatedQrCode);
+            _logger.LogInformation("Successfully updated QR code with UUID: {QrCodeUuid}", id);
+
+            return responseDto;
+        }
+        catch (ValidationException) { throw; }
+        catch (EntityUnauthorizedException) { throw; }
+        catch (EntityNotFoundException<Guid>) { throw; }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error occurred while updating QR code with UUID: {QrCodeUuid}", id);
+            throw new EntityServiceException("QrCode", "Update", "An error occurred while updating the QR code", ex);
+        }
+    }
+
+    public async Task RevokeQrCodeByUuidAsync(Guid id, string? reason, ClaimsPrincipal user)
+    {
+        try
+        {
+            _logger.LogInformation("Revoking QR code with UUID: {QrCodeUuid}", id);
+
+            var userId = await _authorizationService.UserContext.GetUserIdAsync(user).ConfigureAwait(false);
+            if (string.IsNullOrEmpty(userId))
+            {
+                _logger.LogWarning("QR code revocation failed: User ID not found in token");
+                throw new ValidationException("User ID not found in token");
+            }
+
+            var isAuthorized = await _authorizationService.UserContext
+                .IsAuthorizedAsync(user, userId, RoleConstants.Admin, RoleConstants.Instructor)
+                .ConfigureAwait(false);
+            if (!isAuthorized)
+            {
+                _logger.LogWarning("QR code revocation failed: User not authorized");
+                throw new EntityUnauthorizedException("QrCode", "Revoke", userId);
+            }
+
+            var qrCode = await _qrCodeRepository.GetQrCodeByUuidAsync(id).ConfigureAwait(false);
+            if (qrCode == null)
+            {
+                _logger.LogWarning("QR code revocation failed: QR code not found");
+                throw new EntityNotFoundException<Guid>("QrCode", id);
+            }
+
+            qrCode.IsActive = false;
+            qrCode.RevokedAt = DateTime.UtcNow;
+            qrCode.RevokedBy = userId;
+            qrCode.RevocationReason = reason;
+            qrCode.UpdatedAt = DateTime.UtcNow;
+
+            await _qrCodeRepository.UpdateQrCodeAsync(qrCode).ConfigureAwait(false);
+            await _qrCodeRepository.SaveChangesAsync().ConfigureAwait(false);
+
+            _logger.LogInformation("Successfully revoked QR code with UUID: {QrCodeUuid} by user: {UserId}", id, userId);
+        }
+        catch (ValidationException) { throw; }
+        catch (EntityUnauthorizedException) { throw; }
+        catch (EntityNotFoundException<Guid>) { throw; }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error occurred while revoking QR code with UUID: {QrCodeUuid}", id);
+            throw new EntityServiceException("QrCode", "Revoke", "An error occurred while revoking the QR code", ex);
+        }
+    }
+
+    public async Task ReactivateQrCodeByUuidAsync(Guid id, ClaimsPrincipal user)
+    {
+        try
+        {
+            _logger.LogInformation("Reactivating QR code with UUID: {QrCodeUuid}", id);
+
+            var userId = await _authorizationService.UserContext.GetUserIdAsync(user).ConfigureAwait(false);
+            if (string.IsNullOrEmpty(userId))
+            {
+                _logger.LogWarning("QR code reactivation failed: User ID not found in token");
+                throw new ValidationException("User ID not found in token");
+            }
+
+            var isAuthorized = await _authorizationService.UserContext
+                .IsAuthorizedAsync(user, userId, RoleConstants.Admin, RoleConstants.Instructor)
+                .ConfigureAwait(false);
+            if (!isAuthorized)
+            {
+                _logger.LogWarning("QR code reactivation failed: User not authorized");
+                throw new EntityUnauthorizedException("QrCode", "Reactivate", userId);
+            }
+
+            var qrCode = await _qrCodeRepository.GetQrCodeByUuidAsync(id).ConfigureAwait(false);
+            if (qrCode == null)
+            {
+                _logger.LogWarning("QR code reactivation failed: QR code not found");
+                throw new EntityNotFoundException<Guid>("QrCode", id);
+            }
+
+            if (qrCode.ExpiresAt <= DateTime.UtcNow)
+            {
+                _logger.LogWarning("QR code reactivation failed: QR code has expired");
+                throw new ValidationException("Cannot reactivate an expired QR code");
+            }
+
+            var result = await _qrCodeRepository.ReactivateQrCodeAsync(qrCode.Id).ConfigureAwait(false);
+            if (!result)
+            {
+                _logger.LogWarning("QR code reactivation failed: QR code not found");
+                throw new EntityNotFoundException<Guid>("QrCode", id);
+            }
+
+            await _qrCodeRepository.SaveChangesAsync().ConfigureAwait(false);
+            _logger.LogInformation("Successfully reactivated QR code with UUID: {QrCodeUuid} by user: {UserId}", id, userId);
+        }
+        catch (ValidationException) { throw; }
+        catch (EntityNotFoundException<Guid>) { throw; }
+        catch (EntityUnauthorizedException) { throw; }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error occurred while reactivating QR code with UUID: {QrCodeUuid}", id);
+            throw ExceptionHandlingHelper.CreateServiceException("QrCode", "Reactivate", ex);
+        }
+    }
+
+    public async Task DeleteQrCodeByUuidAsync(Guid id, ClaimsPrincipal user)
+    {
+        try
+        {
+            _logger.LogInformation("Deleting QR code with UUID: {QrCodeUuid}", id);
+
+            var userId = await _authorizationService.UserContext.GetUserIdAsync(user).ConfigureAwait(false);
+            if (string.IsNullOrEmpty(userId))
+            {
+                _logger.LogWarning("QR code deletion failed: User ID not found in token");
+                throw new EntityUnauthorizedException("QrCode", "Delete", "unknown", "User ID not found in token");
+            }
+
+            var isAuthorized = await _authorizationService.UserContext
+                .IsAuthorizedAsync(user, userId, RoleConstants.Admin)
+                .ConfigureAwait(false);
+            if (!isAuthorized)
+            {
+                _logger.LogWarning("QR code deletion failed: User not authorized");
+                throw new EntityUnauthorizedException("QrCode", "Delete", userId, "You are not authorized to delete QR codes");
+            }
+
+            var qrCode = await _qrCodeRepository.GetQrCodeByUuidAsync(id).ConfigureAwait(false);
+            if (qrCode == null)
+            {
+                _logger.LogWarning("QR code deletion failed: QR code not found");
+                throw new EntityNotFoundException<Guid>("QrCode", id);
+            }
+
+            var result = await _qrCodeRepository.DeleteQrCodeAsync(qrCode.Id).ConfigureAwait(false);
+            if (!result)
+            {
+                _logger.LogWarning("QR code deletion failed: QR code not found");
+                throw new EntityNotFoundException<Guid>("QrCode", id);
+            }
+
+            await _qrCodeRepository.SaveChangesAsync().ConfigureAwait(false);
+            _logger.LogInformation("Successfully deleted QR code with UUID: {QrCodeUuid}", id);
+        }
+        catch (EntityNotFoundException<Guid>) { throw; }
+        catch (EntityUnauthorizedException) { throw; }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error occurred while deleting QR code with UUID: {QrCodeUuid}", id);
+            throw ExceptionHandlingHelper.CreateServiceException("QrCode", "Delete", ex);
+        }
+    }
+
+    public async Task<QrCodeResponseDto> ExtendQrCodeExpirationByUuidAsync(Guid id, int additionalMinutes, ClaimsPrincipal user)
+    {
+        try
+        {
+            _logger.LogInformation("Extending expiration for QR code UUID: {QrCodeUuid} by {Minutes} minutes", id, additionalMinutes);
+
+            var userId = await _authorizationService.UserContext.GetUserIdAsync(user).ConfigureAwait(false);
+            if (string.IsNullOrEmpty(userId))
+            {
+                _logger.LogWarning("QR code expiration extension failed: User ID not found in token");
+                throw new EntityUnauthorizedException("QrCode", "ExtendExpiration", "unknown", "User ID not found in token");
+            }
+
+            var isAuthorized = await _authorizationService.UserContext
+                .IsAuthorizedAsync(user, userId, RoleConstants.Admin, RoleConstants.Instructor)
+                .ConfigureAwait(false);
+            if (!isAuthorized)
+            {
+                _logger.LogWarning("QR code expiration extension failed: User not authorized");
+                throw new EntityUnauthorizedException("QrCode", "ExtendExpiration", userId, "You are not authorized to extend QR code expiration");
+            }
+
+            var qrCode = await _qrCodeRepository.GetQrCodeByUuidAsync(id).ConfigureAwait(false);
+            if (qrCode == null)
+            {
+                _logger.LogWarning("QR code expiration extension failed: QR code not found");
+                throw new EntityNotFoundException<Guid>("QrCode", id);
+            }
+
+            qrCode.ExpiresAt = qrCode.ExpiresAt.AddMinutes(additionalMinutes);
+
+            var updatedQrCode = await _qrCodeRepository.UpdateQrCodeAsync(qrCode).ConfigureAwait(false);
+            await _qrCodeRepository.SaveChangesAsync().ConfigureAwait(false);
+
+            var responseDto = QrCodeMapper.MapToResponseDto(updatedQrCode);
+            _logger.LogInformation("Successfully extended expiration for QR code UUID: {QrCodeUuid}", id);
+
+            return responseDto;
+        }
+        catch (EntityNotFoundException<Guid>) { throw; }
+        catch (EntityUnauthorizedException) { throw; }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex,
+                "Error occurred while extending QR code expiration for UUID: {QrCodeUuid} by {Minutes} minutes",
+                id,
+                additionalMinutes);
+            throw ExceptionHandlingHelper.CreateServiceException("QrCode", "ExtendExpiration", ex);
+        }
+    }
+
+    #endregion
 
     public async Task<QrCodeValidationResponseDto> ValidateQrCodeAsync(string qrHash)
     {
@@ -513,7 +772,7 @@ internal sealed class QrCodeWriteService
                 QrCodeId = qrCode.Id,
                 ScheduleId = qrCode.Session.ScheduleId,
                 SectionId = qrCode.Session.Schedule.SectionId,
-                ActualRoomId = qrCode.Session.ActualRoomId ?? 0,
+                ActualRoomId = qrCode.Session.ActualRoomId,
                 ExpiresAt = qrCode.ExpiresAt,
                 RemainingUsage = remainingUsage,
                 ScheduleTitle = $"{qrCode.Session.Schedule.DayOfWeek} {qrCode.Session.Schedule.TimeIn}-{qrCode.Session.Schedule.TimeOut}",

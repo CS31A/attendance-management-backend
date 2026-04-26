@@ -5,14 +5,12 @@ namespace attendance_monitoring.Models.DTO.Request;
 /// <summary>
 /// DTO for creating a new session.
 /// </summary>
-public class CreateSession
+public class CreateSession : IValidatableObject
 {
     /// <summary>
-    /// The ID of the schedule for which this session is being created.
+    /// The UUID of the schedule for which this session is being created.
     /// </summary>
-    [Required(ErrorMessage = "Schedule ID is required")]
-    [Range(1, int.MaxValue, ErrorMessage = "Schedule ID must be a positive integer")]
-    public int ScheduleId { get; set; }
+    public Guid? ScheduleId { get; set; }
 
     /// <summary>
     /// The date when the session will take place.
@@ -38,4 +36,14 @@ public class CreateSession
     /// </summary>
     [MaxLength(500, ErrorMessage = "Off-schedule reason cannot exceed 500 characters")]
     public string? OffScheduleReason { get; set; }
+
+    public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+    {
+        if (!ScheduleId.HasValue || ScheduleId.Value == Guid.Empty)
+        {
+            yield return new ValidationResult(
+                "ScheduleId is required.",
+                [nameof(ScheduleId)]);
+        }
+    }
 }

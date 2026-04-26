@@ -5,21 +5,17 @@ namespace attendance_monitoring.Models.DTO.Request;
 /// <summary>
 /// DTO for creating a new attendance record manually.
 /// </summary>
-public class CreateAttendanceRequest
+public class CreateAttendanceRequest : IValidatableObject
 {
     /// <summary>
-    /// The ID of the student for this attendance record.
+    /// The UUID of the student for this attendance record.
     /// </summary>
-    [Required(ErrorMessage = "Student ID is required")]
-    [Range(1, int.MaxValue, ErrorMessage = "Student ID must be a positive integer")]
-    public int StudentId { get; set; }
+    public Guid? StudentId { get; set; }
 
     /// <summary>
-    /// The ID of the session for this attendance record.
+    /// The UUID of the session for this attendance record.
     /// </summary>
-    [Required(ErrorMessage = "Session ID is required")]
-    [Range(1, int.MaxValue, ErrorMessage = "Session ID must be a positive integer")]
-    public int SessionId { get; set; }
+    public Guid? SessionId { get; set; }
 
     /// <summary>
     /// Attendance status: Present, Late, Excused, or Absent.
@@ -39,4 +35,21 @@ public class CreateAttendanceRequest
     /// Optional check-in time. Defaults to current local time if not provided.
     /// </summary>
     public DateTime? CheckInTime { get; set; }
+
+    public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+    {
+        if (!StudentId.HasValue || StudentId.Value == Guid.Empty)
+        {
+            yield return new ValidationResult(
+                "StudentId is required.",
+                [nameof(StudentId)]);
+        }
+
+        if (!SessionId.HasValue || SessionId.Value == Guid.Empty)
+        {
+            yield return new ValidationResult(
+                "SessionId is required.",
+                [nameof(SessionId)]);
+        }
+    }
 }

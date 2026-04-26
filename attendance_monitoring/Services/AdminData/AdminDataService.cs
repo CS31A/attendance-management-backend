@@ -169,13 +169,13 @@ public sealed class AdminDataService : IAdminDataService
                     row.Status = RowStatusImported;
                     response.CreatedRows++;
                 }
-                catch (Exception ex) when (ex is EntityAlreadyExistsException<string> or EntityAlreadyExistsException<int>)
+                catch (Exception ex) when (ex is EntityAlreadyExistsException<string> or EntityAlreadyExistsException<Guid>)
                 {
                     row.Status = RowStatusDuplicate;
                     row.Issues.Add(CreateIssue(row.RowNumber, "duplicate", "warning", ex.Message));
                     response.SkippedDuplicateRows++;
                 }
-                catch (Exception ex) when (ex is AppValidationEx or EntityNotFoundException<int> or EntityNotFoundException<string> or EntityServiceException)
+                catch (Exception ex) when (ex is AppValidationEx or EntityNotFoundException<Guid> or EntityNotFoundException<string> or EntityServiceException)
                 {
                     row.Status = RowStatusFailed;
                     row.Issues.Add(CreateIssue(row.RowNumber, "import_failed", "error", ex.Message));
@@ -469,7 +469,7 @@ public sealed class AdminDataService : IAdminDataService
             Password = row.Values.GetValueOrDefault("temporarypassword") ?? string.Empty,
             RepeatedPassword = row.Values.GetValueOrDefault("temporarypassword") ?? string.Empty,
             Role = role,
-            SectionId = role == RoleConstants.Student && !string.IsNullOrWhiteSpace(sectionName) && lookup.SectionIdsByName.TryGetValue(sectionName, out var sectionId)
+            SectionId = role == RoleConstants.Student && !string.IsNullOrWhiteSpace(sectionName) && lookup.SectionUuidsByName.TryGetValue(sectionName, out var sectionId)
                 ? sectionId
                 : null,
         };
@@ -489,8 +489,8 @@ public sealed class AdminDataService : IAdminDataService
     private static void ValidateSectionRow(AdminDataRowResultDto row, LookupCache lookup)
     {
         var courseName = row.Values.GetValueOrDefault("coursename");
-        var courseId = 0;
-        if (string.IsNullOrWhiteSpace(courseName) || !lookup.CourseIdsByName.TryGetValue(courseName, out courseId))
+        var courseId = Guid.Empty;
+        if (string.IsNullOrWhiteSpace(courseName) || !lookup.CourseUuidsByName.TryGetValue(courseName, out courseId))
         {
             row.Issues.Add(CreateIssue(row.RowNumber, "missing_reference", "error", $"Course '{courseName}' was not found.", "courseName"));
         }
@@ -509,10 +509,10 @@ public sealed class AdminDataService : IAdminDataService
             DayOfWeek = row.Values.GetValueOrDefault("dayofweek") ?? string.Empty,
             TimeIn = ParseTime(row, "timein"),
             TimeOut = ParseTime(row, "timeout"),
-            SubjectId = ResolveLookup(lookup.SubjectIdsByCode, row, "subjectcode", "Subject"),
-            ClassroomId = ResolveLookup(lookup.ClassroomIdsByName, row, "classroomname", "Classroom"),
-            SectionId = ResolveLookup(lookup.SectionIdsByName, row, "sectionname", "Section"),
-            InstructorId = ResolveLookup(lookup.InstructorIdsByEmail, row, "instructoremail", "Instructor"),
+            SubjectId = ResolveLookupGuid(lookup.SubjectUuidsByCode, row, "subjectcode", "Subject"),
+            ClassroomId = ResolveLookupGuid(lookup.ClassroomUuidsByName, row, "classroomname", "Classroom"),
+            SectionId = ResolveLookupGuid(lookup.SectionUuidsByName, row, "sectionname", "Section"),
+            InstructorId = ResolveLookupGuid(lookup.InstructorUuidsByEmail, row, "instructoremail", "Instructor"),
         };
 
         ValidateDataAnnotations(createSchedule, row);
@@ -545,11 +545,13 @@ public sealed class AdminDataService : IAdminDataService
             row.Values["sectionname"] = sectionName;
         }
 
-        var studentId = ResolveLookup(lookup.StudentIdsByEmail, row, "studentemail", "Student");
-        var sectionId = ResolveLookup(lookup.SectionIdsByName, row, "sectionname", "Section");
-        var subjectId = ResolveLookup(lookup.SubjectIdsByCode, row, "subjectcode", "Subject");
+        var studentEntityId = ResolveLookup(lookup.StudentIdsByEmail, row, "studentemail", "Student");
+        var sectionEntityId = ResolveLookup(lookup.SectionIdsByName, row, "sectionname", "Section");
+        var studentId = ResolveLookupGuid(lookup.StudentUuidsByEmail, row, "studentemail", "Student");
+        var sectionId = ResolveLookupGuid(lookup.SectionUuidsByName, row, "sectionname", "Section");
+        var subjectId = ResolveLookupGuid(lookup.SubjectUuidsByCode, row, "subjectcode", "Subject");
 
-        if (studentId != 0 && sectionId != 0 && lookup.StudentPrimarySectionIds.TryGetValue(studentId, out var primarySectionId) && primarySectionId == sectionId)
+        if (studentEntityId != Guid.Empty && sectionEntityId != Guid.Empty && lookup.StudentPrimarySectionIds.TryGetValue(studentEntityId, out var primarySectionId) && primarySectionId == sectionEntityId)
         {
             row.Issues.Add(CreateIssue(row.RowNumber, "duplicate_existing", "warning", "Student already belongs to this section as their primary section and will be skipped."));
         }
@@ -631,11 +633,11 @@ public sealed class AdminDataService : IAdminDataService
     {
         var role = NormalizeRole(values.GetValueOrDefault("role"));
         var sectionName = values.GetValueOrDefault("sectionname");
-        int? sectionId = null;
+        Guid? sectionId = null;
 
         if (role == RoleConstants.Student && !string.IsNullOrWhiteSpace(sectionName))
         {
-            if (lookup.SectionIdsByName.TryGetValue(sectionName, out var cachedSectionId))
+            if (lookup.SectionUuidsByName.TryGetValue(sectionName, out var cachedSectionId))
             {
                 sectionId = cachedSectionId;
             }
@@ -680,19 +682,19 @@ public sealed class AdminDataService : IAdminDataService
         var sectionName = values.GetValueOrDefault("sectionname") ?? string.Empty;
         var instructorEmail = values.GetValueOrDefault("instructoremail") ?? string.Empty;
 
-        if (!lookup.SubjectIdsByCode.TryGetValue(subjectCode, out var subjectId))
+        if (!lookup.SubjectUuidsByCode.TryGetValue(subjectCode, out var subjectId))
         {
             throw new EntityNotFoundException<string>("Subject", subjectCode, $"Subject '{subjectCode}' was not found.");
         }
-        if (!lookup.ClassroomIdsByName.TryGetValue(classroomName, out var classroomId))
+        if (!lookup.ClassroomUuidsByName.TryGetValue(classroomName, out var classroomId))
         {
             throw new EntityNotFoundException<string>("Classroom", classroomName, $"Classroom '{classroomName}' was not found.");
         }
-        if (!lookup.SectionIdsByName.TryGetValue(sectionName, out var sectionId))
+        if (!lookup.SectionUuidsByName.TryGetValue(sectionName, out var sectionId))
         {
             throw new EntityNotFoundException<string>("Section", sectionName, $"Section '{sectionName}' was not found.");
         }
-        if (!lookup.InstructorIdsByEmail.TryGetValue(instructorEmail, out var instructorId))
+        if (!lookup.InstructorUuidsByEmail.TryGetValue(instructorEmail, out var instructorId))
         {
             throw new EntityNotFoundException<string>("Instructor", instructorEmail, $"Instructor '{instructorEmail}' was not found.");
         }
@@ -715,26 +717,28 @@ public sealed class AdminDataService : IAdminDataService
         var sectionName = values.GetValueOrDefault("sectionname") ?? string.Empty;
         var subjectCode = values.GetValueOrDefault("subjectcode") ?? string.Empty;
 
-        if (!lookup.StudentIdsByEmail.TryGetValue(studentEmail, out var studentId))
+        if (!lookup.StudentUuidsByEmail.TryGetValue(studentEmail, out var studentId))
         {
             throw new EntityNotFoundException<string>("Student", studentEmail, $"Student '{studentEmail}' was not found.");
         }
-        if (!lookup.SectionIdsByName.TryGetValue(sectionName, out var sectionId))
+        if (!lookup.SectionUuidsByName.TryGetValue(sectionName, out var sectionId))
         {
             throw new EntityNotFoundException<string>("Section", sectionName, $"Section '{sectionName}' was not found.");
         }
-        if (!lookup.SubjectIdsByCode.TryGetValue(subjectCode, out var subjectId))
+        if (!lookup.SubjectUuidsByCode.TryGetValue(subjectCode, out var subjectId))
         {
             throw new EntityNotFoundException<string>("Subject", subjectCode, $"Subject '{subjectCode}' was not found.");
         }
 
-        await _studentEnrollmentService.EnrollStudentAsync(
-            studentId,
-            sectionId,
-            subjectId,
-            values.GetValueOrDefault("enrollmenttype") ?? "Regular",
-            NullIfEmpty(values.GetValueOrDefault("academicyear")),
-            NullIfEmpty(values.GetValueOrDefault("semester"))).ConfigureAwait(false);
+        await _studentEnrollmentService.EnrollStudentAsync(new CreateStudentEnrollment
+        {
+            StudentId = studentId,
+            SectionId = sectionId,
+            SubjectId = subjectId,
+            EnrollmentType = values.GetValueOrDefault("enrollmenttype") ?? "Regular",
+            AcademicYear = NullIfEmpty(values.GetValueOrDefault("academicyear")),
+            Semester = NullIfEmpty(values.GetValueOrDefault("semester")),
+        }).ConfigureAwait(false);
     }
 
     private async Task<List<IReadOnlyDictionary<string, string?>>> GetExportRowsAsync(string entity, IReadOnlyDictionary<string, string?> filters, CancellationToken cancellationToken)
@@ -810,7 +814,7 @@ public sealed class AdminDataService : IAdminDataService
             query = query.Where(enrollment => enrollment.Section.Name == sectionName);
         }
 
-        if (filters.TryGetValue("sectionId", out var sectionIdValue) && int.TryParse(sectionIdValue, out var sectionId))
+        if (filters.TryGetValue("sectionId", out var sectionIdValue) && Guid.TryParse(sectionIdValue, out var sectionId))
         {
             query = query.Where(enrollment => enrollment.SectionId == sectionId);
         }
@@ -848,21 +852,33 @@ public sealed class AdminDataService : IAdminDataService
     private async Task<LookupCache> CreateLookupAsync(CancellationToken cancellationToken)
     {
         var courses = await _context.Courses.AsNoTracking().ToDictionaryAsync(course => course.Name, course => course.Id, StringComparer.OrdinalIgnoreCase, cancellationToken).ConfigureAwait(false);
+        var courseUuids = await _context.Courses.AsNoTracking().ToDictionaryAsync(course => course.Name, course => course.Id, StringComparer.OrdinalIgnoreCase, cancellationToken).ConfigureAwait(false);
         var sections = await _context.Sections.AsNoTracking().ToDictionaryAsync(section => section.Name, section => section.Id, StringComparer.OrdinalIgnoreCase, cancellationToken).ConfigureAwait(false);
+        var sectionUuids = await _context.Sections.AsNoTracking().ToDictionaryAsync(section => section.Name, section => section.Id, StringComparer.OrdinalIgnoreCase, cancellationToken).ConfigureAwait(false);
         var subjects = await _context.Subjects.AsNoTracking().ToDictionaryAsync(subject => subject.Code, subject => subject.Id, StringComparer.OrdinalIgnoreCase, cancellationToken).ConfigureAwait(false);
+        var subjectUuids = await _context.Subjects.AsNoTracking().ToDictionaryAsync(subject => subject.Code, subject => subject.Id, StringComparer.OrdinalIgnoreCase, cancellationToken).ConfigureAwait(false);
         var classrooms = await _context.Classrooms.AsNoTracking().ToDictionaryAsync(classroom => classroom.Name, classroom => classroom.Id, StringComparer.OrdinalIgnoreCase, cancellationToken).ConfigureAwait(false);
+        var classroomUuids = await _context.Classrooms.AsNoTracking().ToDictionaryAsync(classroom => classroom.Name, classroom => classroom.Id, StringComparer.OrdinalIgnoreCase, cancellationToken).ConfigureAwait(false);
         var instructors = await _context.Instructors.AsNoTracking().Include(instructor => instructor.User).Where(instructor => !instructor.IsDeleted && instructor.User.Email != null).ToDictionaryAsync(instructor => instructor.User.Email!, instructor => instructor.Id, StringComparer.OrdinalIgnoreCase, cancellationToken).ConfigureAwait(false);
+        var instructorUuids = await _context.Instructors.AsNoTracking().Include(instructor => instructor.User).Where(instructor => !instructor.IsDeleted && instructor.User.Email != null).ToDictionaryAsync(instructor => instructor.User.Email!, instructor => instructor.Id, StringComparer.OrdinalIgnoreCase, cancellationToken).ConfigureAwait(false);
         var students = await _context.Students.AsNoTracking().Include(student => student.User).Where(student => !student.IsDeleted && student.User.Email != null).ToDictionaryAsync(student => student.User.Email!, student => student.Id, StringComparer.OrdinalIgnoreCase, cancellationToken).ConfigureAwait(false);
+        var studentUuids = await _context.Students.AsNoTracking().Include(student => student.User).Where(student => !student.IsDeleted && student.User.Email != null).ToDictionaryAsync(student => student.User.Email!, student => student.Id, StringComparer.OrdinalIgnoreCase, cancellationToken).ConfigureAwait(false);
         var primarySections = await _context.Students.AsNoTracking().Where(student => !student.IsDeleted).ToDictionaryAsync(student => student.Id, student => student.SectionId, cancellationToken).ConfigureAwait(false);
         var users = (await _accountService.GetAllUsersAsync(UserStatus.All).ConfigureAwait(false)).ToList();
 
         return new LookupCache(
             courses,
+            courseUuids,
             sections,
+            sectionUuids,
             subjects,
+            subjectUuids,
             classrooms,
+            classroomUuids,
             instructors,
+            instructorUuids,
             students,
+            studentUuids,
             primarySections,
             new HashSet<string>(users.Select(user => user.Username), StringComparer.OrdinalIgnoreCase),
             new HashSet<string>(users.Select(user => user.Email), StringComparer.OrdinalIgnoreCase),
@@ -938,40 +954,40 @@ public sealed class AdminDataService : IAdminDataService
     private static string BuildScheduleKey(IReadOnlyDictionary<string, string?> values, LookupCache lookup)
     {
         var subject = lookup.SubjectIdsByCode.TryGetValue(values.GetValueOrDefault("subjectcode") ?? string.Empty, out var subjectId)
-            ? subjectId.ToString(CultureInfo.InvariantCulture)
+            ? subjectId.ToString()
             : values.GetValueOrDefault("subjectcode") ?? string.Empty;
         var section = lookup.SectionIdsByName.TryGetValue(values.GetValueOrDefault("sectionname") ?? string.Empty, out var sectionId)
-            ? sectionId.ToString(CultureInfo.InvariantCulture)
+            ? sectionId.ToString()
             : values.GetValueOrDefault("sectionname") ?? string.Empty;
         var classroom = lookup.ClassroomIdsByName.TryGetValue(values.GetValueOrDefault("classroomname") ?? string.Empty, out var classroomId)
-            ? classroomId.ToString(CultureInfo.InvariantCulture)
+            ? classroomId.ToString()
             : values.GetValueOrDefault("classroomname") ?? string.Empty;
         var instructor = lookup.InstructorIdsByEmail.TryGetValue(values.GetValueOrDefault("instructoremail") ?? string.Empty, out var instructorId)
-            ? instructorId.ToString(CultureInfo.InvariantCulture)
+            ? instructorId.ToString()
             : values.GetValueOrDefault("instructoremail") ?? string.Empty;
 
         return $"{NormalizeScheduleDayOfWeek(values.GetValueOrDefault("dayofweek"))}|{NormalizeScheduleTime(values.GetValueOrDefault("timein"))}|{NormalizeScheduleTime(values.GetValueOrDefault("timeout"))}|{subject}|{section}|{classroom}|{instructor}";
     }
 
-    private static string BuildScheduleKey(string dayOfWeek, TimeOnly timeIn, TimeOnly timeOut, int subjectId, int sectionId, int classroomId, int instructorId)
+    private static string BuildScheduleKey(string dayOfWeek, TimeOnly timeIn, TimeOnly timeOut, Guid subjectId, Guid sectionId, Guid classroomId, Guid instructorId)
         => $"{dayOfWeek}|{timeIn:HH\\:mm}|{timeOut:HH\\:mm}|{subjectId}|{sectionId}|{classroomId}|{instructorId}";
 
     private static string BuildEnrollmentKey(IReadOnlyDictionary<string, string?> values, LookupCache lookup)
     {
         var student = lookup.StudentIdsByEmail.TryGetValue(values.GetValueOrDefault("studentemail") ?? string.Empty, out var studentId)
-            ? studentId.ToString(CultureInfo.InvariantCulture)
+            ? studentId.ToString()
             : values.GetValueOrDefault("studentemail") ?? string.Empty;
         var section = lookup.SectionIdsByName.TryGetValue(values.GetValueOrDefault("sectionname") ?? string.Empty, out var sectionId)
-            ? sectionId.ToString(CultureInfo.InvariantCulture)
+            ? sectionId.ToString()
             : values.GetValueOrDefault("sectionname") ?? string.Empty;
         var subject = lookup.SubjectIdsByCode.TryGetValue(values.GetValueOrDefault("subjectcode") ?? string.Empty, out var subjectId)
-            ? subjectId.ToString(CultureInfo.InvariantCulture)
+            ? subjectId.ToString()
             : values.GetValueOrDefault("subjectcode") ?? string.Empty;
 
         return $"{student}|{section}|{subject}";
     }
 
-    private static string BuildEnrollmentKey(int studentId, int sectionId, int subjectId)
+    private static string BuildEnrollmentKey(Guid studentId, Guid sectionId, Guid subjectId)
         => $"{studentId}|{sectionId}|{subjectId}";
 
     private static Dictionary<string, string?> NormalizeRowValues(string entity, IReadOnlyDictionary<string, string?> row)
@@ -1273,7 +1289,7 @@ public sealed class AdminDataService : IAdminDataService
         }
     }
 
-    private static int ResolveLookup(IReadOnlyDictionary<string, int> lookup, AdminDataRowResultDto row, string key, string entityName)
+    private static Guid ResolveLookup(IReadOnlyDictionary<string, Guid> lookup, AdminDataRowResultDto row, string key, string entityName)
     {
         var value = row.Values.GetValueOrDefault(key);
         if (!string.IsNullOrWhiteSpace(value) && lookup.TryGetValue(value, out var resolvedId))
@@ -1282,7 +1298,19 @@ public sealed class AdminDataService : IAdminDataService
         }
 
         row.Issues.Add(CreateIssue(row.RowNumber, "missing_reference", "error", $"{entityName} '{value}' was not found.", key));
-        return 0;
+        return Guid.Empty;
+    }
+
+    private static Guid ResolveLookupGuid(IReadOnlyDictionary<string, Guid> lookup, AdminDataRowResultDto row, string key, string entityName)
+    {
+        var value = row.Values.GetValueOrDefault(key);
+        if (!string.IsNullOrWhiteSpace(value) && lookup.TryGetValue(value, out var resolvedId))
+        {
+            return resolvedId;
+        }
+
+        row.Issues.Add(CreateIssue(row.RowNumber, "missing_reference", "error", $"{entityName} '{value}' was not found.", key));
+        return Guid.Empty;
     }
 
     private static TimeOnly ParseTime(AdminDataRowResultDto row, string key)
@@ -1383,13 +1411,19 @@ public sealed class AdminDataService : IAdminDataService
         LookupCache Lookup);
 
     private sealed record LookupCache(
-        IReadOnlyDictionary<string, int> CourseIdsByName,
-        IReadOnlyDictionary<string, int> SectionIdsByName,
-        IReadOnlyDictionary<string, int> SubjectIdsByCode,
-        IReadOnlyDictionary<string, int> ClassroomIdsByName,
-        IReadOnlyDictionary<string, int> InstructorIdsByEmail,
-        IReadOnlyDictionary<string, int> StudentIdsByEmail,
-        IReadOnlyDictionary<int, int> StudentPrimarySectionIds,
+        IReadOnlyDictionary<string, Guid> CourseIdsByName,
+        IReadOnlyDictionary<string, Guid> CourseUuidsByName,
+        IReadOnlyDictionary<string, Guid> SectionIdsByName,
+        IReadOnlyDictionary<string, Guid> SectionUuidsByName,
+        IReadOnlyDictionary<string, Guid> SubjectIdsByCode,
+        IReadOnlyDictionary<string, Guid> SubjectUuidsByCode,
+        IReadOnlyDictionary<string, Guid> ClassroomIdsByName,
+        IReadOnlyDictionary<string, Guid> ClassroomUuidsByName,
+        IReadOnlyDictionary<string, Guid> InstructorIdsByEmail,
+        IReadOnlyDictionary<string, Guid> InstructorUuidsByEmail,
+        IReadOnlyDictionary<string, Guid> StudentIdsByEmail,
+        IReadOnlyDictionary<string, Guid> StudentUuidsByEmail,
+        IReadOnlyDictionary<Guid, Guid> StudentPrimarySectionIds,
         IReadOnlySet<string> ExistingUsernames,
         IReadOnlySet<string> ExistingEmails,
         IReadOnlySet<string> ExistingCourseNames,

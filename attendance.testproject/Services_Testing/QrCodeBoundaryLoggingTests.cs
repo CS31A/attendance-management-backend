@@ -30,28 +30,34 @@ public class QrCodeBoundaryLoggingTests
         var user = CreateUserPrincipal("user-1");
         var expectedException = new InvalidOperationException("Update failed");
 
+        var qrCodeId = Guid.NewGuid();
         qrCodeRepository
-            .Setup(r => r.GetQrCodeByIdAsync(123))
-            .ReturnsAsync(new QrCode { Id = 123, ExpiresAt = DateTime.UtcNow.AddMinutes(10) });
+            .Setup(r => r.GetQrCodeByIdAsync(It.IsAny<Guid>()))
+            .ReturnsAsync(new QrCode { Id = qrCodeId, ExpiresAt = DateTime.UtcNow.AddMinutes(10) });
         qrCodeRepository
             .Setup(r => r.UpdateQrCodeAsync(It.IsAny<QrCode>()))
             .ThrowsAsync(expectedException);
 
         await Assert.ThrowsAsync<EntityServiceException>(() =>
-            service.UpdateQrCodeAsync(123, new UpdateQrCode { IsActive = true }, user));
+            service.UpdateQrCodeAsync(qrCodeId, new UpdateQrCode { IsActive = true }, user));
 
-        VerifyErrorLogContains(logger, expectedException, "123");
+        VerifyErrorLogContains(logger, expectedException, qrCodeId.ToString());
     }
 
     [Fact]
     public async Task CreateQrCodeAsync_RepositoryCreateFails_LogsSessionIdContext()
     {
         var qrCodeRepository = new Mock<IQrCodeRepository>();
+        var sessionRepository = new Mock<ISessionRepository>();
         var logger = new TestLogger<QrCodeGenerationService>();
+        var sessionUuid = Guid.NewGuid();
+        sessionRepository.Setup(r => r.GetSessionByUuidAsync(sessionUuid))
+            .ReturnsAsync(new Session { Id = sessionUuid });
         var service = new QrCodeGenerationService(
             qrCodeRepository.Object,
             Mock.Of<INotificationService>(),
-            CreateAuthorizationService(sessionId: 42),
+            CreateAuthorizationService(sessionId: sessionUuid),
+            sessionRepository.Object,
             logger);
         var user = CreateUserPrincipal("user-1");
         var expectedException = new InvalidOperationException("Create failed");
@@ -64,24 +70,29 @@ public class QrCodeBoundaryLoggingTests
             service.CreateQrCodeAsync(
                 new CreateQrCode
                 {
-                    SessionId = 42,
+                    SessionId = sessionUuid,
                     QrHash = "hash-42",
                     ExpiresAt = DateTime.UtcNow.AddMinutes(5)
                 },
                 user));
 
-        VerifyErrorLogContains(logger, expectedException, "42");
+        VerifyErrorLogContains(logger, expectedException, sessionUuid.ToString());
     }
 
     [Fact]
     public async Task GenerateQrCodeAsync_RepositoryCreateFails_LogsSessionIdContext()
     {
         var qrCodeRepository = new Mock<IQrCodeRepository>();
+        var sessionRepository = new Mock<ISessionRepository>();
         var logger = new TestLogger<QrCodeGenerationService>();
+        var sessionUuid = Guid.NewGuid();
+        sessionRepository.Setup(r => r.GetSessionByUuidAsync(sessionUuid))
+            .ReturnsAsync(new Session { Id = sessionUuid });
         var service = new QrCodeGenerationService(
             qrCodeRepository.Object,
             Mock.Of<INotificationService>(),
-            CreateAuthorizationService(sessionId: 42),
+            CreateAuthorizationService(sessionId: sessionUuid),
+            sessionRepository.Object,
             logger);
         var user = CreateUserPrincipal("user-1");
         var expectedException = new InvalidOperationException("Generate failed");
@@ -96,22 +107,23 @@ public class QrCodeBoundaryLoggingTests
         var result = await service.GenerateQrCodeAsync(
             new QrCodeRequest
             {
-                SessionId = 42,
+                SessionId = sessionUuid,
                 ExpirationMinutes = 15,
                 UniqueHash = "client-seed"
             },
             user);
 
         Assert.False(result.Success);
-        VerifyErrorLogContains(logger, expectedException, "42");
+        VerifyErrorLogContains(logger, expectedException, sessionUuid.ToString());
     }
 
-    private static QrCodeAuthorizationService CreateAuthorizationService(int sessionId = 123)
+    private static QrCodeAuthorizationService CreateAuthorizationService(Guid? sessionId = null)
     {
+        var sid = sessionId ?? Guid.Parse("00000000-0000-0000-0000-00000000007b");
         var sessionRepository = new Mock<ISessionRepository>();
         sessionRepository
-            .Setup(r => r.GetSessionByIdAsync(sessionId))
-            .ReturnsAsync(new Session { Id = sessionId, Status = SessionStatusConstants.Active });
+            .Setup(r => r.GetSessionByIdAsync(sid))
+            .ReturnsAsync(new Session { Id = sid, Status = SessionStatusConstants.Active });
 
         var enrollmentService = new Mock<IStudentEnrollmentService>();
 

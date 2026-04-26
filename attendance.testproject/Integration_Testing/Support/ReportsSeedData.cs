@@ -16,13 +16,20 @@ internal sealed class ReportsScenarioContext
     public required string OtherInstructorUserId { get; init; }
     public required string StudentUserId { get; init; }
     public required string OutsiderStudentUserId { get; init; }
-    public required int InstructorId { get; init; }
-    public required int OtherInstructorId { get; init; }
-    public required int StudentId { get; init; }
-    public required int OutsiderStudentId { get; init; }
-    public required int SectionId { get; init; }
-    public required int SessionId { get; init; }
-    public required int ScheduleId { get; init; }
+    public required Guid InstructorId { get; init; }
+    public required Guid InstructorUuid { get; init; }
+    public required Guid OtherInstructorId { get; init; }
+    public required Guid OtherInstructorUuid { get; init; }
+    public required Guid StudentId { get; init; }
+    public required Guid StudentUuid { get; init; }
+    public required Guid OutsiderStudentId { get; init; }
+    public required Guid OutsiderStudentUuid { get; init; }
+    public required Guid SectionId { get; init; }
+    public required Guid SectionUuid { get; init; }
+    public required Guid SessionId { get; init; }
+    public required Guid SessionUuid { get; init; }
+    public required Guid ScheduleId { get; init; }
+    public required Guid ScheduleUuid { get; init; }
 }
 
 /// <summary>
@@ -115,6 +122,7 @@ internal static class ReportsSeedData
             Lastname = "Student",
             Section = section,
             IsRegular = true,
+            Usn = "TEST-SAM-REPORT-001",
             CreatedAt = now,
             UpdatedAt = now
         };
@@ -126,6 +134,7 @@ internal static class ReportsSeedData
             Lastname = "Outsider",
             Section = outsiderSection,
             IsRegular = true,
+            Usn = "TEST-OLLY-REPORT-001",
             CreatedAt = now,
             UpdatedAt = now
         };
@@ -186,12 +195,19 @@ internal static class ReportsSeedData
             StudentUserId = studentUser.Id,
             OutsiderStudentUserId = outsiderUser.Id,
             InstructorId = instructor.Id,
+            InstructorUuid = instructor.Id,
             OtherInstructorId = otherInstructor.Id,
+            OtherInstructorUuid = otherInstructor.Id,
             StudentId = student.Id,
+            StudentUuid = student.Id,
             OutsiderStudentId = outsiderStudent.Id,
+            OutsiderStudentUuid = outsiderStudent.Id,
             SectionId = section.Id,
+            SectionUuid = section.Id,
             SessionId = session.Id,
-            ScheduleId = schedule.Id
+            SessionUuid = session.Id,
+            ScheduleId = schedule.Id,
+            ScheduleUuid = schedule.Id
         };
     }
 

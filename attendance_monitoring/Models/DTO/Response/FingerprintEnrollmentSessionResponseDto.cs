@@ -8,7 +8,7 @@ public class FingerprintEnrollmentSessionResponseDto
 
     public Guid EnrollmentSessionId { get; set; }
 
-    public int StudentId { get; set; }
+    public Guid StudentId { get; set; }
 
     public string StudentName { get; set; } = string.Empty;
 
@@ -19,4 +19,6 @@ public class FingerprintEnrollmentSessionResponseDto
     public string Status { get; set; } = string.Empty;
 
     public DateTime ExpiresAt { get; set; }
+
+    public string? FailureReason { get; set; }
 }

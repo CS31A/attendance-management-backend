@@ -40,7 +40,7 @@ public class AttendanceRepositoryTest : IDisposable
         Assert.True(result.Count > 0);
         Assert.All(result, item =>
         {
-            Assert.True(item.Id > 0);
+            Assert.NotEqual(Guid.Empty, item.Id);
             Assert.False(string.IsNullOrEmpty(item.StudentName));
             Assert.False(string.IsNullOrEmpty(item.SubjectName));
             Assert.False(string.IsNullOrEmpty(item.Status));
@@ -63,48 +63,88 @@ public class AttendanceRepositoryTest : IDisposable
         Assert.NotEqual(page1.First().Id, page2.First().Id);
     }
 
+    [Fact]
+    public async Task AttendanceRepository_GetAttendanceByUuidAsync_ReturnsReadOnlyAndTrackedAttendance()
+    {
+        // Arrange
+        await SeedTestDataAsync();
+        var attendanceUuid = await _context.AttendanceRecords
+            .AsNoTracking()
+            .Select(a => a.Id)
+            .FirstAsync();
+
+        // Act
+        var readOnlyRecord = await _repository.GetAttendanceByUuidAsync(attendanceUuid);
+        var trackedRecord = await _repository.GetAttendanceByUuidTrackedAsync(attendanceUuid);
+
+        // Assert
+        Assert.NotNull(readOnlyRecord);
+        Assert.NotNull(trackedRecord);
+        Assert.Equal(attendanceUuid, readOnlyRecord.Id);
+        Assert.Equal(attendanceUuid, trackedRecord.Id);
+        Assert.NotNull(readOnlyRecord.Student);
+        Assert.NotNull(readOnlyRecord.Session);
+        Assert.Equal(EntityState.Detached, _context.Entry(readOnlyRecord).State);
+        Assert.Equal(EntityState.Unchanged, _context.Entry(trackedRecord).State);
+    }
+
+    [Fact]
+    public async Task AttendanceRepository_GetAttendanceByUuidAsync_ReturnsNull_WhenNotFound()
+    {
+        // Arrange
+        await SeedTestDataAsync();
+
+        // Act
+        var readOnlyRecord = await _repository.GetAttendanceByUuidAsync(Guid.NewGuid());
+        var trackedRecord = await _repository.GetAttendanceByUuidTrackedAsync(Guid.NewGuid());
+
+        // Assert
+        Assert.Null(readOnlyRecord);
+        Assert.Null(trackedRecord);
+    }
+
     private async Task SeedTestDataAsync()
     {
         // Create test data
-        var subject = new Subject { Id = 1, Name = "Mathematics", Code = "MATH101" };
-        var section = new Section { Id = 1, Name = "Section A" };
-        var classroom = new Classroom { Id = 1, Name = "Room 101" };
-        var instructor = new Instructor { Id = 1, Firstname = "John", Lastname = "Doe", UserId = "instructor1" };
-        var student1 = new Student { Id = 1, Firstname = "Alice", Lastname = "Smith", UserId = "student1", SectionId = 1 };
-        var student2 = new Student { Id = 2, Firstname = "Bob", Lastname = "Johnson", UserId = "student2", SectionId = 1 };
-        var student3 = new Student { Id = 3, Firstname = "Charlie", Lastname = "Brown", UserId = "student3", SectionId = 1 };
+        var subject = new Subject { Id = Guid.NewGuid(), Name = "Mathematics", Code = "MATH101" };
+        var section = new Section { Id = Guid.NewGuid(), Name = "Section A" };
+        var classroom = new Classroom { Id = Guid.NewGuid(), Name = "Room 101" };
+        var instructor = new Instructor { Id = Guid.NewGuid(), Firstname = "John", Lastname = "Doe", UserId = "instructor1" };
+        var student1 = new Student { Id = Guid.NewGuid(), Firstname = "Alice", Lastname = "Smith", UserId = "student1", SectionId = section.Id, Usn = "C23-6769-MAN121" };
+        var student2 = new Student { Id = Guid.NewGuid(), Firstname = "Bob", Lastname = "Johnson", UserId = "student2", SectionId = section.Id, Usn = "C23-6770-MAN122" };
+        var student3 = new Student { Id = Guid.NewGuid(), Firstname = "Charlie", Lastname = "Brown", UserId = "student3", SectionId = section.Id, Usn = "C23-6771-MAN123" };
 
         var schedule = new Schedules
         {
-            Id = 1,
+            Id = Guid.NewGuid(),
             TimeIn = new TimeOnly(8, 0),
             TimeOut = new TimeOnly(10, 0),
             DayOfWeek = "Monday",
-            SubjectId = 1,
+            SubjectId = subject.Id,
             Subject = subject,
-            SectionId = 1,
+            SectionId = section.Id,
             Section = section,
-            ClassroomId = 1,
+            ClassroomId = classroom.Id,
             Classroom = classroom,
-            InstructorId = 1,
+            InstructorId = instructor.Id,
             Instructor = instructor
         };
 
         var session = new Session
         {
-            Id = 1,
+            Id = Guid.NewGuid(),
             SessionDate = DateTime.Today,
-            ScheduleId = 1,
+            ScheduleId = schedule.Id,
             Schedule = schedule,
             RowVersion = [1]
         };
 
         var attendance1 = new AttendanceRecord
         {
-            Id = 1,
-            StudentId = 1,
+            Id = Guid.NewGuid(),
+            StudentId = student1.Id,
             Student = student1,
-            SessionId = 1,
+            SessionId = session.Id,
             Session = session,
             CheckInTime = DateTime.UtcNow.AddHours(-1),
             Status = "Present"
@@ -112,10 +152,10 @@ public class AttendanceRepositoryTest : IDisposable
 
         var attendance2 = new AttendanceRecord
         {
-            Id = 2,
-            StudentId = 2,
+            Id = Guid.NewGuid(),
+            StudentId = student2.Id,
             Student = student2,
-            SessionId = 1,
+            SessionId = session.Id,
             Session = session,
             CheckInTime = DateTime.UtcNow.AddHours(-2),
             Status = "Late"
@@ -123,10 +163,10 @@ public class AttendanceRepositoryTest : IDisposable
 
         var attendance3 = new AttendanceRecord
         {
-            Id = 3,
-            StudentId = 3,
+            Id = Guid.NewGuid(),
+            StudentId = student3.Id,
             Student = student3,
-            SessionId = 1,
+            SessionId = session.Id,
             Session = session,
             CheckInTime = DateTime.UtcNow.AddHours(-3),
             Status = "Present"
@@ -163,7 +203,7 @@ public class AttendanceRepositoryTest : IDisposable
         // Verify optimized result has the essential fields
         Assert.All(optimizedResult, item =>
         {
-            Assert.True(item.Id > 0);
+            Assert.NotEqual(Guid.Empty, item.Id);
             Assert.False(string.IsNullOrEmpty(item.StudentName));
             Assert.False(string.IsNullOrEmpty(item.SubjectName));
             Assert.False(string.IsNullOrEmpty(item.Status));
@@ -172,13 +212,11 @@ public class AttendanceRepositoryTest : IDisposable
         // Verify full result has StudentNumber properly mapped
         Assert.All(fullResult, item =>
         {
-            Assert.True(item.Id > 0);
+            Assert.NotEqual(Guid.Empty, item.Id);
             Assert.False(string.IsNullOrEmpty(item.StudentName));
             Assert.False(string.IsNullOrEmpty(item.StudentNumber));
             Assert.False(string.IsNullOrEmpty(item.SubjectName));
             Assert.False(string.IsNullOrEmpty(item.Status));
-            // StudentNumber should be the StudentId as string
-            Assert.Equal(item.StudentId.ToString(), item.StudentNumber);
         });
 
         // The optimized version should have fewer properties but same count
@@ -190,17 +228,18 @@ public class AttendanceRepositoryTest : IDisposable
     {
         // Arrange
         await SeedTestDataAsync();
+        var sessionId = await _context.Sessions.AsNoTracking().Select(s => s.Id).FirstAsync();
 
         // Act
-        var result = await _repository.GetBySessionIdForRosterAsync(1);
+        var result = await _repository.GetBySessionIdForRosterAsync(sessionId);
 
         // Assert
         Assert.NotNull(result);
         Assert.True(result.Count > 0);
         Assert.All(result, item =>
         {
-            Assert.True(item.AttendanceId > 0);
-            Assert.True(item.StudentId > 0);
+            Assert.NotEqual(Guid.Empty, item.AttendanceId);
+            Assert.NotEqual(Guid.Empty, item.StudentId);
             Assert.False(string.IsNullOrEmpty(item.StudentName));
             Assert.False(string.IsNullOrEmpty(item.Status));
             Assert.True(item.CheckInTime > DateTime.MinValue);
@@ -212,15 +251,20 @@ public class AttendanceRepositoryTest : IDisposable
     {
         // Arrange
         await SeedTestDataAsync();
+        var sessionId = await _context.Sessions.AsNoTracking().Select(s => s.Id).FirstAsync();
+        var studentId = await _context.AttendanceRecords.AsNoTracking()
+            .Where(a => a.SessionId == sessionId)
+            .Select(a => a.StudentId)
+            .FirstAsync();
 
         // Act
-        var result = await _repository.GetBySessionAndStudentMinimalAsync(1, 1);
+        var result = await _repository.GetBySessionAndStudentMinimalAsync(sessionId, studentId);
 
         // Assert
         Assert.NotNull(result);
-        Assert.True(result.Id > 0);
-        Assert.Equal(1, result.StudentId);
-        Assert.Equal(1, result.SessionId);
+        Assert.NotEqual(Guid.Empty, result.Id);
+        Assert.Equal(studentId, result.StudentId);
+        Assert.Equal(sessionId, result.SessionId);
         Assert.False(string.IsNullOrEmpty(result.Status));
         Assert.True(result.CheckInTime > DateTime.MinValue);
     }
@@ -230,9 +274,14 @@ public class AttendanceRepositoryTest : IDisposable
     {
         // Arrange
         await SeedTestDataAsync();
+        var sessionId = await _context.Sessions.AsNoTracking().Select(s => s.Id).FirstAsync();
+        var studentId = await _context.AttendanceRecords.AsNoTracking()
+            .Where(a => a.SessionId == sessionId)
+            .Select(a => a.StudentId)
+            .FirstAsync();
 
         // Act
-        var exists = await _repository.HasAttendanceRecordAsync(1, 1);
+        var exists = await _repository.HasAttendanceRecordAsync(studentId, sessionId);
 
         // Assert
         Assert.True(exists);
@@ -245,7 +294,7 @@ public class AttendanceRepositoryTest : IDisposable
         await SeedTestDataAsync();
 
         // Act
-        var exists = await _repository.HasAttendanceRecordAsync(999, 999);
+        var exists = await _repository.HasAttendanceRecordAsync(Guid.NewGuid(), Guid.NewGuid());
 
         // Assert
         Assert.False(exists);
@@ -274,7 +323,7 @@ public class AttendanceRepositoryTest : IDisposable
         // Verify that all returned items have valid data
         Assert.All(result, item =>
         {
-            Assert.True(item.Id > 0);
+            Assert.NotEqual(Guid.Empty, item.Id);
             Assert.NotNull(item.StudentName);
             Assert.NotNull(item.SubjectName);
             Assert.NotNull(item.Status);
@@ -361,6 +410,7 @@ public class AttendanceRepositoryTest : IDisposable
             User = studentUser1,
             UserId = studentUser1.Id,
             Section = sectionA,
+            Usn = "ATT-TEST-001",
             CreatedAt = now,
             UpdatedAt = now,
         };
@@ -372,6 +422,7 @@ public class AttendanceRepositoryTest : IDisposable
             User = studentUser2,
             UserId = studentUser2.Id,
             Section = sectionA,
+            Usn = "ATT-TEST-002",
             CreatedAt = now,
             UpdatedAt = now,
         };
@@ -383,6 +434,7 @@ public class AttendanceRepositoryTest : IDisposable
             User = studentUser3,
             UserId = studentUser3.Id,
             Section = sectionB,
+            Usn = "ATT-TEST-003",
             CreatedAt = now,
             UpdatedAt = now,
         };
@@ -555,6 +607,7 @@ public class AttendanceRepositoryTest : IDisposable
             User = studentUser1,
             UserId = studentUser1.Id,
             Section = section,
+            Usn = "ATT-STATS-001",
             CreatedAt = now,
             UpdatedAt = now,
         };
@@ -566,6 +619,7 @@ public class AttendanceRepositoryTest : IDisposable
             User = studentUser2,
             UserId = studentUser2.Id,
             Section = section,
+            Usn = "ATT-STATS-002",
             CreatedAt = now,
             UpdatedAt = now,
         };

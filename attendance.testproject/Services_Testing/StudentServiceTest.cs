@@ -58,20 +58,20 @@ public class StudentServiceTest
             Firstname = "John",
             Lastname = "Doe",
             IsRegular = true,
-            SectionId = 0
+            SectionId = Guid.NewGuid()
         };
 
         // Act & Assert
         var exception = await Assert.ThrowsAsync<EntityServiceException>(() => _service.CreateStudentAsync(createStudent, _testUserPrincipal));
         Assert.Equal("Student", exception.EntityName);
-        Assert.Contains("Invalid section ID", exception.Message);
+        Assert.Contains("specified section does not exist", exception.Message);
     }
 
     [Fact]
     public async Task CreateStudentAsync_SectionNotFound_ThrowsEntityServiceException()
     {
         // Arrange
-        const int sectionId = 999;
+        var sectionId = Guid.NewGuid();
         var createStudent = new CreateStudent
         {
             Firstname = "John",
@@ -97,10 +97,10 @@ public class StudentServiceTest
             Firstname = "John",
             Lastname = "Doe",
             IsRegular = true,
-            SectionId = 1
+            SectionId = Guid.NewGuid()
         };
 
-        _mockSectionRepository.Setup(r => r.GetSectionByIdAsync(1)).ReturnsAsync(new Section { Id = 1, Name = "CS-3A", CourseId = 1 });
+        _mockSectionRepository.Setup(r => r.GetSectionByIdAsync(It.IsAny<Guid>())).ReturnsAsync(new Section { Id = Guid.NewGuid(), Name = "CS-3A", CourseId = Guid.NewGuid() });
         _mockUserContextService.Setup(s => s.GetUserIdAsync(_testUserPrincipal)).ReturnsAsync((string?)null);
 
         // Act & Assert
@@ -119,12 +119,12 @@ public class StudentServiceTest
             Firstname = "John",
             Lastname = "Doe",
             IsRegular = true,
-            SectionId = 1
+            SectionId = Guid.NewGuid()
         };
 
-        var existingStudent = new Student { Id = 1, Firstname = "Jane", Lastname = "Smith", UserId = userId };
+        var existingStudent = new Student { Id = Guid.NewGuid(), Firstname = "Jane", Lastname = "Smith", UserId = userId };
 
-        _mockSectionRepository.Setup(r => r.GetSectionByIdAsync(1)).ReturnsAsync(new Section { Id = 1, Name = "CS-3A", CourseId = 1 });
+        _mockSectionRepository.Setup(r => r.GetSectionByIdAsync(It.IsAny<Guid>())).ReturnsAsync(new Section { Id = Guid.NewGuid(), Name = "CS-3A", CourseId = Guid.NewGuid() });
         _mockUserContextService.Setup(s => s.GetUserIdAsync(_testUserPrincipal)).ReturnsAsync(userId);
         _mockStudentRepository.Setup(r => r.GetStudentByUserIdAsync(userId)).ReturnsAsync(existingStudent);
 
@@ -145,22 +145,22 @@ public class StudentServiceTest
             Firstname = "John",
             Lastname = "Doe",
             IsRegular = true,
-            SectionId = 1
+            SectionId = Guid.NewGuid()
         };
 
         var createdStudent = new Student
         {
-            Id = 1,
+            Id = Guid.NewGuid(),
             Firstname = "John",
             Lastname = "Doe",
             IsRegular = true,
             UserId = userId,
-            SectionId = 1,
+            SectionId = Guid.NewGuid(),
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
 
-        _mockSectionRepository.Setup(r => r.GetSectionByIdAsync(1)).ReturnsAsync(new Section { Id = 1, Name = "CS-3A", CourseId = 1 });
+        _mockSectionRepository.Setup(r => r.GetSectionByIdAsync(It.IsAny<Guid>())).ReturnsAsync(new Section { Id = Guid.NewGuid(), Name = "CS-3A", CourseId = Guid.NewGuid() });
         _mockUserContextService.Setup(s => s.GetUserIdAsync(_testUserPrincipal)).ReturnsAsync(userId);
         _mockStudentRepository.Setup(r => r.GetStudentByUserIdAsync(userId)).ReturnsAsync((Student?)null);
         _mockStudentRepository.Setup(r => r.CreateStudent(It.IsAny<Student>())).ReturnsAsync(createdStudent);
@@ -172,12 +172,46 @@ public class StudentServiceTest
         // Assert
         Assert.NotNull(result);
         Assert.Equal(userId, result.UserId);
-        Assert.Equal(1, result.SectionId);
+        Assert.NotEqual(Guid.Empty, result.SectionId);
         Assert.Equal("John", result.Firstname);
         Assert.Equal("Doe", result.Lastname);
         Assert.True(result.IsRegular);
         _mockStudentRepository.Verify(r => r.CreateStudent(It.IsAny<Student>()), Times.Once);
         _mockStudentRepository.Verify(r => r.SaveChangesAsync(), Times.Once);
+    }
+
+    [Fact]
+    public async Task CreateStudentAsync_ValidInput_AssignsPendingUsn()
+    {
+        // Arrange
+        const string userId = "test-user-id";
+        var sectionId = Guid.NewGuid();
+        var createStudent = new CreateStudent
+        {
+            Firstname = "John",
+            Lastname = "Doe",
+            IsRegular = true,
+            SectionId = sectionId
+        };
+
+        Student? capturedStudent = null;
+
+        _mockSectionRepository.Setup(r => r.GetSectionByIdAsync(sectionId)).ReturnsAsync(new Section { Id = sectionId, Name = "CS-3A", CourseId = Guid.NewGuid() });
+        _mockUserContextService.Setup(s => s.GetUserIdAsync(_testUserPrincipal)).ReturnsAsync(userId);
+        _mockStudentRepository.Setup(r => r.GetStudentByUserIdAsync(userId)).ReturnsAsync((Student?)null);
+        _mockStudentRepository
+            .Setup(r => r.CreateStudent(It.IsAny<Student>()))
+            .Callback<Student>(student => capturedStudent = student)
+            .ReturnsAsync((Student student) => student);
+        _mockStudentRepository.Setup(r => r.SaveChangesAsync()).ReturnsAsync(1);
+
+        // Act
+        await _service.CreateStudentAsync(createStudent, _testUserPrincipal);
+
+        // Assert
+        Assert.NotNull(capturedStudent);
+        Assert.StartsWith("PENDING-", capturedStudent.Usn);
+        Assert.True(Guid.TryParseExact(capturedStudent.Usn["PENDING-".Length..], "N", out _));
     }
 
     [Fact]
@@ -190,12 +224,12 @@ public class StudentServiceTest
             Firstname = "John",
             Lastname = "Doe",
             IsRegular = true,
-            SectionId = 1
+            SectionId = Guid.NewGuid()
         };
 
         var expectedException = new InvalidOperationException("Database error");
 
-        _mockSectionRepository.Setup(r => r.GetSectionByIdAsync(1)).ReturnsAsync(new Section { Id = 1, Name = "CS-3A", CourseId = 1 });
+        _mockSectionRepository.Setup(r => r.GetSectionByIdAsync(It.IsAny<Guid>())).ReturnsAsync(new Section { Id = Guid.NewGuid(), Name = "CS-3A", CourseId = Guid.NewGuid() });
         _mockUserContextService.Setup(s => s.GetUserIdAsync(_testUserPrincipal)).ReturnsAsync(userId);
         _mockStudentRepository.Setup(r => r.GetStudentByUserIdAsync(userId)).ReturnsAsync((Student?)null);
         _mockStudentRepository.Setup(r => r.CreateStudent(It.IsAny<Student>())).ThrowsAsync(expectedException);
@@ -211,13 +245,61 @@ public class StudentServiceTest
 
     #endregion
 
+    #region GetStudentByUuidAsync Tests
+
+    [Fact]
+    public async Task GetStudentByUuidAsync_WhenStudentExists_ReturnsStudent()
+    {
+        // Arrange
+        var studentUuid = Guid.NewGuid();
+        var student = new Student
+        {
+            Id = studentUuid,
+            Firstname = "John",
+            Lastname = "Doe",
+            UserId = "test-user-id",
+            SectionId = Guid.NewGuid()
+        };
+
+        _mockStudentRepository
+            .Setup(r => r.GetStudentByUuidAsync(studentUuid))
+            .ReturnsAsync(student);
+
+        // Act
+        var result = await _service.GetStudentByUuidAsync(studentUuid);
+
+        // Assert
+        Assert.Same(student, result);
+        _mockStudentRepository.Verify(r => r.GetStudentByUuidAsync(studentUuid), Times.Once);
+    }
+
+    [Fact]
+    public async Task GetStudentByUuidAsync_WhenStudentMissing_ThrowsEntityNotFoundException()
+    {
+        // Arrange
+        var studentUuid = Guid.NewGuid();
+
+        _mockStudentRepository
+            .Setup(r => r.GetStudentByUuidAsync(studentUuid))
+            .ReturnsAsync((Student?)null);
+
+        // Act
+        var exception = await Assert.ThrowsAsync<EntityNotFoundException<Guid>>(() => _service.GetStudentByUuidAsync(studentUuid));
+
+        // Assert
+        Assert.Equal("Student", exception.EntityName);
+        Assert.Equal(studentUuid, exception.Key);
+    }
+
+    #endregion
+
     #region RestoreStudentAsync Tests
 
     [Fact]
     public async Task RestoreStudentAsync_InvalidId_ReturnsInvalidStudentIdMessage()
     {
         // Arrange
-        const int studentId = 0;
+        var studentId = Guid.Empty;
 
         // Act
         var result = await _service.RestoreStudentAsync(studentId, _testUserPrincipal);
@@ -230,7 +312,7 @@ public class StudentServiceTest
     public async Task RestoreStudentAsync_MissingUserId_ReturnsUserIdNotFoundMessage()
     {
         // Arrange
-        const int studentId = 1;
+        var studentId = Guid.NewGuid();
         _mockUserContextService.Setup(s => s.GetUserIdAsync(_testUserPrincipal)).ReturnsAsync((string?)null);
 
         // Act
@@ -244,7 +326,7 @@ public class StudentServiceTest
     public async Task RestoreStudentAsync_StudentNotFound_ReturnsStudentNotFoundMessage()
     {
         // Arrange
-        const int studentId = 999;
+        var studentId = Guid.NewGuid();
         const string userId = "test-user-id";
 
         _mockUserContextService.Setup(s => s.GetUserIdAsync(_testUserPrincipal)).ReturnsAsync(userId);
@@ -261,7 +343,7 @@ public class StudentServiceTest
     public async Task RestoreStudentAsync_UnauthorizedCaller_ReturnsUnauthorizedMessage()
     {
         // Arrange
-        const int studentId = 1;
+        var studentId = Guid.NewGuid();
         const string userId = "test-user-id";
         var existingStudent = new Student
         {
@@ -287,7 +369,7 @@ public class StudentServiceTest
     public async Task RestoreStudentAsync_StudentNotDeleted_ReturnsStudentNotDeletedMessage()
     {
         // Arrange
-        const int studentId = 1;
+        var studentId = Guid.NewGuid();
         const string userId = "test-user-id";
         var existingStudent = new Student
         {
@@ -313,7 +395,7 @@ public class StudentServiceTest
     public async Task RestoreStudentAsync_RepositoryRestoreReturnsFalse_ReturnsFailedMessage()
     {
         // Arrange
-        const int studentId = 1;
+        var studentId = Guid.NewGuid();
         const string userId = "test-user-id";
         var existingStudent = new Student
         {
@@ -340,7 +422,7 @@ public class StudentServiceTest
     public async Task RestoreStudentAsync_Success_ReturnsNullAndCallsSaveChangesAsync()
     {
         // Arrange
-        const int studentId = 1;
+        var studentId = Guid.NewGuid();
         const string userId = "test-user-id";
         var existingStudent = new Student
         {
@@ -369,7 +451,7 @@ public class StudentServiceTest
     public async Task RestoreStudentAsync_SaveChangesAsyncThrows_ReturnsErrorMessage()
     {
         // Arrange
-        const int studentId = 1;
+        var studentId = Guid.NewGuid();
         const string userId = "test-user-id";
         var existingStudent = new Student
         {

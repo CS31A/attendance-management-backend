@@ -6,8 +6,8 @@ namespace attendance_monitoring.Models.DTO.Response;
 /// </summary>
 public class SessionAttendanceRosterDto
 {
-    public int AttendanceId { get; set; }
-    public int StudentId { get; set; }
+    public Guid AttendanceId { get; set; }
+    public Guid StudentId { get; set; }
     public string StudentName { get; set; } = string.Empty;
     public string Status { get; set; } = string.Empty;
     public DateTime CheckInTime { get; set; }

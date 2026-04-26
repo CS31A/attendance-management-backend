@@ -14,7 +14,14 @@ public interface IFingerprintRepository : ISaveableRepository
     /// </summary>
     /// <param name="id">The fingerprint ID.</param>
     /// <returns>The fingerprint if found; otherwise, null.</returns>
-    Task<Fingerprint?> GetFingerprintByIdAsync(int id);
+    Task<Fingerprint?> GetFingerprintByIdAsync(Guid id);
+
+    /// <summary>
+    /// Retrieves a fingerprint by its UUID.
+    /// </summary>
+    /// <param name="id">The fingerprint UUID.</param>
+    /// <returns>The fingerprint if found; otherwise, null.</returns>
+    Task<Fingerprint?> GetFingerprintByUuidAsync(Guid id);
 
     /// <summary>
     /// Retrieves a fingerprint by the associated user ID.
@@ -28,14 +35,14 @@ public interface IFingerprintRepository : ISaveableRepository
     /// </summary>
     /// <param name="studentId">The student ID.</param>
     /// <returns>The fingerprint if found; otherwise, null.</returns>
-    Task<Fingerprint?> GetFingerprintByStudentIdAsync(int studentId);
+    Task<Fingerprint?> GetFingerprintByStudentIdAsync(Guid studentId);
 
     /// <summary>
     /// Retrieves a fingerprint by the associated student ID, including soft-deleted rows.
     /// </summary>
     /// <param name="studentId">The student ID.</param>
     /// <returns>The fingerprint if found; otherwise, null.</returns>
-    Task<Fingerprint?> GetFingerprintByStudentIdIncludingDeletedAsync(int studentId);
+    Task<Fingerprint?> GetFingerprintByStudentIdIncludingDeletedAsync(Guid studentId);
 
     /// <summary>
     /// Retrieves all fingerprints for a specific device.
@@ -78,7 +85,7 @@ public interface IFingerprintRepository : ISaveableRepository
     /// </summary>
     /// <param name="studentId">The student ID.</param>
     /// <returns>True if the student has a registered fingerprint; otherwise, false.</returns>
-    Task<bool> StudentHasFingerprintAsync(int studentId);
+    Task<bool> StudentHasFingerprintAsync(Guid studentId);
 
     /// <summary>
     /// Gets the count of registered fingerprints for a device.
@@ -86,6 +93,13 @@ public interface IFingerprintRepository : ISaveableRepository
     /// <param name="deviceId">The device ID.</param>
     /// <returns>The number of fingerprints registered for the device.</returns>
     Task<int> GetFingerprintCountForDeviceAsync(string deviceId);
+
+    /// <summary>
+    /// Retrieves all active fingerprint devices ordered by name.
+    /// </summary>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>A list of active fingerprint devices.</returns>
+    Task<List<FingerprintDevice>> GetDevicesAsync(CancellationToken cancellationToken = default);
 
     #endregion
 
@@ -110,7 +124,14 @@ public interface IFingerprintRepository : ISaveableRepository
     /// </summary>
     /// <param name="id">The fingerprint ID.</param>
     /// <returns>True if the fingerprint was deleted; otherwise, false.</returns>
-    Task<bool> SoftDeleteFingerprintAsync(int id);
+    Task<bool> SoftDeleteFingerprintAsync(Guid id);
+
+    /// <summary>
+    /// Soft deletes a fingerprint by UUID.
+    /// </summary>
+    /// <param name="id">The fingerprint UUID.</param>
+    /// <returns>True if the fingerprint was deleted; otherwise, false.</returns>
+    Task<bool> SoftDeleteFingerprintByUuidAsync(Guid id);
 
     /// <summary>
     /// Soft deletes a fingerprint by user ID.
@@ -124,14 +145,14 @@ public interface IFingerprintRepository : ISaveableRepository
     /// </summary>
     /// <param name="id">The fingerprint ID.</param>
     /// <returns>True if the fingerprint was restored; otherwise, false.</returns>
-    Task<bool> RestoreFingerprintAsync(int id);
+    Task<bool> RestoreFingerprintAsync(Guid id);
 
     /// <summary>
     /// Hard deletes a fingerprint from the database.
     /// </summary>
     /// <param name="id">The fingerprint ID.</param>
     /// <returns>True if the fingerprint was deleted; otherwise, false.</returns>
-    Task<bool> HardDeleteFingerprintAsync(int id);
+    Task<bool> HardDeleteFingerprintAsync(Guid id);
 
     #endregion
 

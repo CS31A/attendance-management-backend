@@ -10,12 +10,55 @@ public class QrCodeRepository(ApplicationDbContext context, ILogger<QrCodeReposi
     #region Read Operations
 
     #region GetQrCodeByIdAsync
-    public async Task<QrCode?> GetQrCodeByIdAsync(int id)
+    public async Task<QrCode?> GetQrCodeByIdAsync(Guid id)
     {
         // Use AsSplitQuery to avoid cartesian explosion with multiple ThenInclude chains
         return await context.QrCodes
             .AsNoTracking()
             .AsSplitQuery() // Executes separate queries for each Include to improve performance
+            .Include(q => q.Session)
+                .ThenInclude(s => s.Schedule)
+                    .ThenInclude(sch => sch.Subject)
+            .Include(q => q.Session)
+                .ThenInclude(s => s.Schedule)
+                    .ThenInclude(sch => sch.Section)
+            .Include(q => q.Session)
+                .ThenInclude(s => s.Schedule)
+                    .ThenInclude(sch => sch.Instructor)
+            .Include(q => q.Session)
+                .ThenInclude(s => s.ActualRoom)
+            .FirstOrDefaultAsync(q => q.Id == id)
+            .ConfigureAwait(false);
+    }
+    #endregion
+
+    #region GetQrCodeByUuidAsync
+    public async Task<QrCode?> GetQrCodeByUuidAsync(Guid id)
+    {
+        return await context.QrCodes
+            .AsNoTracking()
+            .AsSplitQuery()
+            .Include(q => q.Session)
+                .ThenInclude(s => s.Schedule)
+                    .ThenInclude(sch => sch.Subject)
+            .Include(q => q.Session)
+                .ThenInclude(s => s.Schedule)
+                    .ThenInclude(sch => sch.Section)
+            .Include(q => q.Session)
+                .ThenInclude(s => s.Schedule)
+                    .ThenInclude(sch => sch.Instructor)
+            .Include(q => q.Session)
+                .ThenInclude(s => s.ActualRoom)
+            .FirstOrDefaultAsync(q => q.Id == id)
+            .ConfigureAwait(false);
+    }
+    #endregion
+
+    #region GetQrCodeByUuidTrackedAsync
+    public async Task<QrCode?> GetQrCodeByUuidTrackedAsync(Guid id)
+    {
+        return await context.QrCodes
+            .AsSplitQuery()
             .Include(q => q.Session)
                 .ThenInclude(s => s.Schedule)
                     .ThenInclude(sch => sch.Subject)
@@ -56,7 +99,7 @@ public class QrCodeRepository(ApplicationDbContext context, ILogger<QrCodeReposi
     #endregion
 
     #region GetQrCodesByScheduleIdAsync
-    public async Task<IEnumerable<QrCode>> GetQrCodesByScheduleIdAsync(int scheduleId)
+    public async Task<IEnumerable<QrCode>> GetQrCodesByScheduleIdAsync(Guid scheduleId)
     {
         // Use AsSplitQuery to avoid cartesian explosion with multiple ThenInclude chains
         return await context.QrCodes
@@ -73,7 +116,7 @@ public class QrCodeRepository(ApplicationDbContext context, ILogger<QrCodeReposi
     #endregion
 
     #region GetQrCodesBySectionIdAsync
-    public async Task<IEnumerable<QrCode>> GetQrCodesBySectionIdAsync(int sectionId)
+    public async Task<IEnumerable<QrCode>> GetQrCodesBySectionIdAsync(Guid sectionId)
     {
         // Use AsSplitQuery to avoid cartesian explosion with multiple ThenInclude chains
         return await context.QrCodes
@@ -89,7 +132,7 @@ public class QrCodeRepository(ApplicationDbContext context, ILogger<QrCodeReposi
             .ConfigureAwait(false);
     }
 
-    public async Task<IEnumerable<QrCode>> GetQrCodesBySessionIdAsync(int sessionId)
+    public async Task<IEnumerable<QrCode>> GetQrCodesBySessionIdAsync(Guid sessionId)
     {
         // Use AsSplitQuery to avoid cartesian explosion with multiple ThenInclude chains
         return await context.QrCodes
@@ -129,7 +172,7 @@ public class QrCodeRepository(ApplicationDbContext context, ILogger<QrCodeReposi
     #endregion
 
     #region GetActiveQrCodesByScheduleIdAsync
-    public async Task<IEnumerable<QrCode>> GetActiveQrCodesByScheduleIdAsync(int scheduleId)
+    public async Task<IEnumerable<QrCode>> GetActiveQrCodesByScheduleIdAsync(Guid scheduleId)
     {
         var currentTime = DateTime.UtcNow;
         // Use AsSplitQuery to avoid cartesian explosion with multiple ThenInclude chains
@@ -204,7 +247,7 @@ public class QrCodeRepository(ApplicationDbContext context, ILogger<QrCodeReposi
     #endregion
 
     #region DeactivateQrCodeAsync
-    public async Task<bool> DeactivateQrCodeAsync(int id)
+    public async Task<bool> DeactivateQrCodeAsync(Guid id)
     {
         var qrCode = await context.QrCodes.FindAsync(id).ConfigureAwait(false);
         if (qrCode == null)
@@ -245,7 +288,7 @@ public class QrCodeRepository(ApplicationDbContext context, ILogger<QrCodeReposi
     #endregion
 
     #region ReactivateQrCodeAsync
-    public async Task<bool> ReactivateQrCodeAsync(int id)
+    public async Task<bool> ReactivateQrCodeAsync(Guid id)
     {
         var qrCode = await context.QrCodes.FindAsync(id).ConfigureAwait(false);
         if (qrCode == null)
@@ -292,7 +335,7 @@ public class QrCodeRepository(ApplicationDbContext context, ILogger<QrCodeReposi
     #endregion
 
     #region IncrementUsageCountAsync
-    public async Task<QrCode?> IncrementUsageCountAsync(int id)
+    public async Task<QrCode?> IncrementUsageCountAsync(Guid id)
     {
         var qrCode = await context.QrCodes.FindAsync(id).ConfigureAwait(false);
         if (qrCode == null)
@@ -349,7 +392,7 @@ public class QrCodeRepository(ApplicationDbContext context, ILogger<QrCodeReposi
     #endregion
 
     #region DeleteQrCodeAsync
-    public async Task<bool> DeleteQrCodeAsync(int id)
+    public async Task<bool> DeleteQrCodeAsync(Guid id)
     {
         var qrCode = await context.QrCodes.FindAsync(id).ConfigureAwait(false);
         if (qrCode == null)
@@ -488,7 +531,7 @@ public class QrCodeRepository(ApplicationDbContext context, ILogger<QrCodeReposi
 
     #region GetScanHistoryAsync
     public async Task<attendance_monitoring.Models.DTO.Response.PagedResult<AttendanceRecord>> GetScanHistoryAsync(
-        int qrCodeId,
+        Guid qrCodeId,
         int pageNumber,
         int pageSize)
     {
@@ -554,7 +597,7 @@ public class QrCodeRepository(ApplicationDbContext context, ILogger<QrCodeReposi
 
     #region GetScanStatisticsAsync
     public async Task<(int totalScans, int uniqueStudents, Dictionary<string, int> statusBreakdown, DateTime? firstScan, DateTime? lastScan)> GetScanStatisticsAsync(
-        int qrCodeId)
+        Guid qrCodeId)
     {
         // Get aggregated statistics directly from SQL
         var stats = await context.AttendanceRecords

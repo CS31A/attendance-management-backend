@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using attendance_monitoring.Classes;
 using attendance_monitoring.Constants;
 using attendance_monitoring.Exceptions;
 using attendance_monitoring.IRepository;
@@ -25,20 +26,20 @@ public class ReportsService(
     public Task<AttendanceSummaryDto> GetAttendanceSummaryAsync(AttendanceFilterRequest filter, ClaimsPrincipal user)
         => attendanceService.GetAttendanceSummaryAsync(filter, user);
 
-    public Task<StudentAttendanceHistoryDto> GetStudentAttendanceReportAsync(int studentId, ClaimsPrincipal user)
+    public Task<StudentAttendanceHistoryDto> GetStudentAttendanceReportAsync(Guid studentId, ClaimsPrincipal user)
         => attendanceService.GetStudentAttendanceHistoryAsync(studentId, user);
 
-    public Task<SessionAttendanceDto> GetSessionAttendanceReportAsync(int sessionId, ClaimsPrincipal user)
+    public Task<SessionAttendanceDto> GetSessionAttendanceReportAsync(Guid sessionId, ClaimsPrincipal user)
         => attendanceService.GetSessionAttendanceAsync(sessionId, user);
 
     public async Task<ClassAttendanceSummaryDto> GetClassAttendanceReportAsync(
-        int sectionId, AttendanceFilterRequest filter, ClaimsPrincipal user)
+        Guid sectionId, AttendanceFilterRequest filter, ClaimsPrincipal user)
     {
         logger.LogInformation("Retrieving class attendance report for SectionId: {SectionId}", sectionId);
 
         var section = await sectionRepository.GetSectionByIdAsync(sectionId).ConfigureAwait(false);
         if (section == null)
-            throw new EntityNotFoundException<int>("Section", sectionId);
+            throw new EntityNotFoundException<Guid>("Section", sectionId);
 
         // Authorization: Instructors can only view reports for sections they teach
         var userRole = user.FindFirst(ClaimTypes.Role)?.Value;
@@ -122,13 +123,23 @@ public class ReportsService(
     }
 
     public async Task<InstructorSessionsReportDto> GetInstructorSessionsReportAsync(
-        int instructorId, AttendanceFilterRequest filter, ClaimsPrincipal user)
+        Guid instructorId, AttendanceFilterRequest filter, ClaimsPrincipal user)
     {
         logger.LogInformation("Retrieving instructor sessions report for InstructorId: {InstructorId}", instructorId);
 
         var instructor = await instructorRepository.GetInstructorByIdAsync(instructorId).ConfigureAwait(false);
         if (instructor == null)
-            throw new EntityNotFoundException<int>("Instructor", instructorId);
+            throw new EntityNotFoundException<Guid>("Instructor", instructorId);
+
+        return await BuildInstructorSessionsReportAsync(instructor, filter, user).ConfigureAwait(false);
+    }
+
+    private async Task<InstructorSessionsReportDto> BuildInstructorSessionsReportAsync(
+        Instructor instructor,
+        AttendanceFilterRequest filter,
+        ClaimsPrincipal user)
+    {
+        var instructorId = instructor.Id;
 
         // Authorization: Instructors can only view their own session reports
         var userRole = user.FindFirst(ClaimTypes.Role)?.Value;

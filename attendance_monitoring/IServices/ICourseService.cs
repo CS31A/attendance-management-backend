@@ -7,9 +7,12 @@ namespace attendance_monitoring.IServices;
 public interface ICourseService
 {
     Task<IList<Course>> GetAllCoursesAsync();
-    Task<Course> GetCourseByIdAsync(int id);
+    Task<Course> GetCourseByIdAsync(Guid id);
+    Task<Course> GetCourseByUuidAsync(Guid id);
     Task<Course> CreateCourseAsync(CreateCourse createCourse, ClaimsPrincipal user);
-    Task<Course> UpdateCourseAsync(int id, UpdateCourse updateCourse, ClaimsPrincipal user);
-    Task DeleteCourseAsync(int id, ClaimsPrincipal user);
-    Task<bool> HasSectionsInCourseAsync(int id);
+    Task<Course> UpdateCourseAsync(Guid id, UpdateCourse updateCourse, ClaimsPrincipal user);
+    Task<Course> UpdateCourseByUuidAsync(Guid id, UpdateCourse updateCourse, ClaimsPrincipal user);
+    Task DeleteCourseAsync(Guid id, ClaimsPrincipal user);
+    Task DeleteCourseByUuidAsync(Guid id, ClaimsPrincipal user);
+    Task<bool> HasSectionsInCourseAsync(Guid id);
 }

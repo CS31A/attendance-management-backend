@@ -18,7 +18,21 @@ public interface ICourseRepository : ISaveableRepository
     /// </summary>
     /// <param name="id">The course ID.</param>
     /// <returns>The course if found; otherwise, null.</returns>
-    Task<Course?> GetCourseByIdAsync(int id);
+    Task<Course?> GetCourseByIdAsync(Guid id);
+
+    /// <summary>
+    /// Retrieves a course by its UUID.
+    /// </summary>
+    /// <param name="id">The course UUID.</param>
+    /// <returns>The course if found; otherwise, null.</returns>
+    Task<Course?> GetCourseByUuidAsync(Guid id);
+
+    /// <summary>
+    /// Retrieves a course by its UUID with change tracking enabled for updates.
+    /// </summary>
+    /// <param name="id">The course UUID.</param>
+    /// <returns>The course if found; otherwise, null.</returns>
+    Task<Course?> GetCourseByUuidTrackedAsync(Guid id);
 
     /// <summary>
     /// Creates a new course.
@@ -39,13 +53,13 @@ public interface ICourseRepository : ISaveableRepository
     /// </summary>
     /// <param name="id">The course ID.</param>
     /// <returns>True if the course was deleted; otherwise, false.</returns>
-    Task<bool> DeleteCourseAsync(int id);
+    Task<bool> DeleteCourseAsync(Guid id);
 
     /// <summary>
     /// Checks if the course has sections assigned.
     /// </summary>
     /// <param name="id">The course ID.</param>
     /// <returns>True if sections exist for the course; otherwise, false.</returns>
-    Task<bool> HasSectionsInCourseAsync(int id);
+    Task<bool> HasSectionsInCourseAsync(Guid id);
 
 }

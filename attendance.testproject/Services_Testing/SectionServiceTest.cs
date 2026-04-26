@@ -1,5 +1,6 @@
 using attendance_monitoring.Exceptions;
 using attendance_monitoring.IRepository;
+using attendance_monitoring.Classes;
 using attendance_monitoring.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -20,10 +21,38 @@ public class SectionServiceTest
     }
 
     [Fact]
+    public async Task GetSectionByUuidAsync_ReturnsSection_WhenFound()
+    {
+        var sectionUuid = Guid.NewGuid();
+        var section = new Section { Id = sectionUuid, Name = "CS-3A", CourseId = Guid.NewGuid() };
+        _mockSectionRepository
+            .Setup(repository => repository.GetSectionByUuidAsync(sectionUuid))
+            .ReturnsAsync(section);
+
+        var result = await _service.GetSectionByUuidAsync(sectionUuid);
+
+        Assert.Same(section, result);
+    }
+
+    [Fact]
+    public async Task GetSectionByUuidAsync_ThrowsEntityNotFoundException_WhenMissing()
+    {
+        var sectionUuid = Guid.NewGuid();
+        _mockSectionRepository
+            .Setup(repository => repository.GetSectionByUuidAsync(sectionUuid))
+            .ReturnsAsync((Section?)null);
+
+        var exception = await Assert.ThrowsAsync<EntityNotFoundException<Guid>>(() => _service.GetSectionByUuidAsync(sectionUuid));
+
+        Assert.Equal("Section", exception.EntityName);
+        Assert.Equal(sectionUuid, exception.Key);
+    }
+
+    [Fact]
     public async Task HasSchedulesInSectionAsync_ReturnsRepositoryResult()
     {
         // Arrange
-        const int sectionId = 9;
+        var sectionId = Guid.NewGuid();
         _mockSectionRepository
             .Setup(repository => repository.HasSchedulesInSectionAsync(sectionId))
             .ReturnsAsync(true);
@@ -40,7 +69,7 @@ public class SectionServiceTest
     public async Task HasSchedulesInSectionAsync_WrapsUnexpectedRepositoryFailures()
     {
         // Arrange
-        const int sectionId = 9;
+        var sectionId = Guid.NewGuid();
         var expectedException = new InvalidOperationException("Schedule lookup failed");
         _mockSectionRepository
             .Setup(repository => repository.HasSchedulesInSectionAsync(sectionId))
@@ -60,7 +89,7 @@ public class SectionServiceTest
     public async Task DeleteSectionAsync_Success_DeletesSection()
     {
         // Arrange
-        const int sectionId = 1;
+        var sectionId = Guid.NewGuid();
         _mockSectionRepository
             .Setup(repository => repository.DeleteSectionAsync(sectionId))
             .ReturnsAsync(true);
@@ -80,13 +109,13 @@ public class SectionServiceTest
     public async Task DeleteSectionAsync_NotFound_ThrowsEntityNotFoundException()
     {
         // Arrange
-        const int sectionId = 1;
+        var sectionId = Guid.NewGuid();
         _mockSectionRepository
             .Setup(repository => repository.DeleteSectionAsync(sectionId))
             .ReturnsAsync(false);
 
         // Act & Assert
-        var exception = await Assert.ThrowsAsync<EntityNotFoundException<int>>(() => _service.DeleteSectionAsync(sectionId));
+        var exception = await Assert.ThrowsAsync<EntityNotFoundException<Guid>>(() => _service.DeleteSectionAsync(sectionId));
         Assert.Equal("Section", exception.EntityName);
         Assert.Equal(sectionId, exception.Key);
     }
@@ -95,7 +124,7 @@ public class SectionServiceTest
     public async Task DeleteSectionAsync_SchedulesConflict_ThrowsEntityConflictException()
     {
         // Arrange
-        const int sectionId = 1;
+        var sectionId = Guid.NewGuid();
         _mockSectionRepository
             .Setup(repository => repository.DeleteSectionAsync(sectionId))
             .ReturnsAsync(true);
@@ -118,7 +147,7 @@ public class SectionServiceTest
     public async Task DeleteSectionAsync_StudentsConflict_ThrowsEntityConflictException()
     {
         // Arrange
-        const int sectionId = 1;
+        var sectionId = Guid.NewGuid();
         _mockSectionRepository
             .Setup(repository => repository.DeleteSectionAsync(sectionId))
             .ReturnsAsync(true);
@@ -141,7 +170,7 @@ public class SectionServiceTest
     public async Task DeleteSectionAsync_EnrollmentsConflict_ThrowsEntityConflictException()
     {
         // Arrange
-        const int sectionId = 1;
+        var sectionId = Guid.NewGuid();
         _mockSectionRepository
             .Setup(repository => repository.DeleteSectionAsync(sectionId))
             .ReturnsAsync(true);
@@ -164,7 +193,7 @@ public class SectionServiceTest
     public async Task DeleteSectionAsync_UnrelatedException_ThrowsEntityServiceException()
     {
         // Arrange
-        const int sectionId = 1;
+        var sectionId = Guid.NewGuid();
         _mockSectionRepository
             .Setup(repository => repository.DeleteSectionAsync(sectionId))
             .ReturnsAsync(true);
@@ -185,7 +214,7 @@ public class SectionServiceTest
     public async Task DeleteSectionAsync_PostgreSQLSchedulesConflict_ThrowsEntityConflictException()
     {
         // Arrange
-        const int sectionId = 1;
+        var sectionId = Guid.NewGuid();
         _mockSectionRepository
             .Setup(repository => repository.DeleteSectionAsync(sectionId))
             .ReturnsAsync(true);
@@ -207,7 +236,7 @@ public class SectionServiceTest
     public async Task DeleteSectionAsync_GenericConstraintViolation_ThrowsEntityServiceException()
     {
         // Arrange
-        const int sectionId = 1;
+        var sectionId = Guid.NewGuid();
         _mockSectionRepository
             .Setup(repository => repository.DeleteSectionAsync(sectionId))
             .ReturnsAsync(true);

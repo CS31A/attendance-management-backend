@@ -1,6 +1,7 @@
 using attendance_monitoring.Data;
 using attendance_monitoring.Models.DTO.Request;
 using attendance_monitoring.Repositories;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
@@ -93,6 +94,53 @@ public class AccountRepositoryTransactionTests
 
         Assert.NotNull(connection.LastAssignedTransaction);
         Assert.Same(transaction.GetDbTransaction(), connection.LastAssignedTransaction);
+    }
+
+    [Fact]
+    public async Task GetAdminByUserIdAsync_AndGetAdminByUuidAsync_ReturnPersistedAdmin()
+    {
+        await using var innerConnection = new SqliteConnection("Data Source=:memory:");
+        await innerConnection.OpenAsync();
+
+        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
+            .UseSqlite(innerConnection)
+            .Options;
+
+        var adminUuid = Guid.NewGuid();
+
+        await using (var setupContext = new ApplicationDbContext(options))
+        {
+            await setupContext.Database.EnsureCreatedAsync();
+            setupContext.Users.Add(new IdentityUser
+            {
+                Id = "admin-user",
+                UserName = "admin",
+                NormalizedUserName = "ADMIN",
+                Email = "admin@test.com",
+                NormalizedEmail = "ADMIN@TEST.COM"
+            });
+            setupContext.Admins.Add(new attendance_monitoring.Classes.Admin
+            {
+                UserId = "admin-user",
+                Id = adminUuid,
+                Firstname = "Ada",
+                Lastname = "Admin",
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            });
+            await setupContext.SaveChangesAsync();
+        }
+
+        await using var context = new ApplicationDbContext(options);
+        var repository = new AccountRepository(null!, null!, null!, context);
+
+        var byUserId = await repository.GetAdminByUserIdAsync("admin-user");
+        var byUuid = await repository.GetAdminByUuidAsync(adminUuid);
+
+        Assert.NotNull(byUserId);
+        Assert.NotNull(byUuid);
+        Assert.Equal(adminUuid, byUserId!.Id);
+        Assert.Equal("admin-user", byUuid!.UserId);
     }
 
     private sealed class TrackingDbConnection : DbConnection

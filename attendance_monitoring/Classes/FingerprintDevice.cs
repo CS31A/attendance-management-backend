@@ -9,8 +9,7 @@ namespace attendance_monitoring.Classes;
 public class FingerprintDevice
 {
     [Key]
-    [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
-    public int Id { get; set; }
+    public Guid Id { get; set; }
 
     [Required]
     [StringLength(100)]

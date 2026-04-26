@@ -45,7 +45,8 @@ public class SubjectController(ISubjectService subjectService, ILogger<SubjectCo
     /// <response code="500">Internal server error</response>
     // GET: api/Subject/5
     [HttpGet("{id:int}")]
-    public async Task<ActionResult<Subject>> GetSubject(int id)
+    [ApiExplorerSettings(IgnoreApi = true)]
+    public async Task<ActionResult<Subject>> GetSubject(Guid id)
     {
         logger.LogInformation("Getting subject with ID: {Id}", id);
         try
@@ -54,12 +55,29 @@ public class SubjectController(ISubjectService subjectService, ILogger<SubjectCo
             logger.LogInformation("Successfully retrieved subject with ID: {Id}", id);
             return Ok(subject);
         }
-        catch (EntityNotFoundException<int> ex)
+        catch (EntityNotFoundException<Guid> ex)
         {
             logger.LogWarning(ex, "Subject with ID {Id} not found", id);
             return NotFound(new { message = ex.Message });
         }
         // No generic catch - global handler will manage unexpected errors
+    }
+
+    [HttpGet("{id:guid}")]
+    public async Task<ActionResult<Subject>> GetSubjectByUuid([FromRoute(Name = "id")] Guid id)
+    {
+        logger.LogInformation("Getting subject with UUID: {Id}", id);
+        try
+        {
+            var subject = await subjectService.GetSubjectByUuidAsync(id);
+            logger.LogInformation("Successfully retrieved subject with UUID: {Id}", id);
+            return Ok(subject);
+        }
+        catch (EntityNotFoundException<Guid> ex)
+        {
+            logger.LogWarning(ex, "Subject with UUID {Id} not found", id);
+            return NotFound(new { message = ex.Message });
+        }
     }
 
     #endregion
@@ -112,8 +130,9 @@ public class SubjectController(ISubjectService subjectService, ILogger<SubjectCo
     /// <response code="500">Internal server error</response>
     // PATCH: api/Subject/5
     [HttpPatch("{id:int}")]
+    [ApiExplorerSettings(IgnoreApi = true)]
     [Authorize(Policy = "AdminPolicy")]
-    public async Task<ActionResult<Subject>> UpdateSubject(int id, UpdateSubject updateSubject)
+    public async Task<ActionResult<Subject>> UpdateSubject(Guid id, UpdateSubject updateSubject)
     {
         logger.LogInformation("Updating subject with ID: {Id}", id);
         if (!ModelState.IsValid)
@@ -127,6 +146,23 @@ public class SubjectController(ISubjectService subjectService, ILogger<SubjectCo
         logger.LogInformation("Successfully updated subject with ID: {Id}", id);
         return Ok(subject);
         // Exceptions are handled by global exception handler
+    }
+
+    [HttpPatch("{id:guid}")]
+    [Authorize(Policy = "AdminPolicy")]
+    public async Task<ActionResult<Subject>> UpdateSubjectByUuid([FromRoute(Name = "id")] Guid id, UpdateSubject updateSubject)
+    {
+        logger.LogInformation("Updating subject with UUID: {Id}", id);
+        if (!ModelState.IsValid)
+        {
+            logger.LogWarning("Subject update failed due to invalid model state for subject UUID: {Id}", id);
+            return BadRequest(ModelState);
+        }
+
+        var subject = await subjectService.UpdateSubjectByUuidAsync(id, updateSubject);
+
+        logger.LogInformation("Successfully updated subject with UUID: {Id}", id);
+        return Ok(subject);
     }
 
     #endregion
@@ -144,8 +180,9 @@ public class SubjectController(ISubjectService subjectService, ILogger<SubjectCo
     /// <response code="500">Internal server error</response>
     // DELETE: api/Subject/5
     [HttpDelete("{id:int}")]
+    [ApiExplorerSettings(IgnoreApi = true)]
     [Authorize(Policy = "AdminPolicy")]
-    public async Task<ActionResult> DeleteSubject(int id)
+    public async Task<ActionResult> DeleteSubject(Guid id)
     {
         logger.LogInformation("Deleting subject with ID: {Id}", id);
 
@@ -156,13 +193,25 @@ public class SubjectController(ISubjectService subjectService, ILogger<SubjectCo
         // Exceptions are handled by global exception handler
     }
 
+    [HttpDelete("{id:guid}")]
+    [Authorize(Policy = "AdminPolicy")]
+    public async Task<ActionResult> DeleteSubjectByUuid([FromRoute(Name = "id")] Guid id)
+    {
+        logger.LogInformation("Deleting subject with UUID: {Id}", id);
+
+        await subjectService.DeleteSubjectByUuidAsync(id);
+
+        logger.LogInformation("Successfully deleted subject with UUID: {Id}", id);
+        return NoContent();
+    }
+
     [Authorize(Policy = "PrivilegedPolicy")]
     [HttpGet("{id:int}/has-schedules")]
-    public async Task<ActionResult<bool>> HasSchedulesInSubject(int id)
+    public async Task<ActionResult<bool>> HasSchedulesInSubject(Guid id)
     {
         try
         {
-            if (id <= 0)
+            if (id == Guid.Empty)
             {
                 logger.LogWarning("Invalid subject ID {SubjectId} provided for dependency check.", id);
                 return BadRequest("Subject ID must be greater than 0.");
@@ -180,11 +229,11 @@ public class SubjectController(ISubjectService subjectService, ILogger<SubjectCo
 
     [Authorize(Policy = "PrivilegedPolicy")]
     [HttpGet("{id:int}/has-enrollments")]
-    public async Task<ActionResult<bool>> HasEnrollmentsInSubject(int id)
+    public async Task<ActionResult<bool>> HasEnrollmentsInSubject(Guid id)
     {
         try
         {
-            if (id <= 0)
+            if (id == Guid.Empty)
             {
                 logger.LogWarning("Invalid subject ID {SubjectId} provided for dependency check.", id);
                 return BadRequest("Subject ID must be greater than 0.");

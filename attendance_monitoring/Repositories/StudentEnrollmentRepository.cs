@@ -25,7 +25,7 @@ public class StudentEnrollmentRepository : IStudentEnrollmentRepository
             .ToListAsync();
     }
 
-    public async Task<StudentEnrollment?> GetByIdAsync(int id)
+    public async Task<StudentEnrollment?> GetByIdAsync(Guid id)
     {
         return await _context.StudentEnrollments
             .AsNoTracking()
@@ -36,7 +36,7 @@ public class StudentEnrollmentRepository : IStudentEnrollmentRepository
             .FirstOrDefaultAsync(se => se.Id == id);
     }
 
-    public async Task<StudentEnrollment?> GetByIdTrackedAsync(int id)
+    public async Task<StudentEnrollment?> GetByIdTrackedAsync(Guid id)
     {
         return await _context.StudentEnrollments
             .Include(se => se.Student)
@@ -44,6 +44,32 @@ public class StudentEnrollmentRepository : IStudentEnrollmentRepository
             .Include(se => se.Section)
             .Include(se => se.Subject)
             .FirstOrDefaultAsync(se => se.Id == id);
+    }
+
+    public async Task<StudentEnrollment?> GetByUuidAsync(Guid id)
+    {
+        var enrollmentId = await _context.StudentEnrollments
+            .AsNoTracking()
+            .Where(se => se.Id == id)
+            .Select(se => (Guid?)se.Id)
+            .SingleOrDefaultAsync();
+
+        return enrollmentId.HasValue
+            ? await GetByIdAsync(enrollmentId.Value)
+            : null;
+    }
+
+    public async Task<StudentEnrollment?> GetByUuidTrackedAsync(Guid id)
+    {
+        var enrollmentId = await _context.StudentEnrollments
+            .AsNoTracking()
+            .Where(se => se.Id == id)
+            .Select(se => (Guid?)se.Id)
+            .SingleOrDefaultAsync();
+
+        return enrollmentId.HasValue
+            ? await GetByIdTrackedAsync(enrollmentId.Value)
+            : null;
     }
 
     public async Task<StudentEnrollment> CreateAsync(StudentEnrollment enrollment)
@@ -67,7 +93,7 @@ public class StudentEnrollmentRepository : IStudentEnrollmentRepository
         return enrollment;
     }
 
-    public async Task<bool> DeleteAsync(int id)
+    public async Task<bool> DeleteAsync(Guid id)
     {
         var enrollment = await _context.StudentEnrollments.FindAsync(id);
         if (enrollment == null) return false;
@@ -77,7 +103,7 @@ public class StudentEnrollmentRepository : IStudentEnrollmentRepository
         return true;
     }
 
-    public async Task<IEnumerable<StudentEnrollment>> GetStudentEnrollmentsAsync(int studentId)
+    public async Task<IEnumerable<StudentEnrollment>> GetStudentEnrollmentsAsync(Guid studentId)
     {
         return await _context.StudentEnrollments
             .AsNoTracking()
@@ -87,7 +113,7 @@ public class StudentEnrollmentRepository : IStudentEnrollmentRepository
             .ToListAsync();
     }
 
-    public async Task<IEnumerable<StudentEnrollment>> GetSectionEnrollmentsAsync(int sectionId)
+    public async Task<IEnumerable<StudentEnrollment>> GetSectionEnrollmentsAsync(Guid sectionId)
     {
         return await _context.StudentEnrollments
             .AsNoTracking()
@@ -98,7 +124,7 @@ public class StudentEnrollmentRepository : IStudentEnrollmentRepository
             .ToListAsync();
     }
 
-    public async Task<IEnumerable<StudentEnrollment>> GetSubjectEnrollmentsAsync(int subjectId)
+    public async Task<IEnumerable<StudentEnrollment>> GetSubjectEnrollmentsAsync(Guid subjectId)
     {
         return await _context.StudentEnrollments
             .AsNoTracking()
@@ -109,7 +135,7 @@ public class StudentEnrollmentRepository : IStudentEnrollmentRepository
             .ToListAsync();
     }
 
-    public async Task<IEnumerable<StudentEnrollment>> GetActiveSectionEnrollmentsAsync(int sectionId)
+    public async Task<IEnumerable<StudentEnrollment>> GetActiveSectionEnrollmentsAsync(Guid sectionId)
     {
         return await _context.StudentEnrollments
             .AsNoTracking()
@@ -121,7 +147,7 @@ public class StudentEnrollmentRepository : IStudentEnrollmentRepository
             .ToListAsync();
     }
 
-    public async Task<IEnumerable<StudentEnrollment>> GetActiveSubjectEnrollmentsAsync(int subjectId)
+    public async Task<IEnumerable<StudentEnrollment>> GetActiveSubjectEnrollmentsAsync(Guid subjectId)
     {
         return await _context.StudentEnrollments
             .AsNoTracking()
@@ -132,7 +158,7 @@ public class StudentEnrollmentRepository : IStudentEnrollmentRepository
             .ToListAsync();
     }
 
-    public async Task<StudentEnrollment?> GetEnrollmentAsync(int studentId, int sectionId, int subjectId)
+    public async Task<StudentEnrollment?> GetEnrollmentAsync(Guid studentId, Guid sectionId, Guid subjectId)
     {
         return await _context.StudentEnrollments
             .AsNoTracking()
@@ -145,7 +171,7 @@ public class StudentEnrollmentRepository : IStudentEnrollmentRepository
                                se.SubjectId == subjectId);
     }
 
-    public async Task<bool> IsStudentEnrolledAsync(int studentId, int sectionId, int subjectId)
+    public async Task<bool> IsStudentEnrolledAsync(Guid studentId, Guid sectionId, Guid subjectId)
     {
         return await _context.StudentEnrollments
         .AsNoTracking()
@@ -155,7 +181,7 @@ public class StudentEnrollmentRepository : IStudentEnrollmentRepository
                            se.IsActive);
     }
 
-    public async Task<IEnumerable<StudentEnrollment>> GetActiveEnrollmentsAsync(int studentId)
+    public async Task<IEnumerable<StudentEnrollment>> GetActiveEnrollmentsAsync(Guid studentId)
     {
         return await _context.StudentEnrollments
             .AsNoTracking()
@@ -165,7 +191,7 @@ public class StudentEnrollmentRepository : IStudentEnrollmentRepository
             .ToListAsync();
     }
 
-    public async Task<IEnumerable<Section>> GetStudentSectionsAsync(int studentId)
+    public async Task<IEnumerable<Section>> GetStudentSectionsAsync(Guid studentId)
     {
         return await _context.StudentEnrollments
             .AsNoTracking()
@@ -176,7 +202,7 @@ public class StudentEnrollmentRepository : IStudentEnrollmentRepository
             .ToListAsync();
     }
 
-    public async Task<IEnumerable<Subject>> GetStudentSubjectsAsync(int studentId)
+    public async Task<IEnumerable<Subject>> GetStudentSubjectsAsync(Guid studentId)
     {
         return await _context.StudentEnrollments
             .AsNoTracking()
@@ -187,7 +213,7 @@ public class StudentEnrollmentRepository : IStudentEnrollmentRepository
             .ToListAsync();
     }
 
-    public async Task<bool> DeactivateEnrollmentAsync(int enrollmentId)
+    public async Task<bool> DeactivateEnrollmentAsync(Guid enrollmentId)
     {
         var enrollment = await _context.StudentEnrollments.FindAsync(enrollmentId);
         if (enrollment == null) return false;
@@ -200,7 +226,7 @@ public class StudentEnrollmentRepository : IStudentEnrollmentRepository
         return true;
     }
 
-    public async Task<bool> ReactivateEnrollmentAsync(int enrollmentId)
+    public async Task<bool> ReactivateEnrollmentAsync(Guid enrollmentId)
     {
         var enrollment = await _context.StudentEnrollments.FindAsync(enrollmentId);
         if (enrollment == null) return false;
@@ -217,7 +243,7 @@ public class StudentEnrollmentRepository : IStudentEnrollmentRepository
     /// Gets enrollments for a specific student.
     /// Used for finding active sessions in fingerprint attendance.
     /// </summary>
-    public async Task<IEnumerable<StudentEnrollment>> GetByStudentIdAsync(int studentId)
+    public async Task<IEnumerable<StudentEnrollment>> GetByStudentIdAsync(Guid studentId)
     {
         return await GetStudentEnrollmentsAsync(studentId);
     }
@@ -226,7 +252,7 @@ public class StudentEnrollmentRepository : IStudentEnrollmentRepository
     /// Gets a specific enrollment for a student in a section-subject combination.
     /// Used for verifying enrollment in fingerprint attendance.
     /// </summary>
-    public async Task<StudentEnrollment?> GetByStudentSectionSubjectAsync(int studentId, int sectionId, int subjectId)
+    public async Task<StudentEnrollment?> GetByStudentSectionSubjectAsync(Guid studentId, Guid sectionId, Guid subjectId)
     {
         return await GetEnrollmentAsync(studentId, sectionId, subjectId);
     }

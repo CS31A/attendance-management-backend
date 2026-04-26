@@ -27,7 +27,7 @@ internal sealed class QrCodeQueryService
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
-    public async Task<QrCodeResponseDto?> GetQrCodeByIdAsync(int id)
+    public async Task<QrCodeResponseDto?> GetQrCodeByIdAsync(Guid id)
     {
         try
         {
@@ -75,7 +75,31 @@ internal sealed class QrCodeQueryService
         }
     }
 
-    public async Task<IEnumerable<QrCodeResponseDto>> GetQrCodesByScheduleIdAsync(int scheduleId)
+    public async Task<QrCodeResponseDto?> GetQrCodeByUuidAsync(Guid id)
+    {
+        try
+        {
+            _logger.LogInformation("Retrieving QR code with UUID: {QrCodeUuid}", id);
+
+            var qrCode = await _qrCodeRepository.GetQrCodeByUuidAsync(id).ConfigureAwait(false);
+            if (qrCode == null)
+            {
+                _logger.LogWarning("QR code with UUID {QrCodeUuid} not found", id);
+                return null;
+            }
+
+            var responseDto = QrCodeMapper.MapToResponseDto(qrCode);
+            _logger.LogInformation("Successfully retrieved QR code with UUID: {QrCodeUuid}", id);
+            return responseDto;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error occurred while retrieving QR code with UUID: {QrCodeUuid}", id);
+            throw new EntityServiceException("QrCode", $"GetQrCodeByUuid: {id}", "An error occurred while retrieving the QR code", ex);
+        }
+    }
+
+    public async Task<IEnumerable<QrCodeResponseDto>> GetQrCodesByScheduleIdAsync(Guid scheduleId)
     {
         try
         {
@@ -94,7 +118,7 @@ internal sealed class QrCodeQueryService
         }
     }
 
-    public async Task<IEnumerable<QrCodeResponseDto>> GetQrCodesBySectionIdAsync(int sectionId)
+    public async Task<IEnumerable<QrCodeResponseDto>> GetQrCodesBySectionIdAsync(Guid sectionId)
     {
         try
         {
@@ -113,7 +137,7 @@ internal sealed class QrCodeQueryService
         }
     }
 
-    public async Task<IEnumerable<QrCodeResponseDto>> GetQrCodesBySessionIdAsync(int sessionId)
+    public async Task<IEnumerable<QrCodeResponseDto>> GetQrCodesBySessionIdAsync(Guid sessionId)
     {
         try
         {
@@ -130,6 +154,23 @@ internal sealed class QrCodeQueryService
             _logger.LogError(ex, "Error occurred while retrieving QR codes for session ID: {SessionId}", sessionId);
             throw new EntityServiceException("QrCode", $"GetQrCodesBySessionId: {sessionId}", "An error occurred while retrieving QR codes", ex);
         }
+    }
+
+    public async Task<IEnumerable<QrCodeResponseDto>> GetQrCodesBySessionUuidAsync(Guid sessionUuid)
+    {
+        var sessionId = await _context.Sessions
+            .AsNoTracking()
+            .Where(session => session.Id == sessionUuid)
+            .Select(session => (Guid?)session.Id)
+            .FirstOrDefaultAsync()
+            .ConfigureAwait(false);
+
+        if (!sessionId.HasValue)
+        {
+            throw new EntityNotFoundException<Guid>("Session", sessionUuid);
+        }
+
+        return await GetQrCodesBySessionIdAsync(sessionId.Value).ConfigureAwait(false);
     }
 
     public async Task<IEnumerable<QrCodeResponseDto>> GetActiveQrCodesAsync()
@@ -152,8 +193,8 @@ internal sealed class QrCodeQueryService
     }
 
     public async Task<QrCodeScanHistoryResponseDto> GetScanHistoryAsync(
-        int qrCodeId,
-        int instructorId,
+        Guid qrCodeId,
+        Guid instructorId,
         string userRole,
         int pageNumber = 1,
         int pageSize = 50)
@@ -177,7 +218,7 @@ internal sealed class QrCodeQueryService
             var qrCode = await _qrCodeRepository.GetQrCodeByIdAsync(qrCodeId);
             if (qrCode == null)
             {
-                throw new EntityNotFoundException<int>("QrCode", qrCodeId);
+                throw new EntityNotFoundException<Guid>("QrCode", qrCodeId);
             }
 
             // Authorization check — instructors can only see their own sections
@@ -208,7 +249,7 @@ internal sealed class QrCodeQueryService
             {
                 Id = qrCode.Id,
                 Hash = qrCode.QrHash,
-                SessionId = qrCode.SessionId,
+                SessionId = session?.Id ?? Guid.Empty,
                 SessionDate = session?.SessionDate ?? DateTime.MinValue,
                 SessionSubject = session?.Schedule?.Subject?.Name ?? "Unknown",
                 GeneratedAt = qrCode.GeneratedAt,
@@ -251,12 +292,12 @@ internal sealed class QrCodeQueryService
             var scanItems = scanHistory.Items.Select(ar => new QrCodeScanHistoryItemDto
             {
                 AttendanceRecordId = ar.Id,
-                StudentId = ar.StudentId,
+                StudentId = ar.Student?.Id ?? Guid.Empty,
                 StudentEmail = ar.Student?.User?.Email ?? "Unknown",
                 StudentName = $"{ar.Student?.Firstname} {ar.Student?.Lastname}".Trim(),
                 ScannedAt = ar.CheckInTime,
                 Status = ar.Status.ToString(),
-                SessionId = ar.SessionId,
+                SessionId = ar.Session?.Id ?? Guid.Empty,
                 SessionDate = ar.Session?.SessionDate ?? DateTime.MinValue,
                 SessionSubject = ar.Session?.Schedule?.Subject?.Name ?? "Unknown",
                 SessionSection = ar.Session?.Schedule?.Section?.Name ?? "Unknown"
@@ -285,7 +326,7 @@ internal sealed class QrCodeQueryService
         {
             throw;
         }
-        catch (EntityNotFoundException<int>)
+        catch (EntityNotFoundException<Guid>)
         {
             throw;
         }
@@ -300,9 +341,25 @@ internal sealed class QrCodeQueryService
         }
     }
 
+    public async Task<QrCodeScanHistoryResponseDto> GetScanHistoryByUuidAsync(
+        Guid id,
+        Guid instructorId,
+        string userRole,
+        int pageNumber = 1,
+        int pageSize = 50)
+    {
+        var qrCode = await _qrCodeRepository.GetQrCodeByUuidAsync(id).ConfigureAwait(false);
+        if (qrCode == null)
+        {
+            throw new EntityNotFoundException<Guid>("QrCode", id);
+        }
+
+        return await GetScanHistoryAsync(qrCode.Id, instructorId, userRole, pageNumber, pageSize).ConfigureAwait(false);
+    }
+
     public async Task<QrCodeScanHistoryResponseDto> GetScanHistoryByHashAsync(
         string qrHash,
-        int instructorId,
+        Guid instructorId,
         string userRole,
         int pageNumber = 1,
         int pageSize = 50)
@@ -325,7 +382,7 @@ internal sealed class QrCodeQueryService
         {
             throw;
         }
-        catch (EntityNotFoundException<int>)
+        catch (EntityNotFoundException<Guid>)
         {
             throw;
         }

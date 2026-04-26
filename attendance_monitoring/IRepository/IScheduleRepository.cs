@@ -5,15 +5,17 @@ namespace attendance_monitoring.IRepository
     public interface IScheduleRepository : ISaveableRepository
     {
         Task<IEnumerable<Schedules>> GetAllSchedulesAsync();
-        Task<Schedules?> GetScheduleByIdAsync(int id);
-        Task<Schedules?> GetScheduleByIdTrackedAsync(int id);
-        Task<IEnumerable<Schedules>> GetSchedulesByInstructorIdAsync(int instructorId);
-        Task<IEnumerable<Schedules>> GetSchedulesBySectionIdAsync(int sectionId);
-        Task<IEnumerable<Subject>> GetSubjectsByInstructorIdAsync(int instructorId);
+        Task<Schedules?> GetScheduleByIdAsync(Guid id);
+        Task<Schedules?> GetScheduleByIdTrackedAsync(Guid id);
+        Task<Schedules?> GetScheduleByUuidAsync(Guid id);
+        Task<Schedules?> GetScheduleByUuidTrackedAsync(Guid id);
+        Task<IEnumerable<Schedules>> GetSchedulesByInstructorIdAsync(Guid instructorId);
+        Task<IEnumerable<Schedules>> GetSchedulesBySectionIdAsync(Guid sectionId);
+        Task<IEnumerable<Subject>> GetSubjectsByInstructorIdAsync(Guid instructorId);
         Task<Schedules> AddScheduleAsync(Schedules schedule);
         Task<Schedules?> UpdateScheduleAsync(Schedules schedule);
-        Task<bool> DeleteScheduleAsync(int id);
-        Task<bool> HasSessionsInScheduleAsync(int id);
+        Task<bool> DeleteScheduleAsync(Guid id);
+        Task<bool> HasSessionsInScheduleAsync(Guid id);
 
         // New methods for fingerprint attendance
         /// <summary>
@@ -21,7 +23,7 @@ namespace attendance_monitoring.IRepository
         /// Used for finding active sessions for a student.
         /// </summary>
         Task<IEnumerable<Schedules>> GetSchedulesBySectionsAndSubjectsAsync(
-            IEnumerable<int> sectionIds,
-            IEnumerable<int> subjectIds);
+            IEnumerable<Guid> sectionIds,
+            IEnumerable<Guid> subjectIds);
     }
 }

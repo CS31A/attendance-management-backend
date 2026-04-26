@@ -1,4 +1,6 @@
+using System.Reflection;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Routing;
 using attendance_monitoring.Controllers;
 using attendance_monitoring.IServices;
 using attendance_monitoring.Classes;
@@ -24,13 +26,33 @@ public class StudentControllerTest
     }
 
     [Fact]
+    public void StudentIdRoutes_AcceptGuidValues()
+    {
+        Assert.Equal("{id:guid}", GetHttpTemplate(nameof(StudentController.GetStudent)));
+        Assert.Equal("{id:guid}", GetHttpTemplate(nameof(StudentController.PatchStudent)));
+        Assert.Equal("{id:guid}/soft-delete", GetHttpTemplate(nameof(StudentController.SoftDeleteStudent)));
+        Assert.Equal("{id:guid}", GetHttpTemplate(nameof(StudentController.HardDeleteStudent)));
+        Assert.Equal("{id:guid}/restore", GetHttpTemplate(nameof(StudentController.RestoreStudent)));
+    }
+
+    private static string? GetHttpTemplate(string methodName)
+    {
+        var method = typeof(StudentController).GetMethod(methodName, BindingFlags.Instance | BindingFlags.Public);
+        Assert.NotNull(method);
+        return method!.GetCustomAttributes()
+            .OfType<HttpMethodAttribute>()
+            .Single()
+            .Template;
+    }
+
+    [Fact]
     public async Task GetStudents_ReturnsOkResult_WithStudentsList()
     {
         // Arrange
         var expectedStudents = new List<StudentListDto>
         {
-            new StudentListDto { Id = 1, Firstname = "John", Lastname = "Doe" },
-            new StudentListDto { Id = 2, Firstname = "Jane", Lastname = "Smith" }
+            new StudentListDto { Id = Guid.NewGuid(), Firstname = "John", Lastname = "Doe" },
+            new StudentListDto { Id = Guid.NewGuid(), Firstname = "Jane", Lastname = "Smith" }
         };
 
         _mockStudentService
@@ -60,8 +82,8 @@ public class StudentControllerTest
         var searchTerm = "john";
         var expectedStudents = new List<StudentListDto>
         {
-            new StudentListDto { Id = 1, Firstname = "John", Lastname = "Doe", UserId = "user1" },
-            new StudentListDto { Id = 2, Firstname = "Johnny", Lastname = "Smith", UserId = "user2" }
+            new StudentListDto { Id = Guid.NewGuid(), Firstname = "John", Lastname = "Doe", UserId = "user1" },
+            new StudentListDto { Id = Guid.NewGuid(), Firstname = "Johnny", Lastname = "Smith", UserId = "user2" }
         };
 
         _mockStudentService
@@ -87,7 +109,7 @@ public class StudentControllerTest
         var pageSize = 20;
         var expectedStudents = new List<StudentListDto>
         {
-            new StudentListDto { Id = 3, Firstname = "Jane", Lastname = "Doe", UserId = "user3" }
+            new StudentListDto { Id = Guid.NewGuid(), Firstname = "Jane", Lastname = "Doe", UserId = "user3" }
         };
 
         _mockStudentService
@@ -191,8 +213,8 @@ public class StudentControllerTest
         var searchTerm = "@example.com";
         var expectedStudents = new List<StudentListDto>
         {
-            new StudentListDto { Id = 1, Firstname = "John", Lastname = "Doe", UserId = "user1" },
-            new StudentListDto { Id = 2, Firstname = "Jane", Lastname = "Smith", UserId = "user2" }
+            new StudentListDto { Id = Guid.NewGuid(), Firstname = "John", Lastname = "Doe", UserId = "user1" },
+            new StudentListDto { Id = Guid.NewGuid(), Firstname = "Jane", Lastname = "Smith", UserId = "user2" }
         };
 
         _mockStudentService
@@ -218,7 +240,7 @@ public class StudentControllerTest
         var pageSize = 10;
         var expectedStudents = new List<StudentListDto>
         {
-            new StudentListDto { Id = 5, Firstname = "Test", Lastname = "User", UserId = "user5" }
+            new StudentListDto { Id = Guid.NewGuid(), Firstname = "Test", Lastname = "User", UserId = "user5" }
         };
 
         _mockStudentService

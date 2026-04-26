@@ -5,7 +5,7 @@ namespace attendance_monitoring.Models.DTO.Response;
 /// </summary>
 public class StudentAttendanceHistoryDto
 {
-    public int StudentId { get; set; }
+    public Guid StudentId { get; set; }
     public string StudentName { get; set; } = string.Empty;
     public string StudentNumber { get; set; } = string.Empty;
     public int TotalSessions { get; set; }

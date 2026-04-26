@@ -1,4 +1,6 @@
+using attendance_monitoring.Data;
 using attendance_monitoring.IServices;
+using Microsoft.EntityFrameworkCore;
 
 namespace attendance_monitoring.Extensions.WebApplicationExtensions;
 
@@ -18,7 +20,6 @@ public static class StartupExtensions
     {
         var logger = app.Services.GetRequiredService<ILogger<WebApplication>>();
 
-        // Seed data with error handling
         using (var scope = app.Services.CreateScope())
         {
             var dataSeederService = scope.ServiceProvider
@@ -31,9 +32,7 @@ public static class StartupExtensions
             catch (Exception ex)
             {
                 logger.LogError(ex, "Data seeding failed. Application will continue without seed data.");
-                // Don't throw - allow application to start even if seeding fails
             }
         }
     }
 }
-

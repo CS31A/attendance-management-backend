@@ -119,6 +119,6 @@ public class RoleStandardizationTests
         var exception = await Assert.ThrowsAsync<ValidationException>(() => service.RegisterAsync(registerDto));
 
         Assert.Equal("Invalid role specified. Valid roles are: Student, Instructor, Admin", exception.Message);
-        userFactory.Verify(factory => factory.CreateUserAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<int?>()), Times.Never);
+        userFactory.Verify(factory => factory.CreateUserAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<Guid?>()), Times.Never);
     }
 }

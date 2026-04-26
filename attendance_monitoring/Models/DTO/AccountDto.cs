@@ -51,9 +51,9 @@ public class RegisterDto : IValidatableObject
     public string? Role { get; set; }
 
     /// <summary>
-    /// Section ID for student registration (required only for students)
+    /// Section ID for student registration (UUID string in public API; required only for students)
     /// </summary>
-    public int? SectionId { get; set; }
+    public Guid? SectionId { get; set; }
 
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
     {
@@ -61,7 +61,7 @@ public class RegisterDto : IValidatableObject
         var effectiveRole = string.IsNullOrEmpty(Role) ? "Student" : Role;
 
         // Validation 1: Students MUST have a valid SectionId
-        if (string.Equals(effectiveRole, "Student", StringComparison.OrdinalIgnoreCase) && (SectionId is null or <= 0))
+        if (string.Equals(effectiveRole, "Student", StringComparison.OrdinalIgnoreCase) && (!SectionId.HasValue || SectionId == Guid.Empty))
         {
             yield return new ValidationResult(
                 "SectionId is required for student registration",

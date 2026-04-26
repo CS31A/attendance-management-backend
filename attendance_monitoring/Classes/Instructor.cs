@@ -11,8 +11,7 @@ namespace attendance_monitoring.Classes;
 public class Instructor
 {
     [Key]
-    [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
-    public int Id { get; set; }
+    public Guid Id { get; set; }
 
     public string? Firstname { get; set; }
     public string? Lastname { get; set; }

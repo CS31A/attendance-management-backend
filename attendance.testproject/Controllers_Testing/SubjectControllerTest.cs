@@ -29,8 +29,8 @@ public class SubjectControllerTest
         // Arrange
         var expectedSubjects = new List<Subject>
         {
-            new Subject { Id = 1, Name = "Mathematics" },
-            new Subject { Id = 2, Name = "Science" }
+            new Subject { Id = Guid.NewGuid(), Name = "Mathematics" },
+            new Subject { Id = Guid.NewGuid(), Name = "Science" }
         };
         _mockSubjectService
             .Setup(s => s.GetAllSubjectsAsync())
@@ -59,6 +59,117 @@ public class SubjectControllerTest
         await Assert.ThrowsAsync<EntityServiceException>(() => _controller.GetSubjects());
     }
 
+    [Fact]
+    public async Task GetSubjectByUuid_ReturnsOkResult_WhenSubjectExists()
+    {
+        var subjectUuid = Guid.NewGuid();
+        var subject = new Subject { Id = subjectUuid, Name = "Physics", Code = "PHY101" };
+
+        _mockSubjectService
+            .Setup(s => s.GetSubjectByUuidAsync(subjectUuid))
+            .ReturnsAsync(subject);
+
+        var result = await _controller.GetSubjectByUuid(subjectUuid);
+
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        var returnedSubject = Assert.IsType<Subject>(okResult.Value);
+        Assert.Equal(subjectUuid, returnedSubject.Id);
+        _mockSubjectService.Verify(s => s.GetSubjectByUuidAsync(subjectUuid), Times.Once);
+    }
+
+    [Fact]
+    public async Task GetSubjectByUuid_ReturnsNotFound_WhenSubjectDoesNotExist()
+    {
+        var subjectUuid = Guid.NewGuid();
+
+        _mockSubjectService
+            .Setup(s => s.GetSubjectByUuidAsync(subjectUuid))
+            .ThrowsAsync(new EntityNotFoundException<Guid>("Subject", subjectUuid));
+
+        var result = await _controller.GetSubjectByUuid(subjectUuid);
+
+        var notFoundResult = Assert.IsType<NotFoundObjectResult>(result.Result);
+        Assert.NotNull(notFoundResult.Value);
+        _mockSubjectService.Verify(s => s.GetSubjectByUuidAsync(subjectUuid), Times.Once);
+    }
+
+    [Fact]
+    public async Task UpdateSubjectByUuid_ReturnsOkResult_WhenUpdateSucceeds()
+    {
+        var subjectUuid = Guid.NewGuid();
+        var updateSubject = new UpdateSubject { Name = "Advanced Physics" };
+        var updatedSubject = new Subject { Id = subjectUuid, Name = updateSubject.Name! };
+
+        _mockSubjectService
+            .Setup(s => s.UpdateSubjectByUuidAsync(subjectUuid, updateSubject))
+            .ReturnsAsync(updatedSubject);
+
+        var result = await _controller.UpdateSubjectByUuid(subjectUuid, updateSubject);
+
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        var returnedSubject = Assert.IsType<Subject>(okResult.Value);
+        Assert.Equal(subjectUuid, returnedSubject.Id);
+    }
+
+    [Fact]
+    public async Task UpdateSubjectByUuid_ReturnsBadRequest_WhenInvalidModelState()
+    {
+        var subjectUuid = Guid.NewGuid();
+        var updateSubject = new UpdateSubject { Name = string.Empty };
+        _controller.ModelState.AddModelError("Name", "Subject name is required");
+
+        var result = await _controller.UpdateSubjectByUuid(subjectUuid, updateSubject);
+
+        var badRequestResult = Assert.IsType<BadRequestObjectResult>(result.Result);
+        Assert.IsType<SerializableError>(badRequestResult.Value);
+        _mockSubjectService.Verify(s => s.UpdateSubjectByUuidAsync(It.IsAny<Guid>(), It.IsAny<UpdateSubject>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task UpdateSubjectByUuid_PropagatesEntityNotFoundException_WhenSubjectDoesNotExist()
+    {
+        var subjectUuid = Guid.NewGuid();
+        var updateSubject = new UpdateSubject { Name = "Advanced Physics" };
+
+        _mockSubjectService
+            .Setup(s => s.UpdateSubjectByUuidAsync(subjectUuid, updateSubject))
+            .ThrowsAsync(new EntityNotFoundException<Guid>("Subject", subjectUuid));
+
+        var exception = await Assert.ThrowsAsync<EntityNotFoundException<Guid>>(() => _controller.UpdateSubjectByUuid(subjectUuid, updateSubject));
+
+        Assert.Equal($"Subject with ID {subjectUuid} was not found.", exception.Message);
+    }
+
+    [Fact]
+    public async Task DeleteSubjectByUuid_ReturnsNoContent_WhenDeletionSucceeds()
+    {
+        var subjectUuid = Guid.NewGuid();
+
+        _mockSubjectService
+            .Setup(s => s.DeleteSubjectByUuidAsync(subjectUuid))
+            .Returns(Task.CompletedTask);
+
+        var result = await _controller.DeleteSubjectByUuid(subjectUuid);
+
+        Assert.IsType<NoContentResult>(result);
+        _mockSubjectService.Verify(s => s.DeleteSubjectByUuidAsync(subjectUuid), Times.Once);
+    }
+
+    [Fact]
+    public async Task DeleteSubjectByUuid_PropagatesEntityNotFoundException_WhenSubjectDoesNotExist()
+    {
+        var subjectUuid = Guid.NewGuid();
+
+        _mockSubjectService
+            .Setup(s => s.DeleteSubjectByUuidAsync(subjectUuid))
+            .ThrowsAsync(new EntityNotFoundException<Guid>("Subject", subjectUuid));
+
+        var exception = await Assert.ThrowsAsync<EntityNotFoundException<Guid>>(() => _controller.DeleteSubjectByUuid(subjectUuid));
+
+        Assert.Equal($"Subject with ID {subjectUuid} was not found.", exception.Message);
+        _mockSubjectService.Verify(s => s.DeleteSubjectByUuidAsync(subjectUuid), Times.Once);
+    }
+
     #endregion
 
     #region Dependency Check Tests
@@ -66,7 +177,7 @@ public class SubjectControllerTest
     [Fact]
     public async Task HasSchedulesInSubject_ReturnsOk_WithBooleanResult()
     {
-        const int subjectId = 9;
+        var subjectId = Guid.NewGuid();
         _mockSubjectService
             .Setup(service => service.HasSchedulesInSubjectAsync(subjectId))
             .ReturnsAsync(true);
@@ -80,7 +191,7 @@ public class SubjectControllerTest
     [Fact]
     public async Task HasEnrollmentsInSubject_ReturnsOk_WithBooleanResult()
     {
-        const int subjectId = 4;
+        var subjectId = Guid.NewGuid();
         _mockSubjectService
             .Setup(service => service.HasEnrollmentsInSubjectAsync(subjectId))
             .ReturnsAsync(true);
@@ -94,7 +205,7 @@ public class SubjectControllerTest
     [Fact]
     public async Task HasSchedulesInSubject_ReturnsBadRequest_ForInvalidId()
     {
-        var result = await _controller.HasSchedulesInSubject(0);
+        var result = await _controller.HasSchedulesInSubject(Guid.Empty);
 
         var badRequestResult = Assert.IsType<BadRequestObjectResult>(result.Result);
         Assert.Equal("Subject ID must be greater than 0.", badRequestResult.Value);

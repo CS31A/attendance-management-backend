@@ -27,8 +27,8 @@ public class ClassroomControllerTest
         // Arrange
         var expectedClassrooms = new List<Classroom>
         {
-            new() { Id = 1, Name = "Room 101", CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow },
-            new() { Id = 2, Name = "Lab 202", CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow }
+            new() { Id = Guid.NewGuid(), Name = "Room 101", CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow },
+            new() { Id = Guid.NewGuid(), Name = "Lab 202", CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow }
         };
 
         _mockClassroomService
@@ -51,7 +51,7 @@ public class ClassroomControllerTest
     public async Task GetClassroom_ReturnsOkResult_WhenClassroomExists()
     {
         // Arrange
-        const int classroomId = 1;
+        var classroomId = Guid.NewGuid();
         var expectedClassroom = new Classroom
         {
             Id = classroomId,
@@ -76,14 +76,53 @@ public class ClassroomControllerTest
     }
 
     [Fact]
+    public async Task GetClassroomByUuid_ReturnsOkResult_WhenClassroomExists()
+    {
+        var classroomUuid = Guid.NewGuid();
+        var expectedClassroom = new Classroom
+        {
+            Id = classroomUuid,
+            Name = "Room 204",
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+
+        _mockClassroomService
+            .Setup(s => s.GetClassroomByUuidAsync(classroomUuid))
+            .ReturnsAsync(expectedClassroom);
+
+        var result = await _controller.GetClassroomByUuid(classroomUuid);
+
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        var classroom = Assert.IsType<Classroom>(okResult.Value);
+        Assert.Equal(classroomUuid, classroom.Id);
+    }
+
+    [Fact]
+    public async Task GetClassroomByUuid_ReturnsNotFound_WhenClassroomDoesNotExist()
+    {
+        var classroomUuid = Guid.NewGuid();
+
+        _mockClassroomService
+            .Setup(s => s.GetClassroomByUuidAsync(classroomUuid))
+            .ThrowsAsync(new EntityNotFoundException<Guid>("Classroom", classroomUuid));
+
+        var result = await _controller.GetClassroomByUuid(classroomUuid);
+
+        var notFoundResult = Assert.IsType<NotFoundObjectResult>(result.Result);
+        Assert.NotNull(notFoundResult.Value);
+        _mockClassroomService.Verify(s => s.GetClassroomByUuidAsync(classroomUuid), Times.Once);
+    }
+
+    [Fact]
     public async Task GetClassroom_ReturnsNotFound_WhenClassroomDoesNotExist()
     {
         // Arrange
-        const int classroomId = 99;
+        var classroomId = Guid.NewGuid();
 
         _mockClassroomService
             .Setup(s => s.GetClassroomByIdAsync(classroomId))
-            .ThrowsAsync(new EntityNotFoundException<int>("Classroom", classroomId));
+            .ThrowsAsync(new EntityNotFoundException<Guid>("Classroom", classroomId));
 
         // Act
         var result = await _controller.GetClassroom(classroomId);
@@ -105,7 +144,7 @@ public class ClassroomControllerTest
 
         var createdClassroom = new Classroom
         {
-            Id = 3,
+            Id = Guid.NewGuid(),
             Name = "Room 301",
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
@@ -151,7 +190,7 @@ public class ClassroomControllerTest
     public async Task UpdateClassroom_ReturnsOkResult_WhenUpdateSucceeds()
     {
         // Arrange
-        const int classroomId = 1;
+        var classroomId = Guid.NewGuid();
         var updateClassroom = new UpdateClassroom
         {
             Name = "Updated Room 101"
@@ -181,10 +220,73 @@ public class ClassroomControllerTest
     }
 
     [Fact]
+    public async Task UpdateClassroomByUuid_ReturnsOkResult_WhenUpdateSucceeds()
+    {
+        var classroomUuid = Guid.NewGuid();
+        var updateClassroom = new UpdateClassroom
+        {
+            Name = "Updated Room 204"
+        };
+
+        var updatedClassroom = new Classroom
+        {
+            Id = classroomUuid,
+            Name = updateClassroom.Name!,
+            CreatedAt = DateTime.UtcNow.AddDays(-1),
+            UpdatedAt = DateTime.UtcNow
+        };
+
+        _mockClassroomService
+            .Setup(s => s.UpdateClassroomByUuidAsync(classroomUuid, updateClassroom))
+            .ReturnsAsync(updatedClassroom);
+
+        var result = await _controller.UpdateClassroomByUuid(classroomUuid, updateClassroom);
+
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        var classroom = Assert.IsType<Classroom>(okResult.Value);
+        Assert.Equal(classroomUuid, classroom.Id);
+    }
+
+    [Fact]
+    public async Task UpdateClassroomByUuid_ReturnsBadRequest_WhenInvalidModelState()
+    {
+        var classroomUuid = Guid.NewGuid();
+        var updateClassroom = new UpdateClassroom
+        {
+            Name = "A"
+        };
+        _controller.ModelState.AddModelError("Name", "Classroom name must be between 2 and 100 characters");
+
+        var result = await _controller.UpdateClassroomByUuid(classroomUuid, updateClassroom);
+
+        var badRequestResult = Assert.IsType<BadRequestObjectResult>(result.Result);
+        Assert.IsType<SerializableError>(badRequestResult.Value);
+        _mockClassroomService.Verify(s => s.UpdateClassroomByUuidAsync(It.IsAny<Guid>(), It.IsAny<UpdateClassroom>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task UpdateClassroomByUuid_PropagatesEntityNotFoundException_WhenClassroomDoesNotExist()
+    {
+        var classroomUuid = Guid.NewGuid();
+        var updateClassroom = new UpdateClassroom
+        {
+            Name = "Updated Room 204"
+        };
+
+        _mockClassroomService
+            .Setup(s => s.UpdateClassroomByUuidAsync(classroomUuid, updateClassroom))
+            .ThrowsAsync(new EntityNotFoundException<Guid>("Classroom", classroomUuid));
+
+        var exception = await Assert.ThrowsAsync<EntityNotFoundException<Guid>>(() => _controller.UpdateClassroomByUuid(classroomUuid, updateClassroom));
+
+        Assert.Equal($"Classroom with ID {classroomUuid} was not found.", exception.Message);
+    }
+
+    [Fact]
     public async Task UpdateClassroom_ReturnsBadRequest_WhenInvalidModelState()
     {
         // Arrange
-        const int classroomId = 1;
+        var classroomId = Guid.NewGuid();
         var updateClassroom = new UpdateClassroom
         {
             Name = "A"
@@ -197,14 +299,14 @@ public class ClassroomControllerTest
         // Assert
         var badRequestResult = Assert.IsType<BadRequestObjectResult>(result.Result);
         Assert.IsType<SerializableError>(badRequestResult.Value);
-        _mockClassroomService.Verify(s => s.UpdateClassroomAsync(It.IsAny<int>(), It.IsAny<UpdateClassroom>()), Times.Never);
+        _mockClassroomService.Verify(s => s.UpdateClassroomAsync(It.IsAny<Guid>(), It.IsAny<UpdateClassroom>()), Times.Never);
     }
 
     [Fact]
     public async Task DeleteClassroom_ReturnsNoContent_WhenDeletionSucceeds()
     {
         // Arrange
-        const int classroomId = 1;
+        var classroomId = Guid.NewGuid();
 
         _mockClassroomService
             .Setup(s => s.DeleteClassroomAsync(classroomId))
@@ -219,17 +321,47 @@ public class ClassroomControllerTest
     }
 
     [Fact]
+    public async Task DeleteClassroomByUuid_ReturnsNoContent_WhenDeletionSucceeds()
+    {
+        var classroomUuid = Guid.NewGuid();
+
+        _mockClassroomService
+            .Setup(s => s.DeleteClassroomByUuidAsync(classroomUuid))
+            .Returns(Task.CompletedTask);
+
+        var result = await _controller.DeleteClassroomByUuid(classroomUuid);
+
+        Assert.IsType<NoContentResult>(result);
+        _mockClassroomService.Verify(s => s.DeleteClassroomByUuidAsync(classroomUuid), Times.Once);
+    }
+
+    [Fact]
+    public async Task DeleteClassroomByUuid_PropagatesEntityNotFoundException_WhenClassroomDoesNotExist()
+    {
+        var classroomUuid = Guid.NewGuid();
+
+        _mockClassroomService
+            .Setup(s => s.DeleteClassroomByUuidAsync(classroomUuid))
+            .ThrowsAsync(new EntityNotFoundException<Guid>("Classroom", classroomUuid));
+
+        var exception = await Assert.ThrowsAsync<EntityNotFoundException<Guid>>(() => _controller.DeleteClassroomByUuid(classroomUuid));
+
+        Assert.Equal($"Classroom with ID {classroomUuid} was not found.", exception.Message);
+        _mockClassroomService.Verify(s => s.DeleteClassroomByUuidAsync(classroomUuid), Times.Once);
+    }
+
+    [Fact]
     public async Task DeleteClassroom_PropagatesEntityNotFoundException_WhenClassroomDoesNotExist()
     {
         // Arrange
-        const int classroomId = 99;
+        var classroomId = Guid.NewGuid();
 
         _mockClassroomService
             .Setup(s => s.DeleteClassroomAsync(classroomId))
-            .ThrowsAsync(new EntityNotFoundException<int>("Classroom", classroomId));
+            .ThrowsAsync(new EntityNotFoundException<Guid>("Classroom", classroomId));
 
         // Act
-        var exception = await Assert.ThrowsAsync<EntityNotFoundException<int>>(() => _controller.DeleteClassroom(classroomId));
+        var exception = await Assert.ThrowsAsync<EntityNotFoundException<Guid>>(() => _controller.DeleteClassroom(classroomId));
 
         // Assert
         Assert.Equal($"Classroom with ID {classroomId} was not found.", exception.Message);

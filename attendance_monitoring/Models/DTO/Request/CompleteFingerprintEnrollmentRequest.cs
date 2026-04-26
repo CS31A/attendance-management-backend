@@ -1,11 +1,13 @@
 using System.ComponentModel.DataAnnotations;
+using attendance_monitoring.Attributes;
 
 namespace attendance_monitoring.Models.DTO.Request;
 
 public class CompleteFingerprintEnrollmentRequest
 {
     [Required]
-    public Guid EnrollmentSessionId { get; set; }
+    [NotEmptyGuid(ErrorMessage = "Id is required")]
+    public Guid Id { get; set; }
 
     [Required]
     [MaxLength(100)]

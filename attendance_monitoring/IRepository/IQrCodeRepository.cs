@@ -12,7 +12,7 @@ public interface IQrCodeRepository : ISaveableRepository
     /// </summary>
     /// <param name="id">The QR code ID.</param>
     /// <returns>The QR code if found; otherwise, null.</returns>
-    Task<QrCode?> GetQrCodeByIdAsync(int id);
+    Task<QrCode?> GetQrCodeByIdAsync(Guid id);
 
     /// <summary>
     /// Retrieves a QR code by its hash value.
@@ -26,21 +26,21 @@ public interface IQrCodeRepository : ISaveableRepository
     /// </summary>
     /// <param name="scheduleId">The schedule ID.</param>
     /// <returns>A collection of QR codes for the specified schedule.</returns>
-    Task<IEnumerable<QrCode>> GetQrCodesByScheduleIdAsync(int scheduleId);
+    Task<IEnumerable<QrCode>> GetQrCodesByScheduleIdAsync(Guid scheduleId);
 
     /// <summary>
     /// Retrieves all QR codes for a specific section.
     /// </summary>
     /// <param name="sectionId">The section ID.</param>
     /// <returns>A collection of QR codes for the specified section.</returns>
-    Task<IEnumerable<QrCode>> GetQrCodesBySectionIdAsync(int sectionId);
+    Task<IEnumerable<QrCode>> GetQrCodesBySectionIdAsync(Guid sectionId);
 
     /// <summary>
     /// Retrieves all QR codes for a specific session.
     /// </summary>
     /// <param name="sessionId">The session ID.</param>
     /// <returns>A collection of QR codes for the specified session.</returns>
-    Task<IEnumerable<QrCode>> GetQrCodesBySessionIdAsync(int sessionId);
+    Task<IEnumerable<QrCode>> GetQrCodesBySessionIdAsync(Guid sessionId);
 
     /// <summary>
     /// Retrieves all active QR codes that have not expired.
@@ -53,7 +53,7 @@ public interface IQrCodeRepository : ISaveableRepository
     /// </summary>
     /// <param name="scheduleId">The schedule ID.</param>
     /// <returns>A collection of active, non-expired QR codes for the specified schedule.</returns>
-    Task<IEnumerable<QrCode>> GetActiveQrCodesByScheduleIdAsync(int scheduleId);
+    Task<IEnumerable<QrCode>> GetActiveQrCodesByScheduleIdAsync(Guid scheduleId);
 
     /// <summary>
     /// Retrieves all expired QR codes.
@@ -87,7 +87,7 @@ public interface IQrCodeRepository : ISaveableRepository
     /// </summary>
     /// <param name="id">The QR code ID.</param>
     /// <returns>True if the QR code was deactivated; otherwise, false.</returns>
-    Task<bool> DeactivateQrCodeAsync(int id);
+    Task<bool> DeactivateQrCodeAsync(Guid id);
 
     /// <summary>
     /// Deactivates a QR code by its hash value.
@@ -101,7 +101,7 @@ public interface IQrCodeRepository : ISaveableRepository
     /// </summary>
     /// <param name="id">The QR code ID.</param>
     /// <returns>True if the QR code was reactivated; otherwise, false.</returns>
-    Task<bool> ReactivateQrCodeAsync(int id);
+    Task<bool> ReactivateQrCodeAsync(Guid id);
 
     /// <summary>
     /// Reactivates a QR code by its hash value.
@@ -115,7 +115,7 @@ public interface IQrCodeRepository : ISaveableRepository
     /// </summary>
     /// <param name="id">The QR code ID.</param>
     /// <returns>The updated QR code if found; otherwise, null.</returns>
-    Task<QrCode?> IncrementUsageCountAsync(int id);
+    Task<QrCode?> IncrementUsageCountAsync(Guid id);
 
     /// <summary>
     /// Increments the usage count for a QR code by its hash.
@@ -129,7 +129,7 @@ public interface IQrCodeRepository : ISaveableRepository
     /// </summary>
     /// <param name="id">The QR code ID.</param>
     /// <returns>True if the QR code was deleted; otherwise, false.</returns>
-    Task<bool> DeleteQrCodeAsync(int id);
+    Task<bool> DeleteQrCodeAsync(Guid id);
 
     /// <summary>
     /// Deletes all expired QR codes from the database.
@@ -174,7 +174,7 @@ public interface IQrCodeRepository : ISaveableRepository
     /// <param name="pageSize">Number of items per page</param>
     /// <returns>Paginated list of attendance records for the QR code</returns>
     Task<attendance_monitoring.Models.DTO.Response.PagedResult<attendance_monitoring.Classes.AttendanceRecord>> GetScanHistoryAsync(
-        int qrCodeId,
+        Guid qrCodeId,
         int pageNumber,
         int pageSize);
 
@@ -196,5 +196,19 @@ public interface IQrCodeRepository : ISaveableRepository
     /// <param name="qrCodeId">The QR code ID</param>
     /// <returns>Tuple containing total scans, unique students, status breakdown, and scan time range</returns>
     Task<(int totalScans, int uniqueStudents, Dictionary<string, int> statusBreakdown, DateTime? firstScan, DateTime? lastScan)> GetScanStatisticsAsync(
-        int qrCodeId);
+        Guid qrCodeId);
+
+    /// <summary>
+    /// Retrieves a QR code by its UUID with all navigation properties loaded (read-only).
+    /// </summary>
+    /// <param name="id">The QR code UUID</param>
+    /// <returns>The QR code if found, null otherwise</returns>
+    Task<QrCode?> GetQrCodeByUuidAsync(Guid id);
+
+    /// <summary>
+    /// Retrieves a QR code by its UUID with all navigation properties loaded (tracked for updates).
+    /// </summary>
+    /// <param name="id">The QR code UUID</param>
+    /// <returns>The QR code if found, null otherwise</returns>
+    Task<QrCode?> GetQrCodeByUuidTrackedAsync(Guid id);
 }

@@ -27,12 +27,21 @@ public class SessionRepositoryTest : IDisposable
     {
         // Arrange
         await SeedReportDataAsync();
+        var sectionId = await _context.Sections.AsNoTracking().Select(s => s.Id).FirstAsync();
+        var newerSessionId = await _context.Sessions.AsNoTracking()
+            .OrderByDescending(s => s.SessionDate)
+            .Select(s => s.Id)
+            .FirstAsync();
+        var olderSessionId = await _context.Sessions.AsNoTracking()
+            .OrderBy(s => s.SessionDate)
+            .Select(s => s.Id)
+            .FirstAsync();
 
         // Act
-        var result = await _repository.GetSectionSessionReportRowsAsync(1, new DateTime(2026, 4, 1), new DateTime(2026, 4, 30));
+        var result = await _repository.GetSectionSessionReportRowsAsync(sectionId, new DateTime(2026, 4, 1), new DateTime(2026, 4, 30));
 
         // Assert
-        Assert.Equal([11, 10], result.Select(row => row.SessionId).ToArray());
+        Assert.Equal([newerSessionId, olderSessionId], result.Select(row => row.SessionId).ToArray());
         Assert.Equal(2, result[0].PresentCount);
         Assert.Equal(1, result[0].LateCount);
         Assert.Equal(1, result[0].AbsentCount);
@@ -49,16 +58,55 @@ public class SessionRepositoryTest : IDisposable
     {
         // Arrange
         await SeedReportDataAsync();
+        var instructorId = await _context.Instructors.AsNoTracking().Select(i => i.Id).FirstAsync();
+        var newerSessionId = await _context.Sessions.AsNoTracking()
+            .OrderByDescending(s => s.SessionDate)
+            .Select(s => s.Id)
+            .FirstAsync();
 
         // Act
-        var result = await _repository.GetInstructorSessionReportRowsAsync(1, new DateTime(2026, 4, 10), new DateTime(2026, 4, 30));
+        var result = await _repository.GetInstructorSessionReportRowsAsync(instructorId, new DateTime(2026, 4, 10), new DateTime(2026, 4, 30));
 
         // Assert
         var row = Assert.Single(result);
-        Assert.Equal(11, row.SessionId);
+        Assert.Equal(newerSessionId, row.SessionId);
         Assert.Equal("Math", row.SubjectName);
         Assert.Equal("BSCS 3A", row.SectionName);
         Assert.Equal(5, row.TotalRecords);
+    }
+
+    [Fact]
+    public async Task GetSectionSessionReportRowsAsync_PreservesSliceABridgeWhenUuidColumnsExist()
+    {
+        // Arrange
+        await SeedReportDataAsync();
+
+        var schedule = await _context.Schedules
+            .AsNoTracking()
+            .Include(row => row.Subject)
+            .Include(row => row.Classroom)
+            .Include(row => row.Section)
+                .ThenInclude(section => section.Course)
+            .SingleAsync();
+
+        // Act
+        var row = Assert.Single(await _repository.GetSectionSessionReportRowsAsync(
+            schedule.SectionId,
+            new DateTime(2026, 4, 10),
+            new DateTime(2026, 4, 30)));
+
+        // Assert
+        Assert.NotEqual(Guid.Empty, schedule.SubjectId);
+        Assert.NotEqual(Guid.Empty, schedule.SectionId);
+        Assert.NotEqual(Guid.Empty, schedule.ClassroomId);
+        Assert.NotEqual(Guid.Empty, schedule.Id);
+        Assert.NotEqual(Guid.Empty, schedule.Subject.Id);
+        Assert.NotEqual(Guid.Empty, schedule.Section.Id);
+        Assert.NotEqual(Guid.Empty, schedule.Classroom.Id);
+        Assert.NotEqual(Guid.Empty, schedule.Section.Course.Id);
+        Assert.Equal(schedule.Subject.Name, row.SubjectName);
+        Assert.Equal(schedule.Section.Name, row.SectionName);
+        Assert.Equal(schedule.DayOfWeek, row.DayOfWeek);
     }
 
     [Fact]
@@ -67,8 +115,8 @@ public class SessionRepositoryTest : IDisposable
         // Arrange
         var session = new Session
         {
-            Id = 40,
-            ScheduleId = 1,
+            Id = Guid.NewGuid(),
+            ScheduleId = Guid.NewGuid(),
             SessionDate = new DateTime(2026, 4, 10),
             Status = "NotStarted",
             RowVersion = [9, 9, 9, 9]
@@ -90,6 +138,97 @@ public class SessionRepositoryTest : IDisposable
         await Assert.ThrowsAsync<ValidationException>(() => _repository.UpdateSessionAsync(update));
     }
 
+    [Fact]
+    public async Task GetSectionSessionReportRowsAsync_PreservesSliceBUuidSidecarsWhileLegacySessionIdsStayAuthoritative()
+    {
+        // Arrange
+        await SeedReportDataAsync();
+        var sectionId = await _context.Sections.AsNoTracking().Select(s => s.Id).FirstAsync();
+
+        // Act
+        var newerSessionId = await _context.Sessions.AsNoTracking()
+            .OrderByDescending(s => s.SessionDate)
+            .Select(s => s.Id)
+            .FirstAsync();
+
+        var newerSession = await _context.Sessions
+            .AsNoTracking()
+            .Include(session => session.Schedule)
+                .ThenInclude(schedule => schedule.Subject)
+            .Include(session => session.Schedule)
+                .ThenInclude(schedule => schedule.Section)
+            .Include(session => session.Schedule)
+                .ThenInclude(schedule => schedule.Classroom)
+            .Include(session => session.AttendanceRecords)
+            .Include(session => session.QrCodes)
+            .SingleAsync(session => session.Id == newerSessionId);
+
+        var reportRow = Assert.Single(await _repository.GetSectionSessionReportRowsAsync(
+            sectionId,
+            new DateTime(2026, 4, 10),
+            new DateTime(2026, 4, 30)));
+
+        // Assert
+        Assert.NotEqual(Guid.Empty, newerSession.Id);
+        Assert.NotEqual(Guid.Empty, newerSession.Schedule.Id);
+        Assert.NotEqual(Guid.Empty, newerSession.Schedule.Subject.Id);
+        Assert.NotEqual(Guid.Empty, newerSession.Schedule.Section.Id);
+        Assert.NotEqual(Guid.Empty, newerSession.Schedule.Classroom.Id);
+        Assert.Equal(newerSession.Schedule.Subject.Name, reportRow.SubjectName);
+        Assert.Equal(newerSession.Schedule.Section.Name, reportRow.SectionName);
+        Assert.Equal(newerSession.Schedule.DayOfWeek, reportRow.DayOfWeek);
+        Assert.All(newerSession.AttendanceRecords, record => Assert.NotEqual(Guid.Empty, record.Id));
+
+        var qrCode = Assert.Single(newerSession.QrCodes);
+        Assert.NotEqual(Guid.Empty, qrCode.Id);
+        Assert.Equal(newerSession.Id, reportRow.SessionId);
+    }
+
+    [Fact]
+    public async Task SessionRepository_GetSessionByUuidAsync_ReturnsReadOnlyAndTrackedSession()
+    {
+        // Arrange
+        await SeedReportDataAsync();
+        _context.ChangeTracker.Clear();
+
+        var sessionUuid = await _context.Sessions
+            .AsNoTracking()
+            .OrderByDescending(s => s.SessionDate)
+            .Select(session => session.Id)
+            .FirstAsync();
+
+        // Act
+        var readOnlySession = await _repository.GetSessionByUuidAsync(sessionUuid);
+        var trackedSession = await _repository.GetSessionByUuidTrackedAsync(sessionUuid);
+
+        // Assert
+        Assert.NotNull(readOnlySession);
+        Assert.Equal(sessionUuid, readOnlySession.Id);
+        Assert.NotNull(readOnlySession.Schedule);
+        Assert.NotNull(readOnlySession.Schedule.Subject);
+        Assert.NotNull(readOnlySession.Schedule.Section);
+        Assert.NotNull(readOnlySession.Schedule.Classroom);
+        Assert.NotNull(readOnlySession.Schedule.Instructor);
+        Assert.NotNull(trackedSession);
+        Assert.Equal(EntityState.Unchanged, _context.Entry(trackedSession).State);
+    }
+
+    [Fact]
+    public async Task SessionRepository_GetSessionByUuidAsync_ReturnsNull_WhenNotFound()
+    {
+        // Arrange
+        await SeedReportDataAsync();
+        var missingUuid = Guid.NewGuid();
+
+        // Act
+        var readOnlySession = await _repository.GetSessionByUuidAsync(missingUuid);
+        var trackedSession = await _repository.GetSessionByUuidTrackedAsync(missingUuid);
+
+        // Assert
+        Assert.Null(readOnlySession);
+        Assert.Null(trackedSession);
+    }
+
     private async Task SeedReportDataAsync()
     {
         var user = new IdentityUser
@@ -101,13 +240,13 @@ public class SessionRepositoryTest : IDisposable
             NormalizedEmail = "INST1@EXAMPLE.COM",
         };
 
-        var course = new Course { Id = 1, Name = "BSCS" };
-        var section = new Section { Id = 1, Name = "BSCS 3A", CourseId = 1, Course = course };
-        var subject = new Subject { Id = 1, Name = "Math", Code = "MATH1" };
-        var classroom = new Classroom { Id = 1, Name = "Room 101" };
+        var course = new Course { Id = Guid.NewGuid(), Name = "BSCS" };
+        var section = new Section { Id = Guid.NewGuid(), Name = "BSCS 3A", CourseId = Guid.NewGuid(), Course = course };
+        var subject = new Subject { Id = Guid.NewGuid(), Name = "Math", Code = "MATH1" };
+        var classroom = new Classroom { Id = Guid.NewGuid(), Name = "Room 101" };
         var instructor = new Instructor
         {
-            Id = 1,
+            Id = Guid.NewGuid(),
             Firstname = "Ada",
             Lastname = "Lovelace",
             UserId = user.Id,
@@ -116,7 +255,7 @@ public class SessionRepositoryTest : IDisposable
 
         var schedule = new Schedules
         {
-            Id = 1,
+            Id = Guid.NewGuid(),
             TimeIn = new TimeOnly(8, 0),
             TimeOut = new TimeOnly(10, 0),
             DayOfWeek = "Thursday",
@@ -132,7 +271,7 @@ public class SessionRepositoryTest : IDisposable
 
         var olderSession = new Session
         {
-            Id = 10,
+            Id = Guid.NewGuid(),
             ScheduleId = schedule.Id,
             Schedule = schedule,
             SessionDate = new DateTime(2026, 4, 3),
@@ -142,12 +281,23 @@ public class SessionRepositoryTest : IDisposable
 
         var newerSession = new Session
         {
-            Id = 11,
+            Id = Guid.NewGuid(),
             ScheduleId = schedule.Id,
             Schedule = schedule,
             SessionDate = new DateTime(2026, 4, 17),
             Status = "Ended",
             RowVersion = [2],
+        };
+
+        var qrCode = new QrCode
+        {
+            Id = Guid.NewGuid(),
+            SessionId = newerSession.Id,
+            Session = newerSession,
+            QrHash = "slice-b-report-qr",
+            GeneratedAt = newerSession.SessionDate.AddHours(7).AddMinutes(55),
+            ExpiresAt = newerSession.SessionDate.AddHours(8).AddMinutes(30),
+            IsActive = true
         };
 
         _context.Users.Add(user);
@@ -158,12 +308,13 @@ public class SessionRepositoryTest : IDisposable
         _context.Instructors.Add(instructor);
         _context.Schedules.Add(schedule);
         _context.Sessions.AddRange(olderSession, newerSession);
+        _context.QrCodes.Add(qrCode);
         _context.AttendanceRecords.AddRange(
-            new AttendanceRecord { Id = 1, StudentId = 1, SessionId = newerSession.Id, Session = newerSession, CheckInTime = newerSession.SessionDate.AddHours(8), Status = "Present" },
-            new AttendanceRecord { Id = 2, StudentId = 2, SessionId = newerSession.Id, Session = newerSession, CheckInTime = newerSession.SessionDate.AddHours(8).AddMinutes(2), Status = "Present" },
-            new AttendanceRecord { Id = 3, StudentId = 3, SessionId = newerSession.Id, Session = newerSession, CheckInTime = newerSession.SessionDate.AddHours(8).AddMinutes(5), Status = "Late" },
-            new AttendanceRecord { Id = 4, StudentId = 4, SessionId = newerSession.Id, Session = newerSession, CheckInTime = newerSession.SessionDate.AddHours(8).AddMinutes(7), Status = "Absent" },
-            new AttendanceRecord { Id = 5, StudentId = 5, SessionId = newerSession.Id, Session = newerSession, CheckInTime = newerSession.SessionDate.AddHours(8).AddMinutes(9), Status = "Excused" });
+            new AttendanceRecord { Id = Guid.NewGuid(), StudentId = Guid.NewGuid(), SessionId = newerSession.Id, Session = newerSession, QrCodeId = qrCode.Id, QrCode = qrCode, CheckInTime = newerSession.SessionDate.AddHours(8), Status = "Present" },
+            new AttendanceRecord { Id = Guid.NewGuid(), StudentId = Guid.NewGuid(), SessionId = newerSession.Id, Session = newerSession, CheckInTime = newerSession.SessionDate.AddHours(8).AddMinutes(2), Status = "Present" },
+            new AttendanceRecord { Id = Guid.NewGuid(), StudentId = Guid.NewGuid(), SessionId = newerSession.Id, Session = newerSession, CheckInTime = newerSession.SessionDate.AddHours(8).AddMinutes(5), Status = "Late" },
+            new AttendanceRecord { Id = Guid.NewGuid(), StudentId = Guid.NewGuid(), SessionId = newerSession.Id, Session = newerSession, CheckInTime = newerSession.SessionDate.AddHours(8).AddMinutes(7), Status = "Absent" },
+            new AttendanceRecord { Id = Guid.NewGuid(), StudentId = Guid.NewGuid(), SessionId = newerSession.Id, Session = newerSession, CheckInTime = newerSession.SessionDate.AddHours(8).AddMinutes(9), Status = "Excused" });
 
         await _context.SaveChangesAsync();
     }

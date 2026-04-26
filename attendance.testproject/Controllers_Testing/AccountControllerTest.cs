@@ -36,7 +36,7 @@ public class AccountControllerTest
     public async Task Register_ReturnsOk_WhenRegistrationSuccessful()
     {
         // Arrange
-        var registerDto = new RegisterDto { Username = "testuser", Password = "Test@123", Email = "test@test.com", RepeatedPassword = "Test@123", Role = "Student", SectionId = 1 };
+        var registerDto = new RegisterDto { Username = "testuser", Password = "Test@123", Email = "test@test.com", RepeatedPassword = "Test@123", Role = "Student", SectionId = Guid.NewGuid() };
         var response = new RegisterResponseDto { Success = true, Message = "User registered successfully" };
         _mockAccountService.Setup(s => s.RegisterAsync(registerDto)).ReturnsAsync(response);
 
@@ -93,7 +93,7 @@ public class AccountControllerTest
             Email = "test@test.com",
             RepeatedPassword = "Test@123",
             Role = "Student",
-            SectionId = 0 // Invalid section ID
+            SectionId = Guid.Empty // Invalid section ID
         };
 
         // Manually trigger validation context to simulate ModelState validation
@@ -205,7 +205,7 @@ public class AccountControllerTest
             Email = "admin@test.com",
             RepeatedPassword = "Test@123",
             Role = "Admin",
-            SectionId = 1 // Invalid - admins should not have section ID
+            SectionId = Guid.NewGuid() // Invalid - admins should not have section ID
         };
 
         // Manually trigger validation context to simulate ModelState validation
@@ -237,7 +237,7 @@ public class AccountControllerTest
             Email = "instructor@test.com",
             RepeatedPassword = "Test@123",
             Role = "Instructor",
-            SectionId = 1 // Invalid - instructors should not have section ID
+            SectionId = Guid.NewGuid() // Invalid - instructors should not have section ID
         };
 
         // Manually trigger validation context to simulate ModelState validation
@@ -298,7 +298,7 @@ public class AccountControllerTest
             Email = "teacher_redundant@test.com",
             RepeatedPassword = "Test@123",
             Role = "Teacher",
-            SectionId = 123 // Should be rejected by DTO validation
+            SectionId = Guid.NewGuid() // Should be rejected by DTO validation
         };
 
         // Manually trigger validation context to simulate ModelState validation
@@ -380,7 +380,7 @@ public class AccountControllerTest
             Email = "new@test.com",
             RepeatedPassword = "Test@123",
             Role = "Student",
-            SectionId = 1
+            SectionId = Guid.NewGuid()
         };
         _mockAccountService.Setup(s => s.RegisterAsync(It.IsAny<RegisterDto>()))
             .ThrowsAsync(new EntityAlreadyExistsException<string>("User", "Username", "existinguser", "Username already exists"));
@@ -405,10 +405,10 @@ public class AccountControllerTest
             Email = "new@test.com",
             RepeatedPassword = "Test@123",
             Role = "Student",
-            SectionId = 999
+            SectionId = Guid.NewGuid()
         };
         _mockAccountService.Setup(s => s.RegisterAsync(It.IsAny<RegisterDto>()))
-            .ThrowsAsync(new EntityNotFoundException<int>("Section", 999));
+            .ThrowsAsync(new EntityNotFoundException<Guid>("Section", registerDto.SectionId!.Value));
 
         // Act
         var result = await _accountController.Register(registerDto);
@@ -430,7 +430,7 @@ public class AccountControllerTest
             Email = "new@test.com",
             RepeatedPassword = "weak",
             Role = "Student",
-            SectionId = 1
+            SectionId = Guid.NewGuid()
         };
         _mockAccountService.Setup(s => s.RegisterAsync(It.IsAny<RegisterDto>()))
             .ThrowsAsync(new ValidationException("Password does not meet requirements"));
@@ -456,7 +456,7 @@ public class AccountControllerTest
             Email = "new@test.com",
             RepeatedPassword = "Test@123",
             Role = "Student",
-            SectionId = 1
+            SectionId = Guid.NewGuid()
         };
         _mockAccountService.Setup(s => s.RegisterAsync(It.IsAny<RegisterDto>()))
             .ThrowsAsync(new EntityServiceException("User", "register", "An error occurred while creating the user"));
@@ -816,6 +816,117 @@ public class AccountControllerTest
 
         // Assert
         Assert.IsType<UnauthorizedObjectResult>(result.Result);
+    }
+
+    [Fact]
+    public async Task GetMe_ReturnsStudentProfile_WithCanonicalUuidIds()
+    {
+        // Arrange
+        var claims = new List<Claim> { new(ClaimTypes.NameIdentifier, "student123") };
+        var identity = new ClaimsIdentity(claims, "TestAuthType");
+        var claimsPrincipal = new ClaimsPrincipal(identity);
+        _accountController.ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext { User = claimsPrincipal } };
+
+        var expectedProfileId = Guid.Parse("a1b2c3d4-e5f6-7890-abcd-ef1234567890");
+        var expectedSectionId = Guid.Parse("11111111-2222-3333-4444-555555555555");
+        var expectedCourseId = Guid.Parse("66666666-7777-8888-9999-aaaaaaaaaaaa");
+        var profileResponse = new UserProfileResponseDto
+        {
+            UserId = "student123",
+            Username = "studentuser",
+            Email = "student@test.com",
+            Role = "Student",
+            StudentProfile = new StudentProfileInfo
+            {
+                Id = expectedProfileId,
+                SectionId = expectedSectionId,
+                CourseId = expectedCourseId,
+                Firstname = "Alice",
+                Lastname = "Student"
+            }
+        };
+        _mockAccountService.Setup(s => s.GetUserProfileAsync("student123")).ReturnsAsync(profileResponse);
+
+        // Act
+        var result = await _accountController.GetMe();
+
+        // Assert
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        var responseDto = Assert.IsType<UserProfileResponseDto>(okResult.Value);
+        Assert.NotNull(responseDto.StudentProfile);
+        Assert.Equal(expectedProfileId, responseDto.StudentProfile!.Id);
+        Assert.Equal(expectedSectionId, responseDto.StudentProfile.SectionId);
+        Assert.Equal(expectedCourseId, responseDto.StudentProfile.CourseId);
+    }
+
+    [Fact]
+    public async Task GetMe_ReturnsInstructorProfile_WithCanonicalUuidIds()
+    {
+        // Arrange
+        var claims = new List<Claim> { new(ClaimTypes.NameIdentifier, "instructor123") };
+        var identity = new ClaimsIdentity(claims, "TestAuthType");
+        var claimsPrincipal = new ClaimsPrincipal(identity);
+        _accountController.ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext { User = claimsPrincipal } };
+
+        var expectedProfileId = Guid.Parse("b2c3d4e5-f6a7-8901-bcde-f12345678901");
+        var profileResponse = new UserProfileResponseDto
+        {
+            UserId = "instructor123",
+            Username = "instructoruser",
+            Email = "instructor@test.com",
+            Role = "Instructor",
+            InstructorProfile = new InstructorProfileInfo
+            {
+                Id = expectedProfileId,
+                Firstname = "Ian",
+                Lastname = "Instructor"
+            }
+        };
+        _mockAccountService.Setup(s => s.GetUserProfileAsync("instructor123")).ReturnsAsync(profileResponse);
+
+        // Act
+        var result = await _accountController.GetMe();
+
+        // Assert
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        var responseDto = Assert.IsType<UserProfileResponseDto>(okResult.Value);
+        Assert.NotNull(responseDto.InstructorProfile);
+        Assert.Equal(expectedProfileId, responseDto.InstructorProfile!.Id);
+    }
+
+    [Fact]
+    public async Task GetMe_ReturnsAdminProfile_WithCanonicalUuidIds()
+    {
+        // Arrange
+        var claims = new List<Claim> { new(ClaimTypes.NameIdentifier, "admin123") };
+        var identity = new ClaimsIdentity(claims, "TestAuthType");
+        var claimsPrincipal = new ClaimsPrincipal(identity);
+        _accountController.ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext { User = claimsPrincipal } };
+
+        var expectedProfileId = Guid.Parse("c3d4e5f6-a7b8-9012-cdef-123456789012");
+        var profileResponse = new UserProfileResponseDto
+        {
+            UserId = "admin123",
+            Username = "adminuser",
+            Email = "admin@test.com",
+            Role = "Admin",
+            AdminProfile = new AdminProfileInfo
+            {
+                Id = expectedProfileId,
+                Firstname = "Ada",
+                Lastname = "Admin"
+            }
+        };
+        _mockAccountService.Setup(s => s.GetUserProfileAsync("admin123")).ReturnsAsync(profileResponse);
+
+        // Act
+        var result = await _accountController.GetMe();
+
+        // Assert
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        var responseDto = Assert.IsType<UserProfileResponseDto>(okResult.Value);
+        Assert.NotNull(responseDto.AdminProfile);
+        Assert.Equal(expectedProfileId, responseDto.AdminProfile!.Id);
     }
 
     #endregion

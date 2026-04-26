@@ -221,6 +221,97 @@ Get current instructor's profile (requires Teacher role).
 ### GET /api/instructors/{instructorId}/subjects
 Get all subjects assigned to an instructor.
 
+### GET /api/instructors/me/schedules
+Get the schedules handled by the authenticated privileged user.
+
+**Authorization:** Requires `PrivilegedPolicy` (Admin or Instructor role)
+
+### GET /api/instructors/me/sections-with-students
+Get all sections with enrolled students for the authenticated instructor.
+
+**Authorization:** Requires `PrivilegedPolicy` (Admin or Instructor role)
+
+**Response:**
+```json
+{
+  "instructorId": 1,
+  "instructorUuid": "guid",
+  "instructorFirstname": "John",
+  "instructorLastname": "Doe",
+  "sections": [
+    {
+      "sectionId": 1,
+      "sectionUuid": "guid",
+      "sectionName": "BSCS 3A",
+      "courseId": 1,
+      "courseUuid": "guid",
+      "courseName": "Bachelor of Science in Computer Science",
+      "subjects": [
+        {
+          "subjectId": 1,
+          "subjectUuid": "guid",
+          "subjectName": "Data Structures",
+          "subjectCode": "CS301",
+          "scheduleId": 1,
+          "scheduleUuid": "guid",
+          "dayOfWeek": "Monday",
+          "timeIn": "08:00:00",
+          "timeOut": "10:00:00",
+          "classroomId": 1,
+          "classroomUuid": "guid",
+          "classroomName": "Room 101",
+          "students": [
+            {
+              "studentId": 1,
+              "studentUuid": "guid",
+              "firstname": "Alice",
+              "lastname": "Smith",
+              "isRegular": true,
+              "enrollmentType": "Regular"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
+```
+
+**Notes:**
+- Returns empty sections array if instructor has no schedules
+- Includes both regular and irregular students enrolled via StudentEnrollments
+- Regular students are those where `Student.SectionId` matches the section
+- Irregular students are those enrolled via `StudentEnrollment` for specific subjects
+- Soft-deleted students are excluded from the response
+- Inactive enrollments are excluded from the response
+
+### GET /api/instructors/me/sections
+Get an overview of sections handled by the authenticated privileged user.
+
+**Authorization:** Requires `PrivilegedPolicy` (Admin or Instructor role)
+
+**Response fields:**
+- `handledClassCount` - number of distinct subjects handled in the section
+- `uniqueStudentCount` - number of unique regular and active irregular students associated with those handled classes
+
+### GET /api/instructors/me/sections/{sectionId}
+Get detailed section information for a handled section, including handled classes and home-section roster.
+
+**Authorization:** Requires `PrivilegedPolicy` (Admin or Instructor role)
+
+**Error responses:**
+- `404 Not Found` if the instructor profile or section is missing
+- `403 Forbidden` if the authenticated user does not handle the requested section
+
+### GET /api/instructors/me/students/{studentId}
+Get detailed student information visible to the authenticated privileged user.
+
+**Authorization:** Requires `PrivilegedPolicy` (Admin or Instructor role)
+
+**Error responses:**
+- `404 Not Found` if the instructor profile or student is missing
+- `403 Forbidden` if the authenticated user is not allowed to view the requested student
+
 ### PATCH /api/instructors/{id}
 Update instructor information.
 
@@ -463,6 +554,67 @@ Cancel a session.
 ### GET /api/sessions/{sessionId}
 Get session details.
 
+### GET /api/sessions/uuid/{uuid}
+Get session details by UUID.
+
+### GET /api/sessions/schedule/{scheduleId}
+Get sessions for a specific schedule.
+
+### GET /api/sessions/schedule/uuid/{scheduleUuid}
+Get sessions for a specific schedule by UUID.
+
+### PATCH /api/sessions/{sessionId}/start
+Start a session, marking it as active.
+
+**Authorization:** Requires `InstructorPolicy` (Instructor role)
+
+**Request Body:**
+```json
+{
+  "actualRoomId": 1,
+  "attendanceCutoffMinutes": 15
+}
+```
+
+**Note:** You can also provide `actualRoomUuid` instead of `actualRoomId` to specify the room by UUID.
+
+### PATCH /api/sessions/uuid/{uuid}/start
+Start a session by UUID, marking it as active.
+
+**Authorization:** Requires `InstructorPolicy` (Instructor role)
+
+**Request Body:** Same as `PATCH /api/sessions/{sessionId}/start`
+
+### PATCH /api/sessions/{sessionId}/end
+End an active session.
+
+**Authorization:** Requires `InstructorPolicy` (Instructor role)
+
+### PATCH /api/sessions/uuid/{uuid}/end
+End an active session by UUID.
+
+**Authorization:** Requires `InstructorPolicy` (Instructor role)
+
+### PATCH /api/sessions/{sessionId}/room
+Update the actual room for a session.
+
+**Authorization:** Requires `InstructorPolicy` (Instructor role)
+
+### PATCH /api/sessions/uuid/{uuid}/room
+Update the actual room for a session by UUID.
+
+**Authorization:** Requires `InstructorPolicy` (Instructor role)
+
+### DELETE /api/sessions/{sessionId}
+Cancel a session that has not started yet.
+
+**Authorization:** Requires `PrivilegedPolicy` (Admin or Instructor role)
+
+### DELETE /api/sessions/uuid/{uuid}
+Cancel a session by UUID that has not started yet.
+
+**Authorization:** Requires `PrivilegedPolicy` (Admin or Instructor role)
+
 ## Student Enrollment
 
 ### GET /api/student-enrollments
@@ -566,6 +718,9 @@ Create a new attendance record manually.
 ### GET /api/attendance/{id}
 Get a specific attendance record.
 
+### GET /api/attendance/uuid/{uuid}
+Get a specific attendance record by UUID.
+
 ### GET /api/attendance
 Get all attendance records with optional filtering.
 
@@ -583,6 +738,7 @@ Get attendance history for a specific student.
 ```json
 {
   "studentId": 1,
+  "studentUuid": "guid",
   "history": [...],
   "statistics": {
     "totalSessions": 20,
@@ -594,8 +750,18 @@ Get attendance history for a specific student.
 }
 ```
 
+### GET /api/attendance/student/uuid/{studentUuid}
+Get attendance history for a specific student by UUID.
+
+**Response:** Same as `/student/{studentId}/history`
+
 ### GET /api/attendance/session/{sessionId}
 Get attendance overview for a session.
+
+### GET /api/attendance/session/uuid/{sessionUuid}
+Get attendance overview for a session by UUID.
+
+**Authorization:** Requires `PrivilegedPolicy` (Admin or Instructor role)
 
 ### GET /api/attendance/summary
 Get attendance summary statistics.
@@ -611,8 +777,20 @@ Update an attendance record.
 }
 ```
 
+### PUT /api/attendance/uuid/{uuid}
+Update an attendance record by UUID.
+
+**Authorization:** Requires `PrivilegedPolicy` (Admin or Instructor role)
+
+**Request Body:** Same as `PATCH /api/attendance/{id}`
+
 ### DELETE /api/attendance/{id}
 Delete an attendance record (Admin only).
+
+### DELETE /api/attendance/uuid/{uuid}
+Delete an attendance record by UUID (Admin only).
+
+**Authorization:** Requires `PrivilegedPolicy` (Admin or Instructor role)
 
 ## Notification Preferences
 

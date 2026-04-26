@@ -26,9 +26,9 @@ public class FingerprintScanResponseDto
     public DateTime? AttendanceTime { get; set; }
 
     /// <summary>
-    /// The identified student's ID.
+    /// The identified student's UUID.
     /// </summary>
-    public int? StudentId { get; set; }
+    public Guid? StudentId { get; set; }
 
     /// <summary>
     /// The identified student's name.
@@ -56,9 +56,9 @@ public class FingerprintScanResponseDto
     public string InstructorName { get; set; } = string.Empty;
 
     /// <summary>
-    /// The ID of the attendance record created.
+    /// The UUID of the attendance record created.
     /// </summary>
-    public int? AttendanceRecordId { get; set; }
+    public Guid? AttendanceRecordId { get; set; }
 
     /// <summary>
     /// The attendance status (Present, Late, etc.).
@@ -71,9 +71,9 @@ public class FingerprintScanResponseDto
     public bool IsDuplicateScan { get; set; }
 
     /// <summary>
-    /// The session ID for which attendance was recorded.
+    /// The session UUID for which attendance was recorded.
     /// </summary>
-    public int? SessionId { get; set; }
+    public Guid? SessionId { get; set; }
 
     /// <summary>
     /// The method used for fingerprint matching (Exact, MatchScore, etc.).

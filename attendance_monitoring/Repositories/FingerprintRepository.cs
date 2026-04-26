@@ -12,7 +12,14 @@ public class FingerprintRepository(ApplicationDbContext context, ILogger<Fingerp
 {
     #region Read Operations
 
-    public async Task<Fingerprint?> GetFingerprintByIdAsync(int id)
+    public async Task<Fingerprint?> GetFingerprintByIdAsync(Guid id)
+        => await context.Fingerprints
+            .AsNoTracking()
+            .Include(f => f.User)
+            .FirstOrDefaultAsync(f => f.Id == id)
+            .ConfigureAwait(false);
+
+    public async Task<Fingerprint?> GetFingerprintByUuidAsync(Guid id)
         => await context.Fingerprints
             .AsNoTracking()
             .Include(f => f.User)
@@ -27,7 +34,7 @@ public class FingerprintRepository(ApplicationDbContext context, ILogger<Fingerp
             .FirstOrDefaultAsync(f => f.UserId == userId)
             .ConfigureAwait(false);
 
-    public async Task<Fingerprint?> GetFingerprintByStudentIdAsync(int studentId)
+    public async Task<Fingerprint?> GetFingerprintByStudentIdAsync(Guid studentId)
         => await context.Fingerprints
             .AsNoTracking()
             .Include(f => f.User)
@@ -38,7 +45,7 @@ public class FingerprintRepository(ApplicationDbContext context, ILogger<Fingerp
             .FirstOrDefaultAsync()
             .ConfigureAwait(false);
 
-    public async Task<Fingerprint?> GetFingerprintByStudentIdIncludingDeletedAsync(int studentId)
+    public async Task<Fingerprint?> GetFingerprintByStudentIdIncludingDeletedAsync(Guid studentId)
         => await context.Fingerprints
             .AsNoTracking()
             .Include(f => f.User)
@@ -89,7 +96,7 @@ public class FingerprintRepository(ApplicationDbContext context, ILogger<Fingerp
             .AnyAsync()
             .ConfigureAwait(false);
 
-    public async Task<bool> StudentHasFingerprintAsync(int studentId)
+    public async Task<bool> StudentHasFingerprintAsync(Guid studentId)
         => await context.Fingerprints
             .Where(f => !f.IsDeleted)
             .Join(context.Students, f => f.UserId, s => s.UserId, (f, s) => new { Fingerprint = f, Student = s })
@@ -102,6 +109,16 @@ public class FingerprintRepository(ApplicationDbContext context, ILogger<Fingerp
             .Where(f => f.DeviceId == deviceId && !f.IsDeleted)
             .CountAsync()
             .ConfigureAwait(false);
+
+    public async Task<List<FingerprintDevice>> GetDevicesAsync(CancellationToken cancellationToken = default)
+    {
+        return await context.FingerprintDevices
+            .AsNoTracking()
+            .Where(d => d.IsActive)
+            .OrderBy(d => d.Name)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+    }
 
     #endregion
 
@@ -131,7 +148,7 @@ public class FingerprintRepository(ApplicationDbContext context, ILogger<Fingerp
         return fingerprint;
     }
 
-    public async Task<bool> SoftDeleteFingerprintAsync(int id)
+    public async Task<bool> SoftDeleteFingerprintAsync(Guid id)
     {
         var fingerprint = await context.Fingerprints.FindAsync(id).ConfigureAwait(false);
         if (fingerprint == null)
@@ -146,6 +163,27 @@ public class FingerprintRepository(ApplicationDbContext context, ILogger<Fingerp
         await context.SaveChangesAsync().ConfigureAwait(false);
 
         logger.LogInformation("Soft deleted fingerprint with ID {FingerprintId}.", id);
+        return true;
+    }
+
+    public async Task<bool> SoftDeleteFingerprintByUuidAsync(Guid id)
+    {
+        var fingerprint = await context.Fingerprints
+            .FirstOrDefaultAsync(f => f.Id == id)
+            .ConfigureAwait(false);
+
+        if (fingerprint == null)
+        {
+            return false;
+        }
+
+        fingerprint.IsDeleted = true;
+        fingerprint.DeletedAt = DateTime.UtcNow;
+        fingerprint.UpdatedAt = DateTime.UtcNow;
+
+        await context.SaveChangesAsync().ConfigureAwait(false);
+
+        logger.LogInformation("Soft deleted fingerprint with UUID {FingerprintUuid}.", id);
         return true;
     }
 
@@ -171,7 +209,7 @@ public class FingerprintRepository(ApplicationDbContext context, ILogger<Fingerp
         return true;
     }
 
-    public async Task<bool> RestoreFingerprintAsync(int id)
+    public async Task<bool> RestoreFingerprintAsync(Guid id)
     {
         var fingerprint = await context.Fingerprints.FindAsync(id).ConfigureAwait(false);
         if (fingerprint == null)
@@ -189,7 +227,7 @@ public class FingerprintRepository(ApplicationDbContext context, ILogger<Fingerp
         return true;
     }
 
-    public async Task<bool> HardDeleteFingerprintAsync(int id)
+    public async Task<bool> HardDeleteFingerprintAsync(Guid id)
     {
         var fingerprint = await context.Fingerprints.FindAsync(id).ConfigureAwait(false);
         if (fingerprint == null)

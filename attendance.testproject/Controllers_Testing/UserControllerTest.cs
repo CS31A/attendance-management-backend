@@ -42,7 +42,7 @@ public class UserControllerTest
                 Role = "Student",
                 StudentProfile = new StudentProfileDto
                 {
-                    Id = 1,
+                    Id = Guid.NewGuid(),
                     Firstname = "John",
                     Lastname = "Doe",
                     CreatedAt = DateTime.UtcNow.AddDays(-30),
@@ -57,7 +57,7 @@ public class UserControllerTest
                 Role = "Instructor",
                 InstructorProfile = new InstructorProfileDto
                 {
-                    Id = 2,
+                    Id = Guid.NewGuid(),
                     Firstname = "Jane",
                     Lastname = "Smith",
                     CreatedAt = DateTime.UtcNow.AddDays(-60),
@@ -72,7 +72,7 @@ public class UserControllerTest
                 Role = "Admin",
                 AdminProfile = new AdminProfileDto
                 {
-                    Id = 1,
+                    Id = Guid.NewGuid(),
                     Firstname = "Admin",
                     Lastname = "User",
                     CreatedAt = DateTime.UtcNow.AddDays(-90),
@@ -100,7 +100,7 @@ public class UserControllerTest
         Assert.Equal("john.doe@example.com", firstUser.Email);
         Assert.Equal("Student", firstUser.Role);
         Assert.NotNull(firstUser.StudentProfile);
-        Assert.Equal(1, firstUser.StudentProfile.Id);
+        Assert.NotEqual(Guid.Empty, firstUser.StudentProfile.Id);
         Assert.Equal("John", firstUser.StudentProfile.Firstname);
         Assert.Equal("Doe", firstUser.StudentProfile.Lastname);
 
@@ -160,7 +160,7 @@ public class UserControllerTest
                 Role = "Student",
                 StudentProfile = new StudentProfileDto
                 {
-                    Id = 1,
+                    Id = Guid.NewGuid(),
                     Firstname = "John",
                     Lastname = "Doe",
                     CreatedAt = DateTime.UtcNow.AddDays(-30),
@@ -200,7 +200,7 @@ public class UserControllerTest
                 Role = "Student",
                 StudentProfile = new StudentProfileDto
                 {
-                    Id = 2,
+                    Id = Guid.NewGuid(),
                     Firstname = "Archived",
                     Lastname = "User",
                     CreatedAt = DateTime.UtcNow.AddDays(-60),
@@ -240,7 +240,7 @@ public class UserControllerTest
                 Role = "Student",
                 StudentProfile = new StudentProfileDto
                 {
-                    Id = 1,
+                    Id = Guid.NewGuid(),
                     Firstname = "Active",
                     Lastname = "User",
                     CreatedAt = DateTime.UtcNow.AddDays(-30),
@@ -255,7 +255,7 @@ public class UserControllerTest
                 Role = "Instructor",
                 InstructorProfile = new InstructorProfileDto
                 {
-                    Id = 2,
+                    Id = Guid.NewGuid(),
                     Firstname = "Archived",
                     Lastname = "User",
                     CreatedAt = DateTime.UtcNow.AddDays(-60),

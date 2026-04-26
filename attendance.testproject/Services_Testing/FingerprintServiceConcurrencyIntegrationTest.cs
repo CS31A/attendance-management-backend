@@ -81,16 +81,18 @@ public sealed class FingerprintServiceConcurrencyIntegrationTest : IDisposable
         mockFingerprintRepository
             .Setup(repository => repository.BeginTransactionAsync())
             .ReturnsAsync(mockTransaction.Object);
+        var matchedFingerprint = new Fingerprint
+        {
+            Id = Guid.NewGuid(),
+            UserId = seed.Student.UserId,
+            DeviceId = seed.Device.DeviceIdentifier,
+            SensorFingerprintId = 5,
+            TemplateData = "ciphertext"
+        };
+
         mockFingerprintRepository
             .Setup(repository => repository.FindFingerprintByDeviceAndSensorIdAsync(seed.Device.DeviceIdentifier, 5))
-            .ReturnsAsync(new Fingerprint
-            {
-                Id = 50,
-                UserId = seed.Student.UserId,
-                DeviceId = seed.Device.DeviceIdentifier,
-                SensorFingerprintId = 5,
-                TemplateData = "ciphertext"
-            });
+            .ReturnsAsync(matchedFingerprint);
 
         mockStudentRepository
             .Setup(repository => repository.GetStudentByUserIdAsync(seed.Student.UserId))
@@ -101,6 +103,9 @@ public sealed class FingerprintServiceConcurrencyIntegrationTest : IDisposable
 
         mockSessionRepository
             .Setup(repository => repository.GetSessionByIdAsync(seed.Session.Id))
+            .ReturnsAsync(seed.Session);
+        mockSessionRepository
+            .Setup(repository => repository.GetSessionByUuidAsync(seed.Session.Id))
             .ReturnsAsync(seed.Session);
 
         mockAttendanceService
@@ -114,7 +119,7 @@ public sealed class FingerprintServiceConcurrencyIntegrationTest : IDisposable
             .Setup(service => service.NotifyStudentCheckedInAsync(
                 It.IsAny<string>(),
                 It.IsAny<string>(),
-                It.IsAny<int>(),
+                It.IsAny<Guid>(),
                 It.IsAny<string>()))
             .Returns(Task.CompletedTask);
 
@@ -168,7 +173,13 @@ public sealed class FingerprintServiceConcurrencyIntegrationTest : IDisposable
 
         Assert.Equal(persistedAttendance[0].Id, response.AttendanceRecordId);
         Assert.Equal("Duplicate", persistedScanEvents[0].Status);
+        Assert.Equal(seed.Session.Id, persistedScanEvents[0].SessionId);
         Assert.Equal(persistedAttendance[0].Id, persistedScanEvents[0].AttendanceRecordId);
+        Assert.NotEqual(Guid.Empty, seed.Session.Id);
+        Assert.NotEqual(Guid.Empty, matchedFingerprint.Id);
+        Assert.NotEqual(Guid.Empty, persistedScanEvents[0].Id);
+        Assert.NotEqual(Guid.Empty, persistedScanEvents[0].EventId);
+        Assert.NotEqual(persistedScanEvents[0].Id, persistedScanEvents[0].EventId);
     }
 
     [Fact]
@@ -202,7 +213,7 @@ public sealed class FingerprintServiceConcurrencyIntegrationTest : IDisposable
             .Setup(repository => repository.FindFingerprintByDeviceAndSensorIdAsync(seed.Device.DeviceIdentifier, 5))
             .ReturnsAsync(new Fingerprint
             {
-                Id = 50,
+                Id = Guid.NewGuid(),
                 UserId = seed.Student.UserId,
                 DeviceId = seed.Device.DeviceIdentifier,
                 SensorFingerprintId = 5,
@@ -219,6 +230,9 @@ public sealed class FingerprintServiceConcurrencyIntegrationTest : IDisposable
         mockSessionRepository
             .Setup(repository => repository.GetSessionByIdAsync(seed.Session.Id))
             .ReturnsAsync(seed.Session);
+        mockSessionRepository
+            .Setup(repository => repository.GetSessionByUuidAsync(seed.Session.Id))
+            .ReturnsAsync(seed.Session);
 
         mockAttendanceService
             .Setup(service => service.DetermineAttendanceStatus(
@@ -231,7 +245,7 @@ public sealed class FingerprintServiceConcurrencyIntegrationTest : IDisposable
             .Setup(service => service.NotifyStudentCheckedInAsync(
                 It.IsAny<string>(),
                 It.IsAny<string>(),
-                It.IsAny<int>(),
+                It.IsAny<Guid>(),
                 It.IsAny<string>()))
             .Returns(Task.CompletedTask);
 
@@ -314,8 +328,12 @@ public sealed class FingerprintServiceConcurrencyIntegrationTest : IDisposable
 
         Assert.Single(persistedAttendance);
         Assert.Single(persistedScanEvents);
+        Assert.Equal(seed.Session.Id, persistedScanEvents[0].SessionId);
         Assert.Equal(persistedAttendance[0].Id, persistedScanEvents[0].AttendanceRecordId);
         Assert.Equal(persistedAttendance[0].Id, response.AttendanceRecordId);
+        Assert.NotEqual(Guid.Empty, persistedScanEvents[0].Id);
+        Assert.NotEqual(Guid.Empty, persistedScanEvents[0].EventId);
+        Assert.NotEqual(persistedScanEvents[0].Id, persistedScanEvents[0].EventId);
     }
 
     public void Dispose()
@@ -348,7 +366,7 @@ public sealed class FingerprintServiceConcurrencyIntegrationTest : IDisposable
 
         var course = new Course
         {
-            Id = 1,
+            Id = Guid.NewGuid(),
             Name = "BSCS",
             CreatedAt = now,
             UpdatedAt = now
@@ -356,7 +374,7 @@ public sealed class FingerprintServiceConcurrencyIntegrationTest : IDisposable
 
         var section = new Section
         {
-            Id = 1,
+            Id = Guid.NewGuid(),
             Name = "BSCS 3A",
             CourseId = course.Id,
             CreatedAt = now,
@@ -365,7 +383,7 @@ public sealed class FingerprintServiceConcurrencyIntegrationTest : IDisposable
 
         var subject = new Subject
         {
-            Id = 2,
+            Id = Guid.NewGuid(),
             Name = "Software Engineering",
             Code = "CSSE1",
             CreatedAt = now,
@@ -374,7 +392,7 @@ public sealed class FingerprintServiceConcurrencyIntegrationTest : IDisposable
 
         var classroom = new Classroom
         {
-            Id = 1,
+            Id = Guid.NewGuid(),
             Name = "Room 301",
             CreatedAt = now,
             UpdatedAt = now
@@ -382,7 +400,7 @@ public sealed class FingerprintServiceConcurrencyIntegrationTest : IDisposable
 
         var instructor = new Instructor
         {
-            Id = 3,
+            Id = Guid.NewGuid(),
             UserId = instructorUser.Id,
             Firstname = "Ada",
             Lastname = "Lovelace",
@@ -393,7 +411,7 @@ public sealed class FingerprintServiceConcurrencyIntegrationTest : IDisposable
 
         var schedule = new Schedules
         {
-            Id = 20,
+            Id = Guid.NewGuid(),
             TimeIn = TimeOnly.FromDateTime(now.AddMinutes(-30)),
             TimeOut = TimeOnly.FromDateTime(now.AddMinutes(60)),
             DayOfWeek = now.DayOfWeek.ToString(),
@@ -411,7 +429,7 @@ public sealed class FingerprintServiceConcurrencyIntegrationTest : IDisposable
 
         var student = new Student
         {
-            Id = 1,
+            Id = Guid.NewGuid(),
             UserId = studentUser.Id,
             Firstname = "John",
             Lastname = "Doe",
@@ -423,7 +441,7 @@ public sealed class FingerprintServiceConcurrencyIntegrationTest : IDisposable
 
         var session = new Session
         {
-            Id = 11,
+            Id = Guid.NewGuid(),
             ScheduleId = schedule.Id,
             SessionDate = now.Date,
             Status = SessionStatusConstants.Active,
@@ -436,7 +454,7 @@ public sealed class FingerprintServiceConcurrencyIntegrationTest : IDisposable
 
         var device = new FingerprintDevice
         {
-            Id = 7,
+            Id = Guid.NewGuid(),
             DeviceIdentifier = "esp32-attendance-01",
             IsActive = true,
             CreatedAt = now,
@@ -499,55 +517,61 @@ public sealed class FingerprintServiceConcurrencyIntegrationTest : IDisposable
         public Task<List<AttendanceRecord>> CreateBulkAsync(List<AttendanceRecord> attendanceRecords)
             => _inner.CreateBulkAsync(attendanceRecords);
 
-        public Task<AttendanceRecord?> GetByIdAsync(int id)
+        public Task<AttendanceRecord?> GetByIdAsync(Guid id)
             => _inner.GetByIdAsync(id);
 
-        public Task<AttendanceRecord?> GetByIdTrackedAsync(int id)
+        public Task<AttendanceRecord?> GetByIdTrackedAsync(Guid id)
             => _inner.GetByIdTrackedAsync(id);
+
+        public Task<AttendanceRecord?> GetAttendanceByUuidAsync(Guid uuid)
+            => _inner.GetAttendanceByUuidAsync(uuid);
+
+        public Task<AttendanceRecord?> GetAttendanceByUuidTrackedAsync(Guid uuid)
+            => _inner.GetAttendanceByUuidTrackedAsync(uuid);
 
         public Task<List<AttendanceRecord>> GetAllAsync(int pageNumber = 1, int pageSize = 50)
             => _inner.GetAllAsync(pageNumber, pageSize);
 
-        public Task<List<AttendanceRecord>> GetByStudentIdAsync(int studentId)
+        public Task<List<AttendanceRecord>> GetByStudentIdAsync(Guid studentId)
             => _inner.GetByStudentIdAsync(studentId);
 
-        public Task<List<AttendanceRecord>> GetBySessionIdAsync(int sessionId)
+        public Task<List<AttendanceRecord>> GetBySessionIdAsync(Guid sessionId)
             => _inner.GetBySessionIdAsync(sessionId);
 
-        public Task<List<SessionAttendanceRosterDto>> GetBySessionIdForRosterAsync(int sessionId)
+        public Task<List<SessionAttendanceRosterDto>> GetBySessionIdForRosterAsync(Guid sessionId)
             => _inner.GetBySessionIdForRosterAsync(sessionId);
 
-        public Task<AttendanceRecord?> GetBySessionAndStudentAsync(int sessionId, int studentId)
+        public Task<AttendanceRecord?> GetBySessionAndStudentAsync(Guid sessionId, Guid studentId)
             => _inner.GetBySessionAndStudentAsync(sessionId, studentId);
 
-        public Task<AttendanceMinimalDto?> GetBySessionAndStudentMinimalAsync(int sessionId, int studentId)
+        public Task<AttendanceMinimalDto?> GetBySessionAndStudentMinimalAsync(Guid sessionId, Guid studentId)
             => _inner.GetBySessionAndStudentMinimalAsync(sessionId, studentId);
 
-        public Task<List<AttendanceRecord>> GetByStudentAndDateRangeAsync(int studentId, DateTime startDate, DateTime endDate)
+        public Task<List<AttendanceRecord>> GetByStudentAndDateRangeAsync(Guid studentId, DateTime startDate, DateTime endDate)
             => _inner.GetByStudentAndDateRangeAsync(studentId, startDate, endDate);
 
-        public Task<List<AttendanceRecord>> GetBySessionIdsAsync(List<int> sessionIds)
+        public Task<List<AttendanceRecord>> GetBySessionIdsAsync(List<Guid> sessionIds)
             => _inner.GetBySessionIdsAsync(sessionIds);
 
         public Task<AttendanceRecord> UpdateAsync(AttendanceRecord attendance)
             => _inner.UpdateAsync(attendance);
 
-        public Task<bool> DeleteAsync(int id)
+        public Task<bool> DeleteAsync(Guid id)
             => _inner.DeleteAsync(id);
 
-        public Task<bool> HasAttendanceRecordAsync(int studentId, int sessionId)
+        public Task<bool> HasAttendanceRecordAsync(Guid studentId, Guid sessionId)
             => _inner.HasAttendanceRecordAsync(studentId, sessionId);
 
-        public Task<bool> HasAnyAttendanceAsync(int studentId)
+        public Task<bool> HasAnyAttendanceAsync(Guid studentId)
             => _inner.HasAnyAttendanceAsync(studentId);
 
-        public Task<bool> SessionHasAttendanceAsync(int sessionId)
+        public Task<bool> SessionHasAttendanceAsync(Guid sessionId)
             => _inner.SessionHasAttendanceAsync(sessionId);
 
-        public Task<AttendanceRecord?> GetAttendanceByStudentAndSessionAsync(int studentId, int sessionId)
+        public Task<AttendanceRecord?> GetAttendanceByStudentAndSessionAsync(Guid studentId, Guid sessionId)
             => _inner.GetAttendanceByStudentAndSessionAsync(studentId, sessionId);
 
-        public Task<int> GetAttendanceCountAsync(int studentId, string? status = null)
+        public Task<int> GetAttendanceCountAsync(Guid studentId, string? status = null)
             => _inner.GetAttendanceCountAsync(studentId, status);
 
         #pragma warning disable CS0618
@@ -559,11 +583,11 @@ public sealed class FingerprintServiceConcurrencyIntegrationTest : IDisposable
             => _inner.GetAllForListingOptimizedAsync(pageNumber, pageSize);
 
         public Task<(List<AttendanceRecord> Records, int TotalCount)> GetFilteredAsync(
-            int? studentId = null,
-            int? sessionId = null,
-            int? scheduleId = null,
-            int? sectionId = null,
-            int? subjectId = null,
+            Guid? studentId = null,
+            Guid? sessionId = null,
+            Guid? scheduleId = null,
+            Guid? sectionId = null,
+            Guid? subjectId = null,
             string? status = null,
             DateTime? startDate = null,
             DateTime? endDate = null,
@@ -584,11 +608,11 @@ public sealed class FingerprintServiceConcurrencyIntegrationTest : IDisposable
                 pageSize);
 
         public Task<(int Total, int Present, int Late, int Absent, int Excused, long AvgCheckInTicks)> GetStatisticsAsync(
-            int? studentId = null,
-            int? sessionId = null,
-            int? scheduleId = null,
-            int? sectionId = null,
-            int? subjectId = null,
+            Guid? studentId = null,
+            Guid? sessionId = null,
+            Guid? scheduleId = null,
+            Guid? sectionId = null,
+            Guid? subjectId = null,
             string? status = null,
             DateTime? startDate = null,
             DateTime? endDate = null,

@@ -5,7 +5,8 @@ namespace attendance_monitoring.IServices
 {
     public interface ISectionService
     {
-        Task<Section> GetSectionByIdAsync(int sectionId);
+        Task<Section> GetSectionByIdAsync(Guid sectionId);
+        Task<Section> GetSectionByUuidAsync(Guid id);
         Task<IEnumerable<SectionResponseDto>> GetAllSectionsAsync();
 
         /// <summary>
@@ -13,20 +14,22 @@ namespace attendance_monitoring.IServices
         /// </summary>
         /// <param name="sectionId">The section ID.</param>
         /// <returns>A collection of active students in the specified section.</returns>
-        Task<IEnumerable<Student>> GetActiveStudentsBySectionIdAsync(int sectionId);
+        Task<IEnumerable<Student>> GetActiveStudentsBySectionIdAsync(Guid sectionId);
 
         /// <summary>
         /// Retrieves all students in a specific section by section ID.
         /// </summary>
         /// <param name="sectionId">The section ID.</param>
         /// <returns>A collection of all students in the specified section.</returns>
-        Task<IEnumerable<Student>> GetAllStudentsBySectionIdAsync(int sectionId);
+        Task<IEnumerable<Student>> GetAllStudentsBySectionIdAsync(Guid sectionId);
 
         Task<SectionResponseDto> CreateSectionAsync(Section section);
-        Task<SectionResponseDto> UpdateSectionAsync(int id, Section section);
-        Task DeleteSectionAsync(int id);
-        Task<bool> HasStudentsInSectionAsync(int sectionId);
-        Task<bool> HasStudentEnrollmentsInSectionAsync(int sectionId);
-        Task<bool> HasSchedulesInSectionAsync(int sectionId);
+        Task<SectionResponseDto> UpdateSectionAsync(Guid id, Section section);
+        Task<SectionResponseDto> UpdateSectionByUuidAsync(Guid id, Section section);
+        Task DeleteSectionAsync(Guid id);
+        Task DeleteSectionByUuidAsync(Guid id);
+        Task<bool> HasStudentsInSectionAsync(Guid sectionId);
+        Task<bool> HasStudentEnrollmentsInSectionAsync(Guid sectionId);
+        Task<bool> HasSchedulesInSectionAsync(Guid sectionId);
     }
 }
