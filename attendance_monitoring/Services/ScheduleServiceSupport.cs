@@ -87,8 +87,8 @@ internal static class ScheduleServiceSupport
             Instructor = new InstructorResponseDto
             {
                 Id = schedule.Instructor.Id,
-                Firstname = schedule.Instructor.Firstname,
-                Lastname = schedule.Instructor.Lastname,
+                Firstname = schedule.Instructor.Firstname ?? string.Empty,
+                Lastname = schedule.Instructor.Lastname ?? string.Empty,
                 Email = schedule.Instructor.User?.Email ?? string.Empty,
                 CreatedAt = schedule.Instructor.CreatedAt,
                 UpdatedAt = schedule.Instructor.UpdatedAt,

@@ -560,9 +560,9 @@ namespace attendance_monitoring.Services
                     Instructor = new InstructorResponseDto
                     {
                         Id = data.Instructor.Id,
-                        Firstname = data.Instructor.Firstname,
-                        Lastname = data.Instructor.Lastname,
-                        Email = data.Instructor.User?.Email,
+                        Firstname = data.Instructor.Firstname ?? string.Empty,
+                        Lastname = data.Instructor.Lastname ?? string.Empty,
+                        Email = data.Instructor.User?.Email ?? string.Empty,
                         CreatedAt = data.Instructor.CreatedAt,
                         UpdatedAt = data.Instructor.UpdatedAt
                     },
