@@ -86,6 +86,13 @@ public interface ISessionRepository : ISaveableRepository
     Task<IEnumerable<Session>> GetActiveSessionsByInstructorIdAsync(Guid instructorId);
 
     /// <summary>
+    /// Retrieves active sessions on or before a local date for automatic ending evaluation.
+    /// </summary>
+    /// <param name="currentLocalDate">The current local date used to narrow scan candidates</param>
+    /// <returns>Collection of active sessions that are possible auto-end candidates</returns>
+    Task<IEnumerable<Session>> GetActiveSessionsForAutoEndScanAsync(DateTime currentLocalDate);
+
+    /// <summary>
     /// Retrieves all sessions for a specific instructor (all statuses).
     /// </summary>
     /// <param name="instructorId">The instructor ID</param>

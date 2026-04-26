@@ -124,6 +124,32 @@ public class QrCodeServiceTest
     }
 
     [Fact]
+    public async Task ValidateSessionExistsOrThrowAsync_RejectsSessionAutoEndedDuringRequest()
+    {
+        var sessionId = Guid.NewGuid();
+        var activeSession = new Session { Id = sessionId, Status = SessionStatusConstants.Active };
+        var endedSession = new Session { Id = sessionId, Status = SessionStatusConstants.Ended };
+        var sessionRepository = new Mock<ISessionRepository>();
+        var automaticEndService = new Mock<IAutomaticSessionEndService>();
+
+        sessionRepository
+            .Setup(repository => repository.GetSessionByIdAsync(sessionId))
+            .ReturnsAsync(activeSession);
+        automaticEndService
+            .Setup(service => service.AutoEndIfExpiredAsync(activeSession))
+            .ReturnsAsync(endedSession);
+
+        var authorizationService = CreateAuthorizationService(
+            sessionRepository.Object,
+            automaticSessionEndService: automaticEndService.Object);
+
+        var exception = await Assert.ThrowsAsync<attendance_monitoring.Exceptions.ValidationException>(
+            () => authorizationService.ValidateSessionExistsOrThrowAsync(sessionId));
+
+        Assert.Contains("ended", exception.Message);
+    }
+
+    [Fact]
     public async Task ExtendQrCodeExpirationByUuidAsync_DelegatesToWriteService()
     {
         var originalExpiration = DateTime.UtcNow.AddMinutes(5);
@@ -251,7 +277,10 @@ public class QrCodeServiceTest
             sessionRepository,
             NullLogger<QrCodeGenerationService>.Instance);
 
-    private static QrCodeAuthorizationService CreateAuthorizationService(ISessionRepository sessionRepository, bool adminOnly = false)
+    private static QrCodeAuthorizationService CreateAuthorizationService(
+        ISessionRepository sessionRepository,
+        bool adminOnly = false,
+        IAutomaticSessionEndService? automaticSessionEndService = null)
     {
         var userContextService = new Mock<IUserContextService>();
         userContextService
@@ -268,7 +297,8 @@ public class QrCodeServiceTest
             sessionRepository,
             Mock.Of<IStudentEnrollmentService>(),
             userContextService.Object,
-            NullLogger<QrCodeAuthorizationService>.Instance);
+            NullLogger<QrCodeAuthorizationService>.Instance,
+            automaticSessionEndService);
     }
 
     private static Mock<IQrCodeRepository> CreateAuthorizedRepository(bool adminOnly = false)

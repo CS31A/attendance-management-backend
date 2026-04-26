@@ -47,6 +47,9 @@ public static class DependencyInjectionExtensions
     /// <returns>The service collection for chaining.</returns>
     public static IServiceCollection AddApplicationServices(this IServiceCollection services)
     {
+        services.AddOptions<SessionAutoEndOptions>()
+            .BindConfiguration(SessionAutoEndOptions.SectionName);
+
         // Register ConfiguredTimeZoneProvider with fallback to system local time
         services.AddSingleton<ConfiguredTimeZoneProvider>(sp =>
         {
@@ -97,6 +100,7 @@ public static class DependencyInjectionExtensions
         services.AddScoped<ITokenValidationService, TokenValidationService>();
         services.AddScoped<ICookieOptionsService, CookieOptionsService>();
         services.AddScoped<IStudentEnrollmentService, StudentEnrollmentService>();
+        services.AddScoped<IAutomaticSessionEndService, AutomaticSessionEndService>();
         services.AddScoped<ISessionService, SessionService>();
         services.AddScoped<IAttendanceService, AttendanceService>();
         services.AddScoped<IReportsService, ReportsService>();
@@ -121,6 +125,7 @@ public static class DependencyInjectionExtensions
     {
         services.AddHostedService<BlacklistedTokenCleanupService>();
         services.AddHostedService<RoleInitializationBackgroundService>();
+        services.AddHostedService<AutomaticSessionEndBackgroundService>();
         
         // Orphaned user cleanup and monitoring service
         services.AddSingleton<OrphanedUserCleanupService>();

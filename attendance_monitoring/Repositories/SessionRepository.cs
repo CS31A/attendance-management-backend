@@ -283,6 +283,34 @@ public class SessionRepository(ApplicationDbContext context) : ISessionRepositor
     }
 
     /// <summary>
+    /// Retrieves active sessions on or before the current local date for automatic ending evaluation.
+    /// </summary>
+    public async Task<IEnumerable<Session>> GetActiveSessionsForAutoEndScanAsync(DateTime currentLocalDate)
+    {
+        var dateOnly = currentLocalDate.Date;
+
+        return await context.Sessions
+            .AsNoTracking()
+            .AsSplitQuery()
+            .Include(s => s.Schedule)
+                .ThenInclude(sch => sch.Subject)
+            .Include(s => s.Schedule)
+                .ThenInclude(sch => sch.Section)
+            .Include(s => s.Schedule)
+                .ThenInclude(sch => sch.Classroom)
+            .Include(s => s.Schedule)
+                .ThenInclude(sch => sch.Instructor)
+            .Include(s => s.ActualRoom)
+            .Include(s => s.InstructorWhoStarted)
+            .Include(s => s.InstructorWhoEnded)
+            .Where(s => s.Status == SessionStatusConstants.Active && s.SessionDate.Date <= dateOnly)
+            .OrderBy(s => s.SessionDate)
+            .ThenBy(s => s.Schedule.TimeOut)
+            .ToListAsync()
+            .ConfigureAwait(false);
+    }
+
+    /// <summary>
     /// Retrieves all sessions for a specific instructor (all statuses).
     /// </summary>
     public async Task<IEnumerable<Session>> GetSessionsByInstructorIdAsync(Guid instructorId)

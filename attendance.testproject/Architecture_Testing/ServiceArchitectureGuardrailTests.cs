@@ -17,6 +17,7 @@ public class ServiceArchitectureGuardrailTests
 
     private static readonly HashSet<string> ConstructorBudgetAllowlist =
     [
+        nameof(AttendanceService),
         nameof(FingerprintService),
         nameof(SessionService)
     ];

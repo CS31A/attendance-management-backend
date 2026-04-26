@@ -23,7 +23,8 @@ public class AttendanceService(
     IStudentEnrollmentRepository studentEnrollmentRepository,
     IUserContextService userContextService,
     ILogger<AttendanceService> logger,
-    ConfiguredTimeZoneProvider clock) : IAttendanceService
+    ConfiguredTimeZoneProvider clock,
+    IAutomaticSessionEndService? automaticSessionEndService = null) : IAttendanceService
 {
     #region Create Operations
 
@@ -679,6 +680,10 @@ public class AttendanceService(
 
         // Verify session exists and is active
         var session = await sessionRepository.GetSessionByIdAsync(sessionId).ConfigureAwait(false);
+        if (session != null && automaticSessionEndService != null)
+        {
+            session = await automaticSessionEndService.AutoEndIfExpiredAsync(session).ConfigureAwait(false);
+        }
         if (session == null || session.Status != SessionStatusConstants.Active)
         {
             return false;
@@ -750,6 +755,17 @@ public class AttendanceService(
         if (session == null)
         {
             throw new EntityNotFoundException<Guid>("Session", sessionId.Value);
+        }
+
+        var wasActive = session.Status == SessionStatusConstants.Active;
+        if (automaticSessionEndService != null)
+        {
+            session = await automaticSessionEndService.AutoEndIfExpiredAsync(session).ConfigureAwait(false);
+        }
+
+        if (wasActive && session.Status != SessionStatusConstants.Active)
+        {
+            throw new ValidationException("Cannot submit attendance for a session that is not active.");
         }
 
         return session;

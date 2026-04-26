@@ -21,7 +21,8 @@ public class ReportsService(
     IInstructorRepository instructorRepository,
     IScheduleRepository scheduleRepository,
     IUserContextService userContextService,
-    ILogger<ReportsService> logger) : IReportsService
+    ILogger<ReportsService> logger,
+    IAutomaticSessionEndService? automaticSessionEndService = null) : IReportsService
 {
     public Task<AttendanceSummaryDto> GetAttendanceSummaryAsync(AttendanceFilterRequest filter, ClaimsPrincipal user)
         => attendanceService.GetAttendanceSummaryAsync(filter, user);
@@ -68,6 +69,11 @@ public class ReportsService(
                     instructor.Id, sectionId);
                 throw new UnauthorizedAccessException("You can only view attendance reports for sections you teach");
             }
+        }
+
+        if (automaticSessionEndService != null)
+        {
+            await automaticSessionEndService.AutoEndExpiredSessionsAsync().ConfigureAwait(false);
         }
 
         var sessionRows = await sessionRepository
@@ -166,6 +172,11 @@ public class ReportsService(
                     currentInstructor.Id, instructorId);
                 throw new UnauthorizedAccessException("You can only view your own session reports");
             }
+        }
+
+        if (automaticSessionEndService != null)
+        {
+            await automaticSessionEndService.AutoEndExpiredSessionsAsync().ConfigureAwait(false);
         }
 
         var sessionRows = await sessionRepository

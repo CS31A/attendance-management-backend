@@ -33,7 +33,8 @@ public class FingerprintService(
     IConfiguration configuration,
     IDataProtectionProvider dataProtectionProvider,
     ConfiguredTimeZoneProvider clock,
-    ILogger<FingerprintService> logger) : IFingerprintService
+    ILogger<FingerprintService> logger,
+    IAutomaticSessionEndService? automaticSessionEndService = null) : IFingerprintService
 {
     private readonly IAttendanceService _attendanceService = attendanceService;
     private readonly ConfiguredTimeZoneProvider _clock = clock;
@@ -532,6 +533,34 @@ public class FingerprintService(
                     MatchScore = matchScore
                 };
             }
+
+            if (automaticSessionEndService != null)
+            {
+                session = await automaticSessionEndService.AutoEndIfExpiredAsync(session).ConfigureAwait(false);
+            }
+
+            if (session.Status != SessionStatusConstants.Active)
+            {
+                if (scanEvent != null)
+                {
+                    scanEvent.Status = "Rejected";
+                    scanEvent.MatchedStudentId = student.Id;
+                    scanEvent.SessionId = session.Id;
+                    scanEvent.FailureReason = "Session is not active";
+                    context.FingerprintScanEvents.Add(scanEvent);
+                    await context.SaveChangesAsync().ConfigureAwait(false);
+                }
+
+                return new FingerprintScanResponseDto
+                {
+                    Success = false,
+                    Message = "Session is not active",
+                    StudentId = student.Id,
+                    StudentName = $"{student.Firstname} {student.Lastname}",
+                    MatchMethod = matchMethod,
+                    MatchScore = matchScore
+                };
+            }
         }
         else
         {
@@ -758,7 +787,14 @@ public class FingerprintService(
                          session.ActualStartTime <= now &&
                          (!session.ActualEndTime.HasValue || session.ActualEndTime > now)))
             {
-                return session;
+                var normalizedSession = automaticSessionEndService == null
+                    ? session
+                    : await automaticSessionEndService.AutoEndIfExpiredAsync(session).ConfigureAwait(false);
+
+                if (normalizedSession.Status == SessionStatusConstants.Active)
+                {
+                    return normalizedSession;
+                }
             }
         }
 

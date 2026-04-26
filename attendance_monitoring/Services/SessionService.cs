@@ -25,6 +25,7 @@ public class SessionService : ISessionService
     private readonly INotificationService _notificationService;
     private readonly IUserContextService _userContextService;
     private readonly IHttpContextAccessor _httpContextAccessor;
+    private readonly IAutomaticSessionEndService? _automaticSessionEndService;
     private readonly ConfiguredTimeZoneProvider _clock;
     private readonly ILogger<SessionService> _logger;
 
@@ -41,7 +42,8 @@ public class SessionService : ISessionService
         IUserContextService userContextService,
         IHttpContextAccessor httpContextAccessor,
         ConfiguredTimeZoneProvider clock,
-        ILogger<SessionService> logger)
+        ILogger<SessionService> logger,
+        IAutomaticSessionEndService? automaticSessionEndService = null)
     {
         _sessionRepository = sessionRepository ?? throw new ArgumentNullException(nameof(sessionRepository));
         _scheduleRepository = scheduleRepository ?? throw new ArgumentNullException(nameof(scheduleRepository));
@@ -51,6 +53,7 @@ public class SessionService : ISessionService
         _notificationService = notificationService ?? throw new ArgumentNullException(nameof(notificationService));
         _userContextService = userContextService ?? throw new ArgumentNullException(nameof(userContextService));
         _httpContextAccessor = httpContextAccessor ?? throw new ArgumentNullException(nameof(httpContextAccessor));
+        _automaticSessionEndService = automaticSessionEndService;
         _clock = clock ?? throw new ArgumentNullException(nameof(clock));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
@@ -74,8 +77,10 @@ public class SessionService : ISessionService
                 throw new EntityNotFoundException<Guid>("Session", id);
             }
 
+            var normalizedSession = await NormalizeExpiredSessionAsync(session).ConfigureAwait(false);
+
             _logger.LogInformation("Successfully retrieved session with ID: {SessionId}", id);
-            return MapToResponseDto(session);
+            return MapToResponseDto(normalizedSession);
         }
         catch (EntityNotFoundException<Guid>)
         {
@@ -101,8 +106,10 @@ public class SessionService : ISessionService
             var sessions = await _sessionRepository.GetAllSessionsAsync().ConfigureAwait(false);
             var sessionList = sessions.ToList();
 
+            var normalizedSessions = await NormalizeExpiredSessionsAsync(sessionList).ConfigureAwait(false);
+
             _logger.LogInformation("Successfully retrieved {Count} sessions", sessionList.Count);
-            return sessionList.Select(MapToResponseDto);
+            return normalizedSessions.Select(MapToResponseDto);
         }
         catch (Exception ex)
         {
@@ -124,9 +131,11 @@ public class SessionService : ISessionService
             var sessions = await _sessionRepository.GetSessionsByScheduleIdAsync(scheduleId).ConfigureAwait(false);
             var sessionList = sessions.ToList();
 
+            var normalizedSessions = await NormalizeExpiredSessionsAsync(sessionList).ConfigureAwait(false);
+
             _logger.LogInformation("Successfully retrieved {Count} sessions for schedule ID: {ScheduleId}",
                 sessionList.Count, scheduleId);
-            return sessionList.Select(MapToResponseDto);
+            return normalizedSessions.Select(MapToResponseDto);
         }
         catch (Exception ex)
         {
@@ -159,9 +168,13 @@ public class SessionService : ISessionService
             var sessions = await _sessionRepository.GetSessionsByStatusAsync(status).ConfigureAwait(false);
             var sessionList = sessions.ToList();
 
+            var normalizedSessions = await NormalizeExpiredSessionsAsync(sessionList).ConfigureAwait(false);
+
             _logger.LogInformation("Successfully retrieved {Count} sessions with status: {Status}",
                 sessionList.Count, status);
-            return sessionList.Select(MapToResponseDto);
+            return normalizedSessions
+                .Where(session => session.Status == status)
+                .Select(MapToResponseDto);
         }
         catch (Exception ex)
         {
@@ -183,9 +196,11 @@ public class SessionService : ISessionService
             var sessions = await _sessionRepository.GetSessionsByDateAsync(date).ConfigureAwait(false);
             var sessionList = sessions.ToList();
 
+            var normalizedSessions = await NormalizeExpiredSessionsAsync(sessionList).ConfigureAwait(false);
+
             _logger.LogInformation("Successfully retrieved {Count} sessions for date: {Date:yyyy-MM-dd}",
                 sessionList.Count, date);
-            return sessionList.Select(MapToResponseDto);
+            return normalizedSessions.Select(MapToResponseDto);
         }
         catch (Exception ex)
         {
@@ -237,7 +252,9 @@ public class SessionService : ISessionService
             _logger.LogInformation("Successfully retrieved {Count} sessions for instructor ID: {InstructorId}",
                 sessionList.Count, instructor.Id);
 
-            return sessionList.Select(MapToResponseDto);
+            var normalizedSessions = await NormalizeExpiredSessionsAsync(sessionList).ConfigureAwait(false);
+
+            return normalizedSessions.Select(MapToResponseDto);
         }
         catch (EntityUnauthorizedException)
         {
@@ -285,6 +302,8 @@ public class SessionService : ISessionService
                 _logger.LogWarning("Session with ID {SessionId} not found", sessionId);
                 throw new EntityNotFoundException<Guid>("Session", sessionId);
             }
+
+            session = await NormalizeExpiredSessionAsync(session).ConfigureAwait(false);
 
             // Validate session status - only active sessions can have room changes
             if (session.Status != SessionStatusConstants.Active)
@@ -682,6 +701,8 @@ public class SessionService : ISessionService
                 throw new EntityUnauthorizedException("Session", "End", userId, errorMessage);
             }
 
+            session = await NormalizeExpiredSessionAsync(session).ConfigureAwait(false);
+
             // Validate session status - only active sessions can be ended
             if (session.Status != SessionStatusConstants.Active)
             {
@@ -959,6 +980,24 @@ public class SessionService : ISessionService
         }
     }
 
+    private async Task<Session> NormalizeExpiredSessionAsync(Session session)
+    {
+        return _automaticSessionEndService == null
+            ? session
+            : await _automaticSessionEndService.AutoEndIfExpiredAsync(session).ConfigureAwait(false);
+    }
+
+    private async Task<List<Session>> NormalizeExpiredSessionsAsync(IEnumerable<Session> sessions)
+    {
+        var normalized = new List<Session>();
+        foreach (var session in sessions)
+        {
+            normalized.Add(await NormalizeExpiredSessionAsync(session).ConfigureAwait(false));
+        }
+
+        return normalized;
+    }
+
     #endregion
 
     #region UUID Entrypoints
@@ -970,7 +1009,8 @@ public class SessionService : ISessionService
         {
             throw new EntityNotFoundException<Guid>("Session", id);
         }
-        return MapToResponseDto(session);
+        var normalizedSession = await NormalizeExpiredSessionAsync(session).ConfigureAwait(false);
+        return MapToResponseDto(normalizedSession);
     }
 
     public async Task<SessionResponseDto> StartSessionByUuidAsync(Guid sessionUuid, StartSession request)
