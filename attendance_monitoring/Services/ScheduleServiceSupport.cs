@@ -9,49 +9,61 @@ namespace attendance_monitoring.Services;
 
 internal static class ScheduleServiceSupport
 {
-    public static Task<int> ResolveSubjectIdAsync(ApplicationDbContext context, Guid subjectUuid)
-        => EntityIdResolutionHelper.ResolveEntityIdAsync(
-            null,
-            subjectUuid,
-            "Subject",
-            async id => await context.Subjects.AsNoTracking().Where(s => s.Id == id).Select(s => (int?)s.Id).SingleOrDefaultAsync().ConfigureAwait(false),
-            async uuid => await context.Subjects.AsNoTracking().Where(s => s.Uuid == uuid).Select(s => (int?)s.Id).SingleOrDefaultAsync().ConfigureAwait(false));
+    public static async Task<Guid> ResolveSubjectIdAsync(ApplicationDbContext context, Guid subjectId)
+    {
+        var exists = await context.Subjects.AsNoTracking().AnyAsync(s => s.Id == subjectId).ConfigureAwait(false);
+        if (!exists)
+        {
+            throw new EntityNotFoundException<Guid>("Subject", subjectId);
+        }
 
-    public static Task<int> ResolveClassroomIdAsync(ApplicationDbContext context, Guid classroomUuid)
-        => EntityIdResolutionHelper.ResolveEntityIdAsync(
-            null,
-            classroomUuid,
-            "Classroom",
-            async id => await context.Classrooms.AsNoTracking().Where(c => c.Id == id).Select(c => (int?)c.Id).SingleOrDefaultAsync().ConfigureAwait(false),
-            async uuid => await context.Classrooms.AsNoTracking().Where(c => c.Uuid == uuid).Select(c => (int?)c.Id).SingleOrDefaultAsync().ConfigureAwait(false));
+        return subjectId;
+    }
 
-    public static Task<int> ResolveSectionIdAsync(ApplicationDbContext context, Guid sectionUuid)
-        => EntityIdResolutionHelper.ResolveEntityIdAsync(
-            null,
-            sectionUuid,
-            "Section",
-            async id => await context.Sections.AsNoTracking().Where(s => s.Id == id).Select(s => (int?)s.Id).SingleOrDefaultAsync().ConfigureAwait(false),
-            async uuid => await context.Sections.AsNoTracking().Where(s => s.Uuid == uuid).Select(s => (int?)s.Id).SingleOrDefaultAsync().ConfigureAwait(false));
+    public static async Task<Guid> ResolveClassroomIdAsync(ApplicationDbContext context, Guid classroomId)
+    {
+        var exists = await context.Classrooms.AsNoTracking().AnyAsync(c => c.Id == classroomId).ConfigureAwait(false);
+        if (!exists)
+        {
+            throw new EntityNotFoundException<Guid>("Classroom", classroomId);
+        }
 
-    public static Task<int> ResolveInstructorIdAsync(ApplicationDbContext context, Guid instructorUuid)
-        => EntityIdResolutionHelper.ResolveEntityIdAsync(
-            null,
-            instructorUuid,
-            "Instructor",
-            async id => await context.Instructors.AsNoTracking().Where(i => i.Id == id).Select(i => (int?)i.Id).SingleOrDefaultAsync().ConfigureAwait(false),
-            async uuid => await context.Instructors.AsNoTracking().Where(i => i.Uuid == uuid).Select(i => (int?)i.Id).SingleOrDefaultAsync().ConfigureAwait(false));
+        return classroomId;
+    }
+
+    public static async Task<Guid> ResolveSectionIdAsync(ApplicationDbContext context, Guid sectionId)
+    {
+        var exists = await context.Sections.AsNoTracking().AnyAsync(s => s.Id == sectionId).ConfigureAwait(false);
+        if (!exists)
+        {
+            throw new EntityNotFoundException<Guid>("Section", sectionId);
+        }
+
+        return sectionId;
+    }
+
+    public static async Task<Guid> ResolveInstructorIdAsync(ApplicationDbContext context, Guid instructorId)
+    {
+        var exists = await context.Instructors.AsNoTracking().AnyAsync(i => i.Id == instructorId).ConfigureAwait(false);
+        if (!exists)
+        {
+            throw new EntityNotFoundException<Guid>("Instructor", instructorId);
+        }
+
+        return instructorId;
+    }
 
     public static ScheduleResponseDto MapToResponseDto(Schedules schedule)
     {
         return new ScheduleResponseDto
         {
-            Id = schedule.Uuid,
+            Id = schedule.Id,
             TimeIn = schedule.TimeIn,
             TimeOut = schedule.TimeOut,
             DayOfWeek = schedule.DayOfWeek,
             Subject = new SubjectResponseDto
             {
-                Id = schedule.Subject.Uuid,
+                Id = schedule.Subject.Id,
                 Name = schedule.Subject.Name,
                 Code = schedule.Subject.Code,
                 CreatedAt = schedule.Subject.CreatedAt,
@@ -59,22 +71,22 @@ internal static class ScheduleServiceSupport
             },
             Classroom = new ClassroomResponseDto
             {
-                Id = schedule.Classroom.Uuid,
+                Id = schedule.Classroom.Id,
                 Name = schedule.Classroom.Name,
                 CreatedAt = schedule.Classroom.CreatedAt,
                 UpdatedAt = schedule.Classroom.UpdatedAt,
             },
             Section = new SectionResponseDto
             {
-                Id = schedule.Section.Uuid,
+                Id = schedule.Section.Id,
                 Name = schedule.Section.Name,
-                CourseId = schedule.Section.Course?.Uuid,
+                CourseId = schedule.Section.Course?.Id,
                 CreatedAt = schedule.Section.CreatedAt,
                 UpdatedAt = schedule.Section.UpdatedAt,
             },
             Instructor = new InstructorResponseDto
             {
-                Id = schedule.Instructor.Uuid,
+                Id = schedule.Instructor.Id,
                 Firstname = schedule.Instructor.Firstname,
                 Lastname = schedule.Instructor.Lastname,
                 Email = schedule.Instructor.User?.Email ?? string.Empty,

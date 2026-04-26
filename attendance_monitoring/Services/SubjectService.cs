@@ -55,7 +55,7 @@ public class SubjectService : ISubjectService
     /// </summary>
     /// <param name="id">The ID of the subject to retrieve</param>
     /// <returns>The subject with the specified ID, or null if not found</returns>
-    public async Task<Subject?> GetSubjectByIdAsync(int id)
+    public async Task<Subject?> GetSubjectByIdAsync(Guid id)
     {
         _logger.LogInformation("Retrieving subject by ID: {Id}", id);
         try
@@ -64,13 +64,13 @@ public class SubjectService : ISubjectService
             if (subject == null)
             {
                 _logger.LogWarning("Subject with ID {Id} not found", id);
-                throw new EntityNotFoundException<int>("Subject", id);
+                throw new EntityNotFoundException<Guid>("Subject", id);
             }
 
             _logger.LogInformation("Successfully retrieved subject with ID: {Id}", id);
             return subject;
         }
-        catch (EntityNotFoundException<int>)
+        catch (EntityNotFoundException<Guid>)
         {
             // Re-throw the specific exception for the controller to handle
             throw;
@@ -82,19 +82,19 @@ public class SubjectService : ISubjectService
         }
     }
 
-    public async Task<Subject?> GetSubjectByUuidAsync(Guid uuid)
+    public async Task<Subject?> GetSubjectByUuidAsync(Guid id)
     {
-        _logger.LogInformation("Retrieving subject by UUID: {Uuid}", uuid);
+        _logger.LogInformation("Retrieving subject by UUID: {Id}", id);
         try
         {
-            var subject = await _subjectRepository.GetSubjectByUuidAsync(uuid).ConfigureAwait(false);
+            var subject = await _subjectRepository.GetSubjectByUuidAsync(id).ConfigureAwait(false);
             if (subject == null)
             {
-                _logger.LogWarning("Subject with UUID {Uuid} not found", uuid);
-                throw new EntityNotFoundException<Guid>("Subject", uuid);
+                _logger.LogWarning("Subject with UUID {Id} not found", id);
+                throw new EntityNotFoundException<Guid>("Subject", id);
             }
 
-            _logger.LogInformation("Successfully retrieved subject with UUID: {Uuid}", uuid);
+            _logger.LogInformation("Successfully retrieved subject with UUID: {Id}", id);
             return subject;
         }
         catch (EntityNotFoundException<Guid>)
@@ -103,8 +103,8 @@ public class SubjectService : ISubjectService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error occurred while retrieving subject with UUID {Uuid}", uuid);
-            throw new EntityServiceException("Subject", $"GetSubjectByUuid: {uuid}", "An error occurred while retrieving the subject", ex);
+            _logger.LogError(ex, "Error occurred while retrieving subject with UUID {Id}", id);
+            throw new EntityServiceException("Subject", $"GetSubjectByUuid: {id}", "An error occurred while retrieving the subject", ex);
         }
     }
 
@@ -196,7 +196,7 @@ public class SubjectService : ISubjectService
     /// <exception cref="EntityNotFoundException{TKey}">Thrown when subject not found</exception>
     /// <exception cref="EntityAlreadyExistsException{TKey}">Thrown when subject with code already exists</exception>
     /// <exception cref="EntityServiceException">Thrown when an error occurs during update</exception>
-    public async Task<Subject> UpdateSubjectAsync(int id, UpdateSubject updateSubject)
+    public async Task<Subject> UpdateSubjectAsync(Guid id, UpdateSubject updateSubject)
     {
         _logger.LogInformation("Updating subject with ID: {Id}", id);
 
@@ -207,7 +207,7 @@ public class SubjectService : ISubjectService
             if (existingSubject == null)
             {
                 _logger.LogWarning("Subject update failed: Subject with ID {Id} not found", id);
-                throw new EntityNotFoundException<int>("Subject", id);
+                throw new EntityNotFoundException<Guid>("Subject", id);
             }
 
             // Check if the new code already exists for another subject (first check)
@@ -253,7 +253,7 @@ public class SubjectService : ISubjectService
                 throw new EntityAlreadyExistsException<string>("Subject", "Code", updateSubject.Code ?? "");
             }
         }
-        catch (EntityNotFoundException<int>)
+        catch (EntityNotFoundException<Guid>)
         {
             // Re-throw the specific exception for the controller to handle
             throw;
@@ -273,16 +273,16 @@ public class SubjectService : ISubjectService
         }
     }
 
-    public async Task<Subject> UpdateSubjectByUuidAsync(Guid uuid, UpdateSubject updateSubject)
+    public async Task<Subject> UpdateSubjectByUuidAsync(Guid id, UpdateSubject updateSubject)
     {
-        var existingSubject = await GetSubjectByUuidAsync(uuid).ConfigureAwait(false);
+        var existingSubject = await GetSubjectByUuidAsync(id).ConfigureAwait(false);
         return await UpdateSubjectAsync(existingSubject!.Id, updateSubject).ConfigureAwait(false);
     }
 
     #endregion
 
     #region Dependency Check Operations
-    public async Task<bool> HasSchedulesInSubjectAsync(int id)
+    public async Task<bool> HasSchedulesInSubjectAsync(Guid id)
     {
         try
         {
@@ -298,7 +298,7 @@ public class SubjectService : ISubjectService
         }
     }
 
-    public async Task<bool> HasEnrollmentsInSubjectAsync(int id)
+    public async Task<bool> HasEnrollmentsInSubjectAsync(Guid id)
     {
         try
         {
@@ -323,7 +323,7 @@ public class SubjectService : ISubjectService
     /// <param name="id">The ID of the subject to delete</param>
     /// <exception cref="EntityNotFoundException{TKey}">Thrown when subject not found</exception>
     /// <exception cref="EntityServiceException">Thrown when an error occurs during deletion</exception>
-    public async Task DeleteSubjectAsync(int id)
+    public async Task DeleteSubjectAsync(Guid id)
     {
         _logger.LogInformation("Deleting subject with ID: {Id}", id);
 
@@ -333,7 +333,7 @@ public class SubjectService : ISubjectService
             if (existingSubject == null)
             {
                 _logger.LogWarning("Subject deletion failed: Subject with ID {Id} not found", id);
-                throw new EntityNotFoundException<int>("Subject", id);
+                throw new EntityNotFoundException<Guid>("Subject", id);
             }
 
             var result = await _subjectRepository.DeleteSubjectAsync(id).ConfigureAwait(false);
@@ -351,7 +351,7 @@ public class SubjectService : ISubjectService
             }
             _logger.LogInformation("Successfully deleted subject with ID: {Id}", id);
         }
-        catch (EntityNotFoundException<int>)
+        catch (EntityNotFoundException<Guid>)
         {
             // Re-throw the specific exception for the controller to handle
             throw;
@@ -374,9 +374,9 @@ public class SubjectService : ISubjectService
         }
     }
 
-    public async Task DeleteSubjectByUuidAsync(Guid uuid)
+    public async Task DeleteSubjectByUuidAsync(Guid id)
     {
-        var existingSubject = await GetSubjectByUuidAsync(uuid).ConfigureAwait(false);
+        var existingSubject = await GetSubjectByUuidAsync(id).ConfigureAwait(false);
         await DeleteSubjectAsync(existingSubject!.Id).ConfigureAwait(false);
     }
 

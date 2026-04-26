@@ -100,7 +100,7 @@ internal sealed class QrCodeGenerationService
             }
             catch (ValidationException) { throw; }
             catch (EntityUnauthorizedException) { throw; }
-            catch (EntityNotFoundException<int>) { throw; }
+            catch (EntityNotFoundException<Guid>) { throw; }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error occurred while creating QR code for session ID: {SessionId}", createQrCode.SessionId);
@@ -234,7 +234,7 @@ internal sealed class QrCodeGenerationService
         }
     }
 
-    private async Task<int> ResolveSessionIdAsync(CreateQrCode createQrCode)
+    private async Task<Guid> ResolveSessionIdAsync(CreateQrCode createQrCode)
     {
         var session = await _sessionRepository.GetSessionByUuidAsync(createQrCode.SessionId).ConfigureAwait(false);
         if (session == null)
@@ -244,7 +244,7 @@ internal sealed class QrCodeGenerationService
         return session.Id;
     }
 
-    private async Task<int> ResolveSessionIdAsync(QrCodeRequest qrCodeRequest)
+    private async Task<Guid> ResolveSessionIdAsync(QrCodeRequest qrCodeRequest)
     {
         var session = await _sessionRepository.GetSessionByUuidAsync(qrCodeRequest.SessionId).ConfigureAwait(false);
         if (session == null)

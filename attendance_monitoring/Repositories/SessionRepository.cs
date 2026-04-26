@@ -19,7 +19,7 @@ public class SessionRepository(ApplicationDbContext context) : ISessionRepositor
     /// Retrieves a session by its ID with all navigation properties loaded.
     /// Performance: Single JOIN query (no split query for single record retrieval).
     /// </summary>
-    public async Task<Session?> GetSessionByIdAsync(int id)
+    public async Task<Session?> GetSessionByIdAsync(Guid id)
     {
         return await context.Sessions
             .AsNoTracking()
@@ -42,7 +42,7 @@ public class SessionRepository(ApplicationDbContext context) : ISessionRepositor
     /// Retrieves a session by its UUID with all navigation properties loaded.
     /// Performance: Single JOIN query (no split query for single record retrieval).
     /// </summary>
-    public async Task<Session?> GetSessionByUuidAsync(Guid uuid)
+    public async Task<Session?> GetSessionByUuidAsync(Guid id)
     {
         return await context.Sessions
             .AsNoTracking()
@@ -57,7 +57,7 @@ public class SessionRepository(ApplicationDbContext context) : ISessionRepositor
             .Include(s => s.ActualRoom)
             .Include(s => s.InstructorWhoStarted)
             .Include(s => s.InstructorWhoEnded)
-            .FirstOrDefaultAsync(s => s.Uuid == uuid)
+            .FirstOrDefaultAsync(s => s.Id == id)
             .ConfigureAwait(false);
     }
 
@@ -65,7 +65,7 @@ public class SessionRepository(ApplicationDbContext context) : ISessionRepositor
     /// Retrieves a session by its UUID with all navigation properties loaded and tracking enabled.
     /// Performance: Single JOIN query (no split query for single record retrieval).
     /// </summary>
-    public async Task<Session?> GetSessionByUuidTrackedAsync(Guid uuid)
+    public async Task<Session?> GetSessionByUuidTrackedAsync(Guid id)
     {
         return await context.Sessions
             .Include(s => s.Schedule)
@@ -79,7 +79,7 @@ public class SessionRepository(ApplicationDbContext context) : ISessionRepositor
             .Include(s => s.ActualRoom)
             .Include(s => s.InstructorWhoStarted)
             .Include(s => s.InstructorWhoEnded)
-            .FirstOrDefaultAsync(s => s.Uuid == uuid)
+            .FirstOrDefaultAsync(s => s.Id == id)
             .ConfigureAwait(false);
     }
 
@@ -111,7 +111,7 @@ public class SessionRepository(ApplicationDbContext context) : ISessionRepositor
     /// <summary>
     /// Retrieves sessions for a specific schedule.
     /// </summary>
-    public async Task<IEnumerable<Session>> GetSessionsByScheduleIdAsync(int scheduleId)
+    public async Task<IEnumerable<Session>> GetSessionsByScheduleIdAsync(Guid scheduleId)
     {
         return await context.Sessions
             .AsNoTracking()
@@ -247,7 +247,7 @@ public class SessionRepository(ApplicationDbContext context) : ISessionRepositor
     /// <summary>
     /// Checks if a session exists for a specific schedule on a given date.
     /// </summary>
-    public async Task<bool> SessionExistsForScheduleAndDateAsync(int scheduleId, DateTime sessionDate)
+    public async Task<bool> SessionExistsForScheduleAndDateAsync(Guid scheduleId, DateTime sessionDate)
     {
         var dateOnly = sessionDate.Date;
 
@@ -260,7 +260,7 @@ public class SessionRepository(ApplicationDbContext context) : ISessionRepositor
     /// <summary>
     /// Retrieves active sessions for a specific instructor.
     /// </summary>
-    public async Task<IEnumerable<Session>> GetActiveSessionsByInstructorIdAsync(int instructorId)
+    public async Task<IEnumerable<Session>> GetActiveSessionsByInstructorIdAsync(Guid instructorId)
     {
         return await context.Sessions
             .AsNoTracking()
@@ -285,7 +285,7 @@ public class SessionRepository(ApplicationDbContext context) : ISessionRepositor
     /// <summary>
     /// Retrieves all sessions for a specific instructor (all statuses).
     /// </summary>
-    public async Task<IEnumerable<Session>> GetSessionsByInstructorIdAsync(int instructorId)
+    public async Task<IEnumerable<Session>> GetSessionsByInstructorIdAsync(Guid instructorId)
     {
         return await context.Sessions
             .AsNoTracking()
@@ -311,7 +311,7 @@ public class SessionRepository(ApplicationDbContext context) : ISessionRepositor
     /// <summary>
     /// Retrieves projected report rows for all sessions in a section with aggregated attendance counts.
     /// </summary>
-    public async Task<List<SessionReportRowDto>> GetSectionSessionReportRowsAsync(int sectionId, DateTime? startDate, DateTime? endDate)
+    public async Task<List<SessionReportRowDto>> GetSectionSessionReportRowsAsync(Guid sectionId, DateTime? startDate, DateTime? endDate)
     {
         var query =
             from session in context.Sessions.AsNoTracking()
@@ -352,7 +352,7 @@ public class SessionRepository(ApplicationDbContext context) : ISessionRepositor
     /// <summary>
     /// Retrieves projected report rows for all sessions owned by an instructor with aggregated attendance counts.
     /// </summary>
-    public async Task<List<SessionReportRowDto>> GetInstructorSessionReportRowsAsync(int instructorId, DateTime? startDate, DateTime? endDate)
+    public async Task<List<SessionReportRowDto>> GetInstructorSessionReportRowsAsync(Guid instructorId, DateTime? startDate, DateTime? endDate)
     {
         var query =
             from session in context.Sessions.AsNoTracking()
@@ -394,7 +394,7 @@ public class SessionRepository(ApplicationDbContext context) : ISessionRepositor
     /// Retrieves a session by its ID without tracking (for read-only operations).
     /// Performance: Single JOIN query (no split query for single record retrieval).
     /// </summary>
-    public async Task<Session?> GetSessionByIdNoTrackingAsync(int id)
+    public async Task<Session?> GetSessionByIdNoTrackingAsync(Guid id)
     {
         return await context.Sessions
             .AsNoTracking()

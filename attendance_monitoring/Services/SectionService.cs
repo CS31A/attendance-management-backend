@@ -20,7 +20,7 @@ namespace attendance_monitoring.Services
         /// <returns>The section with the specified ID</returns>
         /// <exception cref="T:attendance_monitoring.Exceptions.EntityNotFoundException{System.Int32}">Thrown when the section is not found</exception>
         /// <exception cref="EntityServiceException">Thrown when an error occurs during retrieval</exception>
-        public async Task<Section> GetSectionByIdAsync(int sectionId)
+        public async Task<Section> GetSectionByIdAsync(Guid sectionId)
         {
             try
             {
@@ -28,13 +28,13 @@ namespace attendance_monitoring.Services
                 if (section == null)
                 {
                     logger.LogWarning("Section with ID {SectionId} not found", sectionId);
-                    throw new EntityNotFoundException<int>("Section", sectionId);
+                    throw new EntityNotFoundException<Guid>("Section", sectionId);
                 }
 
                 logger.LogInformation("Successfully retrieved section with ID: {SectionId}", sectionId);
                 return section;
             }
-            catch (EntityNotFoundException<int>)
+            catch (EntityNotFoundException<Guid>)
             {
                 // Re-throw EntityNotFoundException as-is
                 throw;
@@ -46,18 +46,18 @@ namespace attendance_monitoring.Services
             }
         }
 
-        public async Task<Section> GetSectionByUuidAsync(Guid uuid)
+        public async Task<Section> GetSectionByUuidAsync(Guid id)
         {
             try
             {
-                var section = await sectionRepository.GetSectionByUuidAsync(uuid).ConfigureAwait(false);
+                var section = await sectionRepository.GetSectionByUuidAsync(id).ConfigureAwait(false);
                 if (section == null)
                 {
-                    logger.LogWarning("Section with UUID {SectionUuid} not found", uuid);
-                    throw new EntityNotFoundException<Guid>("Section", uuid);
+                    logger.LogWarning("Section with UUID {SectionId} not found", id);
+                    throw new EntityNotFoundException<Guid>("Section", id);
                 }
 
-                logger.LogInformation("Successfully retrieved section with UUID: {SectionUuid}", uuid);
+                logger.LogInformation("Successfully retrieved section with UUID: {SectionId}", id);
                 return section;
             }
             catch (EntityNotFoundException<Guid>)
@@ -66,8 +66,8 @@ namespace attendance_monitoring.Services
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "An error occurred while retrieving section with UUID {SectionUuid} from repository.", uuid);
-                throw new EntityServiceException("Section", $"GetSectionByUuid: {uuid}", "An error occurred while retrieving the section", ex);
+                logger.LogError(ex, "An error occurred while retrieving section with UUID {SectionId} from repository.", id);
+                throw new EntityServiceException("Section", $"GetSectionByUuid: {id}", "An error occurred while retrieving the section", ex);
             }
         }
 
@@ -84,9 +84,9 @@ namespace attendance_monitoring.Services
                 var sections = await sectionRepository.GetAllSectionsAsync().ConfigureAwait(false);
                 var sectionDtos = sections.Select(s => new SectionResponseDto
                 {
-                    Id = s.Uuid,
+                    Id = s.Id,
                     Name = s.Name,
-                    CourseId = s.Course?.Uuid,
+                    CourseId = s.Course?.Id,
                     CreatedAt = s.CreatedAt,
                     UpdatedAt = s.UpdatedAt
                 }).ToList();
@@ -127,9 +127,9 @@ namespace attendance_monitoring.Services
 
                 var sectionDto = new SectionResponseDto
                 {
-                    Id = refreshedSection.Uuid,
+                    Id = refreshedSection.Id,
                     Name = refreshedSection.Name,
-                    CourseId = refreshedSection.Course?.Uuid,
+                    CourseId = refreshedSection.Course?.Id,
                     CreatedAt = refreshedSection.CreatedAt,
                     UpdatedAt = refreshedSection.UpdatedAt
                 };
@@ -155,7 +155,7 @@ namespace attendance_monitoring.Services
         /// <returns>The updated section response DTO</returns>
         /// <exception cref="T:attendance_monitoring.Exceptions.EntityNotFoundException{System.Int32}">Thrown when the section is not found</exception>
         /// <exception cref="EntityServiceException">Thrown when section update fails</exception>
-        public async Task<SectionResponseDto> UpdateSectionAsync(int id, Section section)
+        public async Task<SectionResponseDto> UpdateSectionAsync(Guid id, Section section)
         {
             try
             {
@@ -164,7 +164,7 @@ namespace attendance_monitoring.Services
                 if (updatedSection == null)
                 {
                     logger.LogWarning("Section with ID {SectionId} not found for update in repository.", id);
-                    throw new EntityNotFoundException<int>("Section", id);
+                    throw new EntityNotFoundException<Guid>("Section", id);
                 }
 
                 await sectionRepository.SaveChangesAsync().ConfigureAwait(false);
@@ -178,9 +178,9 @@ namespace attendance_monitoring.Services
 
                 var sectionDto = new SectionResponseDto
                 {
-                    Id = refreshedSection.Uuid,
+                    Id = refreshedSection.Id,
                     Name = refreshedSection.Name,
-                    CourseId = refreshedSection.Course?.Uuid,
+                    CourseId = refreshedSection.Course?.Id,
                     CreatedAt = refreshedSection.CreatedAt,
                     UpdatedAt = refreshedSection.UpdatedAt
                 };
@@ -188,7 +188,7 @@ namespace attendance_monitoring.Services
                 logger.LogInformation("Successfully updated section with ID: {SectionId}", id);
                 return sectionDto;
             }
-            catch (EntityNotFoundException<int>)
+            catch (EntityNotFoundException<Guid>)
             {
                 // Re-throw EntityNotFoundException as-is
                 throw;
@@ -200,9 +200,9 @@ namespace attendance_monitoring.Services
             }
         }
 
-        public async Task<SectionResponseDto> UpdateSectionByUuidAsync(Guid uuid, Section section)
+        public async Task<SectionResponseDto> UpdateSectionByUuidAsync(Guid id, Section section)
         {
-            var existingSection = await GetSectionByUuidAsync(uuid).ConfigureAwait(false);
+            var existingSection = await GetSectionByUuidAsync(id).ConfigureAwait(false);
             return await UpdateSectionAsync(existingSection.Id, section).ConfigureAwait(false);
         }
 
@@ -216,7 +216,7 @@ namespace attendance_monitoring.Services
         /// <exception cref="T:attendance_monitoring.Exceptions.EntityNotFoundException{System.Int32}">Thrown when the section is not found</exception>
         /// <exception cref="EntityConflictException">Thrown when section deletion is blocked by existing dependencies</exception>
         /// <exception cref="EntityServiceException">Thrown when section deletion fails unexpectedly</exception>
-        public async Task DeleteSectionAsync(int id)
+        public async Task DeleteSectionAsync(Guid id)
         {
             try
             {
@@ -225,13 +225,13 @@ namespace attendance_monitoring.Services
                 if (!result)
                 {
                     logger.LogWarning("Section with ID {SectionId} not found for deletion", id);
-                    throw new EntityNotFoundException<int>("Section", id);
+                    throw new EntityNotFoundException<Guid>("Section", id);
                 }
 
                 await sectionRepository.SaveChangesAsync().ConfigureAwait(false);
                 logger.LogInformation("Successfully deleted section with ID: {SectionId}", id);
             }
-            catch (EntityNotFoundException<int>)
+            catch (EntityNotFoundException<Guid>)
             {
                 // Re-throw EntityNotFoundException as-is
                 throw;
@@ -250,9 +250,9 @@ namespace attendance_monitoring.Services
             }
         }
 
-        public async Task DeleteSectionByUuidAsync(Guid uuid)
+        public async Task DeleteSectionByUuidAsync(Guid id)
         {
-            var existingSection = await GetSectionByUuidAsync(uuid).ConfigureAwait(false);
+            var existingSection = await GetSectionByUuidAsync(id).ConfigureAwait(false);
             await DeleteSectionAsync(existingSection.Id).ConfigureAwait(false);
         }
 
@@ -299,7 +299,7 @@ namespace attendance_monitoring.Services
         /// <param name="sectionId">The ID of the section</param>
         /// <returns>A collection of active students</returns>
         /// <exception cref="EntityServiceException">Thrown when an error occurs during retrieval</exception>
-        public async Task<IEnumerable<Student>> GetActiveStudentsBySectionIdAsync(int sectionId)
+        public async Task<IEnumerable<Student>> GetActiveStudentsBySectionIdAsync(Guid sectionId)
         {
             try
             {
@@ -322,7 +322,7 @@ namespace attendance_monitoring.Services
         /// <param name="sectionId">The ID of the section</param>
         /// <returns>A collection of all students</returns>
         /// <exception cref="EntityServiceException">Thrown when an error occurs during retrieval</exception>
-        public async Task<IEnumerable<Student>> GetAllStudentsBySectionIdAsync(int sectionId)
+        public async Task<IEnumerable<Student>> GetAllStudentsBySectionIdAsync(Guid sectionId)
         {
             try
             {
@@ -341,7 +341,7 @@ namespace attendance_monitoring.Services
         #endregion
 
         #region Dependency Check Operations
-        public async Task<bool> HasStudentsInSectionAsync(int sectionId)
+        public async Task<bool> HasStudentsInSectionAsync(Guid sectionId)
         {
             try
             {
@@ -357,7 +357,7 @@ namespace attendance_monitoring.Services
             }
         }
 
-        public async Task<bool> HasStudentEnrollmentsInSectionAsync(int sectionId)
+        public async Task<bool> HasStudentEnrollmentsInSectionAsync(Guid sectionId)
         {
             try
             {
@@ -373,7 +373,7 @@ namespace attendance_monitoring.Services
             }
         }
 
-        public async Task<bool> HasSchedulesInSectionAsync(int sectionId)
+        public async Task<bool> HasSchedulesInSectionAsync(Guid sectionId)
         {
             try
             {

@@ -294,7 +294,7 @@ public sealed class OperationalReliabilityIntegrationTests
         var identifiers = await host.ExecuteDbContextAsync(async (dbContext, cancellationToken) => new
         {
             StudentId = await dbContext.Students.Where(student => student.Id == host.AttendanceQrScenario!.StudentId).Select(student => student.Id).SingleAsync(cancellationToken),
-            SessionId = await dbContext.Sessions.Where(session => session.Id == host.AttendanceQrScenario.SessionId).Select(session => session.Id).SingleAsync(cancellationToken)
+            SessionId = await dbContext.Sessions.Where(session => session.Id == host.AttendanceQrScenario!.SessionId).Select(session => session.Id).SingleAsync(cancellationToken)
         });
 
         return await host.SendAsync(CreateJsonPostRequest("/api/attendance", new CreateAttendanceRequest

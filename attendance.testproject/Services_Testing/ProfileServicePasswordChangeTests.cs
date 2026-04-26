@@ -40,7 +40,7 @@ public class ProfileServicePasswordChangeTests
             Firstname = "Missing",
             Lastname = "Section",
             UserId = "student-1",
-            SectionId = 999,
+            SectionId = Guid.NewGuid(),
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         });

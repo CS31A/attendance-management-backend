@@ -8,16 +8,16 @@ namespace attendance_monitoring.IServices
     public interface IScheduleService
     {
         Task<IEnumerable<ScheduleResponseDto>> GetAllSchedulesAsync();
-        Task<ScheduleResponseDto> GetScheduleByIdAsync(int id);
-        Task<ScheduleResponseDto> GetScheduleByUuidAsync(Guid uuid);
-        Task<IEnumerable<ScheduleResponseDto>> GetSchedulesByInstructorIdAsync(int instructorId);
-        Task<IEnumerable<ScheduleResponseDto>> GetSchedulesBySectionIdAsync(int sectionId);
+        Task<ScheduleResponseDto> GetScheduleByIdAsync(Guid id);
+        Task<ScheduleResponseDto> GetScheduleByUuidAsync(Guid id);
+        Task<IEnumerable<ScheduleResponseDto>> GetSchedulesByInstructorIdAsync(Guid instructorId);
+        Task<IEnumerable<ScheduleResponseDto>> GetSchedulesBySectionIdAsync(Guid sectionId);
         Task<Schedules> CreateScheduleAsync(CreateSchedule createSchedule);
-        Task<Schedules> UpdateScheduleAsync(int id, UpdateSchedule updateSchedule);
-        Task<Schedules> UpdateScheduleByUuidAsync(Guid uuid, UpdateSchedule updateSchedule);
-        Task DeleteScheduleAsync(int id, ClaimsPrincipal user);
-        Task DeleteScheduleByUuidAsync(Guid uuid, ClaimsPrincipal user);
-        Task<bool> HasSessionsInScheduleAsync(int id);
+        Task<Schedules> UpdateScheduleAsync(Guid id, UpdateSchedule updateSchedule);
+        Task<Schedules> UpdateScheduleByUuidAsync(Guid id, UpdateSchedule updateSchedule);
+        Task DeleteScheduleAsync(Guid id, ClaimsPrincipal user);
+        Task DeleteScheduleByUuidAsync(Guid id, ClaimsPrincipal user);
+        Task<bool> HasSessionsInScheduleAsync(Guid id);
         Task<IEnumerable<ScheduleResponseDto>> GetMySchedulesAsync();
     }
 }

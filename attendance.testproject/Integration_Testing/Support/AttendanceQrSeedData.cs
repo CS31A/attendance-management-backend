@@ -228,10 +228,10 @@ internal sealed class AttendanceQrScenarioContext
     public required string InstructorUserId { get; init; }
     public required string StudentUserId { get; init; }
     public required string OutsiderStudentUserId { get; init; }
-    public required int StudentId { get; init; }
-    public required int OutsiderStudentId { get; init; }
-    public required int SessionId { get; init; }
-    public required int QrCodeId { get; init; }
+    public required Guid StudentId { get; init; }
+    public required Guid OutsiderStudentId { get; init; }
+    public required Guid SessionId { get; init; }
+    public required Guid QrCodeId { get; init; }
     public required string QrHash { get; init; }
-    public int? ExistingAttendanceRecordId { get; init; }
+    public Guid? ExistingAttendanceRecordId { get; init; }
 }

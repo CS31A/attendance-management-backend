@@ -67,7 +67,7 @@ internal sealed class QrCodeScanService
     {
         var utcNow = _clock.GetUtcNow().UtcDateTime;
         var localNow = _clock.GetLocalNow();
-        int? resolvedStudentId = null;
+        Guid? resolvedStudentId = null;
 
         try
         {
@@ -172,7 +172,7 @@ internal sealed class QrCodeScanService
                 return new QrCodeScanResponseDto { Success = false, Message = "QR code usage limit reached", AttendanceMarked = false };
             }
 
-            var sectionId = qrCode.Session?.Schedule?.SectionId ?? 0;
+            var sectionId = qrCode.Session?.Schedule?.SectionId ?? Guid.Empty;
             var isStudentAuthorized = student.SectionId == sectionId;
 
             if (!isStudentAuthorized && qrCode.Session?.Schedule != null)

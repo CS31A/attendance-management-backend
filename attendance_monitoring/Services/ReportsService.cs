@@ -26,26 +26,20 @@ public class ReportsService(
     public Task<AttendanceSummaryDto> GetAttendanceSummaryAsync(AttendanceFilterRequest filter, ClaimsPrincipal user)
         => attendanceService.GetAttendanceSummaryAsync(filter, user);
 
-    public Task<StudentAttendanceHistoryDto> GetStudentAttendanceReportAsync(int studentId, ClaimsPrincipal user)
+    public Task<StudentAttendanceHistoryDto> GetStudentAttendanceReportAsync(Guid studentId, ClaimsPrincipal user)
         => attendanceService.GetStudentAttendanceHistoryAsync(studentId, user);
 
-    public Task<StudentAttendanceHistoryDto> GetStudentAttendanceReportAsync(Guid studentUuid, ClaimsPrincipal user)
-        => attendanceService.GetStudentAttendanceHistoryByUuidAsync(studentUuid, user);
-
-    public Task<SessionAttendanceDto> GetSessionAttendanceReportAsync(int sessionId, ClaimsPrincipal user)
+    public Task<SessionAttendanceDto> GetSessionAttendanceReportAsync(Guid sessionId, ClaimsPrincipal user)
         => attendanceService.GetSessionAttendanceAsync(sessionId, user);
 
-    public Task<SessionAttendanceDto> GetSessionAttendanceReportAsync(Guid sessionUuid, ClaimsPrincipal user)
-        => attendanceService.GetSessionAttendanceByUuidAsync(sessionUuid, user);
-
     public async Task<ClassAttendanceSummaryDto> GetClassAttendanceReportAsync(
-        int sectionId, AttendanceFilterRequest filter, ClaimsPrincipal user)
+        Guid sectionId, AttendanceFilterRequest filter, ClaimsPrincipal user)
     {
         logger.LogInformation("Retrieving class attendance report for SectionId: {SectionId}", sectionId);
 
         var section = await sectionRepository.GetSectionByIdAsync(sectionId).ConfigureAwait(false);
         if (section == null)
-            throw new EntityNotFoundException<int>("Section", sectionId);
+            throw new EntityNotFoundException<Guid>("Section", sectionId);
 
         // Authorization: Instructors can only view reports for sections they teach
         var userRole = user.FindFirst(ClaimTypes.Role)?.Value;
@@ -128,36 +122,14 @@ public class ReportsService(
         };
     }
 
-    public async Task<ClassAttendanceSummaryDto> GetClassAttendanceReportAsync(
-        Guid sectionUuid, AttendanceFilterRequest filter, ClaimsPrincipal user)
-    {
-        var section = await sectionRepository.GetSectionByUuidAsync(sectionUuid).ConfigureAwait(false);
-        if (section == null)
-            throw new EntityNotFoundException<Guid>("Section", sectionUuid);
-
-        return await GetClassAttendanceReportAsync(section.Id, filter, user).ConfigureAwait(false);
-    }
-
     public async Task<InstructorSessionsReportDto> GetInstructorSessionsReportAsync(
-        int instructorId, AttendanceFilterRequest filter, ClaimsPrincipal user)
+        Guid instructorId, AttendanceFilterRequest filter, ClaimsPrincipal user)
     {
         logger.LogInformation("Retrieving instructor sessions report for InstructorId: {InstructorId}", instructorId);
 
         var instructor = await instructorRepository.GetInstructorByIdAsync(instructorId).ConfigureAwait(false);
         if (instructor == null)
-            throw new EntityNotFoundException<int>("Instructor", instructorId);
-
-        return await BuildInstructorSessionsReportAsync(instructor, filter, user).ConfigureAwait(false);
-    }
-
-    public async Task<InstructorSessionsReportDto> GetInstructorSessionsReportAsync(
-        Guid instructorUuid, AttendanceFilterRequest filter, ClaimsPrincipal user)
-    {
-        logger.LogInformation("Retrieving instructor sessions report for InstructorUuid: {InstructorUuid}", instructorUuid);
-
-        var instructor = await instructorRepository.GetInstructorByUuidAsync(instructorUuid).ConfigureAwait(false);
-        if (instructor == null)
-            throw new EntityNotFoundException<Guid>("Instructor", instructorUuid);
+            throw new EntityNotFoundException<Guid>("Instructor", instructorId);
 
         return await BuildInstructorSessionsReportAsync(instructor, filter, user).ConfigureAwait(false);
     }

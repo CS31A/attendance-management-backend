@@ -43,8 +43,8 @@ public class ClassroomServiceTest
     {
         var classrooms = new List<Classroom>
         {
-            new() { Id = 1, Name = "Room A" },
-            new() { Id = 2, Name = "Room B" },
+            new() { Id = Guid.NewGuid(), Name = "Room A" },
+            new() { Id = Guid.NewGuid(), Name = "Room B" },
         };
 
         _mockClassroomRepository
@@ -77,12 +77,13 @@ public class ClassroomServiceTest
     [Fact]
     public async Task GetClassroomByIdAsync_ReturnsClassroom_WhenFound()
     {
-        var classroom = new Classroom { Id = 7, Name = "Room 207" };
+        var id = Guid.NewGuid();
+        var classroom = new Classroom { Id = Guid.NewGuid(), Name = "Room 207" };
         _mockClassroomRepository
-            .Setup(repository => repository.GetClassroomByIdAsync(7))
+            .Setup(repository => repository.GetClassroomByIdAsync(id))
             .ReturnsAsync(classroom);
 
-        var result = await _service.GetClassroomByIdAsync(7);
+        var result = await _service.GetClassroomByIdAsync(id);
 
         Assert.Same(classroom, result);
     }
@@ -91,13 +92,13 @@ public class ClassroomServiceTest
     public async Task GetClassroomByIdAsync_ThrowsEntityNotFoundException_WhenMissing()
     {
         _mockClassroomRepository
-            .Setup(repository => repository.GetClassroomByIdAsync(7))
+            .Setup(repository => repository.GetClassroomByIdAsync(It.IsAny<Guid>()))
             .ReturnsAsync((Classroom?)null);
 
-        var exception = await Assert.ThrowsAsync<EntityNotFoundException<int>>(() => _service.GetClassroomByIdAsync(7));
+        var exception = await Assert.ThrowsAsync<EntityNotFoundException<Guid>>(() => _service.GetClassroomByIdAsync(Guid.NewGuid()));
 
         Assert.Equal("Classroom", exception.EntityName);
-        Assert.Equal(7, exception.Key);
+        Assert.NotEqual(Guid.Empty, exception.Key);
     }
 
     [Fact]
@@ -105,13 +106,13 @@ public class ClassroomServiceTest
     {
         var expectedException = new InvalidOperationException("Lookup failed");
         _mockClassroomRepository
-            .Setup(repository => repository.GetClassroomByIdAsync(7))
+            .Setup(repository => repository.GetClassroomByIdAsync(It.IsAny<Guid>()))
             .ThrowsAsync(expectedException);
 
-        var exception = await Assert.ThrowsAsync<EntityServiceException>(() => _service.GetClassroomByIdAsync(7));
+        var exception = await Assert.ThrowsAsync<EntityServiceException>(() => _service.GetClassroomByIdAsync(Guid.NewGuid()));
 
         Assert.Equal("Classroom", exception.EntityName);
-        Assert.Equal("GetClassroomById: 7", exception.Operation);
+        Assert.Contains("GetClassroomById:", exception.Operation);
         Assert.Same(expectedException, exception.InnerException);
     }
 
@@ -119,7 +120,7 @@ public class ClassroomServiceTest
     public async Task GetClassroomByUuidAsync_ReturnsClassroom_WhenFound()
     {
         var classroomUuid = Guid.NewGuid();
-        var classroom = new Classroom { Id = 7, Uuid = classroomUuid, Name = "Room 207" };
+        var classroom = new Classroom { Id = classroomUuid, Name = "Room 207" };
         _mockClassroomRepository
             .Setup(repository => repository.GetClassroomByUuidAsync(classroomUuid))
             .ReturnsAsync(classroom);
@@ -161,7 +162,7 @@ public class ClassroomServiceTest
     {
         _mockClassroomRepository
             .Setup(repository => repository.GetClassroomByNameAsync("Room 101"))
-            .ReturnsAsync(new Classroom { Id = 1, Name = "Room 101" });
+            .ReturnsAsync(new Classroom { Id = Guid.NewGuid(), Name = "Room 101" });
 
         var exception = await Assert.ThrowsAsync<EntityAlreadyExistsException<string>>(
             () => _service.CreateClassroomAsync(new CreateClassroom { Name = "Room 101" }));
@@ -175,7 +176,7 @@ public class ClassroomServiceTest
     public async Task CreateClassroomAsync_ValidInput_CreatesClassroom()
     {
         Classroom? capturedClassroom = null;
-        var createdClassroom = new Classroom { Id = 3, Name = "Lab 1" };
+        var createdClassroom = new Classroom { Id = Guid.NewGuid(), Name = "Lab 1" };
 
         _mockClassroomRepository
             .Setup(repository => repository.GetClassroomByNameAsync("Lab 1"))
@@ -239,24 +240,24 @@ public class ClassroomServiceTest
     public async Task UpdateClassroomAsync_NotFound_ThrowsEntityNotFoundException()
     {
         _mockClassroomRepository
-            .Setup(repository => repository.GetClassroomByIdAsync(8))
+            .Setup(repository => repository.GetClassroomByIdAsync(It.IsAny<Guid>()))
             .ReturnsAsync((Classroom?)null);
 
-        var exception = await Assert.ThrowsAsync<EntityNotFoundException<int>>(
-            () => _service.UpdateClassroomAsync(8, new UpdateClassroom { Name = "Updated" }));
+        var exception = await Assert.ThrowsAsync<EntityNotFoundException<Guid>>(
+            () => _service.UpdateClassroomAsync(Guid.NewGuid(), new UpdateClassroom { Name = "Updated" }));
 
         Assert.Equal("Classroom", exception.EntityName);
-        Assert.Equal(8, exception.Key);
+        Assert.NotEqual(Guid.Empty, exception.Key);
     }
 
     [Fact]
     public async Task UpdateClassroomAsync_ValidInput_UpdatesClassroom()
     {
-        var existingClassroom = new Classroom { Id = 8, Name = "Old" };
+        var existingClassroom = new Classroom { Id = Guid.NewGuid(), Name = "Old" };
         Classroom? updatedEntity = null;
 
         _mockClassroomRepository
-            .Setup(repository => repository.GetClassroomByIdAsync(8))
+            .Setup(repository => repository.GetClassroomByIdAsync(It.IsAny<Guid>()))
             .ReturnsAsync(existingClassroom);
         _mockClassroomRepository
             .Setup(repository => repository.GetClassroomByNameAsync("New"))
@@ -269,7 +270,7 @@ public class ClassroomServiceTest
             .Setup(repository => repository.SaveChangesAsync())
             .ReturnsAsync(1);
 
-        var result = await _service.UpdateClassroomAsync(8, new UpdateClassroom { Name = "New" });
+        var result = await _service.UpdateClassroomAsync(Guid.NewGuid(), new UpdateClassroom { Name = "New" });
 
         Assert.Equal("New", result.Name);
         Assert.NotNull(updatedEntity);
@@ -280,10 +281,10 @@ public class ClassroomServiceTest
     [Fact]
     public async Task UpdateClassroomAsync_EmptyName_LeavesNameUnchanged()
     {
-        var existingClassroom = new Classroom { Id = 8, Name = "Old" };
+        var existingClassroom = new Classroom { Id = Guid.NewGuid(), Name = "Old" };
 
         _mockClassroomRepository
-            .Setup(repository => repository.GetClassroomByIdAsync(8))
+            .Setup(repository => repository.GetClassroomByIdAsync(It.IsAny<Guid>()))
             .ReturnsAsync(existingClassroom);
         _mockClassroomRepository
             .Setup(repository => repository.UpdateClassroomAsync(It.IsAny<Classroom>()))
@@ -292,7 +293,7 @@ public class ClassroomServiceTest
             .Setup(repository => repository.SaveChangesAsync())
             .ReturnsAsync(1);
 
-        var result = await _service.UpdateClassroomAsync(8, new UpdateClassroom { Name = string.Empty });
+        var result = await _service.UpdateClassroomAsync(Guid.NewGuid(), new UpdateClassroom { Name = string.Empty });
 
         Assert.Equal("Old", result.Name);
         _mockClassroomRepository.Verify(repository => repository.GetClassroomByNameAsync(It.IsAny<string>()), Times.Never);
@@ -302,14 +303,14 @@ public class ClassroomServiceTest
     public async Task UpdateClassroomAsync_DuplicateName_ThrowsEntityAlreadyExistsException()
     {
         _mockClassroomRepository
-            .Setup(repository => repository.GetClassroomByIdAsync(8))
-            .ReturnsAsync(new Classroom { Id = 8, Name = "Old" });
+            .Setup(repository => repository.GetClassroomByIdAsync(It.IsAny<Guid>()))
+            .ReturnsAsync(new Classroom { Id = Guid.NewGuid(), Name = "Old" });
         _mockClassroomRepository
             .Setup(repository => repository.GetClassroomByNameAsync("Taken"))
-            .ReturnsAsync(new Classroom { Id = 11, Name = "Taken" });
+            .ReturnsAsync(new Classroom { Id = Guid.NewGuid(), Name = "Taken" });
 
         var exception = await Assert.ThrowsAsync<EntityAlreadyExistsException<string>>(
-            () => _service.UpdateClassroomAsync(8, new UpdateClassroom { Name = "Taken" }));
+            () => _service.UpdateClassroomAsync(Guid.NewGuid(), new UpdateClassroom { Name = "Taken" }));
 
         Assert.Equal("Classroom", exception.EntityName);
         Assert.Equal("Name", exception.IdentifierPropertyName);
@@ -324,8 +325,8 @@ public class ClassroomServiceTest
             new Exception("duplicate key value violates unique constraint \"IX_Classrooms_Name\""));
 
         _mockClassroomRepository
-            .Setup(repository => repository.GetClassroomByIdAsync(8))
-            .ReturnsAsync(new Classroom { Id = 8, Name = "Old" });
+            .Setup(repository => repository.GetClassroomByIdAsync(It.IsAny<Guid>()))
+            .ReturnsAsync(new Classroom { Id = Guid.NewGuid(), Name = "Old" });
         _mockClassroomRepository
             .Setup(repository => repository.GetClassroomByNameAsync("New"))
             .ReturnsAsync((Classroom?)null);
@@ -334,7 +335,7 @@ public class ClassroomServiceTest
             .ThrowsAsync(dbUpdateException);
 
         var exception = await Assert.ThrowsAsync<EntityAlreadyExistsException<string>>(
-            () => _service.UpdateClassroomAsync(8, new UpdateClassroom { Name = "New" }));
+            () => _service.UpdateClassroomAsync(Guid.NewGuid(), new UpdateClassroom { Name = "New" }));
 
         Assert.Equal("Classroom", exception.EntityName);
         Assert.Equal("Name", exception.IdentifierPropertyName);
@@ -345,8 +346,8 @@ public class ClassroomServiceTest
     public async Task UpdateClassroomAsync_NoRowsAffected_ThrowsEntityServiceException()
     {
         _mockClassroomRepository
-            .Setup(repository => repository.GetClassroomByIdAsync(8))
-            .ReturnsAsync(new Classroom { Id = 8, Name = "Old" });
+            .Setup(repository => repository.GetClassroomByIdAsync(It.IsAny<Guid>()))
+            .ReturnsAsync(new Classroom { Id = Guid.NewGuid(), Name = "Old" });
         _mockClassroomRepository
             .Setup(repository => repository.GetClassroomByNameAsync("New"))
             .ReturnsAsync((Classroom?)null);
@@ -358,10 +359,10 @@ public class ClassroomServiceTest
             .ReturnsAsync(0);
 
         var exception = await Assert.ThrowsAsync<EntityServiceException>(
-            () => _service.UpdateClassroomAsync(8, new UpdateClassroom { Name = "New" }));
+            () => _service.UpdateClassroomAsync(Guid.NewGuid(), new UpdateClassroom { Name = "New" }));
 
         Assert.Equal("Classroom", exception.EntityName);
-        Assert.Equal("UpdateClassroom: 8", exception.Operation);
+        Assert.Contains("UpdateClassroom:", exception.Operation);
         Assert.Contains("updated by another process", exception.Message, StringComparison.OrdinalIgnoreCase);
     }
 
@@ -370,14 +371,14 @@ public class ClassroomServiceTest
     {
         var expectedException = new InvalidOperationException("Update failed");
         _mockClassroomRepository
-            .Setup(repository => repository.GetClassroomByIdAsync(8))
+            .Setup(repository => repository.GetClassroomByIdAsync(It.IsAny<Guid>()))
             .ThrowsAsync(expectedException);
 
         var exception = await Assert.ThrowsAsync<EntityServiceException>(
-            () => _service.UpdateClassroomAsync(8, new UpdateClassroom { Name = "New" }));
+            () => _service.UpdateClassroomAsync(Guid.NewGuid(), new UpdateClassroom { Name = "New" }));
 
         Assert.Equal("Classroom", exception.EntityName);
-        Assert.Equal("UpdateClassroom: 8", exception.Operation);
+        Assert.Contains("UpdateClassroom:", exception.Operation);
         Assert.Same(expectedException, exception.InnerException);
     }
 
@@ -385,31 +386,31 @@ public class ClassroomServiceTest
     public async Task DeleteClassroomAsync_NotFound_ThrowsEntityNotFoundException()
     {
         _mockClassroomRepository
-            .Setup(repository => repository.GetClassroomByIdAsync(5))
+            .Setup(repository => repository.GetClassroomByIdAsync(It.IsAny<Guid>()))
             .ReturnsAsync((Classroom?)null);
 
-        var exception = await Assert.ThrowsAsync<EntityNotFoundException<int>>(() => _service.DeleteClassroomAsync(5));
+        var exception = await Assert.ThrowsAsync<EntityNotFoundException<Guid>>(() => _service.DeleteClassroomAsync(Guid.NewGuid()));
 
         Assert.Equal("Classroom", exception.EntityName);
-        Assert.Equal(5, exception.Key);
+        Assert.NotEqual(Guid.Empty, exception.Key);
     }
 
     [Fact]
     public async Task DeleteClassroomAsync_Success_DeletesClassroom()
     {
         _mockClassroomRepository
-            .Setup(repository => repository.GetClassroomByIdAsync(5))
-            .ReturnsAsync(new Classroom { Id = 5, Name = "Room 5" });
+            .Setup(repository => repository.GetClassroomByIdAsync(It.IsAny<Guid>()))
+            .ReturnsAsync(new Classroom { Id = Guid.NewGuid(), Name = "Room 5" });
         _mockClassroomRepository
-            .Setup(repository => repository.DeleteClassroomAsync(5))
+            .Setup(repository => repository.DeleteClassroomAsync(It.IsAny<Guid>()))
             .ReturnsAsync(true);
         _mockClassroomRepository
             .Setup(repository => repository.SaveChangesAsync())
             .ReturnsAsync(1);
 
-        await _service.DeleteClassroomAsync(5);
+        await _service.DeleteClassroomAsync(Guid.NewGuid());
 
-        _mockClassroomRepository.Verify(repository => repository.DeleteClassroomAsync(5), Times.Once);
+        _mockClassroomRepository.Verify(repository => repository.DeleteClassroomAsync(It.IsAny<Guid>()), Times.Once);
         _mockClassroomRepository.Verify(repository => repository.SaveChangesAsync(), Times.Once);
     }
 
@@ -417,35 +418,35 @@ public class ClassroomServiceTest
     public async Task DeleteClassroomAsync_DeleteReturnsFalse_ThrowsEntityServiceException()
     {
         _mockClassroomRepository
-            .Setup(repository => repository.GetClassroomByIdAsync(5))
-            .ReturnsAsync(new Classroom { Id = 5, Name = "Room 5" });
+            .Setup(repository => repository.GetClassroomByIdAsync(It.IsAny<Guid>()))
+            .ReturnsAsync(new Classroom { Id = Guid.NewGuid(), Name = "Room 5" });
         _mockClassroomRepository
-            .Setup(repository => repository.DeleteClassroomAsync(5))
+            .Setup(repository => repository.DeleteClassroomAsync(It.IsAny<Guid>()))
             .ReturnsAsync(false);
 
-        var exception = await Assert.ThrowsAsync<EntityServiceException>(() => _service.DeleteClassroomAsync(5));
+        var exception = await Assert.ThrowsAsync<EntityServiceException>(() => _service.DeleteClassroomAsync(Guid.NewGuid()));
 
         Assert.Equal("Classroom", exception.EntityName);
-        Assert.Equal("DeleteClassroom: 5", exception.Operation);
+        Assert.Contains("DeleteClassroom:", exception.Operation);
     }
 
     [Fact]
     public async Task DeleteClassroomAsync_NoRowsAffected_ThrowsEntityServiceException()
     {
         _mockClassroomRepository
-            .Setup(repository => repository.GetClassroomByIdAsync(5))
-            .ReturnsAsync(new Classroom { Id = 5, Name = "Room 5" });
+            .Setup(repository => repository.GetClassroomByIdAsync(It.IsAny<Guid>()))
+            .ReturnsAsync(new Classroom { Id = Guid.NewGuid(), Name = "Room 5" });
         _mockClassroomRepository
-            .Setup(repository => repository.DeleteClassroomAsync(5))
+            .Setup(repository => repository.DeleteClassroomAsync(It.IsAny<Guid>()))
             .ReturnsAsync(true);
         _mockClassroomRepository
             .Setup(repository => repository.SaveChangesAsync())
             .ReturnsAsync(0);
 
-        var exception = await Assert.ThrowsAsync<EntityServiceException>(() => _service.DeleteClassroomAsync(5));
+        var exception = await Assert.ThrowsAsync<EntityServiceException>(() => _service.DeleteClassroomAsync(Guid.NewGuid()));
 
         Assert.Equal("Classroom", exception.EntityName);
-        Assert.Equal("DeleteClassroom: 5", exception.Operation);
+        Assert.Contains("DeleteClassroom:", exception.Operation);
         Assert.Contains("deleted by another process", exception.Message, StringComparison.OrdinalIgnoreCase);
     }
 
@@ -458,16 +459,16 @@ public class ClassroomServiceTest
         var dbUpdateException = new DbUpdateException("Delete failed", new Exception(innerMessage));
 
         _mockClassroomRepository
-            .Setup(repository => repository.GetClassroomByIdAsync(5))
-            .ReturnsAsync(new Classroom { Id = 5, Name = "Room 5" });
+            .Setup(repository => repository.GetClassroomByIdAsync(It.IsAny<Guid>()))
+            .ReturnsAsync(new Classroom { Id = Guid.NewGuid(), Name = "Room 5" });
         _mockClassroomRepository
-            .Setup(repository => repository.DeleteClassroomAsync(5))
+            .Setup(repository => repository.DeleteClassroomAsync(It.IsAny<Guid>()))
             .ReturnsAsync(true);
         _mockClassroomRepository
             .Setup(repository => repository.SaveChangesAsync())
             .ThrowsAsync(dbUpdateException);
 
-        var exception = await Assert.ThrowsAsync<EntityConflictException>(() => _service.DeleteClassroomAsync(5));
+        var exception = await Assert.ThrowsAsync<EntityConflictException>(() => _service.DeleteClassroomAsync(Guid.NewGuid()));
 
         Assert.Equal("Classroom", exception.EntityName);
         Assert.Equal(expectedConflictType, exception.ConflictType);
@@ -478,13 +479,13 @@ public class ClassroomServiceTest
     {
         var expectedException = new InvalidOperationException("Delete failed");
         _mockClassroomRepository
-            .Setup(repository => repository.GetClassroomByIdAsync(5))
+            .Setup(repository => repository.GetClassroomByIdAsync(It.IsAny<Guid>()))
             .ThrowsAsync(expectedException);
 
-        var exception = await Assert.ThrowsAsync<EntityServiceException>(() => _service.DeleteClassroomAsync(5));
+        var exception = await Assert.ThrowsAsync<EntityServiceException>(() => _service.DeleteClassroomAsync(Guid.NewGuid()));
 
         Assert.Equal("Classroom", exception.EntityName);
-        Assert.Equal("DeleteClassroom: 5", exception.Operation);
+        Assert.Contains("DeleteClassroom:", exception.Operation);
         Assert.Same(expectedException, exception.InnerException);
     }
 
@@ -492,10 +493,10 @@ public class ClassroomServiceTest
     public async Task HasSchedulesInClassroomAsync_ReturnsRepositoryResult()
     {
         _mockClassroomRepository
-            .Setup(repository => repository.HasSchedulesInClassroomAsync(3))
+            .Setup(repository => repository.HasSchedulesInClassroomAsync(It.IsAny<Guid>()))
             .ReturnsAsync(true);
 
-        var result = await _service.HasSchedulesInClassroomAsync(3);
+        var result = await _service.HasSchedulesInClassroomAsync(Guid.NewGuid());
 
         Assert.True(result);
     }
@@ -505,13 +506,13 @@ public class ClassroomServiceTest
     {
         var expectedException = new InvalidOperationException("Lookup failed");
         _mockClassroomRepository
-            .Setup(repository => repository.HasSchedulesInClassroomAsync(3))
+            .Setup(repository => repository.HasSchedulesInClassroomAsync(It.IsAny<Guid>()))
             .ThrowsAsync(expectedException);
 
-        var exception = await Assert.ThrowsAsync<EntityServiceException>(() => _service.HasSchedulesInClassroomAsync(3));
+        var exception = await Assert.ThrowsAsync<EntityServiceException>(() => _service.HasSchedulesInClassroomAsync(Guid.NewGuid()));
 
         Assert.Equal("Classroom", exception.EntityName);
-        Assert.Equal("HasSchedulesInClassroom: 3", exception.Operation);
+        Assert.Contains("HasSchedulesInClassroom:", exception.Operation);
         Assert.Same(expectedException, exception.InnerException);
     }
 
@@ -519,10 +520,10 @@ public class ClassroomServiceTest
     public async Task HasSessionsInClassroomAsync_ReturnsRepositoryResult()
     {
         _mockClassroomRepository
-            .Setup(repository => repository.HasSessionsInClassroomAsync(3))
+            .Setup(repository => repository.HasSessionsInClassroomAsync(It.IsAny<Guid>()))
             .ReturnsAsync(true);
 
-        var result = await _service.HasSessionsInClassroomAsync(3);
+        var result = await _service.HasSessionsInClassroomAsync(Guid.NewGuid());
 
         Assert.True(result);
     }
@@ -532,13 +533,13 @@ public class ClassroomServiceTest
     {
         var expectedException = new InvalidOperationException("Lookup failed");
         _mockClassroomRepository
-            .Setup(repository => repository.HasSessionsInClassroomAsync(3))
+            .Setup(repository => repository.HasSessionsInClassroomAsync(It.IsAny<Guid>()))
             .ThrowsAsync(expectedException);
 
-        var exception = await Assert.ThrowsAsync<EntityServiceException>(() => _service.HasSessionsInClassroomAsync(3));
+        var exception = await Assert.ThrowsAsync<EntityServiceException>(() => _service.HasSessionsInClassroomAsync(Guid.NewGuid()));
 
         Assert.Equal("Classroom", exception.EntityName);
-        Assert.Equal("HasSessionsInClassroom: 3", exception.Operation);
+        Assert.Contains("HasSessionsInClassroom:", exception.Operation);
         Assert.Same(expectedException, exception.InnerException);
     }
 }

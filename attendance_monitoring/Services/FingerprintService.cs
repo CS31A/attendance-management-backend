@@ -167,7 +167,7 @@ public class FingerprintService(
         }
 
         var student = await studentRepository.GetStudentByIdAsync(enrollmentSession.StudentId).ConfigureAwait(false)
-                      ?? throw new EntityNotFoundException<int>("Student", enrollmentSession.StudentId);
+                      ?? throw new EntityNotFoundException<Guid>("Student", enrollmentSession.StudentId);
 
         return MapEnrollmentSessionDto(enrollmentSession, device.DeviceIdentifier, student);
     }
@@ -178,7 +178,7 @@ public class FingerprintService(
 
         var enrollmentSession = await context.FingerprintEnrollmentSessions
             .Include(session => session.Device)
-            .FirstOrDefaultAsync(session => session.Uuid == sessionId)
+            .FirstOrDefaultAsync(session => session.Id == sessionId)
             .ConfigureAwait(false);
 
         if (enrollmentSession == null)
@@ -193,12 +193,12 @@ public class FingerprintService(
 
             enrollmentSession = await context.FingerprintEnrollmentSessions
                 .Include(session => session.Device)
-                .FirstAsync(session => session.Uuid == sessionId)
+                .FirstAsync(session => session.Id == sessionId)
                 .ConfigureAwait(false);
         }
 
         var student = await studentRepository.GetStudentByIdAsync(enrollmentSession.StudentId).ConfigureAwait(false)
-                      ?? throw new EntityNotFoundException<int>("Student", enrollmentSession.StudentId);
+                      ?? throw new EntityNotFoundException<Guid>("Student", enrollmentSession.StudentId);
 
         return MapEnrollmentSessionDto(enrollmentSession, enrollmentSession.Device.DeviceIdentifier, student);
     }
@@ -212,7 +212,7 @@ public class FingerprintService(
         var enrollmentSession = await context.FingerprintEnrollmentSessions
             .Include(session => session.Device)
             .FirstOrDefaultAsync(session =>
-                session.Uuid == request.Id)
+                session.Id == request.Id)
             .ConfigureAwait(false);
 
         if (enrollmentSession == null)
@@ -267,7 +267,7 @@ public class FingerprintService(
         }
 
         var student = await studentRepository.GetStudentByIdAsync(enrollmentSession.StudentId).ConfigureAwait(false)
-                      ?? throw new EntityNotFoundException<int>("Student", enrollmentSession.StudentId);
+                      ?? throw new EntityNotFoundException<Guid>("Student", enrollmentSession.StudentId);
         if (student.IsDeleted)
         {
             throw new ValidationException("Cannot complete enrollment for a deleted student");
@@ -326,8 +326,8 @@ public class FingerprintService(
         {
             Success = true,
             Message = "Fingerprint registered successfully",
-            Id = fingerprint.Uuid,
-            StudentId = student.Uuid,
+            Id = fingerprint.Id,
+            StudentId = student.Id,
             StudentName = $"{student.Firstname} {student.Lastname}"
         };
     }
@@ -422,7 +422,7 @@ public class FingerprintService(
             throw new EntityNotFoundException<Guid>("Fingerprint", studentId);
         }
 
-        return MapToResponseDto(fingerprint, student.Uuid);
+        return MapToResponseDto(fingerprint, student.Id);
     }
 
     public async Task<IEnumerable<FingerprintResponseDto>> GetFingerprintsByDeviceIdAsync(string deviceId, ClaimsPrincipal user)
@@ -437,7 +437,7 @@ public class FingerprintService(
         foreach (var fingerprint in fingerprints)
         {
             var student = await studentRepository.GetStudentByUserIdAsync(fingerprint.UserId).ConfigureAwait(false);
-            result.Add(MapToResponseDto(fingerprint, student?.Uuid));
+            result.Add(MapToResponseDto(fingerprint, student?.Id));
         }
 
         return result;
@@ -455,7 +455,7 @@ public class FingerprintService(
         foreach (var fingerprint in fingerprints)
         {
             var student = await studentRepository.GetStudentByUserIdAsync(fingerprint.UserId).ConfigureAwait(false);
-            result.Add(MapToResponseDto(fingerprint, student?.Uuid));
+            result.Add(MapToResponseDto(fingerprint, student?.Id));
         }
 
         return result;
@@ -479,7 +479,7 @@ public class FingerprintService(
 
     private async Task<FingerprintScanResponseDto> HandleMatchedFingerprintAsync(
         Fingerprint fingerprint,
-        int? requestedSessionId,
+        Guid? requestedSessionId,
         bool wasSessionRequested,
         string matchMethod,
         int? matchScore,
@@ -526,7 +526,7 @@ public class FingerprintService(
                 {
                     Success = false,
                     Message = "Session not found",
-                    StudentId = student.Uuid,
+                    StudentId = student.Id,
                     StudentName = $"{student.Firstname} {student.Lastname}",
                     MatchMethod = matchMethod,
                     MatchScore = matchScore
@@ -551,7 +551,7 @@ public class FingerprintService(
                 {
                     Success = false,
                     Message = "No active session found at this time",
-                    StudentId = student.Uuid,
+                    StudentId = student.Id,
                     StudentName = $"{student.Firstname} {student.Lastname}",
                     MatchMethod = matchMethod,
                     MatchScore = matchScore
@@ -576,7 +576,7 @@ public class FingerprintService(
             {
                 Success = false,
                 Message = "Student is not enrolled in this session",
-                StudentId = student.Uuid,
+                StudentId = student.Id,
                 StudentName = $"{student.Firstname} {student.Lastname}",
                 MatchMethod = matchMethod,
                 MatchScore = matchScore
@@ -594,7 +594,7 @@ public class FingerprintService(
         }
 
         FingerprintScanResponseDto? duplicateRecoveryResponse = null;
-        int? duplicateRecoveryAttendanceRecordId = null;
+        Guid? duplicateRecoveryAttendanceRecordId = null;
 
         await using (var transaction = await fingerprintRepository.BeginTransactionAsync().ConfigureAwait(false))
         {
@@ -653,16 +653,16 @@ public class FingerprintService(
                     Message = "Attendance marked successfully via fingerprint",
                     AttendanceMarked = true,
                     AttendanceTime = checkInTime,
-                    StudentId = student.Uuid,
+                    StudentId = student.Id,
                     StudentName = $"{student.Firstname} {student.Lastname}",
                     ClassName = session.Schedule.Section.Name,
                     SubjectName = session.Schedule.Subject.Name,
                     RoomName = session.ActualRoom?.Name ?? "TBD",
                     InstructorName = $"{session.Schedule.Instructor.Firstname} {session.Schedule.Instructor.Lastname}",
-                    AttendanceRecordId = createdRecord.Uuid,
+                    AttendanceRecordId = createdRecord.Id,
                     AttendanceStatus = attendanceRecord.Status,
                     IsDuplicateScan = false,
-                    SessionId = session.Uuid,
+                    SessionId = session.Id,
                     MatchMethod = matchMethod,
                     MatchScore = matchScore
                 };
@@ -720,7 +720,7 @@ public class FingerprintService(
         throw new InvalidOperationException("Fingerprint scan did not produce a response.");
     }
 
-    private async Task<Session?> FindActiveSessionForStudentAsync(int studentId)
+    private async Task<Session?> FindActiveSessionForStudentAsync(Guid studentId)
     {
         var now = _clock.GetLocalNow();
         var today = now.Date;
@@ -765,7 +765,7 @@ public class FingerprintService(
         return null;
     }
 
-    private async Task<bool> VerifyStudentEnrollmentAsync(int studentId, Session session)
+    private async Task<bool> VerifyStudentEnrollmentAsync(Guid studentId, Session session)
     {
         var student = await studentRepository.GetStudentByIdAsync(studentId).ConfigureAwait(false);
         if (student == null)
@@ -803,7 +803,7 @@ public class FingerprintService(
         return _attendanceService.DetermineAttendanceStatus(checkInTime, sessionStartTime, lateCutoffMinutes);
     }
 
-    private void DetachPendingAttendanceInsert(int studentId, int sessionId)
+    private void DetachPendingAttendanceInsert(Guid studentId, Guid sessionId)
     {
         var pendingEntries = context.ChangeTracker
             .Entries<AttendanceRecord>()
@@ -831,7 +831,7 @@ public class FingerprintService(
         FingerprintScanEvent? scanEvent,
         Student student,
         Session session,
-        int? attendanceRecordId)
+        Guid? attendanceRecordId)
     {
         if (scanEvent == null || attendanceRecordId == null)
         {
@@ -864,7 +864,7 @@ public class FingerprintService(
         }
     }
 
-    private void DetachPendingScanEventInsert(int attendanceRecordId)
+    private void DetachPendingScanEventInsert(Guid attendanceRecordId)
     {
         var pendingEntries = context.ChangeTracker
             .Entries<FingerprintScanEvent>()
@@ -900,16 +900,16 @@ public class FingerprintService(
             Message = "Already checked in",
             AttendanceMarked = false,
             AttendanceTime = duplicateAttendance.CheckInTime,
-            StudentId = student.Uuid,
+            StudentId = student.Id,
             StudentName = $"{student.Firstname} {student.Lastname}",
             ClassName = session.Schedule.Section.Name,
             SubjectName = session.Schedule.Subject.Name,
             RoomName = session.ActualRoom?.Name ?? "TBD",
             InstructorName = $"{session.Schedule.Instructor.Firstname} {session.Schedule.Instructor.Lastname}",
-            AttendanceRecordId = duplicateAttendance.Uuid,
+            AttendanceRecordId = duplicateAttendance.Id,
             AttendanceStatus = duplicateAttendance.Status,
             IsDuplicateScan = true,
-            SessionId = session.Uuid,
+            SessionId = session.Id,
             MatchMethod = matchMethod,
             MatchScore = matchScore
         };
@@ -919,7 +919,7 @@ public class FingerprintService(
     {
         return new FingerprintResponseDto
         {
-            Id = fingerprint.Uuid,
+            Id = fingerprint.Id,
             UserId = fingerprint.UserId,
             StudentId = studentId,
             DeviceId = fingerprint.DeviceId,
@@ -939,8 +939,8 @@ public class FingerprintService(
         {
             Success = true,
             Message = "Fingerprint enrollment session ready",
-            EnrollmentSessionId = enrollmentSession.Uuid,
-            StudentId = student.Uuid,
+            EnrollmentSessionId = enrollmentSession.Id,
+            StudentId = student.Id,
             StudentName = $"{student.Firstname} {student.Lastname}",
             DeviceId = deviceIdentifier,
             AssignedSensorFingerprintId = enrollmentSession.AssignedSensorFingerprintId,
@@ -961,7 +961,7 @@ public class FingerprintService(
         return student;
     }
 
-    private async Task<int?> ResolveOptionalSessionIdAsync(Guid? sessionId)
+    private async Task<Guid?> ResolveOptionalSessionIdAsync(Guid? sessionId)
     {
         if (!sessionId.HasValue)
         {
@@ -1072,7 +1072,7 @@ public class FingerprintService(
         return device;
     }
 
-    private async Task ExpireStaleEnrollmentSessionsAsync(int deviceId)
+    private async Task ExpireStaleEnrollmentSessionsAsync(Guid deviceId)
     {
         var staleSessions = await context.FingerprintEnrollmentSessions
             .Where(session =>

@@ -81,7 +81,6 @@ public class ClassroomControllerTest
         var classroomUuid = Guid.NewGuid();
         var expectedClassroom = new Classroom
         {
-            Id = Guid.NewGuid(),
             Id = classroomUuid,
             Name = "Room 204",
             CreatedAt = DateTime.UtcNow,
@@ -123,7 +122,7 @@ public class ClassroomControllerTest
 
         _mockClassroomService
             .Setup(s => s.GetClassroomByIdAsync(classroomId))
-            .ThrowsAsync(new EntityNotFoundException<int>("Classroom", classroomId));
+            .ThrowsAsync(new EntityNotFoundException<Guid>("Classroom", classroomId));
 
         // Act
         var result = await _controller.GetClassroom(classroomId);
@@ -231,7 +230,6 @@ public class ClassroomControllerTest
 
         var updatedClassroom = new Classroom
         {
-            Id = Guid.NewGuid(),
             Id = classroomUuid,
             Name = updateClassroom.Name!,
             CreatedAt = DateTime.UtcNow.AddDays(-1),
@@ -301,7 +299,7 @@ public class ClassroomControllerTest
         // Assert
         var badRequestResult = Assert.IsType<BadRequestObjectResult>(result.Result);
         Assert.IsType<SerializableError>(badRequestResult.Value);
-        _mockClassroomService.Verify(s => s.UpdateClassroomAsync(It.IsAny<int>(), It.IsAny<UpdateClassroom>()), Times.Never);
+        _mockClassroomService.Verify(s => s.UpdateClassroomAsync(It.IsAny<Guid>(), It.IsAny<UpdateClassroom>()), Times.Never);
     }
 
     [Fact]
@@ -360,10 +358,10 @@ public class ClassroomControllerTest
 
         _mockClassroomService
             .Setup(s => s.DeleteClassroomAsync(classroomId))
-            .ThrowsAsync(new EntityNotFoundException<int>("Classroom", classroomId));
+            .ThrowsAsync(new EntityNotFoundException<Guid>("Classroom", classroomId));
 
         // Act
-        var exception = await Assert.ThrowsAsync<EntityNotFoundException<int>>(() => _controller.DeleteClassroom(classroomId));
+        var exception = await Assert.ThrowsAsync<EntityNotFoundException<Guid>>(() => _controller.DeleteClassroom(classroomId));
 
         // Assert
         Assert.Equal($"Classroom with ID {classroomId} was not found.", exception.Message);

@@ -34,14 +34,14 @@ public class QrCodeRequest
     /// ensuring uniqueness and preventing collisions.
     ///
     /// Recommended formats:
-    /// - UUID-based: "uuid-{guid}" (e.g., "uuid-123e4567-e89b-12d3-a456-426614174000")
+    /// - UUID-based: "id-{guid}" (e.g., "id-123e4567-e89b-12d3-a456-426614174000")
     /// - Timestamp-based: "ts-{timestamp}" (e.g., "ts-1635789012345")
     /// - Custom: Any unique string up to 255 characters
     ///
     /// Purpose: Provides client-side control over QR code uniqueness and enables
     /// different QR codes for the same session when needed.
     /// </summary>
-    /// <example>uuid-123e4567-e89b-12d3-a456-426614174000</example>
+    /// <example>id-123e4567-e89b-12d3-a456-426614174000</example>
     /// <example>ts-1635789012345-instructor-001</example>
     [Required]
     [StringLength(255)]

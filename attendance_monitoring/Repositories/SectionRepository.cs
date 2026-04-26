@@ -10,7 +10,7 @@ namespace attendance_monitoring.Repositories
         #region Read Operations
 
         #region GetSectionByIdAsync
-        public async Task<Section?> GetSectionByIdAsync(int sectionId)
+        public async Task<Section?> GetSectionByIdAsync(Guid sectionId)
             => await context.Sections
                 .AsNoTracking()
                 .Include(section => section.Course)
@@ -19,19 +19,19 @@ namespace attendance_monitoring.Repositories
         #endregion
 
         #region GetSectionByUuidAsync
-        public async Task<Section?> GetSectionByUuidAsync(Guid uuid)
+        public async Task<Section?> GetSectionByUuidAsync(Guid id)
             => await context.Sections
                 .AsNoTracking()
                 .Include(section => section.Course)
-                .FirstOrDefaultAsync(s => s.Uuid == uuid)
+                .FirstOrDefaultAsync(s => s.Id == id)
                 .ConfigureAwait(false);
         #endregion
 
         #region GetSectionByUuidTrackedAsync
-        public async Task<Section?> GetSectionByUuidTrackedAsync(Guid uuid)
+        public async Task<Section?> GetSectionByUuidTrackedAsync(Guid id)
             => await context.Sections
                 .Include(section => section.Course)
-                .FirstOrDefaultAsync(s => s.Uuid == uuid)
+                .FirstOrDefaultAsync(s => s.Id == id)
                 .ConfigureAwait(false);
         #endregion
 
@@ -45,7 +45,7 @@ namespace attendance_monitoring.Repositories
         #endregion
 
         #region GetActiveStudentsBySectionIdAsync
-        public async Task<IEnumerable<Student>> GetActiveStudentsBySectionIdAsync(int sectionId)
+        public async Task<IEnumerable<Student>> GetActiveStudentsBySectionIdAsync(Guid sectionId)
             => await context.Students
                 .Include(s => s.User)
                 .AsNoTracking()
@@ -54,7 +54,7 @@ namespace attendance_monitoring.Repositories
         #endregion
 
         #region GetAllStudentsBySectionIdAsync
-        public async Task<IEnumerable<Student>> GetAllStudentsBySectionIdAsync(int sectionId)
+        public async Task<IEnumerable<Student>> GetAllStudentsBySectionIdAsync(Guid sectionId)
             => await context.Students
                 .Include(s => s.User)
                 .AsNoTracking()
@@ -79,7 +79,7 @@ namespace attendance_monitoring.Repositories
         #endregion
 
         #region UpdateSectionAsync
-        public async Task<Section?> UpdateSectionAsync(int id, Section section)
+        public async Task<Section?> UpdateSectionAsync(Guid id, Section section)
         {
             var existingSection = await context.Sections
                 .Include(s => s.Course)
@@ -100,7 +100,7 @@ namespace attendance_monitoring.Repositories
         #endregion
 
         #region DeleteSectionAsync
-        public async Task<bool> DeleteSectionAsync(int id)
+        public async Task<bool> DeleteSectionAsync(Guid id)
         {
             var section = await context.Sections.FindAsync(id).ConfigureAwait(false);
             if (section == null)
@@ -119,7 +119,7 @@ namespace attendance_monitoring.Repositories
         #region Dependency Check Operations
 
         #region HasStudentsInSectionAsync
-        public async Task<bool> HasStudentsInSectionAsync(int sectionId)
+        public async Task<bool> HasStudentsInSectionAsync(Guid sectionId)
         {
             return await context.Students
                 .AsNoTracking()
@@ -129,7 +129,7 @@ namespace attendance_monitoring.Repositories
         #endregion
 
         #region HasStudentEnrollmentsInSectionAsync
-        public async Task<bool> HasStudentEnrollmentsInSectionAsync(int sectionId)
+        public async Task<bool> HasStudentEnrollmentsInSectionAsync(Guid sectionId)
         {
             return await context.StudentEnrollments
                 .AsNoTracking()
@@ -139,7 +139,7 @@ namespace attendance_monitoring.Repositories
         #endregion
 
         #region HasSchedulesInSectionAsync
-        public async Task<bool> HasSchedulesInSectionAsync(int sectionId)
+        public async Task<bool> HasSchedulesInSectionAsync(Guid sectionId)
         {
             return await context.Schedules
                 .AsNoTracking()

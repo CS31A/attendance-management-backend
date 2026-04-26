@@ -80,7 +80,7 @@ namespace attendance_monitoring.Services
         /// <returns>The student with the specified ID</returns>
         /// <exception cref="T:attendance_monitoring.Exceptions.EntityNotFoundException{System.Int32}">Thrown when the student is not found</exception>
         /// <exception cref="EntityServiceException">Thrown when an error occurs during retrieval</exception>
-        public async Task<Student> GetStudentByIdAsync(int id)
+        public async Task<Student> GetStudentByIdAsync(Guid id)
         {
             try
             {
@@ -89,13 +89,13 @@ namespace attendance_monitoring.Services
                 if (student == null)
                 {
                     _logger.LogWarning("Student with ID {Id} not found", id);
-                    throw new EntityNotFoundException<int>("Student", id);
+                    throw new EntityNotFoundException<Guid>("Student", id);
                 }
 
                 _logger.LogInformation("Successfully retrieved student with ID: {Id}", id);
                 return student;
             }
-            catch (EntityNotFoundException<int>)
+            catch (EntityNotFoundException<Guid>)
             {
                 // Re-throw EntityNotFoundException as-is
                 throw;
@@ -110,23 +110,23 @@ namespace attendance_monitoring.Services
         /// <summary>
         /// Retrieves a specific student by UUID
         /// </summary>
-        /// <param name="uuid">The UUID of the student to retrieve</param>
+        /// <param name="id">The UUID of the student to retrieve</param>
         /// <returns>The student with the specified UUID</returns>
         /// <exception cref="T:attendance_monitoring.Exceptions.EntityNotFoundException{System.Guid}">Thrown when the student is not found</exception>
         /// <exception cref="EntityServiceException">Thrown when an error occurs during retrieval</exception>
-        public async Task<Student> GetStudentByUuidAsync(Guid uuid)
+        public async Task<Student> GetStudentByUuidAsync(Guid id)
         {
             try
             {
-                _logger.LogInformation("Retrieving student by UUID: {Uuid}", uuid);
-                var student = await _studentRepository.GetStudentByUuidAsync(uuid).ConfigureAwait(false);
+                _logger.LogInformation("Retrieving student by UUID: {Id}", id);
+                var student = await _studentRepository.GetStudentByUuidAsync(id).ConfigureAwait(false);
                 if (student == null)
                 {
-                    _logger.LogWarning("Student with UUID {Uuid} not found", uuid);
-                    throw new EntityNotFoundException<Guid>("Student", uuid);
+                    _logger.LogWarning("Student with UUID {Id} not found", id);
+                    throw new EntityNotFoundException<Guid>("Student", id);
                 }
 
-                _logger.LogInformation("Successfully retrieved student with UUID: {Uuid}", uuid);
+                _logger.LogInformation("Successfully retrieved student with UUID: {Id}", id);
                 return student;
             }
             catch (EntityNotFoundException<Guid>)
@@ -135,8 +135,8 @@ namespace attendance_monitoring.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error occurred while retrieving student with UUID: {Uuid}", uuid);
-                throw new EntityServiceException("Student", $"GetStudentByUuid: {uuid}", "An error occurred while retrieving the student", ex);
+                _logger.LogError(ex, "Error occurred while retrieving student with UUID: {Id}", id);
+                throw new EntityServiceException("Student", $"GetStudentByUuid: {id}", "An error occurred while retrieving the student", ex);
             }
         }
 
@@ -159,7 +159,7 @@ namespace attendance_monitoring.Services
                     createStudent.Firstname, createStudent.Lastname);
 
                 // Validate section ID
-                if (createStudent.SectionId <= 0)
+                if (createStudent.SectionId == Guid.Empty)
                 {
                     _logger.LogWarning("Student creation failed: Invalid section ID");
                     throw new EntityServiceException("Student", "CreateStudent", "Invalid section ID");
@@ -236,7 +236,7 @@ namespace attendance_monitoring.Services
         /// <exception cref="T:attendance_monitoring.Exceptions.EntityNotFoundException{System.Int32}">Thrown when the student is not found</exception>
         /// <exception cref="EntityUnauthorizedException">Thrown when the user is not authorized to update the student</exception>
         /// <exception cref="EntityServiceException">Thrown when student update fails</exception>
-        public async Task<Student> UpdateStudentAsync(int id, UpdateStudent updateStudent, ClaimsPrincipal userPrincipal)
+        public async Task<Student> UpdateStudentAsync(Guid id, UpdateStudent updateStudent, ClaimsPrincipal userPrincipal)
         {
             try
             {
@@ -253,7 +253,7 @@ namespace attendance_monitoring.Services
                 if (existingStudent == null)
                 {
                     _logger.LogWarning("Student update failed: Student with ID {Id} not found", id);
-                    throw new EntityNotFoundException<int>("Student", id);
+                    throw new EntityNotFoundException<Guid>("Student", id);
                 }
 
                 var isAuthorized = await _userContextService.IsAuthorizedAsync(userPrincipal, existingStudent.UserId, RoleConstants.Admin, RoleConstants.Instructor).ConfigureAwait(false);
@@ -286,7 +286,7 @@ namespace attendance_monitoring.Services
                 _logger.LogInformation("Successfully updated student with ID: {Id}", id);
                 return updatedStudent;
             }
-            catch (EntityNotFoundException<int>)
+            catch (EntityNotFoundException<Guid>)
             {
                 // Re-throw EntityNotFoundException as-is
                 throw;
@@ -319,13 +319,13 @@ namespace attendance_monitoring.Services
         /// <exception cref="T:attendance_monitoring.Exceptions.EntityNotFoundException{System.Int32}">Thrown when the student is not found</exception>
         /// <exception cref="EntityUnauthorizedException">Thrown when the user is not authorized to delete the student</exception>
         /// <exception cref="EntityServiceException">Thrown when student deletion fails</exception>
-        public async Task SoftDeleteStudentAsync(int id, ClaimsPrincipal userPrincipal)
+        public async Task SoftDeleteStudentAsync(Guid id, ClaimsPrincipal userPrincipal)
         {
             try
             {
                 _logger.LogInformation("Soft deleting student with ID: {Id}", id);
 
-                if (id <= 0)
+                if (id == Guid.Empty)
                 {
                     _logger.LogWarning("Student soft delete failed: Invalid student ID {Id}", id);
                     throw new EntityServiceException("Student", $"SoftDeleteStudent: {id}", "Invalid student ID");
@@ -342,7 +342,7 @@ namespace attendance_monitoring.Services
                 if (existingStudent == null)
                 {
                     _logger.LogWarning("Student soft delete failed: Student with ID {Id} not found", id);
-                    throw new EntityNotFoundException<int>("Student", id);
+                    throw new EntityNotFoundException<Guid>("Student", id);
                 }
 
                 var isAuthorized = await _userContextService.IsAuthorizedAsync(userPrincipal, existingStudent.UserId, RoleConstants.Admin, RoleConstants.Instructor).ConfigureAwait(false);
@@ -362,7 +362,7 @@ namespace attendance_monitoring.Services
                 await _studentRepository.SaveChangesAsync().ConfigureAwait(false);
                 _logger.LogInformation("Successfully soft deleted student with ID: {Id}", id);
             }
-            catch (EntityNotFoundException<int>)
+            catch (EntityNotFoundException<Guid>)
             {
                 // Re-throw EntityNotFoundException as-is
                 throw;
@@ -390,11 +390,11 @@ namespace attendance_monitoring.Services
         /// <param name="id">The ID of the student to delete</param>
         /// <param name="userPrincipal">The claims principal of the current user</param>
         /// <returns>A message indicating the result of the operation</returns>
-        public async Task<string?> HardDeleteStudentAsync(int id, ClaimsPrincipal userPrincipal)
+        public async Task<string?> HardDeleteStudentAsync(Guid id, ClaimsPrincipal userPrincipal)
         {
             _logger.LogInformation("Hard deleting student with ID: {Id}", id);
 
-            if (id <= 0)
+            if (id == Guid.Empty)
             {
                 _logger.LogWarning("Student hard delete failed: Invalid student ID {Id}", id);
                 return "Invalid student ID";
@@ -448,11 +448,11 @@ namespace attendance_monitoring.Services
         /// <param name="id">The ID of the student to restore</param>
         /// <param name="userPrincipal">The claims principal of the current user</param>
         /// <returns>A message indicating the result of the operation</returns>
-        public async Task<string?> RestoreStudentAsync(int id, ClaimsPrincipal userPrincipal)
+        public async Task<string?> RestoreStudentAsync(Guid id, ClaimsPrincipal userPrincipal)
         {
             _logger.LogInformation("Restoring student with ID: {Id}", id);
 
-            if (id <= 0)
+            if (id == Guid.Empty)
             {
                 _logger.LogWarning("Student restore failed: Invalid student ID {Id}", id);
                 return "Invalid student ID";
@@ -544,7 +544,7 @@ namespace attendance_monitoring.Services
                 {
                     Subject = new SubjectResponseDto
                     {
-                        Id = data.Subject.Uuid,
+                        Id = data.Subject.Id,
                         Name = data.Subject.Name,
                         Code = data.Subject.Code,
                         CreatedAt = data.Subject.CreatedAt,
@@ -552,14 +552,14 @@ namespace attendance_monitoring.Services
                     },
                     Schedule = new StudentSubjectScheduleDto
                     {
-                        Id = data.Schedule.Uuid,
+                        Id = data.Schedule.Id,
                         TimeIn = data.Schedule.TimeIn,
                         TimeOut = data.Schedule.TimeOut,
                         DayOfWeek = data.Schedule.DayOfWeek
                     },
                     Instructor = new InstructorResponseDto
                     {
-                        Id = data.Instructor.Uuid,
+                        Id = data.Instructor.Id,
                         Firstname = data.Instructor.Firstname,
                         Lastname = data.Instructor.Lastname,
                         Email = data.Instructor.User?.Email,
@@ -568,7 +568,7 @@ namespace attendance_monitoring.Services
                     },
                     Classroom = new ClassroomResponseDto
                     {
-                        Id = data.Classroom.Uuid,
+                        Id = data.Classroom.Id,
                         Name = data.Classroom.Name,
                         CreatedAt = data.Classroom.CreatedAt,
                         UpdatedAt = data.Classroom.UpdatedAt

@@ -68,7 +68,7 @@ public class NotificationHub : Hub
         await base.OnDisconnectedAsync(exception);
     }
 
-    public async Task JoinSessionGroup(int sessionId)
+    public async Task JoinSessionGroup(Guid sessionId)
     {
         var userId = Context.User?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (string.IsNullOrEmpty(userId))
@@ -89,12 +89,12 @@ public class NotificationHub : Hub
         }
     }
 
-    public async Task LeaveSessionGroup(int sessionId)
+    public async Task LeaveSessionGroup(Guid sessionId)
     {
         await Groups.RemoveFromGroupAsync(Context.ConnectionId, $"session:{sessionId}");
     }
 
-    private async Task<bool> IsUserAuthorizedForSession(string userId, int sessionId)
+    private async Task<bool> IsUserAuthorizedForSession(string userId, Guid sessionId)
     {
         try
         {

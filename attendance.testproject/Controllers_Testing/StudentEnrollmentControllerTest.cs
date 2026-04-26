@@ -57,10 +57,9 @@ public class StudentEnrollmentControllerTest
             EnrolledAt = DateTime.UtcNow,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow,
-            Id = Guid.NewGuid(),
-            Student = new Student { Id = Guid.NewGuid(), Id = request.StudentId, Firstname = "John", Lastname = "Doe" },
-            Section = new Section { Id = Guid.NewGuid(), Id = request.SectionId, Name = "CS-3B" },
-            Subject = new Subject { Id = Guid.NewGuid(), Id = request.SubjectId, Name = "Database Systems", Code = "CS301" }
+            Student = new Student { Id = request.StudentId, Firstname = "John", Lastname = "Doe" },
+            Section = new Section { Id = request.SectionId, Name = "CS-3B" },
+            Subject = new Subject { Id = request.SubjectId, Name = "Database Systems", Code = "CS301" }
         };
 
         _mockService.Setup(s => s.EnrollStudentAsync(request))
@@ -109,9 +108,9 @@ public class StudentEnrollmentControllerTest
             EnrolledAt = DateTime.UtcNow,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow,
-            Student = new Student { Id = Guid.NewGuid(), Id = request.StudentId, Firstname = "Slice", Lastname = "A" },
-            Section = new Section { Id = Guid.NewGuid(), Id = request.SectionId, Name = "BSCS 3A" },
-            Subject = new Subject { Id = Guid.NewGuid(), Id = request.SubjectId, Name = "Algorithms", Code = "CS303" }
+            Student = new Student { Id = request.StudentId, Firstname = "Slice", Lastname = "A" },
+            Section = new Section { Id = request.SectionId, Name = "BSCS 3A" },
+            Subject = new Subject { Id = request.SubjectId, Name = "Algorithms", Code = "CS303" }
         };
 
         _mockService.Setup(s => s.EnrollStudentAsync(request))
@@ -146,7 +145,7 @@ public class StudentEnrollmentControllerTest
         };
 
         _mockService.Setup(s => s.EnrollStudentAsync(request))
-            .ThrowsAsync(new EntityNotFoundException<int>("Student", 999));
+            .ThrowsAsync(new EntityNotFoundException<Guid>("Student", Guid.NewGuid()));
 
         // Act
         var result = await _controller.EnrollStudent(request);
@@ -272,7 +271,7 @@ public class StudentEnrollmentControllerTest
     {
         // Arrange
         var studentId = Guid.NewGuid();
-        var student = new Student { Id = studentId, Firstname = "Alice", Lastname = "Smith", Id = Guid.NewGuid() };
+        var student = new Student { Id = studentId, Firstname = "Alice", Lastname = "Smith" };
         var enrollments = new List<StudentEnrollment>
         {
             new StudentEnrollment
@@ -334,14 +333,13 @@ public class StudentEnrollmentControllerTest
         {
             new()
             {
-                Id = Guid.NewGuid(),
                 Id = enrollmentUuid,
                 StudentId = Guid.NewGuid(),
-                Student = new Student { Id = Guid.NewGuid(), Id = studentUuid, Firstname = "John", Lastname = "Doe" },
+                Student = new Student { Id = studentUuid, Firstname = "John", Lastname = "Doe" },
                 SectionId = Guid.NewGuid(),
-                Section = new Section { Id = Guid.NewGuid(), Id = sectionUuid, Name = "CS-3B" },
+                Section = new Section { Id = sectionUuid, Name = "CS-3B" },
                 SubjectId = Guid.NewGuid(),
-                Subject = new Subject { Id = Guid.NewGuid(), Id = subjectUuid, Name = "Database Systems", Code = "CS301" },
+                Subject = new Subject { Id = subjectUuid, Name = "Database Systems", Code = "CS301" },
                 IsActive = true,
                 EnrollmentType = "Retake",
                 EnrolledAt = DateTime.UtcNow
@@ -386,7 +384,7 @@ public class StudentEnrollmentControllerTest
         var enrollments = new List<StudentEnrollment>();
 
         _mockService.Setup(s => s.GetStudentByIdAsync(studentId))
-            .ReturnsAsync(new Student { Id = studentId, Id = studentUuid });
+            .ReturnsAsync(new Student { Id = studentUuid });
         _mockService.Setup(s => s.GetStudentEnrollmentsAsync(studentId))
             .ReturnsAsync(enrollments);
 
@@ -406,12 +404,12 @@ public class StudentEnrollmentControllerTest
         var studentId = Guid.NewGuid();
 
         _mockService.Setup(s => s.GetStudentByIdAsync(studentId))
-            .ThrowsAsync(new EntityNotFoundException<int>("Student", studentId));
+            .ThrowsAsync(new EntityNotFoundException<Guid>("Student", studentId));
 
         var result = await _controller.GetStudentEnrollments(studentId);
 
         Assert.IsType<NotFoundObjectResult>(result.Result);
-        _mockService.Verify(s => s.GetStudentEnrollmentsAsync(It.IsAny<int>()), Times.Never);
+        _mockService.Verify(s => s.GetStudentEnrollmentsAsync(It.IsAny<Guid>()), Times.Never);
     }
 
     #endregion
@@ -486,11 +484,11 @@ public class StudentEnrollmentControllerTest
             {
                 Id = Guid.NewGuid(),
                 StudentId = Guid.NewGuid(),
-                Student = new Student { Id = Guid.NewGuid(), Id = studentUuid, Firstname = "John", Lastname = "Doe" },
+                Student = new Student { Id = studentUuid, Firstname = "John", Lastname = "Doe" },
                 SectionId = Guid.NewGuid(),
-                Section = new Section { Id = Guid.NewGuid(), Id = sectionUuid, Name = "CS-3B" },
+                Section = new Section { Id = sectionUuid, Name = "CS-3B" },
                 SubjectId = Guid.NewGuid(),
-                Subject = new Subject { Id = Guid.NewGuid(), Id = subjectUuid, Name = "Database Systems", Code = "CS301" },
+                Subject = new Subject { Id = subjectUuid, Name = "Database Systems", Code = "CS301" },
                 IsActive = true,
                 EnrollmentType = "Retake",
                 EnrolledAt = DateTime.UtcNow,
@@ -628,7 +626,7 @@ public class StudentEnrollmentControllerTest
         // Arrange
         var enrollmentId = Guid.NewGuid();
         _mockService.Setup(s => s.DropStudentFromSubjectAsync(enrollmentId))
-            .ThrowsAsync(new EntityNotFoundException<int>("Enrollment", enrollmentId));
+            .ThrowsAsync(new EntityNotFoundException<Guid>("Enrollment", enrollmentId));
 
         // Act
         var result = await _controller.DropStudent(enrollmentId);
@@ -721,7 +719,7 @@ public class StudentEnrollmentControllerTest
         // Arrange
         var enrollmentId = Guid.NewGuid();
         _mockService.Setup(s => s.ReenrollStudentAsync(enrollmentId))
-            .ThrowsAsync(new EntityNotFoundException<int>("Enrollment", enrollmentId));
+            .ThrowsAsync(new EntityNotFoundException<Guid>("Enrollment", enrollmentId));
 
         // Act
         var result = await _controller.ReenrollStudent(enrollmentId);

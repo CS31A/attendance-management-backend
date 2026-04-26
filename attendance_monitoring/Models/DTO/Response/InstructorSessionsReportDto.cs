@@ -14,7 +14,7 @@ public class InstructorSessionItemDto : SessionAttendanceStatsDto
 /// </summary>
 public class InstructorSessionsReportDto
 {
-    public int InstructorId { get; set; }
+    public Guid InstructorId { get; set; }
     public string InstructorName { get; set; } = string.Empty;
     public int TotalSessions { get; set; }
     public List<InstructorSessionItemDto> Sessions { get; set; } = new();

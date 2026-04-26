@@ -4,10 +4,10 @@ public class QrCodeValidationResponseDto
 {
     public bool IsValid { get; set; }
     public string Message { get; set; } = string.Empty;
-    public int? QrCodeId { get; set; }
-    public int? ScheduleId { get; set; }
-    public int? SectionId { get; set; }
-    public int? ActualRoomId { get; set; }
+    public Guid? QrCodeId { get; set; }
+    public Guid? ScheduleId { get; set; }
+    public Guid? SectionId { get; set; }
+    public Guid? ActualRoomId { get; set; }
     public DateTime? ExpiresAt { get; set; }
     public int? RemainingUsage { get; set; }
     public bool? AttendanceRecorded { get; set; }

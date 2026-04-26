@@ -15,14 +15,14 @@ public interface ISessionService
     /// </summary>
     /// <param name="id">The session ID</param>
     /// <returns>Session response DTO if found</returns>
-    Task<SessionResponseDto?> GetSessionByIdAsync(int id);
+    Task<SessionResponseDto?> GetSessionByIdAsync(Guid id);
 
     /// <summary>
     /// Retrieves a session by its UUID.
     /// </summary>
-    /// <param name="uuid">The session UUID</param>
+    /// <param name="id">The session UUID</param>
     /// <returns>Session response DTO if found</returns>
-    Task<SessionResponseDto?> GetSessionByUuidAsync(Guid uuid);
+    Task<SessionResponseDto?> GetSessionByUuidAsync(Guid id);
 
     /// <summary>
     /// Retrieves all sessions.
@@ -35,7 +35,7 @@ public interface ISessionService
     /// </summary>
     /// <param name="scheduleId">The schedule ID</param>
     /// <returns>Collection of session response DTOs</returns>
-    Task<IEnumerable<SessionResponseDto>> GetSessionsByScheduleIdAsync(int scheduleId);
+    Task<IEnumerable<SessionResponseDto>> GetSessionsByScheduleIdAsync(Guid scheduleId);
 
     /// <summary>
     /// Retrieves sessions for a specific schedule UUID.
@@ -68,7 +68,7 @@ public interface ISessionService
     /// <exception cref="EntityNotFoundException{TKey}">Thrown when session is not found</exception>
     /// <exception cref="ValidationException">Thrown when session is not active</exception>
     /// <exception cref="EntityServiceException">Thrown when an unexpected error occurs</exception>
-    Task<SessionResponseDto> UpdateSessionRoomAsync(int sessionId, UpdateSessionRoom updateRequest);
+    Task<SessionResponseDto> UpdateSessionRoomAsync(Guid sessionId, UpdateSessionRoom updateRequest);
 
     /// <summary>
     /// Updates the actual room for a session by its UUID.
@@ -101,7 +101,7 @@ public interface ISessionService
     /// <exception cref="EntityNotFoundException{TKey}">Thrown when session is not found</exception>
     /// <exception cref="ValidationException">Thrown when session cannot be started</exception>
     /// <exception cref="EntityServiceException">Thrown when an unexpected error occurs</exception>
-    Task<SessionResponseDto> StartSessionAsync(int sessionId, StartSession request);
+    Task<SessionResponseDto> StartSessionAsync(Guid sessionId, StartSession request);
 
     /// <summary>
     /// Starts a session, marking it as active, by its UUID.
@@ -123,7 +123,7 @@ public interface ISessionService
     /// <exception cref="EntityNotFoundException{TKey}">Thrown when session is not found</exception>
     /// <exception cref="ValidationException">Thrown when session cannot be ended</exception>
     /// <exception cref="EntityServiceException">Thrown when an unexpected error occurs</exception>
-    Task<SessionResponseDto> EndSessionAsync(int sessionId, EndSession request);
+    Task<SessionResponseDto> EndSessionAsync(Guid sessionId, EndSession request);
 
     /// <summary>
     /// Ends an active session by its UUID.
@@ -145,7 +145,7 @@ public interface ISessionService
     /// <exception cref="EntityNotFoundException{TKey}">Thrown when session is not found</exception>
     /// <exception cref="ValidationException">Thrown when session cannot be cancelled</exception>
     /// <exception cref="EntityServiceException">Thrown when an unexpected error occurs</exception>
-    Task<SessionResponseDto> CancelSessionAsync(int sessionId, CancelSession request);
+    Task<SessionResponseDto> CancelSessionAsync(Guid sessionId, CancelSession request);
 
     /// <summary>
     /// Cancels a session that has not started yet, by its UUID.

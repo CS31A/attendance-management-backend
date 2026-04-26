@@ -162,9 +162,9 @@ namespace attendance_monitoring.IRepository
         /// <summary>
         /// Gets an admin profile by UUID.
         /// </summary>
-        /// <param name="uuid">The admin UUID.</param>
+        /// <param name="id">The admin UUID.</param>
         /// <returns>The admin profile if found; otherwise, null.</returns>
-        Task<Admin?> GetAdminByUuidAsync(Guid uuid);
+        Task<Admin?> GetAdminByUuidAsync(Guid id);
 
         /// <summary>
         /// Updates a student profile.
@@ -231,7 +231,7 @@ namespace attendance_monitoring.IRepository
             string? email = null,
             string? firstname = null,
             string? lastname = null,
-            int? sectionId = null,
+            Guid? sectionId = null,
             bool? isRegular = null);
     }
 }

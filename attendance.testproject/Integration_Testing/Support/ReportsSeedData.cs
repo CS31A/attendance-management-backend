@@ -16,19 +16,19 @@ internal sealed class ReportsScenarioContext
     public required string OtherInstructorUserId { get; init; }
     public required string StudentUserId { get; init; }
     public required string OutsiderStudentUserId { get; init; }
-    public required int InstructorId { get; init; }
+    public required Guid InstructorId { get; init; }
     public required Guid InstructorUuid { get; init; }
-    public required int OtherInstructorId { get; init; }
+    public required Guid OtherInstructorId { get; init; }
     public required Guid OtherInstructorUuid { get; init; }
-    public required int StudentId { get; init; }
+    public required Guid StudentId { get; init; }
     public required Guid StudentUuid { get; init; }
-    public required int OutsiderStudentId { get; init; }
+    public required Guid OutsiderStudentId { get; init; }
     public required Guid OutsiderStudentUuid { get; init; }
-    public required int SectionId { get; init; }
+    public required Guid SectionId { get; init; }
     public required Guid SectionUuid { get; init; }
-    public required int SessionId { get; init; }
+    public required Guid SessionId { get; init; }
     public required Guid SessionUuid { get; init; }
-    public required int ScheduleId { get; init; }
+    public required Guid ScheduleId { get; init; }
     public required Guid ScheduleUuid { get; init; }
 }
 

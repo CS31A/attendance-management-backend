@@ -257,7 +257,6 @@ public class RefreshTokenServiceTest : IDisposable
         var userId = "user-123";
         var existingRevokedToken = new RefreshToken
         {
-            Id = 1,
             UserId = userId,
             TokenHash = "existing-hash",
             IsRevoked = true,
@@ -285,7 +284,6 @@ public class RefreshTokenServiceTest : IDisposable
         var token = "valid-token";
         var storedToken = new RefreshToken
         {
-            Id = 1,
             UserId = userId,
             TokenHash = "hash",
             IsRevoked = false,
@@ -337,7 +335,6 @@ public class RefreshTokenServiceTest : IDisposable
         var token = "valid-token";
         var storedToken = new RefreshToken
         {
-            Id = 1,
             UserId = "different-user",
             TokenHash = "hash",
             IsRevoked = false,
@@ -363,7 +360,6 @@ public class RefreshTokenServiceTest : IDisposable
         var token = "valid-token";
         var storedToken = new RefreshToken
         {
-            Id = 1,
             UserId = userId,
             TokenHash = "hash",
             IsRevoked = false,
@@ -396,7 +392,6 @@ public class RefreshTokenServiceTest : IDisposable
         var oldToken = "valid-old-token";
         var storedToken = new RefreshToken
         {
-            Id = 1,
             UserId = userId,
             TokenHash = "old-hash",
             IsRevoked = false,
@@ -455,7 +450,6 @@ public class RefreshTokenServiceTest : IDisposable
         var oldToken = "valid-old-token";
         var storedToken = new RefreshToken
         {
-            Id = 1,
             UserId = userId,
             TokenHash = "old-hash",
             IsRevoked = false,
@@ -482,7 +476,6 @@ public class RefreshTokenServiceTest : IDisposable
         var oldToken = "valid-old-token";
         var storedToken = new RefreshToken
         {
-            Id = 1,
             UserId = userId,
             TokenHash = "old-hash",
             IsRevoked = false,
@@ -491,7 +484,6 @@ public class RefreshTokenServiceTest : IDisposable
 
         var newTokenEntity = new RefreshToken
         {
-            Id = 2,
             UserId = userId,
             TokenHash = "new-hash",
             IsRevoked = false,
@@ -521,7 +513,6 @@ public class RefreshTokenServiceTest : IDisposable
         var oldToken = "valid-old-token";
         var storedToken = new RefreshToken
         {
-            Id = 1,
             UserId = userId,
             TokenHash = "old-hash",
             IsRevoked = false,
@@ -530,7 +521,6 @@ public class RefreshTokenServiceTest : IDisposable
 
         var newTokenEntity = new RefreshToken
         {
-            Id = 2,
             UserId = userId,
             TokenHash = "new-hash",
             IsRevoked = false,
@@ -563,7 +553,6 @@ public class RefreshTokenServiceTest : IDisposable
         var oldToken = "valid-old-token";
         var storedToken = new RefreshToken
         {
-            Id = 1,
             UserId = userId,
             TokenHash = "old-hash",
             IsRevoked = false,
