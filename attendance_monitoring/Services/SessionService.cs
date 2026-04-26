@@ -165,7 +165,7 @@ public class SessionService : ISessionService
 
         try
         {
-            // When requesting "ended" sessions, fetch both Active and Ended statuses.
+            // When requesting SessionStatusConstants.Ended sessions, fetch both Active and Ended statuses.
             // Active sessions are needed for NormalizeExpiredSessionsAsync which converts
             // expired active sessions to ended status. Cancelled and not_started sessions
             // are not needed for this operation.

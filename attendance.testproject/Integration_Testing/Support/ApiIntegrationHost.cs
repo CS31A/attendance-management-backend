@@ -258,6 +258,7 @@ internal sealed class ApiIntegrationHost : IAsyncDisposable
             options.LoginPath = PathString.Empty;
             options.AccessDeniedPath = PathString.Empty;
         });
+        builder.Services.Configure<attendance_monitoring.Options.SessionAutoEndOptions>(options => options.Enabled = false);
         builder.Services.AddAuthorizationPolicies();
         builder.Services.AddResponseHandling();
         builder.Services.AddCorsPolicy(builder.Configuration);
@@ -335,6 +336,7 @@ internal sealed class ApiIntegrationHost : IAsyncDisposable
             options.LoginPath = PathString.Empty;
             options.AccessDeniedPath = PathString.Empty;
         });
+        builder.Services.Configure<attendance_monitoring.Options.SessionAutoEndOptions>(options => options.Enabled = false);
         builder.Services.AddAuthorizationPolicies();
         builder.Services.AddResponseHandling();
         builder.Services.AddCorsPolicy(builder.Configuration);
@@ -420,6 +422,7 @@ internal sealed class ApiIntegrationHost : IAsyncDisposable
             options.LoginPath = PathString.Empty;
             options.AccessDeniedPath = PathString.Empty;
         });
+        builder.Services.Configure<attendance_monitoring.Options.SessionAutoEndOptions>(options => options.Enabled = false);
         builder.Services.AddAuthorizationPolicies();
         builder.Services.AddResponseHandling();
         builder.Services.AddCorsPolicy(builder.Configuration);

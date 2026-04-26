@@ -122,6 +122,7 @@ internal static class AttendanceQrSeedData
             ActualStartTime = now.AddMinutes(-10),
             AttendanceCutOff = now.AddMinutes(5),
             ActualRoom = classroom,
+            RowVersion = [1, 2, 3, 4],
             CreatedAt = now,
             UpdatedAt = now
         };
