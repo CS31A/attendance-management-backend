@@ -34,7 +34,6 @@ namespace attendance_monitoring.Repositories
                     u.Email,
                     ISNULL(r.Name, 'Unknown') AS Role,
                     COALESCE(s.Id, i.Id, a.Id) AS ProfileId,
-                    COALESCE(s.Uuid, i.Uuid, a.Uuid) AS ProfileUuid,
                     COALESCE(s.Firstname, i.Firstname, a.Firstname) AS Firstname,
                     COALESCE(s.Lastname, i.Lastname, a.Lastname) AS Lastname,
                     COALESCE(s.CreatedAt, i.CreatedAt, a.CreatedAt, GETUTCDATE()) AS CreatedAt,
@@ -97,13 +96,13 @@ namespace attendance_monitoring.Repositories
                 Role = string.IsNullOrEmpty(role.Name) ? "Unknown" : RoleConstants.NormalizeRole(role.Name),
                 StudentProfile = student != null ? new StudentProfileDto
                 {
-                    Id = student.Uuid,
+                    Id = student.Id,
                     Firstname = student.Firstname,
                     Lastname = student.Lastname,
                     IsRegular = student.IsRegular,
-                    SectionId = student.Section != null ? student.Section.Uuid : null,
+                    SectionId = student.Section != null ? student.Section.Id : null,
                     SectionName = student.Section != null ? student.Section.Name : null,
-                    CourseId = student.Section != null && student.Section.Course != null ? student.Section.Course.Uuid : null,
+                    CourseId = student.Section != null && student.Section.Course != null ? student.Section.Course.Id : null,
                     CourseName = student.Section != null && student.Section.Course != null ? student.Section.Course.Name : null,
                     CreatedAt = student.CreatedAt,
                     UpdatedAt = student.UpdatedAt,
@@ -112,7 +111,7 @@ namespace attendance_monitoring.Repositories
                 } : null,
                 InstructorProfile = instructor != null ? new InstructorProfileDto
                 {
-                    Id = instructor.Uuid,
+                    Id = instructor.Id,
                     Firstname = instructor.Firstname,
                     Lastname = instructor.Lastname,
                     Department = instructor.Department,
@@ -123,7 +122,7 @@ namespace attendance_monitoring.Repositories
                 } : null,
                 AdminProfile = admin != null ? new AdminProfileDto
                 {
-                    Id = admin.Uuid,
+                    Id = admin.Id,
                     Firstname = admin.Firstname,
                     Lastname = admin.Lastname,
                     CreatedAt = admin.CreatedAt,
@@ -161,12 +160,12 @@ namespace attendance_monitoring.Repositories
                 Role = string.IsNullOrEmpty(r.Role) ? "Unknown" : RoleConstants.NormalizeRole(r.Role),
                 StudentProfile = r.Role.Equals("Student", StringComparison.OrdinalIgnoreCase) && r.ProfileId.HasValue ? new StudentProfileDto
                 {
-                    Id = r.ProfileUuid ?? Guid.Empty,
+                    Id = r.ProfileId ?? Guid.Empty,
                     Firstname = r.Firstname ?? string.Empty,
                     Lastname = r.Lastname ?? string.Empty,
-                    SectionId = r.SectionUuid,
+                    SectionId = r.SectionId,
                     SectionName = r.SectionName,
-                    CourseId = r.CourseUuid,
+                    CourseId = r.CourseId,
                     CourseName = r.CourseName,
                     IsRegular = r.IsRegular ?? false,
                     CreatedAt = r.CreatedAt ?? DateTime.UtcNow,
@@ -176,7 +175,7 @@ namespace attendance_monitoring.Repositories
                 } : null,
                 InstructorProfile = RoleConstants.IsInstructorRole(r.Role) && r.ProfileId.HasValue ? new InstructorProfileDto
                 {
-                    Id = r.ProfileUuid ?? Guid.Empty,
+                    Id = r.ProfileId ?? Guid.Empty,
                     Firstname = r.Firstname,
                     Lastname = r.Lastname,
                     Department = r.Department,
@@ -187,7 +186,7 @@ namespace attendance_monitoring.Repositories
                 } : null,
                 AdminProfile = r.Role.Equals("Admin", StringComparison.OrdinalIgnoreCase) && r.ProfileId.HasValue ? new AdminProfileDto
                 {
-                    Id = r.ProfileUuid ?? Guid.Empty,
+                    Id = r.ProfileId ?? Guid.Empty,
                     Firstname = r.Firstname,
                     Lastname = r.Lastname,
                     CreatedAt = r.CreatedAt ?? DateTime.UtcNow,
@@ -209,16 +208,13 @@ namespace attendance_monitoring.Repositories
             public string Username { get; set; } = string.Empty;
             public string Email { get; set; } = string.Empty;
             public string Role { get; set; } = string.Empty;
-            public int? ProfileId { get; set; }
-            public Guid? ProfileUuid { get; set; }
+            public Guid? ProfileId { get; set; }
             public string? Firstname { get; set; }
             public string? Lastname { get; set; }
             public string? Department { get; set; }
-            public int? SectionId { get; set; }
-            public Guid? SectionUuid { get; set; }
+            public Guid? SectionId { get; set; }
             public string? SectionName { get; set; }
-            public int? CourseId { get; set; }
-            public Guid? CourseUuid { get; set; }
+            public Guid? CourseId { get; set; }
             public string? CourseName { get; set; }
             public bool? IsRegular { get; set; }
             public DateTime? CreatedAt { get; set; }
@@ -418,11 +414,11 @@ namespace attendance_monitoring.Repositories
         #endregion
 
         #region GetAdminByUuidAsync
-        public async Task<Admin?> GetAdminByUuidAsync(Guid uuid)
+        public async Task<Admin?> GetAdminByUuidAsync(Guid id)
         {
             return await context.Admins
                 .AsNoTracking()
-                .FirstOrDefaultAsync(a => a.Uuid == uuid && !a.IsDeleted)
+                .FirstOrDefaultAsync(a => a.Id == id && !a.IsDeleted)
                 .ConfigureAwait(false);
         }
         #endregion
@@ -531,99 +527,6 @@ namespace attendance_monitoring.Repositories
             }
 
             return (false, "No response from stored procedure");
-        }
-
-        /// <summary>
-        /// Updates user profile using stored procedure
-        /// </summary>
-        public async Task<(bool Success, GetAllUsersDto? User, string Message)> UpdateUserAsyncSP(
-            string userId,
-            string? email = null,
-            string? firstname = null,
-            string? lastname = null,
-            int? sectionId = null,
-            bool? isRegular = null)
-        {
-            try
-            {
-                var parameters = new
-                {
-                    UserId = userId,
-                    Email = email,
-                    Firstname = firstname,
-                    Lastname = lastname,
-                    SectionId = sectionId,
-                    IsRegular = isRegular
-                };
-                var result = await QueryFirstOrDefaultStoredProcedureAsync<dynamic>(
-                    "sp_UpdateUser",
-                    parameters).ConfigureAwait(false);
-
-                if (result != null)
-                {
-                    bool success = result.Success;
-                    string message = result.Message ?? "Unknown error";
-
-                    if (success)
-                    {
-                        var userDto = new GetAllUsersDto
-                        {
-                            UserId = result.UserId,
-                            Username = result.Username,
-                            Email = result.Email,
-                            Role = result.Role
-                        };
-
-                        // Populate appropriate profile based on role
-                        string role = result.Role?.ToString() ?? "";
-                        if (role.Equals("Student", StringComparison.OrdinalIgnoreCase))
-                        {
-                            userDto.StudentProfile = new StudentProfileDto
-                            {
-                                Id = result.ProfileUuid ?? Guid.Empty,
-                                Firstname = result.Firstname ?? string.Empty,
-                                Lastname = result.Lastname ?? string.Empty,
-                                SectionId = result.SectionUuid,
-                                CourseId = result.CourseUuid,
-                                CreatedAt = result.CreatedAt,
-                                UpdatedAt = result.UpdatedAt
-                            };
-                        }
-                        else if (RoleConstants.IsInstructorRole(role))
-                        {
-                            userDto.InstructorProfile = new InstructorProfileDto
-                            {
-                                Id = result.ProfileUuid ?? Guid.Empty,
-                                Firstname = result.Firstname,
-                                Lastname = result.Lastname,
-                                CreatedAt = result.CreatedAt,
-                                UpdatedAt = result.UpdatedAt
-                            };
-                        }
-                        else if (role.Equals("Admin", StringComparison.OrdinalIgnoreCase))
-                        {
-                            userDto.AdminProfile = new AdminProfileDto
-                            {
-                                Id = result.ProfileUuid ?? Guid.Empty,
-                                Firstname = result.Firstname,
-                                Lastname = result.Lastname,
-                                CreatedAt = result.CreatedAt,
-                                UpdatedAt = result.UpdatedAt
-                            };
-                        }
-
-                        return (true, userDto, message);
-                    }
-
-                    return (false, null, message);
-                }
-
-                return (false, null, "No response from stored procedure");
-            }
-            catch (Exception ex)
-            {
-                return (false, null, $"Database error: {ex.Message}");
-            }
         }
         #endregion
 

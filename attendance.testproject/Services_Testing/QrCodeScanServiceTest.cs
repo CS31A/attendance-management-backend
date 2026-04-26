@@ -59,11 +59,11 @@ public class QrCodeScanServiceTest
             .Setup(repository => repository.GetStudentByUserIdAsync("student-user"))
             .ReturnsAsync(new Student
             {
-                Id = 7,
+                Id = Guid.NewGuid(),
                 UserId = "student-user",
                 Firstname = "Sam",
                 Lastname = "Student",
-                SectionId = 1
+                SectionId = Guid.NewGuid()
             });
 
         qrCodeRepository
@@ -103,23 +103,25 @@ public class QrCodeScanServiceTest
         var userContextService = new Mock<IUserContextService>();
         var transaction = new Mock<IDbContextTransaction>();
 
+        var sectionId = Guid.NewGuid();
+        var subjectId = Guid.NewGuid();
         var student = new Student
         {
-            Id = 7,
+            Id = Guid.NewGuid(),
             UserId = "student-user",
             Firstname = "Sam",
             Lastname = "Student",
-            SectionId = 1
+            SectionId = sectionId
         };
 
         var session = new Session
         {
-            Id = 15,
+            Id = Guid.NewGuid(),
             ActualRoom = new Classroom { Name = "Integration Room 1" },
             Schedule = new Schedules
             {
-                SectionId = 1,
-                SubjectId = 2,
+                SectionId = sectionId,
+                SubjectId = subjectId,
                 Section = new Section { Name = "INT-SEC-A" },
                 Subject = new Subject { Name = "Integration Testing" },
                 Instructor = new Instructor
@@ -133,7 +135,7 @@ public class QrCodeScanServiceTest
 
         var qrCode = new QrCode
         {
-            Id = 31,
+            Id = Guid.NewGuid(),
             QrHash = "test-hash",
             SessionId = session.Id,
             Session = session,
@@ -171,12 +173,12 @@ public class QrCodeScanServiceTest
 
         attendanceService
             .Setup(service => service.CreateAttendanceFromQrScanAsync(student.Id, session.Id, qrCode.Id, It.IsAny<DateTime>()))
-            .Callback<int, int, int, DateTime>((_, _, _, checkInTime) => capturedCheckInTime = checkInTime)
+            .Callback<Guid, Guid, Guid, DateTime>((_, _, _, checkInTime) => capturedCheckInTime = checkInTime)
             .ReturnsAsync(new AttendanceRecordResponseDto
             {
                 Id = Guid.NewGuid(),
-                StudentId = student.Uuid,
-                SessionId = session.Uuid,
+                StudentId = student.Id,
+                SessionId = session.Id,
                 CheckInTime = DateTime.Now,
                 Status = "Present"
             });
@@ -234,23 +236,25 @@ public class QrCodeScanServiceTest
         var notificationService = new Mock<INotificationService>();
         var userContextService = new Mock<IUserContextService>();
 
+        var sectionId = Guid.NewGuid();
+        var subjectId = Guid.NewGuid();
         var student = new Student
         {
-            Id = 7,
+            Id = Guid.NewGuid(),
             UserId = "student-user",
             Firstname = "Sam",
             Lastname = "Student",
-            SectionId = 1
+            SectionId = sectionId
         };
 
         var session = new Session
         {
-            Id = 15,
+            Id = Guid.NewGuid(),
             ActualRoom = new Classroom { Name = "Room 1" },
             Schedule = new Schedules
             {
-                SectionId = 1,
-                SubjectId = 2,
+                SectionId = sectionId,
+                SubjectId = subjectId,
                 Section = new Section { Name = "SEC-A" },
                 Subject = new Subject { Name = "Test Subject" },
                 Instructor = new Instructor
@@ -264,7 +268,7 @@ public class QrCodeScanServiceTest
 
         var qrCode = new QrCode
         {
-            Id = 31,
+            Id = Guid.NewGuid(),
             QrHash = "test-hash",
             SessionId = session.Id,
             Session = session,
@@ -299,8 +303,8 @@ public class QrCodeScanServiceTest
             .ReturnsAsync(new AttendanceRecordResponseDto
             {
                 Id = Guid.NewGuid(),
-                StudentId = student.Uuid,
-                SessionId = session.Uuid,
+                StudentId = student.Id,
+                SessionId = session.Id,
                 CheckInTime = DateTime.Now,
                 Status = "Present"
             });

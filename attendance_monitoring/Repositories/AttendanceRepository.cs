@@ -20,7 +20,7 @@ public class AttendanceRepository(ApplicationDbContext context) : IAttendanceRep
     /// Loads: Student, Session, Schedule, Subject, Section, Classroom, Instructor, QrCode.
     /// Use case: Detail views requiring full attendance information.
     /// </summary>
-    public async Task<AttendanceRecord?> GetByIdAsync(int id)
+    public async Task<AttendanceRecord?> GetByIdAsync(Guid id)
     {
         return await ApplyFullIncludes(context.AttendanceRecords.AsNoTracking())
             .FirstOrDefaultAsync(a => a.Id == id)
@@ -33,7 +33,7 @@ public class AttendanceRepository(ApplicationDbContext context) : IAttendanceRep
     /// Loads: Student, Session, Schedule, Subject, Section, Classroom, Instructor, QrCode.
     /// Use case: Update operations where the entity needs to be tracked for changes.
     /// </summary>
-    public async Task<AttendanceRecord?> GetByIdTrackedAsync(int id)
+    public async Task<AttendanceRecord?> GetByIdTrackedAsync(Guid id)
     {
         return await ApplyFullIncludes(context.AttendanceRecords)
             .FirstOrDefaultAsync(a => a.Id == id)
@@ -46,10 +46,10 @@ public class AttendanceRepository(ApplicationDbContext context) : IAttendanceRep
     /// Loads: Student, Session, Schedule, Subject, Section, Classroom, Instructor, QrCode.
     /// Use case: UUID detail views requiring full attendance information.
     /// </summary>
-    public async Task<AttendanceRecord?> GetAttendanceByUuidAsync(Guid uuid)
+    public async Task<AttendanceRecord?> GetAttendanceByUuidAsync(Guid id)
     {
         return await ApplyFullIncludes(context.AttendanceRecords.AsNoTracking())
-            .FirstOrDefaultAsync(a => a.Uuid == uuid)
+            .FirstOrDefaultAsync(a => a.Id == id)
             .ConfigureAwait(false);
     }
 
@@ -59,10 +59,10 @@ public class AttendanceRepository(ApplicationDbContext context) : IAttendanceRep
     /// Loads: Student, Session, Schedule, Subject, Section, Classroom, Instructor, QrCode.
     /// Use case: UUID update operations where the entity needs to be tracked for changes.
     /// </summary>
-    public async Task<AttendanceRecord?> GetAttendanceByUuidTrackedAsync(Guid uuid)
+    public async Task<AttendanceRecord?> GetAttendanceByUuidTrackedAsync(Guid id)
     {
         return await ApplyFullIncludes(context.AttendanceRecords)
-            .FirstOrDefaultAsync(a => a.Uuid == uuid)
+            .FirstOrDefaultAsync(a => a.Id == id)
             .ConfigureAwait(false);
     }
 
@@ -100,13 +100,13 @@ public class AttendanceRepository(ApplicationDbContext context) : IAttendanceRep
             .Take(pageSize)
             .Select(a => new AttendanceRecordResponseDto
             {
-                Id = a.Uuid,
-                StudentId = a.Student.Uuid,
+                Id = a.Id,
+                StudentId = a.Student.Id,
                 StudentName = $"{a.Student.Firstname ?? ""} {a.Student.Lastname ?? ""}".Trim(),
-                StudentNumber = a.Student.Id.ToString(),
-                SessionId = a.Session.Uuid,
+                StudentNumber = a.Student.Usn ?? string.Empty,
+                SessionId = a.Session.Id,
                 SessionDate = a.Session.SessionDate,
-                QrCodeId = a.QrCode != null ? a.QrCode.Uuid : null,
+                QrCodeId = a.QrCode != null ? a.QrCode.Id : null,
                 CheckInTime = a.CheckInTime,
                 Status = a.Status ?? "",
                 Notes = a.Notes,
@@ -114,7 +114,7 @@ public class AttendanceRepository(ApplicationDbContext context) : IAttendanceRep
                 EnteredBy = a.EnteredBy,
                 CreatedAt = a.CreatedAt,
                 UpdatedAt = a.UpdatedAt,
-                ScheduleId = a.Session.Schedule.Uuid,
+                ScheduleId = a.Session.Schedule.Id,
                 ScheduleTitle = $"{a.Session.Schedule.Subject.Name ?? ""} - {a.Session.Schedule.DayOfWeek ?? ""} {a.Session.Schedule.TimeIn}-{a.Session.Schedule.TimeOut}",
                 SubjectName = a.Session.Schedule.Subject.Name ?? "",
                 SectionName = a.Session.Schedule.Section.Name ?? "",
@@ -158,7 +158,7 @@ public class AttendanceRepository(ApplicationDbContext context) : IAttendanceRep
     /// Performance: ~8 split queries for full navigation properties.
     /// Use case: Student attendance history with full schedule details.
     /// </summary>
-    public async Task<List<AttendanceRecord>> GetByStudentIdAsync(int studentId)
+    public async Task<List<AttendanceRecord>> GetByStudentIdAsync(Guid studentId)
     {
         return await ApplyFullIncludesWithSplitQuery(context.AttendanceRecords.AsNoTracking())
             .Where(a => a.StudentId == studentId)
@@ -173,7 +173,7 @@ public class AttendanceRepository(ApplicationDbContext context) : IAttendanceRep
     /// ⚠️ Consider using GetBySessionIdForRosterAsync() for roster views (90% faster).
     /// Use case: When full schedule details are needed (Subject, Section, Classroom, Instructor).
     /// </summary>
-    public async Task<List<AttendanceRecord>> GetBySessionIdAsync(int sessionId)
+    public async Task<List<AttendanceRecord>> GetBySessionIdAsync(Guid sessionId)
     {
         return await ApplyFullIncludesWithSplitQuery(context.AttendanceRecords.AsNoTracking())
             .Where(a => a.SessionId == sessionId)
@@ -189,7 +189,7 @@ public class AttendanceRepository(ApplicationDbContext context) : IAttendanceRep
     /// Loads: Only AttendanceId, StudentId, StudentName, Status, CheckInTime, IsManualEntry.
     /// Use case: Session roster views, attendance lists (90% faster than GetBySessionIdAsync).
     /// </summary>
-    public async Task<List<SessionAttendanceRosterDto>> GetBySessionIdForRosterAsync(int sessionId)
+    public async Task<List<SessionAttendanceRosterDto>> GetBySessionIdForRosterAsync(Guid sessionId)
     {
         return await context.AttendanceRecords
             .AsNoTracking()
@@ -215,7 +215,7 @@ public class AttendanceRepository(ApplicationDbContext context) : IAttendanceRep
     /// ⚠️ Use GetBySessionAndStudentMinimalAsync() for duplicate checks (95% faster).
     /// Use case: Detail views requiring full attendance and schedule information.
     /// </summary>
-    public async Task<AttendanceRecord?> GetBySessionAndStudentAsync(int sessionId, int studentId)
+    public async Task<AttendanceRecord?> GetBySessionAndStudentAsync(Guid sessionId, Guid studentId)
     {
         return await ApplyFullIncludes(context.AttendanceRecords.AsNoTracking())
             .FirstOrDefaultAsync(a => a.SessionId == sessionId && a.StudentId == studentId)
@@ -228,7 +228,7 @@ public class AttendanceRepository(ApplicationDbContext context) : IAttendanceRep
     /// Loads: Only Id, StudentId, SessionId, Status, CheckInTime, QrCodeId.
     /// Use case: Duplicate detection, simple lookups, QR code scanning (95% faster).
     /// </summary>
-    public async Task<AttendanceMinimalDto?> GetBySessionAndStudentMinimalAsync(int sessionId, int studentId)
+    public async Task<AttendanceMinimalDto?> GetBySessionAndStudentMinimalAsync(Guid sessionId, Guid studentId)
     {
         return await context.AttendanceRecords
             .AsNoTracking()
@@ -251,7 +251,7 @@ public class AttendanceRepository(ApplicationDbContext context) : IAttendanceRep
     /// Performance: ~8 split queries for full navigation properties.
     /// Use case: Student attendance history reports with full schedule details.
     /// </summary>
-    public async Task<List<AttendanceRecord>> GetByStudentAndDateRangeAsync(int studentId, DateTime startDate, DateTime endDate)
+    public async Task<List<AttendanceRecord>> GetByStudentAndDateRangeAsync(Guid studentId, DateTime startDate, DateTime endDate)
     {
         return await ApplyFullIncludesWithSplitQuery(context.AttendanceRecords.AsNoTracking())
             .Where(a => a.StudentId == studentId &&
@@ -267,7 +267,7 @@ public class AttendanceRepository(ApplicationDbContext context) : IAttendanceRep
     /// Performance: ~8 split queries for full navigation properties.
     /// Use case: Bulk attendance reports across multiple sessions.
     /// </summary>
-    public async Task<List<AttendanceRecord>> GetBySessionIdsAsync(List<int> sessionIds)
+    public async Task<List<AttendanceRecord>> GetBySessionIdsAsync(List<Guid> sessionIds)
     {
         return await ApplyFullIncludesWithSplitQuery(context.AttendanceRecords.AsNoTracking())
             .Where(a => sessionIds.Contains(a.SessionId))
@@ -321,7 +321,7 @@ public class AttendanceRepository(ApplicationDbContext context) : IAttendanceRep
     /// <summary>
     /// Deletes an attendance record by its ID.
     /// </summary>
-    public async Task<bool> DeleteAsync(int id)
+    public async Task<bool> DeleteAsync(Guid id)
     {
         var attendance = await context.AttendanceRecords
             .FirstOrDefaultAsync(a => a.Id == id)
@@ -346,7 +346,7 @@ public class AttendanceRepository(ApplicationDbContext context) : IAttendanceRep
     /// Use case: Duplicate detection before creating attendance records.
     /// ✅ This is the correct pattern for existence checks.
     /// </summary>
-    public async Task<bool> HasAttendanceRecordAsync(int studentId, int sessionId)
+    public async Task<bool> HasAttendanceRecordAsync(Guid studentId, Guid sessionId)
     {
         return await context.AttendanceRecords
             .AsNoTracking()
@@ -359,7 +359,7 @@ public class AttendanceRepository(ApplicationDbContext context) : IAttendanceRep
     /// Performance: Optimized - Single query with AnyAsync, no data loaded.
     /// Use case: Checking if student has attendance history before operations.
     /// </summary>
-    public async Task<bool> HasAnyAttendanceAsync(int studentId)
+    public async Task<bool> HasAnyAttendanceAsync(Guid studentId)
     {
         return await context.AttendanceRecords
             .AsNoTracking()
@@ -372,7 +372,7 @@ public class AttendanceRepository(ApplicationDbContext context) : IAttendanceRep
     /// Performance: Optimized - Single query with AnyAsync, no data loaded.
     /// Use case: Validation before deleting sessions, checking if attendance was taken.
     /// </summary>
-    public async Task<bool> SessionHasAttendanceAsync(int sessionId)
+    public async Task<bool> SessionHasAttendanceAsync(Guid sessionId)
     {
         return await context.AttendanceRecords
             .AsNoTracking()
@@ -384,7 +384,7 @@ public class AttendanceRepository(ApplicationDbContext context) : IAttendanceRep
     /// Gets attendance record for a specific student and session combination.
     /// Used for duplicate checking in fingerprint attendance.
     /// </summary>
-    public async Task<AttendanceRecord?> GetAttendanceByStudentAndSessionAsync(int studentId, int sessionId)
+    public async Task<AttendanceRecord?> GetAttendanceByStudentAndSessionAsync(Guid studentId, Guid sessionId)
     {
         return await context.AttendanceRecords
             .AsNoTracking()
@@ -405,7 +405,7 @@ public class AttendanceRepository(ApplicationDbContext context) : IAttendanceRep
     /// <summary>
     /// Gets the count of attendance records for a student, optionally filtered by status.
     /// </summary>
-    public async Task<int> GetAttendanceCountAsync(int studentId, string? status = null)
+    public async Task<int> GetAttendanceCountAsync(Guid studentId, string? status = null)
     {
         var query = context.AttendanceRecords
             .AsNoTracking()
@@ -433,11 +433,11 @@ public class AttendanceRepository(ApplicationDbContext context) : IAttendanceRep
     /// Returns both the filtered records and total count for pagination.
     /// </summary>
     public async Task<(List<AttendanceRecord> Records, int TotalCount)> GetFilteredAsync(
-        int? studentId = null,
-        int? sessionId = null,
-        int? scheduleId = null,
-        int? sectionId = null,
-        int? subjectId = null,
+        Guid? studentId = null,
+        Guid? sessionId = null,
+        Guid? scheduleId = null,
+        Guid? sectionId = null,
+        Guid? subjectId = null,
         string? status = null,
         DateTime? startDate = null,
         DateTime? endDate = null,
@@ -522,11 +522,11 @@ public class AttendanceRepository(ApplicationDbContext context) : IAttendanceRep
     /// No entities loaded - only aggregate values returned.
     /// </summary>
     public async Task<(int Total, int Present, int Late, int Absent, int Excused, long AvgCheckInTicks)> GetStatisticsAsync(
-        int? studentId = null,
-        int? sessionId = null,
-        int? scheduleId = null,
-        int? sectionId = null,
-        int? subjectId = null,
+        Guid? studentId = null,
+        Guid? sessionId = null,
+        Guid? scheduleId = null,
+        Guid? sectionId = null,
+        Guid? subjectId = null,
         string? status = null,
         DateTime? startDate = null,
         DateTime? endDate = null,

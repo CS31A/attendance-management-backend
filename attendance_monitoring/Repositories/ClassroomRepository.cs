@@ -17,23 +17,23 @@ public class ClassroomRepository(ApplicationDbContext context) : IClassroomRepos
     #endregion
 
     #region GetClassroomByIdAsync
-    public async Task<Classroom?> GetClassroomByIdAsync(int id)
+    public async Task<Classroom?> GetClassroomByIdAsync(Guid id)
     {
         return await context.Classrooms.AsNoTracking().FirstOrDefaultAsync(c => c.Id == id).ConfigureAwait(false);
     }
     #endregion
 
     #region GetClassroomByUuidAsync
-    public async Task<Classroom?> GetClassroomByUuidAsync(Guid uuid)
+    public async Task<Classroom?> GetClassroomByUuidAsync(Guid id)
     {
-        return await context.Classrooms.AsNoTracking().FirstOrDefaultAsync(c => c.Uuid == uuid).ConfigureAwait(false);
+        return await context.Classrooms.AsNoTracking().FirstOrDefaultAsync(c => c.Id == id).ConfigureAwait(false);
     }
     #endregion
 
     #region GetClassroomByUuidTrackedAsync
-    public async Task<Classroom?> GetClassroomByUuidTrackedAsync(Guid uuid)
+    public async Task<Classroom?> GetClassroomByUuidTrackedAsync(Guid id)
     {
-        return await context.Classrooms.FirstOrDefaultAsync(c => c.Uuid == uuid).ConfigureAwait(false);
+        return await context.Classrooms.FirstOrDefaultAsync(c => c.Id == id).ConfigureAwait(false);
     }
     #endregion
 
@@ -66,7 +66,7 @@ public class ClassroomRepository(ApplicationDbContext context) : IClassroomRepos
     #endregion
 
     #region DeleteClassroomAsync
-    public async Task<bool> DeleteClassroomAsync(int id)
+    public async Task<bool> DeleteClassroomAsync(Guid id)
     {
         var classroom = await context.Classrooms.FindAsync(id).ConfigureAwait(false);
         if (classroom == null) return false;
@@ -77,7 +77,7 @@ public class ClassroomRepository(ApplicationDbContext context) : IClassroomRepos
     #endregion
 
     #region HasSchedulesInClassroomAsync
-    public async Task<bool> HasSchedulesInClassroomAsync(int id)
+    public async Task<bool> HasSchedulesInClassroomAsync(Guid id)
     {
         return await context.Schedules
             .AsNoTracking()
@@ -87,7 +87,7 @@ public class ClassroomRepository(ApplicationDbContext context) : IClassroomRepos
     #endregion
 
     #region HasSessionsInClassroomAsync
-    public async Task<bool> HasSessionsInClassroomAsync(int id)
+    public async Task<bool> HasSessionsInClassroomAsync(Guid id)
     {
         return await context.Sessions
             .AsNoTracking()

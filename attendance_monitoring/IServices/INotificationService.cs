@@ -9,8 +9,8 @@ public interface INotificationService
     Task SendToGroupAsync(string groupName, NotificationDto notification);
 
     // Specialized methods for critical scenarios
-    Task NotifyQrCodeGeneratedAsync(int qrCodeId, string instructorId);
-    Task NotifyStudentCheckedInAsync(string studentId, string instructorId, int sessionId, string status);
-    Task NotifySessionStartedAsync(int sessionId, IEnumerable<string> studentIds);
-    Task NotifySessionEndedAsync(int sessionId, IEnumerable<string> studentIds);
+    Task NotifyQrCodeGeneratedAsync(Guid qrCodeId, string instructorId);
+    Task NotifyStudentCheckedInAsync(string studentId, string instructorId, Guid sessionId, string status);
+    Task NotifySessionStartedAsync(Guid sessionId, IEnumerable<string> studentIds);
+    Task NotifySessionEndedAsync(Guid sessionId, IEnumerable<string> studentIds);
 }

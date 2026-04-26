@@ -17,28 +17,21 @@ public interface IReportsService
     /// <summary>
     /// Returns attendance history and statistics for a specific student.
     /// </summary>
-    Task<StudentAttendanceHistoryDto> GetStudentAttendanceReportAsync(int studentId, ClaimsPrincipal user);
-    Task<StudentAttendanceHistoryDto> GetStudentAttendanceReportAsync(Guid studentUuid, ClaimsPrincipal user);
+    Task<StudentAttendanceHistoryDto> GetStudentAttendanceReportAsync(Guid studentId, ClaimsPrincipal user);
 
     /// <summary>
     /// Returns full attendance overview for a specific session.
     /// </summary>
-    Task<SessionAttendanceDto> GetSessionAttendanceReportAsync(int sessionId, ClaimsPrincipal user);
-    Task<SessionAttendanceDto> GetSessionAttendanceReportAsync(Guid sessionUuid, ClaimsPrincipal user);
+    Task<SessionAttendanceDto> GetSessionAttendanceReportAsync(Guid sessionId, ClaimsPrincipal user);
 
     /// <summary>
     /// Returns section-level attendance summary with per-session breakdown.
     /// </summary>
-    Task<ClassAttendanceSummaryDto> GetClassAttendanceReportAsync(int sectionId, AttendanceFilterRequest filter, ClaimsPrincipal user);
-    Task<ClassAttendanceSummaryDto> GetClassAttendanceReportAsync(Guid sectionUuid, AttendanceFilterRequest filter, ClaimsPrincipal user);
+    Task<ClassAttendanceSummaryDto> GetClassAttendanceReportAsync(Guid sectionId, AttendanceFilterRequest filter, ClaimsPrincipal user);
 
     /// <summary>
     /// Returns session list with attendance counts for a specific instructor.
     /// </summary>
-    Task<InstructorSessionsReportDto> GetInstructorSessionsReportAsync(int instructorId, AttendanceFilterRequest filter, ClaimsPrincipal user);
+    Task<InstructorSessionsReportDto> GetInstructorSessionsReportAsync(Guid instructorId, AttendanceFilterRequest filter, ClaimsPrincipal user);
 
-    /// <summary>
-    /// Returns session list with attendance counts for a specific instructor UUID.
-    /// </summary>
-    Task<InstructorSessionsReportDto> GetInstructorSessionsReportAsync(Guid instructorUuid, AttendanceFilterRequest filter, ClaimsPrincipal user);
 }

@@ -35,9 +35,9 @@ public class SessionControllerTest
         // Arrange
         var sessions = new List<SessionResponseDto>
         {
-            CreateTestSessionResponseDto(1),
-            CreateTestSessionResponseDto(2),
-            CreateTestSessionResponseDto(3)
+            CreateTestSessionResponseDto(),
+            CreateTestSessionResponseDto(),
+            CreateTestSessionResponseDto()
         };
 
         _mockSessionService
@@ -105,7 +105,7 @@ public class SessionControllerTest
         var sessionId = Guid.NewGuid();
         _mockSessionService
             .Setup(s => s.GetSessionByIdAsync(sessionId))
-            .ThrowsAsync(new EntityNotFoundException<int>("Session", sessionId));
+            .ThrowsAsync(new EntityNotFoundException<Guid>("Session", sessionId));
 
         // Act
         var result = await _sessionController.GetSession(sessionId);
@@ -119,7 +119,7 @@ public class SessionControllerTest
     public async Task GetSessionByUuid_ReturnsOkResult_WithSession()
     {
         var sessionUuid = Guid.NewGuid();
-        var expectedSession = CreateTestSessionResponseDto(1, sessionId: sessionUuid);
+        var expectedSession = CreateTestSessionResponseDto(sessionId: sessionUuid);
 
         _mockSessionService
             .Setup(s => s.GetSessionByUuidAsync(sessionUuid))
@@ -159,8 +159,8 @@ public class SessionControllerTest
         var scheduleId = Guid.NewGuid();
         var sessions = new List<SessionResponseDto>
         {
-            CreateTestSessionResponseDto(1, scheduleId: Guid.NewGuid()),
-            CreateTestSessionResponseDto(2, scheduleId: Guid.NewGuid())
+            CreateTestSessionResponseDto(scheduleId: Guid.NewGuid()),
+            CreateTestSessionResponseDto(scheduleId: Guid.NewGuid())
         };
 
         _mockSessionService
@@ -184,8 +184,8 @@ public class SessionControllerTest
         var scheduleUuid = Guid.NewGuid();
         var sessions = new List<SessionResponseDto>
         {
-            CreateTestSessionResponseDto(1),
-            CreateTestSessionResponseDto(2)
+            CreateTestSessionResponseDto(),
+            CreateTestSessionResponseDto()
         };
 
         _mockSessionService
@@ -211,8 +211,8 @@ public class SessionControllerTest
         string status = SessionStatusConstants.Active;
         var sessions = new List<SessionResponseDto>
         {
-            CreateTestSessionResponseDto(1, status: SessionStatusConstants.Active),
-            CreateTestSessionResponseDto(2, status: SessionStatusConstants.Active)
+            CreateTestSessionResponseDto(status: SessionStatusConstants.Active),
+            CreateTestSessionResponseDto(status: SessionStatusConstants.Active)
         };
 
         _mockSessionService
@@ -250,7 +250,7 @@ public class SessionControllerTest
         const string uppercaseStatus = "ACTIVE";
         var sessions = new List<SessionResponseDto>
         {
-            CreateTestSessionResponseDto(1, status: SessionStatusConstants.Active)
+            CreateTestSessionResponseDto(status: SessionStatusConstants.Active)
         };
 
         _mockSessionService
@@ -297,8 +297,8 @@ public class SessionControllerTest
         var date = new DateTime(2024, 1, 15);
         var sessions = new List<SessionResponseDto>
         {
-            CreateTestSessionResponseDto(1, sessionDate: date),
-            CreateTestSessionResponseDto(2, sessionDate: date)
+            CreateTestSessionResponseDto(sessionDate: date),
+            CreateTestSessionResponseDto(sessionDate: date)
         };
 
         _mockSessionService
@@ -329,7 +329,7 @@ public class SessionControllerTest
             Description = "Test session"
         };
 
-        var createdSession = CreateTestSessionResponseDto(1, scheduleId: request.ScheduleId!.Value);
+        var createdSession = CreateTestSessionResponseDto(scheduleId: request.ScheduleId!.Value);
 
         _mockSessionService
             .Setup(s => s.CreateSessionAsync(request))
@@ -519,10 +519,10 @@ public class SessionControllerTest
 
         _mockSessionService
             .Setup(s => s.StartSessionAsync(sessionId, request))
-            .ThrowsAsync(new EntityNotFoundException<int>("Session", sessionId));
+            .ThrowsAsync(new EntityNotFoundException<Guid>("Session", sessionId));
 
         // Act & Assert - Exception propagates to global handler
-        await Assert.ThrowsAsync<EntityNotFoundException<int>>(
+        await Assert.ThrowsAsync<EntityNotFoundException<Guid>>(
             () => _sessionController.StartSession(sessionId, request));
     }
 
@@ -553,7 +553,7 @@ public class SessionControllerTest
             AttendanceCutoffMinutes = 15
         };
 
-        var startedSession = CreateTestSessionResponseDto(1, sessionId: sessionUuid, status: SessionStatusConstants.Active);
+        var startedSession = CreateTestSessionResponseDto(sessionId: sessionUuid, status: SessionStatusConstants.Active);
 
         _mockSessionService
             .Setup(s => s.StartSessionByUuidAsync(sessionUuid, request))
@@ -640,10 +640,10 @@ public class SessionControllerTest
 
         _mockSessionService
             .Setup(s => s.EndSessionAsync(sessionId, request))
-            .ThrowsAsync(new EntityNotFoundException<int>("Session", sessionId));
+            .ThrowsAsync(new EntityNotFoundException<Guid>("Session", sessionId));
 
         // Act & Assert - Exception propagates to global handler
-        await Assert.ThrowsAsync<EntityNotFoundException<int>>(
+        await Assert.ThrowsAsync<EntityNotFoundException<Guid>>(
             () => _sessionController.EndSession(sessionId, request));
     }
 
@@ -737,10 +737,10 @@ public class SessionControllerTest
 
         _mockSessionService
             .Setup(s => s.CancelSessionAsync(sessionId, request))
-            .ThrowsAsync(new EntityNotFoundException<int>("Session", sessionId));
+            .ThrowsAsync(new EntityNotFoundException<Guid>("Session", sessionId));
 
         // Act & Assert - Exception propagates to global handler
-        await Assert.ThrowsAsync<EntityNotFoundException<int>>(
+        await Assert.ThrowsAsync<EntityNotFoundException<Guid>>(
             () => _sessionController.CancelSession(sessionId, request));
     }
 
@@ -877,10 +877,10 @@ public class SessionControllerTest
 
         _mockSessionService
             .Setup(s => s.UpdateSessionRoomAsync(sessionId, request))
-            .ThrowsAsync(new EntityNotFoundException<int>("Session", sessionId));
+            .ThrowsAsync(new EntityNotFoundException<Guid>("Session", sessionId));
 
         // Act & Assert - Exception propagates to global handler
-        await Assert.ThrowsAsync<EntityNotFoundException<int>>(
+        await Assert.ThrowsAsync<EntityNotFoundException<Guid>>(
             () => _sessionController.UpdateSessionRoom(sessionId, request));
     }
 
@@ -916,7 +916,7 @@ public class SessionControllerTest
     }
 
     private SessionResponseDto CreateTestSessionResponseDto(
-        int id,
+        Guid id = default,
         Guid? sessionId = null,
         Guid? scheduleId = null,
         string status = SessionStatusConstants.NotStarted,
@@ -925,7 +925,7 @@ public class SessionControllerTest
     {
         return new SessionResponseDto
         {
-            Id = sessionId ?? Guid.NewGuid(),
+            Id = sessionId ?? (id != default ? id : Guid.NewGuid()),
             ScheduleId = scheduleId ?? Guid.NewGuid(),
             Status = status,
             SessionDate = sessionDate ?? DateTime.UtcNow.Date,

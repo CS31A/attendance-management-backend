@@ -147,11 +147,11 @@ public class ScheduleControllerTest
     [Fact]
     public async Task HasSessionsInSchedule_ReturnsBadRequest_ForInvalidId()
     {
-        var result = await _scheduleController.HasSessionsInSchedule(0);
+        var result = await _scheduleController.HasSessionsInSchedule(Guid.Empty);
 
         var badRequestResult = Assert.IsType<BadRequestObjectResult>(result.Result);
         Assert.Equal("Schedule ID must be greater than 0.", badRequestResult.Value);
-        _mockScheduleService.Verify(service => service.HasSessionsInScheduleAsync(It.IsAny<int>()), Times.Never);
+        _mockScheduleService.Verify(service => service.HasSessionsInScheduleAsync(It.IsAny<Guid>()), Times.Never);
     }
 
     [Fact]
@@ -207,7 +207,7 @@ public class ScheduleControllerTest
         var createdAtActionResult = Assert.IsType<CreatedAtActionResult>(result.Result);
         Assert.Equal(nameof(_scheduleController.GetSchedule), createdAtActionResult.ActionName);
         var schedule = Assert.IsType<Schedules>(createdAtActionResult.Value);
-        Assert.Equal(1, schedule.Id);
+        Assert.NotEqual(Guid.Empty, schedule.Id);
 
         _mockScheduleService.Verify(s => s.CreateScheduleAsync(createSchedule), Times.Once);
     }
@@ -365,7 +365,6 @@ public class ScheduleControllerTest
 
         var updatedSchedule = new Schedules
         {
-            Id = Guid.NewGuid(),
             Id = scheduleUuid,
             TimeIn = new TimeOnly(9, 0),
             TimeOut = new TimeOnly(10, 0),

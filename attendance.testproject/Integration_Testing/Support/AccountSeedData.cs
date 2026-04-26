@@ -43,7 +43,7 @@ internal static class AccountSeedData
         await userManager.AddToRoleAsync(user, role);
 
         // Create role-specific entity
-        int? roleSpecificId = null;
+        Guid? roleSpecificId = null;
 
         switch (role)
         {

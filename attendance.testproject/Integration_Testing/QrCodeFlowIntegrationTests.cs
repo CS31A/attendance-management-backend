@@ -43,7 +43,7 @@ public sealed class QrCodeFlowIntegrationTests
         Assert.NotNull(payload["qrCodeData"]?.GetValue<string>());
         Assert.NotNull(payload["qrCodeImage"]?.GetValue<string>());
         Assert.True(Convert.FromBase64String(payload["qrCodeImage"]!.GetValue<string>()).Length > 0);
-        Assert.True(payload["qrCodeId"]?.GetValue<int>() > 0);
+        Assert.NotEqual(Guid.Empty, Guid.Parse(payload["qrCodeId"]!.GetValue<string>()!));
         Assert.NotNull(payload["generatedAt"]?.GetValue<DateTime>());
         Assert.NotNull(payload["expiresAt"]?.GetValue<DateTime>());
     }
@@ -60,10 +60,22 @@ public sealed class QrCodeFlowIntegrationTests
         Assert.NotNull(payload);
         Assert.True(payload.IsValid);
         Assert.Equal("QR code is valid", payload.Message);
+
+        var (scheduleId, sectionId, actualRoomId) = await host.ExecuteDbContextAsync(async (dbContext, cancellationToken) =>
+        {
+            var session = await dbContext.Sessions
+                .AsNoTracking()
+                .Include(s => s.Schedule)
+                    .ThenInclude(sch => sch.Section)
+                .Include(s => s.ActualRoom)
+                .SingleAsync(s => s.Id == host.AttendanceQrScenario!.SessionId, cancellationToken);
+            return (session.ScheduleId, session.Schedule.Section.Id, session.ActualRoom!.Id);
+        });
+
         Assert.Equal(host.AttendanceQrScenario.QrCodeId, payload.QrCodeId);
-        Assert.Equal(host.AttendanceQrScenario.SessionId, payload.ScheduleId);
-        Assert.Equal(1, payload.SectionId);
-        Assert.Equal(1, payload.ActualRoomId);
+        Assert.Equal(scheduleId, payload.ScheduleId);
+        Assert.Equal(sectionId, payload.SectionId);
+        Assert.Equal(actualRoomId, payload.ActualRoomId);
         Assert.Equal(10, payload.RemainingUsage);
         Assert.NotNull(payload.ExpiresAt);
         Assert.NotNull(payload.ScheduleTitle);
@@ -122,7 +134,7 @@ public sealed class QrCodeFlowIntegrationTests
         var response = await host.PostAsJsonAsync("/api/qrcode/scan", new ValidateQrCode
         {
             QrHash = host.AttendanceQrScenario.QrHash,
-            StudentId = host.AttendanceQrScenario.StudentId + 1000
+            StudentId = host.AttendanceQrScenario.OutsiderStudentId
         });
 
         var payload = await response.Content.ReadFromJsonAsync<QrCodeScanResponseDto>();

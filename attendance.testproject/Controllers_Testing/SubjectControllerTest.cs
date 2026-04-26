@@ -63,7 +63,7 @@ public class SubjectControllerTest
     public async Task GetSubjectByUuid_ReturnsOkResult_WhenSubjectExists()
     {
         var subjectUuid = Guid.NewGuid();
-        var subject = new Subject { Id = Guid.NewGuid(), Id = subjectUuid, Name = "Physics", Code = "PHY101" };
+        var subject = new Subject { Id = subjectUuid, Name = "Physics", Code = "PHY101" };
 
         _mockSubjectService
             .Setup(s => s.GetSubjectByUuidAsync(subjectUuid))
@@ -98,7 +98,7 @@ public class SubjectControllerTest
     {
         var subjectUuid = Guid.NewGuid();
         var updateSubject = new UpdateSubject { Name = "Advanced Physics" };
-        var updatedSubject = new Subject { Id = Guid.NewGuid(), Id = subjectUuid, Name = updateSubject.Name! };
+        var updatedSubject = new Subject { Id = subjectUuid, Name = updateSubject.Name! };
 
         _mockSubjectService
             .Setup(s => s.UpdateSubjectByUuidAsync(subjectUuid, updateSubject))
@@ -205,7 +205,7 @@ public class SubjectControllerTest
     [Fact]
     public async Task HasSchedulesInSubject_ReturnsBadRequest_ForInvalidId()
     {
-        var result = await _controller.HasSchedulesInSubject(0);
+        var result = await _controller.HasSchedulesInSubject(Guid.Empty);
 
         var badRequestResult = Assert.IsType<BadRequestObjectResult>(result.Result);
         Assert.Equal("Subject ID must be greater than 0.", badRequestResult.Value);

@@ -56,7 +56,7 @@ public class StudentRepository(ApplicationDbContext context) : IStudentRepositor
     /// Retrieves a student by ID (read-only).
     /// Performance: Single query, no navigation properties loaded.
     /// </summary>
-    public async Task<Student?> GetStudentByIdAsync(int id)
+    public async Task<Student?> GetStudentByIdAsync(Guid id)
     {
         return await context.Students
             .AsNoTracking()
@@ -70,11 +70,11 @@ public class StudentRepository(ApplicationDbContext context) : IStudentRepositor
     /// Retrieves a student by UUID (read-only).
     /// Performance: Single query, no navigation properties loaded.
     /// </summary>
-    public async Task<Student?> GetStudentByUuidAsync(Guid uuid)
+    public async Task<Student?> GetStudentByUuidAsync(Guid id)
     {
         return await context.Students
             .AsNoTracking()
-            .FirstOrDefaultAsync(s => s.Uuid == uuid && !s.IsDeleted)
+            .FirstOrDefaultAsync(s => s.Id == id && !s.IsDeleted)
             .ConfigureAwait(false);
     }
     #endregion
@@ -84,7 +84,7 @@ public class StudentRepository(ApplicationDbContext context) : IStudentRepositor
     /// Retrieves a student by ID with change tracking for updates.
     /// Performance: Single query, no navigation properties loaded.
     /// </summary>
-    public async Task<Student?> GetStudentByIdTrackedAsync(int id)
+    public async Task<Student?> GetStudentByIdTrackedAsync(Guid id)
     {
         return await context.Students
             .FirstOrDefaultAsync(s => s.Id == id && !s.IsDeleted)
@@ -97,10 +97,10 @@ public class StudentRepository(ApplicationDbContext context) : IStudentRepositor
     /// Retrieves a student by UUID with change tracking for updates.
     /// Performance: Single query, no navigation properties loaded.
     /// </summary>
-    public async Task<Student?> GetStudentByUuidTrackedAsync(Guid uuid)
+    public async Task<Student?> GetStudentByUuidTrackedAsync(Guid id)
     {
         return await context.Students
-            .FirstOrDefaultAsync(s => s.Uuid == uuid && !s.IsDeleted)
+            .FirstOrDefaultAsync(s => s.Id == id && !s.IsDeleted)
             .ConfigureAwait(false);
     }
     #endregion
@@ -124,7 +124,7 @@ public class StudentRepository(ApplicationDbContext context) : IStudentRepositor
     /// Retrieves a student by ID regardless of delete status.
     /// Performance: Single query, no navigation properties loaded.
     /// </summary>
-    public async Task<Student?> GetStudentByIdIgnoreDeleteStatus(int id)
+    public async Task<Student?> GetStudentByIdIgnoreDeleteStatus(Guid id)
     {
         return await context.Students
             .AsNoTracking()
@@ -150,7 +150,7 @@ public class StudentRepository(ApplicationDbContext context) : IStudentRepositor
     #endregion
 
     #region SoftDeleteStudentAsync
-    public async Task<bool> SoftDeleteStudentAsync(int id)
+    public async Task<bool> SoftDeleteStudentAsync(Guid id)
     {
         var student = await context.Students.FindAsync(id).ConfigureAwait(false);
         if (student == null)
@@ -166,7 +166,7 @@ public class StudentRepository(ApplicationDbContext context) : IStudentRepositor
     #endregion
 
     #region HardDeleteStudentAsync
-    public async Task<bool> HardDeleteStudentAsync(int id)
+    public async Task<bool> HardDeleteStudentAsync(Guid id)
     {
         var student = await context.Students.FindAsync(id).ConfigureAwait(false);
         if (student == null)
@@ -178,7 +178,7 @@ public class StudentRepository(ApplicationDbContext context) : IStudentRepositor
     #endregion
 
     #region RestoreStudentAsync
-    public async Task<bool> RestoreStudentAsync(int id)
+    public async Task<bool> RestoreStudentAsync(Guid id)
     {
         var student = await context.Students.FindAsync(id).ConfigureAwait(false);
         if (student == null)

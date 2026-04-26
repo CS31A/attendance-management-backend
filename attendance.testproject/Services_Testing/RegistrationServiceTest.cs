@@ -157,7 +157,7 @@ public class RegistrationServiceTest
         registerDto.Firstname = null;
         _accountRepository.Setup(repo => repo.FindUserByUsernameAsync(It.IsAny<string>())).ReturnsAsync((IdentityUser?)null);
         _accountRepository.Setup(repo => repo.FindUserByEmailAsync(It.IsAny<string>())).ReturnsAsync((IdentityUser?)null);
-        _sectionRepository.Setup(repo => repo.GetSectionByUuidAsync(sectionId)).ReturnsAsync(new Section { Id = 1, Uuid = sectionId, Name = "Test Section" });
+        _sectionRepository.Setup(repo => repo.GetSectionByUuidAsync(sectionId)).ReturnsAsync(new Section { Id = sectionId, Name = "Test Section" });
 
         var exception = await Assert.ThrowsAsync<ValidationException>(() => _service.RegisterAsync(registerDto));
 
@@ -173,7 +173,7 @@ public class RegistrationServiceTest
         registerDto.Lastname = null;
         _accountRepository.Setup(repo => repo.FindUserByUsernameAsync(It.IsAny<string>())).ReturnsAsync((IdentityUser?)null);
         _accountRepository.Setup(repo => repo.FindUserByEmailAsync(It.IsAny<string>())).ReturnsAsync((IdentityUser?)null);
-        _sectionRepository.Setup(repo => repo.GetSectionByUuidAsync(sectionId)).ReturnsAsync(new Section { Id = 1, Uuid = sectionId, Name = "Test Section" });
+        _sectionRepository.Setup(repo => repo.GetSectionByUuidAsync(sectionId)).ReturnsAsync(new Section { Id = sectionId, Name = "Test Section" });
 
         var exception = await Assert.ThrowsAsync<ValidationException>(() => _service.RegisterAsync(registerDto));
 
@@ -188,7 +188,7 @@ public class RegistrationServiceTest
         var registerDto = CreateValidRegisterDto(role: "Student", sectionId: sectionId);
         _accountRepository.Setup(repo => repo.FindUserByUsernameAsync(It.IsAny<string>())).ReturnsAsync((IdentityUser?)null);
         _accountRepository.Setup(repo => repo.FindUserByEmailAsync(It.IsAny<string>())).ReturnsAsync((IdentityUser?)null);
-        _sectionRepository.Setup(repo => repo.GetSectionByUuidAsync(sectionId)).ReturnsAsync(new Section { Id = 1, Uuid = sectionId, Name = "Test Section" });
+        _sectionRepository.Setup(repo => repo.GetSectionByUuidAsync(sectionId)).ReturnsAsync(new Section { Id = sectionId, Name = "Test Section" });
         _userFactory.Setup(factory => factory.CreateUserAsync("testuser", "test@example.com", "Test@123", "Student", "John", "Doe", sectionId))
             .ReturnsAsync(new UserCreationResult { Success = true });
 
@@ -240,7 +240,7 @@ public class RegistrationServiceTest
         var registerDto = CreateValidRegisterDto(role: null, sectionId: sectionId);
         _accountRepository.Setup(repo => repo.FindUserByUsernameAsync(It.IsAny<string>())).ReturnsAsync((IdentityUser?)null);
         _accountRepository.Setup(repo => repo.FindUserByEmailAsync(It.IsAny<string>())).ReturnsAsync((IdentityUser?)null);
-        _sectionRepository.Setup(repo => repo.GetSectionByUuidAsync(sectionId)).ReturnsAsync(new Section { Id = 1, Uuid = sectionId, Name = "Test Section" });
+        _sectionRepository.Setup(repo => repo.GetSectionByUuidAsync(sectionId)).ReturnsAsync(new Section { Id = sectionId, Name = "Test Section" });
         _userFactory.Setup(factory => factory.CreateUserAsync("testuser", "test@example.com", "Test@123", "Student", "John", "Doe", sectionId))
             .ReturnsAsync(new UserCreationResult { Success = true });
 

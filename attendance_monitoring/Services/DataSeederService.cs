@@ -549,25 +549,25 @@ namespace attendance_monitoring.Services
             // Define students data
             var studentsData = new[]
             {
-                new { Lastname = "Alicaba", Firstname = "Christian Dave", Section = "CS31A", Course = "BSCS" },
-                new { Lastname = "Betonio", Firstname = "Jose Emmanuel", Section = "CS31A", Course = "BSCS" },
-                new { Lastname = "Bulahan", Firstname = "Michelle", Section = "CS31A", Course = "BSCS" },
-                new { Lastname = "Cando", Firstname = "Manuel", Section = "CS31B", Course = "BSCS" },
-                new { Lastname = "Casupanan", Firstname = "John Cez", Section = "CS31C", Course = "BSCS" },
-                new { Lastname = "Chavez", Firstname = "Arcgel", Section = "CS31C", Course = "BSCS" },
-                new { Lastname = "Cortes", Firstname = "Marc Ejay", Section = "CS31B", Course = "BSCS" },
-                new { Lastname = "Francisco", Firstname = "Uzziah Lanz", Section = "CS31A", Course = "BSCS" },
-                new { Lastname = "Inot", Firstname = "Nicole Keith", Section = "CS31B", Course = "BSCS" },
-                new { Lastname = "Jacinto", Firstname = "Weah Joy", Section = "CS31C", Course = "BSCS" },
-                new { Lastname = "Lastimoso", Firstname = "Egin Karl", Section = "CS31C", Course = "BSCS" },
-                new { Lastname = "Maguinda", Firstname = "James Ryan", Section = "CS31A", Course = "BSCS" },
-                new { Lastname = "Mangubat", Firstname = "Edrian", Section = "CS31B", Course = "BSCS" },
-                new { Lastname = "Morales", Firstname = "Stanleigh Jeddro", Section = "CS31C", Course = "BSCS" },
-                new { Lastname = "Otadoy", Firstname = "Kent Jay", Section = "CS31A", Course = "BSCS" },
-                new { Lastname = "Rosalijos", Firstname = "Jan Nino", Section = "CS31B", Course = "BSCS" },
-                new { Lastname = "Sayson", Firstname = "Christian Dave", Section = "CS31B", Course = "BSCS" },
-                new { Lastname = "Vallecer", Firstname = "Neil Jhonreise", Section = "CS31C", Course = "BSCS" },
-                new { Lastname = "Villa", Firstname = "Rajiemae", Section = "CS31B", Course = "BSCS" }
+                new { Lastname = "Alicaba", Firstname = "Christian Dave", Section = "CS31A", Course = "BSCS", Usn = "C23-6769-MAN121" },
+                new { Lastname = "Betonio", Firstname = "Jose Emmanuel", Section = "CS31A", Course = "BSCS", Usn = "C23-6770-MAN122" },
+                new { Lastname = "Bulahan", Firstname = "Michelle", Section = "CS31A", Course = "BSCS", Usn = "C23-6771-MAN123" },
+                new { Lastname = "Cando", Firstname = "Manuel", Section = "CS31B", Course = "BSCS", Usn = "C23-6772-MAN124" },
+                new { Lastname = "Casupanan", Firstname = "John Cez", Section = "CS31C", Course = "BSCS", Usn = "C23-6773-MAN125" },
+                new { Lastname = "Chavez", Firstname = "Arcgel", Section = "CS31C", Course = "BSCS", Usn = "C23-6774-MAN126" },
+                new { Lastname = "Cortes", Firstname = "Marc Ejay", Section = "CS31B", Course = "BSCS", Usn = "C23-6775-MAN127" },
+                new { Lastname = "Francisco", Firstname = "Uzziah Lanz", Section = "CS31A", Course = "BSCS", Usn = "C23-6776-MAN128" },
+                new { Lastname = "Inot", Firstname = "Nicole Keith", Section = "CS31B", Course = "BSCS", Usn = "C23-6777-MAN129" },
+                new { Lastname = "Jacinto", Firstname = "Weah Joy", Section = "CS31C", Course = "BSCS", Usn = "C23-6778-MAN130" },
+                new { Lastname = "Lastimoso", Firstname = "Egin Karl", Section = "CS31C", Course = "BSCS", Usn = "C23-6779-MAN131" },
+                new { Lastname = "Maguinda", Firstname = "James Ryan", Section = "CS31A", Course = "BSCS", Usn = "C23-6780-MAN132" },
+                new { Lastname = "Mangubat", Firstname = "Edrian", Section = "CS31B", Course = "BSCS", Usn = "C23-6781-MAN133" },
+                new { Lastname = "Morales", Firstname = "Stanleigh Jeddro", Section = "CS31C", Course = "BSCS", Usn = "C23-6782-MAN134" },
+                new { Lastname = "Otadoy", Firstname = "Kent Jay", Section = "CS31A", Course = "BSCS", Usn = "C23-6783-MAN135" },
+                new { Lastname = "Rosalijos", Firstname = "Jan Nino", Section = "CS31B", Course = "BSCS", Usn = "C23-6784-MAN136" },
+                new { Lastname = "Sayson", Firstname = "Christian Dave", Section = "CS31B", Course = "BSCS", Usn = "C23-6785-MAN137" },
+                new { Lastname = "Vallecer", Firstname = "Neil Jhonreise", Section = "CS31C", Course = "BSCS", Usn = "C23-6786-MAN138" },
+                new { Lastname = "Villa", Firstname = "Rajiemae", Section = "CS31B", Course = "BSCS", Usn = "C23-6787-MAN139" }
             };
 
             // Get the course first
@@ -624,6 +624,7 @@ namespace attendance_monitoring.Services
                             UserId = existingUser.Id,
                             SectionId = sectionId,
                             IsRegular = true,
+                            Usn = studentData.Usn,
                             CreatedAt = DateTime.UtcNow,
                             UpdatedAt = DateTime.UtcNow
                         };
@@ -672,6 +673,7 @@ namespace attendance_monitoring.Services
                             UserId = user.Id,
                             SectionId = studentSectionId,
                             IsRegular = true,
+                            Usn = studentData.Usn,
                             CreatedAt = DateTime.UtcNow,
                             UpdatedAt = DateTime.UtcNow
                         };

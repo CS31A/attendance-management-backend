@@ -18,28 +18,28 @@ public interface ISubjectRepository : ISaveableRepository
     /// </summary>
     /// <param name="id">The subject ID.</param>
     /// <returns>The subject if found; otherwise, null.</returns>
-    Task<Subject?> GetSubjectByIdAsync(int id);
+    Task<Subject?> GetSubjectByIdAsync(Guid id);
 
     /// <summary>
     /// Retrieves a subject by its UUID.
     /// </summary>
-    /// <param name="uuid">The subject UUID.</param>
+    /// <param name="id">The subject UUID.</param>
     /// <returns>The subject if found; otherwise, null.</returns>
-    Task<Subject?> GetSubjectByUuidAsync(Guid uuid);
+    Task<Subject?> GetSubjectByUuidAsync(Guid id);
 
     /// <summary>
     /// Retrieves a subject by its ID with change tracking enabled for updates.
     /// </summary>
     /// <param name="id">The subject ID.</param>
     /// <returns>The subject if found; otherwise, null.</returns>
-    Task<Subject?> GetSubjectByIdTrackedAsync(int id);
+    Task<Subject?> GetSubjectByIdTrackedAsync(Guid id);
 
     /// <summary>
     /// Retrieves a subject by its UUID with change tracking enabled for updates.
     /// </summary>
-    /// <param name="uuid">The subject UUID.</param>
+    /// <param name="id">The subject UUID.</param>
     /// <returns>The subject if found; otherwise, null.</returns>
-    Task<Subject?> GetSubjectByUuidTrackedAsync(Guid uuid);
+    Task<Subject?> GetSubjectByUuidTrackedAsync(Guid id);
 
     /// <summary>
     /// Creates a new subject.
@@ -60,21 +60,21 @@ public interface ISubjectRepository : ISaveableRepository
     /// </summary>
     /// <param name="id">The subject ID.</param>
     /// <returns>True if the subject was deleted; otherwise, false.</returns>
-    Task<bool> DeleteSubjectAsync(int id);
+    Task<bool> DeleteSubjectAsync(Guid id);
 
     /// <summary>
     /// Checks if schedules reference the subject.
     /// </summary>
     /// <param name="id">The subject ID.</param>
     /// <returns>True if schedules exist for the subject; otherwise, false.</returns>
-    Task<bool> HasSchedulesInSubjectAsync(int id);
+    Task<bool> HasSchedulesInSubjectAsync(Guid id);
 
     /// <summary>
     /// Checks if student enrollments reference the subject.
     /// </summary>
     /// <param name="id">The subject ID.</param>
     /// <returns>True if enrollments exist for the subject; otherwise, false.</returns>
-    Task<bool> HasEnrollmentsInSubjectAsync(int id);
+    Task<bool> HasEnrollmentsInSubjectAsync(Guid id);
 
     /// <summary>
     /// Gets a subject by its code.

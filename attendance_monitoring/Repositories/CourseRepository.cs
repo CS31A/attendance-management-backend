@@ -17,23 +17,23 @@ public class CourseRepository(ApplicationDbContext context) : ICourseRepository
     #endregion
 
     #region GetCourseByIdAsync
-    public async Task<Course?> GetCourseByIdAsync(int id)
+    public async Task<Course?> GetCourseByIdAsync(Guid id)
     {
         return await context.Courses.AsNoTracking().FirstOrDefaultAsync(c => c.Id == id).ConfigureAwait(false);
     }
     #endregion
 
     #region GetCourseByUuidAsync
-    public async Task<Course?> GetCourseByUuidAsync(Guid uuid)
+    public async Task<Course?> GetCourseByUuidAsync(Guid id)
     {
-        return await context.Courses.AsNoTracking().FirstOrDefaultAsync(c => c.Uuid == uuid).ConfigureAwait(false);
+        return await context.Courses.AsNoTracking().FirstOrDefaultAsync(c => c.Id == id).ConfigureAwait(false);
     }
     #endregion
 
     #region GetCourseByUuidTrackedAsync
-    public async Task<Course?> GetCourseByUuidTrackedAsync(Guid uuid)
+    public async Task<Course?> GetCourseByUuidTrackedAsync(Guid id)
     {
-        return await context.Courses.FirstOrDefaultAsync(c => c.Uuid == uuid).ConfigureAwait(false);
+        return await context.Courses.FirstOrDefaultAsync(c => c.Id == id).ConfigureAwait(false);
     }
     #endregion
 
@@ -58,7 +58,7 @@ public class CourseRepository(ApplicationDbContext context) : ICourseRepository
     #endregion
 
     #region DeleteCourseAsync
-    public async Task<bool> DeleteCourseAsync(int id)
+    public async Task<bool> DeleteCourseAsync(Guid id)
     {
         var course = await context.Courses.FindAsync(id).ConfigureAwait(false);
         if (course == null) return false;
@@ -69,7 +69,7 @@ public class CourseRepository(ApplicationDbContext context) : ICourseRepository
     #endregion
 
     #region HasSectionsInCourseAsync
-    public async Task<bool> HasSectionsInCourseAsync(int id)
+    public async Task<bool> HasSectionsInCourseAsync(Guid id)
     {
         return await context.Sections
             .AsNoTracking()

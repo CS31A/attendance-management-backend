@@ -56,7 +56,7 @@ public class ClassroomService : IClassroomService
     /// </summary>
     /// <param name="id">The ID of the classroom to retrieve</param>
     /// <returns>The classroom with the specified ID, or null if not found</returns>
-    public async Task<Classroom?> GetClassroomByIdAsync(int id)
+    public async Task<Classroom?> GetClassroomByIdAsync(Guid id)
     {
         _logger.LogInformation("Retrieving classroom by ID: {Id}", id);
         try
@@ -65,13 +65,13 @@ public class ClassroomService : IClassroomService
             if (classroom == null)
             {
                 _logger.LogWarning("Classroom with ID {Id} not found", id);
-                throw new EntityNotFoundException<int>("Classroom", id);
+                throw new EntityNotFoundException<Guid>("Classroom", id);
             }
 
             _logger.LogInformation("Successfully retrieved classroom with ID: {Id}", id);
             return classroom;
         }
-        catch (EntityNotFoundException<int>)
+        catch (EntityNotFoundException<Guid>)
         {
             // Re-throw the specific exception for the controller to handle
             throw;
@@ -85,19 +85,19 @@ public class ClassroomService : IClassroomService
     #endregion
 
     #region GetClassroomByUuidAsync
-    public async Task<Classroom?> GetClassroomByUuidAsync(Guid uuid)
+    public async Task<Classroom?> GetClassroomByUuidAsync(Guid id)
     {
-        _logger.LogInformation("Retrieving classroom by UUID: {Uuid}", uuid);
+        _logger.LogInformation("Retrieving classroom by UUID: {Id}", id);
         try
         {
-            var classroom = await _classroomRepository.GetClassroomByUuidAsync(uuid).ConfigureAwait(false);
+            var classroom = await _classroomRepository.GetClassroomByUuidAsync(id).ConfigureAwait(false);
             if (classroom == null)
             {
-                _logger.LogWarning("Classroom with UUID {Uuid} not found", uuid);
-                throw new EntityNotFoundException<Guid>("Classroom", uuid);
+                _logger.LogWarning("Classroom with UUID {Id} not found", id);
+                throw new EntityNotFoundException<Guid>("Classroom", id);
             }
 
-            _logger.LogInformation("Successfully retrieved classroom with UUID: {Uuid}", uuid);
+            _logger.LogInformation("Successfully retrieved classroom with UUID: {Id}", id);
             return classroom;
         }
         catch (EntityNotFoundException<Guid>)
@@ -106,8 +106,8 @@ public class ClassroomService : IClassroomService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error occurred while retrieving classroom with UUID {Uuid}", uuid);
-            throw new EntityServiceException("Classroom", $"GetClassroomByUuid: {uuid}", "An error occurred while retrieving the classroom", ex);
+            _logger.LogError(ex, "Error occurred while retrieving classroom with UUID {Id}", id);
+            throw new EntityServiceException("Classroom", $"GetClassroomByUuid: {id}", "An error occurred while retrieving the classroom", ex);
         }
     }
     #endregion
@@ -188,7 +188,7 @@ public class ClassroomService : IClassroomService
     /// <exception cref="EntityNotFoundException{TKey}">Thrown when classroom not found</exception>
     /// <exception cref="EntityAlreadyExistsException{TKey}">Thrown when classroom with name already exists</exception>
     /// <exception cref="EntityServiceException">Thrown when an error occurs during update</exception>
-    public async Task<Classroom> UpdateClassroomAsync(int id, UpdateClassroom updateClassroom)
+    public async Task<Classroom> UpdateClassroomAsync(Guid id, UpdateClassroom updateClassroom)
     {
         _logger.LogInformation("Updating classroom with ID: {Id}", id);
 
@@ -198,7 +198,7 @@ public class ClassroomService : IClassroomService
             if (existingClassroom == null)
             {
                 _logger.LogWarning("Classroom update failed: Classroom with ID {Id} not found", id);
-                throw new EntityNotFoundException<int>("Classroom", id);
+                throw new EntityNotFoundException<Guid>("Classroom", id);
             }
 
             // Check if the new name already exists for another classroom (first check)
@@ -239,7 +239,7 @@ public class ClassroomService : IClassroomService
                 throw new EntityAlreadyExistsException<string>("Classroom", "Name", updateClassroom.Name ?? "");
             }
         }
-        catch (EntityNotFoundException<int>)
+        catch (EntityNotFoundException<Guid>)
         {
             // Re-throw the specific exception for the controller to handle
             throw;
@@ -261,15 +261,15 @@ public class ClassroomService : IClassroomService
     #endregion
 
     #region UpdateClassroomByUuidAsync
-    public async Task<Classroom> UpdateClassroomByUuidAsync(Guid uuid, UpdateClassroom updateClassroom)
+    public async Task<Classroom> UpdateClassroomByUuidAsync(Guid id, UpdateClassroom updateClassroom)
     {
-        var existingClassroom = await GetClassroomByUuidAsync(uuid).ConfigureAwait(false);
+        var existingClassroom = await GetClassroomByUuidAsync(id).ConfigureAwait(false);
         return await UpdateClassroomAsync(existingClassroom!.Id, updateClassroom).ConfigureAwait(false);
     }
     #endregion
 
     #region Dependency Check Operations
-    public async Task<bool> HasSchedulesInClassroomAsync(int id)
+    public async Task<bool> HasSchedulesInClassroomAsync(Guid id)
     {
         try
         {
@@ -285,7 +285,7 @@ public class ClassroomService : IClassroomService
         }
     }
 
-    public async Task<bool> HasSessionsInClassroomAsync(int id)
+    public async Task<bool> HasSessionsInClassroomAsync(Guid id)
     {
         try
         {
@@ -309,7 +309,7 @@ public class ClassroomService : IClassroomService
     /// <param name="id">The ID of the classroom to delete</param>
     /// <exception cref="EntityNotFoundException{TKey}">Thrown when classroom not found</exception>
     /// <exception cref="EntityServiceException">Thrown when an error occurs during deletion</exception>
-    public async Task DeleteClassroomAsync(int id)
+    public async Task DeleteClassroomAsync(Guid id)
     {
         _logger.LogInformation("Deleting classroom with ID: {Id}", id);
 
@@ -319,7 +319,7 @@ public class ClassroomService : IClassroomService
             if (existingClassroom == null)
             {
                 _logger.LogWarning("Classroom deletion failed: Classroom with ID {Id} not found", id);
-                throw new EntityNotFoundException<int>("Classroom", id);
+                throw new EntityNotFoundException<Guid>("Classroom", id);
             }
 
             var result = await _classroomRepository.DeleteClassroomAsync(id).ConfigureAwait(false);
@@ -337,7 +337,7 @@ public class ClassroomService : IClassroomService
             }
             _logger.LogInformation("Successfully deleted classroom with ID: {Id}", id);
         }
-        catch (EntityNotFoundException<int>)
+        catch (EntityNotFoundException<Guid>)
         {
             // Re-throw the specific exception for the controller to handle
             throw;
@@ -362,9 +362,9 @@ public class ClassroomService : IClassroomService
     #endregion
 
     #region DeleteClassroomByUuidAsync
-    public async Task DeleteClassroomByUuidAsync(Guid uuid)
+    public async Task DeleteClassroomByUuidAsync(Guid id)
     {
-        var existingClassroom = await GetClassroomByUuidAsync(uuid).ConfigureAwait(false);
+        var existingClassroom = await GetClassroomByUuidAsync(id).ConfigureAwait(false);
         await DeleteClassroomAsync(existingClassroom!.Id).ConfigureAwait(false);
     }
     #endregion

@@ -6,7 +6,7 @@ namespace attendance_monitoring.Models.DTO.Response;
 /// </summary>
 public class AttendanceListDto
 {
-    public int Id { get; set; }
+    public Guid Id { get; set; }
     public string StudentName { get; set; } = string.Empty;
     public string SubjectName { get; set; } = string.Empty;
     public DateTime CheckInTime { get; set; }

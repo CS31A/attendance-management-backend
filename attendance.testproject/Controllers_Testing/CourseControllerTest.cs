@@ -100,7 +100,6 @@ public class CourseControllerTest
         var courseUuid = Guid.NewGuid();
         var expectedCourse = new Course
         {
-            Id = Guid.NewGuid(),
             Id = courseUuid,
             Name = "Bachelor of Science in Data Science",
             CreatedAt = DateTime.UtcNow,
@@ -159,7 +158,7 @@ public class CourseControllerTest
         var courseId = Guid.NewGuid();
         _mockCourseService
             .Setup(s => s.GetCourseByIdAsync(courseId))
-            .ThrowsAsync(new EntityNotFoundException<int>("Course", courseId));
+            .ThrowsAsync(new EntityNotFoundException<Guid>("Course", courseId));
 
         // Act
         var result = await _controller.GetCourse(courseId);
@@ -301,7 +300,6 @@ public class CourseControllerTest
 
         var updatedCourse = new Course
         {
-            Id = Guid.NewGuid(),
             Id = courseUuid,
             Name = updateCourse.Name,
             CreatedAt = DateTime.UtcNow.AddDays(-7),
@@ -370,7 +368,7 @@ public class CourseControllerTest
 
         _mockCourseService
             .Setup(s => s.UpdateCourseAsync(courseId, updateCourse, user))
-            .ThrowsAsync(new EntityNotFoundException<int>("Course", courseId));
+            .ThrowsAsync(new EntityNotFoundException<Guid>("Course", courseId));
 
         // Act
         var result = await _controller.UpdateCourse(courseId, updateCourse);
@@ -488,7 +486,7 @@ public class CourseControllerTest
 
         _mockCourseService
             .Setup(s => s.DeleteCourseAsync(courseId, user))
-            .ThrowsAsync(new EntityNotFoundException<int>("Course", courseId));
+            .ThrowsAsync(new EntityNotFoundException<Guid>("Course", courseId));
 
         // Act
         var result = await _controller.DeleteCourse(courseId);

@@ -35,11 +35,11 @@ public class ClassroomControllerDependencyTest
     [Fact]
     public async Task HasSchedulesInClassroom_ReturnsBadRequest_ForInvalidId()
     {
-        var result = await _controller.HasSchedulesInClassroom(0);
+        var result = await _controller.HasSchedulesInClassroom(Guid.Empty);
 
         var badRequestResult = Assert.IsType<BadRequestObjectResult>(result.Result);
         Assert.Equal("Classroom ID must be greater than 0.", badRequestResult.Value);
-        _mockClassroomService.Verify(service => service.HasSchedulesInClassroomAsync(It.IsAny<int>()), Times.Never);
+        _mockClassroomService.Verify(service => service.HasSchedulesInClassroomAsync(It.IsAny<Guid>()), Times.Never);
     }
 
     [Fact]
@@ -74,11 +74,11 @@ public class ClassroomControllerDependencyTest
     [Fact]
     public async Task HasSessionsInClassroom_ReturnsBadRequest_ForInvalidId()
     {
-        var result = await _controller.HasSessionsInClassroom(-1);
+        var result = await _controller.HasSessionsInClassroom(Guid.Empty);
 
         var badRequestResult = Assert.IsType<BadRequestObjectResult>(result.Result);
         Assert.Equal("Classroom ID must be greater than 0.", badRequestResult.Value);
-        _mockClassroomService.Verify(service => service.HasSessionsInClassroomAsync(It.IsAny<int>()), Times.Never);
+        _mockClassroomService.Verify(service => service.HasSessionsInClassroomAsync(It.IsAny<Guid>()), Times.Never);
     }
 
     [Fact]

@@ -35,11 +35,11 @@ public class CourseControllerDependencyTest
     [Fact]
     public async Task HasSectionsInCourse_ReturnsBadRequest_ForInvalidId()
     {
-        var result = await _controller.HasSectionsInCourse(0);
+        var result = await _controller.HasSectionsInCourse(Guid.Empty);
 
         var badRequestResult = Assert.IsType<BadRequestObjectResult>(result.Result);
         Assert.Equal("Course ID must be greater than 0.", badRequestResult.Value);
-        _mockCourseService.Verify(service => service.HasSectionsInCourseAsync(It.IsAny<int>()), Times.Never);
+        _mockCourseService.Verify(service => service.HasSectionsInCourseAsync(It.IsAny<Guid>()), Times.Never);
     }
 
     [Fact]

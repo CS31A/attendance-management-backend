@@ -102,13 +102,13 @@ internal sealed class ProfileService : IProfileService
 
             profile.StudentProfile = new StudentProfileInfo
             {
-                Id = student.Uuid,
+                Id = student.Id,
                 Firstname = student.Firstname,
                 Lastname = student.Lastname,
                 IsRegular = student.IsRegular,
-                SectionId = student.Section.Uuid,
+                SectionId = student.Section.Id,
                 SectionName = student.Section.Name,
-                CourseId = student.Section.Course.Uuid,
+                CourseId = student.Section.Course.Id,
                 CourseName = student.Section.Course.Name,
                 CreatedAt = student.CreatedAt,
                 UpdatedAt = student.UpdatedAt
@@ -123,7 +123,7 @@ internal sealed class ProfileService : IProfileService
             {
                 profile.InstructorProfile = new InstructorProfileInfo
                 {
-                    Id = instructor.Uuid,
+                    Id = instructor.Id,
                     Firstname = instructor.Firstname,
                     Lastname = instructor.Lastname,
                     Department = instructor.Department,
@@ -142,7 +142,7 @@ internal sealed class ProfileService : IProfileService
             {
                 profile.AdminProfile = new AdminProfileInfo
                 {
-                    Id = admin.Uuid,
+                    Id = admin.Id,
                     Firstname = admin.Firstname,
                     Lastname = admin.Lastname,
                     CreatedAt = admin.CreatedAt,

@@ -6,13 +6,13 @@ namespace attendance_monitoring.IServices;
 public interface IClassroomService
 {
     Task<IEnumerable<Classroom>> GetAllClassroomsAsync();
-    Task<Classroom?> GetClassroomByIdAsync(int id);
-    Task<Classroom?> GetClassroomByUuidAsync(Guid uuid);
+    Task<Classroom?> GetClassroomByIdAsync(Guid id);
+    Task<Classroom?> GetClassroomByUuidAsync(Guid id);
     Task<Classroom> CreateClassroomAsync(CreateClassroom createClassroom);
-    Task<Classroom> UpdateClassroomAsync(int id, UpdateClassroom updateClassroom);
-    Task<Classroom> UpdateClassroomByUuidAsync(Guid uuid, UpdateClassroom updateClassroom);
-    Task DeleteClassroomAsync(int id);
-    Task DeleteClassroomByUuidAsync(Guid uuid);
-    Task<bool> HasSchedulesInClassroomAsync(int id);
-    Task<bool> HasSessionsInClassroomAsync(int id);
+    Task<Classroom> UpdateClassroomAsync(Guid id, UpdateClassroom updateClassroom);
+    Task<Classroom> UpdateClassroomByUuidAsync(Guid id, UpdateClassroom updateClassroom);
+    Task DeleteClassroomAsync(Guid id);
+    Task DeleteClassroomByUuidAsync(Guid id);
+    Task<bool> HasSchedulesInClassroomAsync(Guid id);
+    Task<bool> HasSessionsInClassroomAsync(Guid id);
 }

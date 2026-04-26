@@ -79,8 +79,8 @@ public class OrphanedUserCleanupServiceTests : IDisposable
         var user2 = new IdentityUser { Id = "user-2", Email = "instructor@test.com", UserName = "instructor@test.com" };
 
         _context.Users.AddRange(user1, user2);
-        _context.Students.Add(new Student { Id = 1, UserId = "user-1", Firstname = "Test", Lastname = "Student", SectionId = 1 });
-        _context.Instructors.Add(new Instructor { Id = 1, UserId = "user-2", Firstname = "Test", Lastname = "Instructor" });
+        _context.Students.Add(new Student { Id = Guid.NewGuid(), UserId = "user-1", Firstname = "Test", Lastname = "Student", SectionId = Guid.NewGuid() });
+        _context.Instructors.Add(new Instructor { Id = Guid.NewGuid(), UserId = "user-2", Firstname = "Test", Lastname = "Instructor" });
         await _context.SaveChangesAsync();
 
         var service = CreateService();
@@ -100,7 +100,7 @@ public class OrphanedUserCleanupServiceTests : IDisposable
         var validUser = new IdentityUser { Id = "valid-user", Email = "valid@test.com", UserName = "valid@test.com" };
 
         _context.Users.AddRange(orphanedUser, validUser);
-        _context.Students.Add(new Student { Id = 1, UserId = "valid-user", Firstname = "Valid", Lastname = "User", SectionId = 1 });
+        _context.Students.Add(new Student { Id = Guid.NewGuid(), UserId = "valid-user", Firstname = "Valid", Lastname = "User", SectionId = Guid.NewGuid() });
         await _context.SaveChangesAsync();
 
         var service = CreateService();
@@ -141,7 +141,7 @@ public class OrphanedUserCleanupServiceTests : IDisposable
         // Arrange
         var user = new IdentityUser { Id = "student-user", Email = "student@test.com", UserName = "student@test.com" };
         _context.Users.Add(user);
-        _context.Students.Add(new Student { Id = 1, UserId = "student-user", Firstname = "Test", Lastname = "Student", SectionId = 1 });
+        _context.Students.Add(new Student { Id = Guid.NewGuid(), UserId = "student-user", Firstname = "Test", Lastname = "Student", SectionId = Guid.NewGuid() });
         await _context.SaveChangesAsync();
 
         var service = CreateService();
@@ -159,7 +159,7 @@ public class OrphanedUserCleanupServiceTests : IDisposable
         // Arrange
         var user = new IdentityUser { Id = "instructor-user", Email = "instructor@test.com", UserName = "instructor@test.com" };
         _context.Users.Add(user);
-        _context.Instructors.Add(new Instructor { Id = 1, UserId = "instructor-user", Firstname = "Test", Lastname = "Instructor" });
+        _context.Instructors.Add(new Instructor { Id = Guid.NewGuid(), UserId = "instructor-user", Firstname = "Test", Lastname = "Instructor" });
         await _context.SaveChangesAsync();
 
         var service = CreateService();
@@ -177,7 +177,7 @@ public class OrphanedUserCleanupServiceTests : IDisposable
         // Arrange
         var user = new IdentityUser { Id = "admin-user", Email = "admin@test.com", UserName = "admin@test.com" };
         _context.Users.Add(user);
-        _context.Admins.Add(new Admin { Id = 1, UserId = "admin-user", Firstname = "Test", Lastname = "Admin" });
+        _context.Admins.Add(new Admin { Id = Guid.NewGuid(), UserId = "admin-user", Firstname = "Test", Lastname = "Admin" });
         await _context.SaveChangesAsync();
 
         var service = CreateService();
@@ -200,7 +200,7 @@ public class OrphanedUserCleanupServiceTests : IDisposable
         var userId = "user-with-profile";
         var user = new IdentityUser { Id = userId, Email = "user@test.com", UserName = "user@test.com" };
         _context.Users.Add(user);
-        _context.Students.Add(new Student { Id = 1, UserId = userId, Firstname = "Test", Lastname = "Student", SectionId = 1 });
+        _context.Students.Add(new Student { Id = Guid.NewGuid(), UserId = userId, Firstname = "Test", Lastname = "Student", SectionId = Guid.NewGuid() });
         await _context.SaveChangesAsync();
 
         var service = CreateService();
@@ -310,7 +310,7 @@ public class OrphanedUserCleanupServiceTests : IDisposable
         // Arrange
         var user = new IdentityUser { Id = "valid-user", Email = "valid@test.com", UserName = "valid@test.com" };
         _context.Users.Add(user);
-        _context.Students.Add(new Student { Id = 1, UserId = "valid-user", Firstname = "Valid", Lastname = "User", SectionId = 1 });
+        _context.Students.Add(new Student { Id = Guid.NewGuid(), UserId = "valid-user", Firstname = "Valid", Lastname = "User", SectionId = Guid.NewGuid() });
         await _context.SaveChangesAsync();
 
         var service = CreateService();

@@ -182,12 +182,12 @@ public sealed class UuidProfileMigrationIntegrationTests
             };
         });
 
-        Assert.True(persisted.StudentId > 0);
+        Assert.NotEqual(Guid.Empty, persisted.StudentId);
         Assert.NotEqual(Guid.Empty, persisted.StudentUuid);
         Assert.Equal(persisted.StudentId, persisted.EnrollmentStudentId);
         Assert.Equal(persisted.StudentUuid, persisted.EnrollmentStudentUuid);
-        Assert.True(persisted.EnrollmentSubjectId > 0);
-        Assert.True(persisted.EnrollmentSectionId > 0);
+        Assert.NotEqual(Guid.Empty, persisted.EnrollmentSubjectId);
+        Assert.NotEqual(Guid.Empty, persisted.EnrollmentSectionId);
         Assert.Contains(persisted.EnrollmentId, persisted.AdditionalEnrollmentIds);
     }
 
@@ -456,7 +456,7 @@ public sealed class UuidProfileMigrationIntegrationTests
         Assert.Equal(persisted.Session.ScheduleId, persisted.Session.Schedule.Id);
         Assert.Equal(persisted.Session.Schedule.SectionId, persisted.Enrollment.SectionId);
         Assert.Equal(persisted.Session.Schedule.SubjectId, persisted.Enrollment.SubjectId);
-        Assert.True(persisted.Session.Schedule.ClassroomId > 0);
+        Assert.NotEqual(Guid.Empty, persisted.Session.Schedule.ClassroomId);
         Assert.NotEqual(Guid.Empty, persisted.Session.Schedule.Id);
         Assert.NotEqual(Guid.Empty, persisted.Session.Schedule.Section.Id);
         Assert.NotEqual(Guid.Empty, persisted.Session.Schedule.Subject.Id);

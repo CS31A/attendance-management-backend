@@ -6,10 +6,10 @@ namespace attendance_monitoring.Models.DTO.Response;
 /// </summary>
 public class AttendanceMinimalDto
 {
-    public int Id { get; set; }
-    public int StudentId { get; set; }
-    public int SessionId { get; set; }
+    public Guid Id { get; set; }
+    public Guid StudentId { get; set; }
+    public Guid SessionId { get; set; }
     public string Status { get; set; } = string.Empty;
     public DateTime CheckInTime { get; set; }
-    public int? QrCodeId { get; set; }
+    public Guid? QrCodeId { get; set; }
 }

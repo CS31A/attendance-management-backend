@@ -31,22 +31,22 @@ public class QrCodeService : IQrCodeService
 
     #region Read Operations
 
-    public Task<QrCodeResponseDto?> GetQrCodeByIdAsync(int id)
+    public Task<QrCodeResponseDto?> GetQrCodeByIdAsync(Guid id)
         => _queryService.GetQrCodeByIdAsync(id);
 
     public Task<QrCodeResponseDto?> GetQrCodeByHashAsync(string qrHash)
         => _queryService.GetQrCodeByHashAsync(qrHash);
 
-    public Task<QrCodeResponseDto?> GetQrCodeByUuidAsync(Guid uuid)
-        => _queryService.GetQrCodeByUuidAsync(uuid);
+    public Task<QrCodeResponseDto?> GetQrCodeByUuidAsync(Guid id)
+        => _queryService.GetQrCodeByUuidAsync(id);
 
-    public Task<IEnumerable<QrCodeResponseDto>> GetQrCodesByScheduleIdAsync(int scheduleId)
+    public Task<IEnumerable<QrCodeResponseDto>> GetQrCodesByScheduleIdAsync(Guid scheduleId)
         => _queryService.GetQrCodesByScheduleIdAsync(scheduleId);
 
-    public Task<IEnumerable<QrCodeResponseDto>> GetQrCodesBySectionIdAsync(int sectionId)
+    public Task<IEnumerable<QrCodeResponseDto>> GetQrCodesBySectionIdAsync(Guid sectionId)
         => _queryService.GetQrCodesBySectionIdAsync(sectionId);
 
-    public Task<IEnumerable<QrCodeResponseDto>> GetQrCodesBySessionIdAsync(int sessionId)
+    public Task<IEnumerable<QrCodeResponseDto>> GetQrCodesBySessionIdAsync(Guid sessionId)
         => _queryService.GetQrCodesBySessionIdAsync(sessionId);
 
     public Task<IEnumerable<QrCodeResponseDto>> GetQrCodesBySessionUuidAsync(Guid sessionUuid)
@@ -56,16 +56,16 @@ public class QrCodeService : IQrCodeService
         => _queryService.GetActiveQrCodesAsync();
 
     public Task<QrCodeScanHistoryResponseDto> GetScanHistoryAsync(
-        int qrCodeId, int instructorId, string userRole, int pageNumber = 1, int pageSize = 50)
+        Guid qrCodeId, Guid instructorId, string userRole, int pageNumber = 1, int pageSize = 50)
         => _queryService.GetScanHistoryAsync(qrCodeId, instructorId, userRole, pageNumber, pageSize);
 
     public Task<QrCodeScanHistoryResponseDto> GetScanHistoryByHashAsync(
-        string qrHash, int instructorId, string userRole, int pageNumber = 1, int pageSize = 50)
+        string qrHash, Guid instructorId, string userRole, int pageNumber = 1, int pageSize = 50)
         => _queryService.GetScanHistoryByHashAsync(qrHash, instructorId, userRole, pageNumber, pageSize);
 
     public Task<QrCodeScanHistoryResponseDto> GetScanHistoryByUuidAsync(
-        Guid uuid, int instructorId, string userRole, int pageNumber = 1, int pageSize = 50)
-        => _queryService.GetScanHistoryByUuidAsync(uuid, instructorId, userRole, pageNumber, pageSize);
+        Guid id, Guid instructorId, string userRole, int pageNumber = 1, int pageSize = 50)
+        => _queryService.GetScanHistoryByUuidAsync(id, instructorId, userRole, pageNumber, pageSize);
 
     #endregion
 
@@ -77,20 +77,20 @@ public class QrCodeService : IQrCodeService
     public Task<QrCodeGenerationResponseDto> GenerateQrCodeAsync(QrCodeRequest qrCodeRequest, ClaimsPrincipal user)
         => _generationService.GenerateQrCodeAsync(qrCodeRequest, user);
 
-    public Task<QrCodeResponseDto> UpdateQrCodeAsync(int id, UpdateQrCode updateQrCode, ClaimsPrincipal user)
+    public Task<QrCodeResponseDto> UpdateQrCodeAsync(Guid id, UpdateQrCode updateQrCode, ClaimsPrincipal user)
         => _writeService.UpdateQrCodeAsync(id, updateQrCode, user);
 
-    public Task<QrCodeResponseDto> UpdateQrCodeByUuidAsync(Guid uuid, UpdateQrCode updateQrCode, ClaimsPrincipal user)
-        => _writeService.UpdateQrCodeByUuidAsync(uuid, updateQrCode, user);
+    public Task<QrCodeResponseDto> UpdateQrCodeByUuidAsync(Guid id, UpdateQrCode updateQrCode, ClaimsPrincipal user)
+        => _writeService.UpdateQrCodeByUuidAsync(id, updateQrCode, user);
 
-    public Task DeactivateQrCodeAsync(int id, ClaimsPrincipal user)
+    public Task DeactivateQrCodeAsync(Guid id, ClaimsPrincipal user)
         => _writeService.DeactivateQrCodeAsync(id, user);
 
-    public Task RevokeQrCodeAsync(int id, string? reason, ClaimsPrincipal user)
+    public Task RevokeQrCodeAsync(Guid id, string? reason, ClaimsPrincipal user)
         => _writeService.RevokeQrCodeAsync(id, reason, user);
 
-    public Task RevokeQrCodeByUuidAsync(Guid uuid, string? reason, ClaimsPrincipal user)
-        => _writeService.RevokeQrCodeByUuidAsync(uuid, reason, user);
+    public Task RevokeQrCodeByUuidAsync(Guid id, string? reason, ClaimsPrincipal user)
+        => _writeService.RevokeQrCodeByUuidAsync(id, reason, user);
 
     public Task DeactivateQrCodeByHashAsync(string qrHash, ClaimsPrincipal user)
         => _writeService.DeactivateQrCodeByHashAsync(qrHash, user);
@@ -98,23 +98,23 @@ public class QrCodeService : IQrCodeService
     public Task RevokeQrCodeByHashAsync(string qrHash, string? reason, ClaimsPrincipal user)
         => _writeService.RevokeQrCodeByHashAsync(qrHash, reason, user);
 
-    public Task ReactivateQrCodeAsync(int id, ClaimsPrincipal user)
+    public Task ReactivateQrCodeAsync(Guid id, ClaimsPrincipal user)
         => _writeService.ReactivateQrCodeAsync(id, user);
 
-    public Task ReactivateQrCodeByUuidAsync(Guid uuid, ClaimsPrincipal user)
-        => _writeService.ReactivateQrCodeByUuidAsync(uuid, user);
+    public Task ReactivateQrCodeByUuidAsync(Guid id, ClaimsPrincipal user)
+        => _writeService.ReactivateQrCodeByUuidAsync(id, user);
 
     public Task ReactivateQrCodeByHashAsync(string qrHash, ClaimsPrincipal user)
         => _writeService.ReactivateQrCodeByHashAsync(qrHash, user);
 
-    public Task DeleteQrCodeAsync(int id, ClaimsPrincipal user)
+    public Task DeleteQrCodeAsync(Guid id, ClaimsPrincipal user)
         => _writeService.DeleteQrCodeAsync(id, user);
 
-    public Task DeleteQrCodeByUuidAsync(Guid uuid, ClaimsPrincipal user)
-        => _writeService.DeleteQrCodeByUuidAsync(uuid, user);
+    public Task DeleteQrCodeByUuidAsync(Guid id, ClaimsPrincipal user)
+        => _writeService.DeleteQrCodeByUuidAsync(id, user);
 
-    public Task<QrCodeResponseDto> ExtendQrCodeExpirationByUuidAsync(Guid uuid, int additionalMinutes, ClaimsPrincipal user)
-        => _writeService.ExtendQrCodeExpirationByUuidAsync(uuid, additionalMinutes, user);
+    public Task<QrCodeResponseDto> ExtendQrCodeExpirationByUuidAsync(Guid id, int additionalMinutes, ClaimsPrincipal user)
+        => _writeService.ExtendQrCodeExpirationByUuidAsync(id, additionalMinutes, user);
 
     #endregion
 
@@ -142,7 +142,7 @@ public class QrCodeService : IQrCodeService
     public Task<IEnumerable<QrCodeResponseDto>> GetQrCodesExpiringSoonAsync(int expiringWithinMinutes = 30)
         => _writeService.GetQrCodesExpiringSoonAsync(expiringWithinMinutes);
 
-    public Task<QrCodeResponseDto> ExtendQrCodeExpirationAsync(int id, int additionalMinutes, ClaimsPrincipal user)
+    public Task<QrCodeResponseDto> ExtendQrCodeExpirationAsync(Guid id, int additionalMinutes, ClaimsPrincipal user)
         => _writeService.ExtendQrCodeExpirationAsync(id, additionalMinutes, user);
 
     #endregion

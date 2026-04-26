@@ -29,7 +29,7 @@ internal sealed class QrCodeAuthorizationService
     /// <summary>
     /// Validates that the session exists and is active. Returns an error message string on failure, null on success.
     /// </summary>
-    public async Task<string?> ValidateSessionExistsAsync(int sessionId)
+    public async Task<string?> ValidateSessionExistsAsync(Guid sessionId)
     {
         var session = await _sessionRepository.GetSessionByIdAsync(sessionId).ConfigureAwait(false);
 
@@ -58,14 +58,14 @@ internal sealed class QrCodeAuthorizationService
     /// <summary>
     /// Validates that the session exists and is active. Throws on failure.
     /// </summary>
-    public async Task ValidateSessionExistsOrThrowAsync(int sessionId)
+    public async Task ValidateSessionExistsOrThrowAsync(Guid sessionId)
     {
         var session = await _sessionRepository.GetSessionByIdAsync(sessionId).ConfigureAwait(false);
 
         if (session == null)
         {
             _logger.LogWarning("Session with ID {SessionId} not found", sessionId);
-            throw new EntityNotFoundException<int>("Session", sessionId);
+            throw new EntityNotFoundException<Guid>("Session", sessionId);
         }
 
         if (session.Status != SessionStatusConstants.Active)
@@ -83,7 +83,7 @@ internal sealed class QrCodeAuthorizationService
         }
     }
 
-    public async Task<bool> IsStudentEnrolledInSectionSubjectAsync(int studentId, int sectionId, int subjectId)
+    public async Task<bool> IsStudentEnrolledInSectionSubjectAsync(Guid studentId, Guid sectionId, Guid subjectId)
     {
         try
         {

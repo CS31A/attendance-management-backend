@@ -6,43 +6,28 @@ namespace attendance.testproject.Services_Testing;
 public class EntityIdResolutionHelperTest
 {
     [Fact]
-    public async Task ResolveEntityIdAsync_WithConflictingIdentifiers_ThrowsValidationException()
+    public void RequireGuid_WithValidGuid_ReturnsGuid()
     {
-        var exception = await Assert.ThrowsAsync<ValidationException>(() =>
-            EntityIdResolutionHelper.ResolveEntityIdAsync(
-                1,
-                Guid.NewGuid(),
-                "Section",
-                id => Task.FromResult<int?>(id),
-                _ => Task.FromResult<int?>(2)));
-
-        Assert.Equal("Conflicting Section identifiers were provided.", exception.Message);
+        var id = Guid.NewGuid();
+        var result = EntityIdResolutionHelper.RequireGuid(id, "Section");
+        Assert.Equal(id, result);
     }
 
     [Fact]
-    public async Task ResolveEntityIdAsync_WithoutIdentifiers_ThrowsValidationException()
+    public void RequireGuid_WithNull_ThrowsValidationException()
     {
-        var exception = await Assert.ThrowsAsync<ValidationException>(() =>
-            EntityIdResolutionHelper.ResolveEntityIdAsync(
-                null,
-                null,
-                "Student",
-                id => Task.FromResult<int?>(id),
-                _ => Task.FromResult<int?>(1)));
+        var exception = Assert.Throws<ValidationException>(() =>
+            EntityIdResolutionHelper.RequireGuid(null, "Student"));
 
         Assert.Equal("Student reference is required.", exception.Message);
     }
 
     [Fact]
-    public async Task ResolveEntityIdAsync_WithUuidOnly_ReturnsResolvedIdentifier()
+    public void RequireGuid_WithEmptyGuid_ThrowsValidationException()
     {
-        var resolvedId = await EntityIdResolutionHelper.ResolveEntityIdAsync(
-            null,
-            Guid.NewGuid(),
-            "Subject",
-            id => Task.FromResult<int?>(id),
-            _ => Task.FromResult<int?>(7));
+        var exception = Assert.Throws<ValidationException>(() =>
+            EntityIdResolutionHelper.RequireGuid(Guid.Empty, "Subject"));
 
-        Assert.Equal(7, resolvedId);
+        Assert.Equal("Subject reference is required.", exception.Message);
     }
 }

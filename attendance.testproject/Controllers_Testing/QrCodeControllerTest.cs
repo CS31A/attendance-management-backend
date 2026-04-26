@@ -82,7 +82,7 @@ public class QrCodeControllerTest
 
         // Verify other properties
         Assert.NotNull(qrCodeIdProp);
-        Assert.Equal(1, qrCodeIdProp.GetValue(response));
+        Assert.Equal(mockResponse.QrCodeId, qrCodeIdProp.GetValue(response));
 
         Assert.NotNull(qrHashProp);
         Assert.Equal("test-hash-123", qrHashProp.GetValue(response));
@@ -158,7 +158,7 @@ public class QrCodeControllerTest
 
         // Verify other properties
         Assert.NotNull(qrCodeIdProp);
-        Assert.Equal(4, qrCodeIdProp.GetValue(response));
+        Assert.Equal(mockResponse.QrCodeId, qrCodeIdProp.GetValue(response));
 
         Assert.NotNull(qrHashProp);
         Assert.Equal("minimal-hash", qrHashProp.GetValue(response));
@@ -197,7 +197,9 @@ public class QrCodeControllerTest
         Assert.Null(okResult.Value!.GetType().GetProperty("uuid"));
         Assert.Null(okResult.Value.GetType().GetProperty("qrCodeUuid"));
         Assert.Null(okResult.Value.GetType().GetProperty("sessionUuid"));
-        Assert.Equal(8, okResult.Value.GetType().GetProperty("qrCodeId")?.GetValue(okResult.Value));
+        var qrCodeIdValue = okResult.Value.GetType().GetProperty("qrCodeId")?.GetValue(okResult.Value);
+        Assert.IsType<Guid>(qrCodeIdValue);
+        Assert.NotEqual(Guid.Empty, qrCodeIdValue);
     }
 
     [Fact]
@@ -429,7 +431,7 @@ public class QrCodeControllerTest
 
         _mockUserContextService
             .Setup(service => service.GetInstructorIdAsync(It.IsAny<ClaimsPrincipal>()))
-            .ReturnsAsync((int?)null);
+            .ReturnsAsync((Guid?)null);
 
         var result = await _qrCodeController.GetQrCodesBySessionUuid(sessionUuid);
 
@@ -441,11 +443,12 @@ public class QrCodeControllerTest
     public async Task GetQrCodesBySessionUuid_ReturnsNotFound_WhenSessionDoesNotExist()
     {
         var sessionUuid = Guid.NewGuid();
+        var instructorId = Guid.NewGuid();
         SetUserContext();
 
         _mockUserContextService
             .Setup(service => service.GetInstructorIdAsync(It.IsAny<ClaimsPrincipal>()))
-            .ReturnsAsync(7);
+            .ReturnsAsync(instructorId);
         _mockSessionRepository
             .Setup(repository => repository.GetSessionByUuidAsync(sessionUuid))
             .ReturnsAsync((attendance_monitoring.Classes.Session?)null);
@@ -460,16 +463,16 @@ public class QrCodeControllerTest
     public async Task GetQrCodesBySessionUuid_ReturnsForbidden_WhenInstructorDoesNotOwnSession()
     {
         var sessionUuid = Guid.NewGuid();
+        var instructorId = Guid.NewGuid();
         SetUserContext();
 
         _mockUserContextService
             .Setup(service => service.GetInstructorIdAsync(It.IsAny<ClaimsPrincipal>()))
-            .ReturnsAsync(7);
+            .ReturnsAsync(instructorId);
         _mockSessionRepository
             .Setup(repository => repository.GetSessionByUuidAsync(sessionUuid))
             .ReturnsAsync(new attendance_monitoring.Classes.Session
             {
-                Id = Guid.NewGuid(),
                 Id = sessionUuid,
                 ScheduleId = Guid.NewGuid(),
                 RowVersion = [1, 2, 3, 4],
@@ -493,23 +496,23 @@ public class QrCodeControllerTest
     public async Task GetQrCodesBySessionUuid_ReturnsNotFound_WhenNoQrCodesExist()
     {
         var sessionUuid = Guid.NewGuid();
+        var instructorId = Guid.NewGuid();
         SetUserContext();
 
         _mockUserContextService
             .Setup(service => service.GetInstructorIdAsync(It.IsAny<ClaimsPrincipal>()))
-            .ReturnsAsync(7);
+            .ReturnsAsync(instructorId);
         _mockSessionRepository
             .Setup(repository => repository.GetSessionByUuidAsync(sessionUuid))
             .ReturnsAsync(new attendance_monitoring.Classes.Session
             {
-                Id = Guid.NewGuid(),
                 Id = sessionUuid,
                 ScheduleId = Guid.NewGuid(),
                 RowVersion = [1, 2, 3, 4],
                 Schedule = new attendance_monitoring.Classes.Schedules
                 {
                     Id = Guid.NewGuid(),
-                    InstructorId = Guid.NewGuid(),
+                    InstructorId = instructorId,
                     DayOfWeek = "Monday",
                     TimeIn = new TimeOnly(8, 0),
                     TimeOut = new TimeOnly(9, 0)
@@ -533,7 +536,7 @@ public class QrCodeControllerTest
 
         _mockUserContextService
             .Setup(service => service.GetInstructorIdAsync(It.IsAny<ClaimsPrincipal>()))
-            .ReturnsAsync((int?)null);
+            .ReturnsAsync((Guid?)null);
 
         var result = await _qrCodeController.GetScanHistoryByUuid(qrCodeUuid);
 
@@ -545,13 +548,14 @@ public class QrCodeControllerTest
     public async Task GetScanHistoryByUuid_ReturnsNotFound_WhenQrCodeDoesNotExist()
     {
         var qrCodeUuid = Guid.NewGuid();
+        var instructorId = Guid.NewGuid();
         SetUserContext();
 
         _mockUserContextService
             .Setup(service => service.GetInstructorIdAsync(It.IsAny<ClaimsPrincipal>()))
-            .ReturnsAsync(7);
+            .ReturnsAsync(instructorId);
         _mockQrCodeService
-            .Setup(service => service.GetScanHistoryByUuidAsync(qrCodeUuid, 7, RoleConstants.Instructor, 1, 50))
+            .Setup(service => service.GetScanHistoryByUuidAsync(qrCodeUuid, instructorId, RoleConstants.Instructor, 1, 50))
             .ThrowsAsync(new attendance_monitoring.Exceptions.EntityNotFoundException<Guid>("QrCode", qrCodeUuid));
 
         var result = await _qrCodeController.GetScanHistoryByUuid(qrCodeUuid);
@@ -564,14 +568,15 @@ public class QrCodeControllerTest
     public async Task GetScanHistoryByUuid_ReturnsForbidden_WhenAccessIsUnauthorized()
     {
         var qrCodeUuid = Guid.NewGuid();
+        var instructorId = Guid.NewGuid();
         SetUserContext();
 
         _mockUserContextService
             .Setup(service => service.GetInstructorIdAsync(It.IsAny<ClaimsPrincipal>()))
-            .ReturnsAsync(7);
+            .ReturnsAsync(instructorId);
         _mockQrCodeService
-            .Setup(service => service.GetScanHistoryByUuidAsync(qrCodeUuid, 7, RoleConstants.Instructor, 1, 50))
-            .ThrowsAsync(new attendance_monitoring.Exceptions.EntityUnauthorizedException("QrCode", "View scan history", "7"));
+            .Setup(service => service.GetScanHistoryByUuidAsync(qrCodeUuid, instructorId, RoleConstants.Instructor, 1, 50))
+            .ThrowsAsync(new attendance_monitoring.Exceptions.EntityUnauthorizedException("QrCode", "View scan history", instructorId.ToString()));
 
         var result = await _qrCodeController.GetScanHistoryByUuid(qrCodeUuid);
 

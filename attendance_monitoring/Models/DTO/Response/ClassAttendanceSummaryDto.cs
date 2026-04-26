@@ -5,7 +5,7 @@ namespace attendance_monitoring.Models.DTO.Response;
 /// </summary>
 public class SessionAttendanceStatsDto
 {
-    public int SessionId { get; set; }
+    public Guid SessionId { get; set; }
     public DateTime SessionDate { get; set; }
     public string SubjectName { get; set; } = string.Empty;
     public string ScheduleTitle { get; set; } = string.Empty;
@@ -24,7 +24,7 @@ public class SessionAttendanceStatsDto
 /// </summary>
 public class ClassAttendanceSummaryDto
 {
-    public int SectionId { get; set; }
+    public Guid SectionId { get; set; }
     public string SectionName { get; set; } = string.Empty;
     public int TotalSessions { get; set; }
     public int TotalPresent { get; set; }
