@@ -103,7 +103,8 @@ internal sealed class ApiIntegrationHost : IAsyncDisposable
         {
             ["CookieSettings:AccessTokenExpirationMinutes"] = "15",
             ["CookieSettings:RefreshTokenExpirationDays"] = "7",
-            ["TimeZoneSettings:TimeZoneId"] = TimeZoneInfo.Local.Id
+            ["TimeZoneSettings:TimeZoneId"] = TimeZoneInfo.Local.Id,
+            ["SessionAutoEnd:Enabled"] = "false"
         });
 
         var accountService = new Mock<IAccountService>(MockBehavior.Strict);
@@ -149,7 +150,8 @@ internal sealed class ApiIntegrationHost : IAsyncDisposable
             ["Jwt:Token"] = "test-secret-key-for-integration-testing-minimum-32-characters",
             ["Jwt:Issuer"] = "test-issuer",
             ["Jwt:Audience"] = "test-audience",
-            ["TimeZoneSettings:TimeZoneId"] = TimeZoneInfo.Local.Id
+            ["TimeZoneSettings:TimeZoneId"] = TimeZoneInfo.Local.Id,
+            ["SessionAutoEnd:Enabled"] = "false"
         });
 
         builder.Services.AddDbContext<ApplicationDbContext>(options =>
@@ -235,7 +237,8 @@ internal sealed class ApiIntegrationHost : IAsyncDisposable
             ["CookieSettings:AccessTokenExpirationMinutes"] = "15",
             ["CookieSettings:RefreshTokenExpirationDays"] = "7",
             ["CorsSettings:AllowedOrigins"] = "https://localhost",
-            ["TimeZoneSettings:TimeZoneId"] = TimeZoneInfo.Local.Id
+            ["TimeZoneSettings:TimeZoneId"] = TimeZoneInfo.Local.Id,
+            ["SessionAutoEnd:Enabled"] = "false"
         });
 
         builder.Services.AddDbContext<ApplicationDbContext>(options => options.UseSqlite(connectionString));
@@ -255,6 +258,7 @@ internal sealed class ApiIntegrationHost : IAsyncDisposable
             options.LoginPath = PathString.Empty;
             options.AccessDeniedPath = PathString.Empty;
         });
+        builder.Services.Configure<attendance_monitoring.Options.SessionAutoEndOptions>(options => options.Enabled = false);
         builder.Services.AddAuthorizationPolicies();
         builder.Services.AddResponseHandling();
         builder.Services.AddCorsPolicy(builder.Configuration);
@@ -311,7 +315,8 @@ internal sealed class ApiIntegrationHost : IAsyncDisposable
             ["CookieSettings:AccessTokenExpirationMinutes"] = "15",
             ["CookieSettings:RefreshTokenExpirationDays"] = "7",
             ["CorsSettings:AllowedOrigins"] = "https://localhost",
-            ["TimeZoneSettings:TimeZoneId"] = TimeZoneInfo.Local.Id
+            ["TimeZoneSettings:TimeZoneId"] = TimeZoneInfo.Local.Id,
+            ["SessionAutoEnd:Enabled"] = "false"
         });
 
         builder.Services.AddDbContext<ApplicationDbContext>(options => options.UseSqlite(connectionString));
@@ -331,6 +336,7 @@ internal sealed class ApiIntegrationHost : IAsyncDisposable
             options.LoginPath = PathString.Empty;
             options.AccessDeniedPath = PathString.Empty;
         });
+        builder.Services.Configure<attendance_monitoring.Options.SessionAutoEndOptions>(options => options.Enabled = false);
         builder.Services.AddAuthorizationPolicies();
         builder.Services.AddResponseHandling();
         builder.Services.AddCorsPolicy(builder.Configuration);
@@ -388,7 +394,8 @@ internal sealed class ApiIntegrationHost : IAsyncDisposable
             ["Jwt:Token"] = "test-secret-key-for-integration-testing-minimum-32-characters",
             ["Jwt:Issuer"] = "test-issuer",
             ["Jwt:Audience"] = "test-audience",
-            ["TimeZoneSettings:TimeZoneId"] = TimeZoneInfo.Local.Id
+            ["TimeZoneSettings:TimeZoneId"] = TimeZoneInfo.Local.Id,
+            ["SessionAutoEnd:Enabled"] = "false"
         });
 
         builder.Services.AddDbContext<ApplicationDbContext>(options => options.UseSqlite(connectionString));
@@ -415,6 +422,7 @@ internal sealed class ApiIntegrationHost : IAsyncDisposable
             options.LoginPath = PathString.Empty;
             options.AccessDeniedPath = PathString.Empty;
         });
+        builder.Services.Configure<attendance_monitoring.Options.SessionAutoEndOptions>(options => options.Enabled = false);
         builder.Services.AddAuthorizationPolicies();
         builder.Services.AddResponseHandling();
         builder.Services.AddCorsPolicy(builder.Configuration);
@@ -473,7 +481,8 @@ internal sealed class ApiIntegrationHost : IAsyncDisposable
             ["Jwt:Token"] = "test-secret-key-for-integration-testing-minimum-32-characters",
             ["Jwt:Issuer"] = "test-issuer",
             ["Jwt:Audience"] = "test-audience",
-            ["TimeZoneSettings:TimeZoneId"] = TimeZoneInfo.Local.Id
+            ["TimeZoneSettings:TimeZoneId"] = TimeZoneInfo.Local.Id,
+            ["SessionAutoEnd:Enabled"] = "false"
         });
 
         builder.Services.AddDbContext<ApplicationDbContext>(options => options.UseSqlite(connectionString));

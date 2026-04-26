@@ -5,6 +5,7 @@ using attendance_monitoring.Data;
 using attendance_monitoring.Exceptions;
 using attendance_monitoring.Extensions;
 using attendance_monitoring.IRepository;
+using attendance_monitoring.IServices;
 using attendance_monitoring.Models.DTO.Request;
 using attendance_monitoring.Options;
 using attendance_monitoring.Services;
@@ -22,6 +23,7 @@ public class AttendanceServiceUuidTests
     private readonly Mock<IInstructorRepository> _mockInstructorRepository;
     private readonly Mock<ISessionRepository> _mockSessionRepository;
     private readonly Mock<IStudentEnrollmentRepository> _mockStudentEnrollmentRepository;
+    private readonly Mock<IAutomaticSessionEndService> _mockAutomaticSessionEndService;
     private readonly Mock<ILogger<AttendanceService>> _mockLogger;
     private readonly Mock<UserManager<IdentityUser>> _mockUserManager;
     private readonly AttendanceService _attendanceService;
@@ -33,6 +35,7 @@ public class AttendanceServiceUuidTests
         _mockInstructorRepository = new Mock<IInstructorRepository>();
         _mockSessionRepository = new Mock<ISessionRepository>();
         _mockStudentEnrollmentRepository = new Mock<IStudentEnrollmentRepository>();
+        _mockAutomaticSessionEndService = new Mock<IAutomaticSessionEndService>();
         _mockLogger = new Mock<ILogger<AttendanceService>>();
 
         var mockUserStore = new Mock<IUserStore<IdentityUser>>();
@@ -53,6 +56,9 @@ public class AttendanceServiceUuidTests
         var mockContext = new Mock<ApplicationDbContext>(options);
         var userContextService = new UserContextService(_mockUserManager.Object, mockContext.Object);
         var timeZoneProvider = new ConfiguredTimeZoneProvider(new TimeZoneSettings { TimeZoneId = TimeZoneInfo.Local.Id });
+        _mockAutomaticSessionEndService
+            .Setup(service => service.AutoEndIfExpiredAsync(It.IsAny<Session>()))
+            .ReturnsAsync((Session session) => session);
 
         _attendanceService = new AttendanceService(
             _mockAttendanceRepository.Object,
@@ -62,7 +68,8 @@ public class AttendanceServiceUuidTests
             _mockStudentEnrollmentRepository.Object,
             userContextService,
             _mockLogger.Object,
-            timeZoneProvider);
+            timeZoneProvider,
+            _mockAutomaticSessionEndService.Object);
     }
 
     [Fact]
@@ -128,6 +135,7 @@ public class AttendanceServiceUuidTests
             .ReturnsAsync(new Session
             {
                 Id = sessionUuid,
+                Status = SessionStatusConstants.Active,
                 Schedule = new Schedules { InstructorId = instructorId, SectionId = sectionId, SubjectId = subjectId }
             });
         _mockStudentEnrollmentRepository
@@ -167,6 +175,55 @@ public class AttendanceServiceUuidTests
         _mockSessionRepository.Verify(repository => repository.GetSessionByUuidAsync(sessionUuid), Times.Once);
         _mockStudentRepository.Verify(repository => repository.GetStudentByIdAsync(It.IsAny<Guid>()), Times.Never);
         _mockSessionRepository.Verify(repository => repository.GetSessionByIdAsync(It.IsAny<Guid>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task CreateAttendanceAsync_RejectsSessionAutoEndedDuringRequest()
+    {
+        var studentUuid = Guid.NewGuid();
+        var sessionUuid = Guid.NewGuid();
+        var sectionId = Guid.NewGuid();
+        var subjectId = Guid.NewGuid();
+        var activeSession = new Session
+        {
+            Id = sessionUuid,
+            Status = SessionStatusConstants.Active,
+            Schedule = new Schedules
+            {
+                InstructorId = Guid.NewGuid(),
+                SectionId = sectionId,
+                SubjectId = subjectId
+            }
+        };
+        var endedSession = new Session
+        {
+            Id = sessionUuid,
+            Status = SessionStatusConstants.Ended,
+            Schedule = activeSession.Schedule
+        };
+
+        _mockStudentRepository
+            .Setup(repository => repository.GetStudentByUuidAsync(studentUuid))
+            .ReturnsAsync(new Student { Id = studentUuid, SectionId = sectionId });
+        _mockSessionRepository
+            .Setup(repository => repository.GetSessionByUuidAsync(sessionUuid))
+            .ReturnsAsync(activeSession);
+        _mockAutomaticSessionEndService
+            .Setup(service => service.AutoEndIfExpiredAsync(activeSession))
+            .ReturnsAsync(endedSession);
+
+        var request = new CreateAttendanceRequest
+        {
+            StudentId = studentUuid,
+            SessionId = sessionUuid,
+            Status = "Present"
+        };
+
+        var exception = await Assert.ThrowsAsync<attendance_monitoring.Exceptions.ValidationException>(
+            () => _attendanceService.CreateAttendanceAsync(request, CreateInstructorUser("instructor-user")));
+
+        Assert.Contains("not active", exception.Message);
+        _mockAttendanceRepository.Verify(repository => repository.CreateAsync(It.IsAny<AttendanceRecord>()), Times.Never);
     }
 
     [Fact]

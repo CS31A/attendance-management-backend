@@ -19,6 +19,7 @@ builder.Services.AddAuthorizationPolicies();
 
 // Bulk data
 builder.Services.Configure<BulkDataOptions>(builder.Configuration.GetSection(BulkDataOptions.SectionName));
+builder.Services.Configure<SessionAutoEndOptions>(builder.Configuration.GetSection(SessionAutoEndOptions.SectionName));
 
 // API Documentation
 builder.Services.AddApiDocumentation();

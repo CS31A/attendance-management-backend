@@ -50,6 +50,13 @@ public interface ISessionRepository : ISaveableRepository
     Task<IEnumerable<Session>> GetSessionsByStatusAsync(string status);
 
     /// <summary>
+    /// Retrieves sessions matching any of the specified statuses.
+    /// </summary>
+    /// <param name="statuses">Session statuses to include</param>
+    /// <returns>Collection of sessions with any matching status</returns>
+    Task<IEnumerable<Session>> GetSessionsByStatusesAsync(IReadOnlyCollection<string> statuses);
+
+    /// <summary>
     /// Retrieves sessions for a specific date.
     /// </summary>
     /// <param name="date">The session date</param>
@@ -84,6 +91,13 @@ public interface ISessionRepository : ISaveableRepository
     /// <param name="instructorId">The instructor ID</param>
     /// <returns>Collection of active sessions for the instructor</returns>
     Task<IEnumerable<Session>> GetActiveSessionsByInstructorIdAsync(Guid instructorId);
+
+    /// <summary>
+    /// Retrieves active sessions on or before a local date for automatic ending evaluation.
+    /// </summary>
+    /// <param name="currentLocalDate">The current local date used to narrow scan candidates</param>
+    /// <returns>Collection of active sessions that are possible auto-end candidates</returns>
+    Task<IEnumerable<Session>> GetActiveSessionsForAutoEndScanAsync(DateTime currentLocalDate);
 
     /// <summary>
     /// Retrieves all sessions for a specific instructor (all statuses).

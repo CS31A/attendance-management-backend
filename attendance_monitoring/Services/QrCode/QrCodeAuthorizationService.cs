@@ -8,6 +8,7 @@ namespace attendance_monitoring.Services.QrCode;
 internal sealed class QrCodeAuthorizationService
 {
     private readonly ISessionRepository _sessionRepository;
+    private readonly IAutomaticSessionEndService? _automaticSessionEndService;
     private readonly IStudentEnrollmentService _studentEnrollmentService;
     private readonly IUserContextService _userContextService;
     private readonly ILogger<QrCodeAuthorizationService> _logger;
@@ -16,9 +17,11 @@ internal sealed class QrCodeAuthorizationService
         ISessionRepository sessionRepository,
         IStudentEnrollmentService studentEnrollmentService,
         IUserContextService userContextService,
-        ILogger<QrCodeAuthorizationService> logger)
+        ILogger<QrCodeAuthorizationService> logger,
+        IAutomaticSessionEndService? automaticSessionEndService = null)
     {
         _sessionRepository = sessionRepository ?? throw new ArgumentNullException(nameof(sessionRepository));
+        _automaticSessionEndService = automaticSessionEndService;
         _studentEnrollmentService = studentEnrollmentService ?? throw new ArgumentNullException(nameof(studentEnrollmentService));
         _userContextService = userContextService ?? throw new ArgumentNullException(nameof(userContextService));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -37,6 +40,11 @@ internal sealed class QrCodeAuthorizationService
         {
             _logger.LogWarning("Session with ID {SessionId} not found", sessionId);
             return "The specified session does not exist";
+        }
+
+        if (_automaticSessionEndService != null)
+        {
+            session = await _automaticSessionEndService.AutoEndIfExpiredAsync(session).ConfigureAwait(false);
         }
 
         if (session.Status != SessionStatusConstants.Active)
@@ -66,6 +74,11 @@ internal sealed class QrCodeAuthorizationService
         {
             _logger.LogWarning("Session with ID {SessionId} not found", sessionId);
             throw new EntityNotFoundException<Guid>("Session", sessionId);
+        }
+
+        if (_automaticSessionEndService != null)
+        {
+            session = await _automaticSessionEndService.AutoEndIfExpiredAsync(session).ConfigureAwait(false);
         }
 
         if (session.Status != SessionStatusConstants.Active)
