@@ -1,4 +1,6 @@
+using System.Reflection;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Routing;
 using attendance_monitoring.Controllers;
 using attendance_monitoring.IServices;
 using attendance_monitoring.Classes;
@@ -21,6 +23,26 @@ public class StudentControllerTest
         _mockStudentService = new Mock<IStudentService>();
         var mockLogger = new Mock<ILogger<StudentController>>();
         _studentController = new StudentController(_mockStudentService.Object, mockLogger.Object);
+    }
+
+    [Fact]
+    public void StudentIdRoutes_AcceptGuidValues()
+    {
+        Assert.Equal("{id:guid}", GetHttpTemplate(nameof(StudentController.GetStudent)));
+        Assert.Equal("{id:guid}", GetHttpTemplate(nameof(StudentController.PatchStudent)));
+        Assert.Equal("{id:guid}/soft-delete", GetHttpTemplate(nameof(StudentController.SoftDeleteStudent)));
+        Assert.Equal("{id:guid}", GetHttpTemplate(nameof(StudentController.HardDeleteStudent)));
+        Assert.Equal("{id:guid}/restore", GetHttpTemplate(nameof(StudentController.RestoreStudent)));
+    }
+
+    private static string? GetHttpTemplate(string methodName)
+    {
+        var method = typeof(StudentController).GetMethod(methodName, BindingFlags.Instance | BindingFlags.Public);
+        Assert.NotNull(method);
+        return method!.GetCustomAttributes()
+            .OfType<HttpMethodAttribute>()
+            .Single()
+            .Template;
     }
 
     [Fact]

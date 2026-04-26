@@ -128,7 +128,7 @@ namespace attendance_monitoring.Controllers
         /// <response code="200">Returns the list of schedules for the section</response>
         /// <response code="400">Invalid request or error retrieving schedules</response>
         /// <response code="500">Internal server error</response>
-        [HttpGet("by-section/{sectionId:int}")]
+        [HttpGet("by-section/{sectionId:guid}")]
         public async Task<ActionResult<IEnumerable<ScheduleResponseDto>>> GetSchedulesBySection(Guid sectionId)
         {
             logger.LogInformation("Getting schedules for section ID: {SectionId}", sectionId);

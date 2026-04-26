@@ -1,4 +1,6 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using System.Reflection;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Routing;
 using attendance_monitoring.Controllers;
 using attendance_monitoring.IServices;
 using attendance_monitoring.Classes;
@@ -32,6 +34,22 @@ public class ScheduleControllerTest
             new Claim(ClaimTypes.NameIdentifier, "1"),
             new Claim(ClaimTypes.Role, "Admin")
         }, "TestAuthentication"));
+    }
+
+    [Fact]
+    public void SectionFilterRoute_AcceptsGuidSectionId()
+    {
+        Assert.Equal("by-section/{sectionId:guid}", GetHttpTemplate(nameof(ScheduleController.GetSchedulesBySection)));
+    }
+
+    private static string? GetHttpTemplate(string methodName)
+    {
+        var method = typeof(ScheduleController).GetMethod(methodName, BindingFlags.Instance | BindingFlags.Public);
+        Assert.NotNull(method);
+        return method!.GetCustomAttributes()
+            .OfType<HttpMethodAttribute>()
+            .Single()
+            .Template;
     }
 
     #region GetSchedule Tests

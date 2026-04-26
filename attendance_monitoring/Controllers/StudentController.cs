@@ -88,7 +88,7 @@ public class StudentController(IStudentService studentService, ILogger<StudentCo
     /// <response code="500">Internal server error</response>
     // GET: api/Student/5
     [Authorize(Policy = "PrivilegedPolicy")]
-    [HttpGet("{id:int}")]
+    [HttpGet("{id:guid}")]
     public async Task<ActionResult<Student>> GetStudent(Guid id)
     {
         try
@@ -130,7 +130,7 @@ public class StudentController(IStudentService studentService, ILogger<StudentCo
     /// <response code="500">Internal server error</response>
     // PATCH: api/Student/{id}
     [Authorize(Policy = "PrivilegedPolicy")]
-    [HttpPatch("{id:int}")]
+    [HttpPatch("{id:guid}")]
     public async Task<ActionResult<Student>> PatchStudent(Guid id, UpdateStudent updateStudent)
     {
         try
@@ -174,7 +174,7 @@ public class StudentController(IStudentService studentService, ILogger<StudentCo
     /// <response code="500">Internal server error</response>
     // PATCH: api/Student/{id}/soft-delete
     [Authorize(Policy = "AdminPolicy")]
-    [HttpPatch("{id:int}/soft-delete")]
+    [HttpPatch("{id:guid}/soft-delete")]
     public async Task<ActionResult<SoftDeleteResponse>> SoftDeleteStudent(Guid id)
     {
         try
@@ -226,7 +226,7 @@ public class StudentController(IStudentService studentService, ILogger<StudentCo
     /// <response code="404">Student not found</response>
     /// <response code="401">Not authorized to permanently delete this student</response>
     // DELETE: api/Student/{id}
-    [HttpDelete("{id:int}")]
+    [HttpDelete("{id:guid}")]
     [Authorize(Policy = "AdminPolicy")]
     public async Task<ActionResult<SoftDeleteResponse>> HardDeleteStudent(Guid id)
     {
@@ -245,7 +245,7 @@ public class StudentController(IStudentService studentService, ILogger<StudentCo
     /// <response code="404">Student not found</response>
     /// <response code="401">Not authorized to restore this student</response>
     // PATCH: api/Students/{id}/restore
-    [HttpPatch("{id:int}/restore")]
+    [HttpPatch("{id:guid}/restore")]
     [Authorize(Policy = "AdminPolicy")]
     public async Task<ActionResult<SoftDeleteResponse>> RestoreStudent(Guid id)
     {
