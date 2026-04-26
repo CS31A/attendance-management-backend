@@ -53,6 +53,10 @@ public sealed class AutomaticSessionEndService(
 
         var boundary = CalculateAutoEndBoundary(session);
         var processedAt = clock.GetLocalNow();
+        var originalStatus = session.Status;
+        var originalActualEndTime = session.ActualEndTime;
+        var originalEndedBy = session.EndedBy;
+        var originalDescription = session.Description;
 
         session.Status = SessionStatusConstants.Ended;
         session.ActualEndTime = boundary;
@@ -74,8 +78,19 @@ public sealed class AutomaticSessionEndService(
         {
             logger.LogInformation(
                 ex,
-                "Skipped auto-ending session {SessionId} because another update won the race",
+                "Reloading session {SessionId} because another update won the auto-end race",
                 session.Id);
+
+            var currentSession = await sessionRepository.GetSessionByIdAsync(session.Id).ConfigureAwait(false);
+            if (currentSession != null)
+            {
+                return currentSession;
+            }
+
+            session.Status = originalStatus;
+            session.ActualEndTime = originalActualEndTime;
+            session.EndedBy = originalEndedBy;
+            session.Description = originalDescription;
         }
 
         return session;

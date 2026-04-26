@@ -100,7 +100,7 @@ public class AutomaticSessionEndServiceTest
     }
 
     [Fact]
-    public async Task AutoEndIfExpiredAsync_ToleratesConcurrencyRace()
+    public async Task AutoEndIfExpiredAsync_ReloadsCurrentStateAfterConcurrencyRace()
     {
         var repository = new Mock<ISessionRepository>();
         var service = CreateService(
@@ -110,16 +110,31 @@ public class AutomaticSessionEndServiceTest
             sessionDate: new DateTime(2026, 4, 26),
             timeIn: new TimeOnly(10, 0),
             timeOut: new TimeOnly(11, 30));
+        var manuallyEndedSession = CreateSession(
+            sessionDate: new DateTime(2026, 4, 26),
+            timeIn: new TimeOnly(10, 0),
+            timeOut: new TimeOnly(11, 30),
+            status: SessionStatusConstants.Ended);
+        manuallyEndedSession.Id = session.Id;
+        manuallyEndedSession.ActualEndTime = new DateTime(2026, 4, 26, 11, 50, 0);
+        manuallyEndedSession.EndedBy = Guid.NewGuid();
+        manuallyEndedSession.Description = "Ended manually";
 
         repository
             .Setup(repo => repo.UpdateSessionAsync(It.IsAny<Session>()))
             .ThrowsAsync(new DbUpdateConcurrencyException("manual end won"));
+        repository
+            .Setup(repo => repo.GetSessionByIdAsync(session.Id))
+            .ReturnsAsync(manuallyEndedSession);
 
         var result = await service.AutoEndIfExpiredAsync(session);
 
         Assert.Equal(SessionStatusConstants.Ended, result.Status);
-        Assert.Equal(new DateTime(2026, 4, 26, 11, 45, 0), result.ActualEndTime);
+        Assert.Equal(new DateTime(2026, 4, 26, 11, 50, 0), result.ActualEndTime);
+        Assert.Equal(manuallyEndedSession.EndedBy, result.EndedBy);
+        Assert.Equal("Ended manually", result.Description);
         repository.Verify(repo => repo.UpdateSessionAsync(It.IsAny<Session>()), Times.Once);
+        repository.Verify(repo => repo.GetSessionByIdAsync(session.Id), Times.Once);
         repository.Verify(repo => repo.SaveChangesAsync(), Times.Never);
     }
 
