@@ -208,7 +208,7 @@ public class StudentEnrollmentControllerTest
         };
 
         _mockService.Setup(s => s.EnrollStudentAsync(request))
-            .ThrowsAsync(new EntityAlreadyExistsException<int>("Enrollment", "Id", 1));
+            .ThrowsAsync(new EntityAlreadyExistsException<Guid>("Enrollment", "Id", Guid.NewGuid()));
 
         // Act
         var result = await _controller.EnrollStudent(request);
