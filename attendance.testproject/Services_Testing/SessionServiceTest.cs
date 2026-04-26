@@ -32,6 +32,7 @@ public class SessionServiceTest
     private readonly Mock<INotificationService> _mockNotificationService;
     private readonly Mock<IHttpContextAccessor> _mockHttpContextAccessor;
     private readonly Mock<ILogger<SessionService>> _mockLogger;
+    private readonly Mock<IAutomaticSessionEndService> _mockAutomaticSessionEndService;
     private readonly ConfiguredTimeZoneProvider _timeZoneProvider;
     private readonly Mock<UserManager<IdentityUser>> _mockUserManager;
     private readonly UserContextService _userContextService;
@@ -49,6 +50,7 @@ public class SessionServiceTest
         _mockNotificationService = new Mock<INotificationService>();
         _mockHttpContextAccessor = new Mock<IHttpContextAccessor>();
         _mockLogger = new Mock<ILogger<SessionService>>();
+        _mockAutomaticSessionEndService = new Mock<IAutomaticSessionEndService>();
 
         // Mock UserManager for UserContextService
         var mockUserStore = new Mock<IUserStore<IdentityUser>>();
@@ -85,6 +87,9 @@ public class SessionServiceTest
         };
 
         _mockHttpContextAccessor.Setup(x => x.HttpContext).Returns(_httpContext);
+        _mockAutomaticSessionEndService
+            .Setup(service => service.AutoEndIfExpiredAsync(It.IsAny<Session>()))
+            .ReturnsAsync((Session session) => session);
 
         _timeZoneProvider = new ConfiguredTimeZoneProvider(
             new TimeZoneSettings { TimeZoneId = TimeZoneInfo.Local.Id });
@@ -99,7 +104,8 @@ public class SessionServiceTest
             _userContextService,
             _mockHttpContextAccessor.Object,
             _timeZoneProvider,
-            _mockLogger.Object
+            _mockLogger.Object,
+            _mockAutomaticSessionEndService.Object
         );
     }
 
@@ -298,6 +304,35 @@ public class SessionServiceTest
         Assert.NotNull(result);
         Assert.Equal(2, result.Count());
         Assert.All(result, s => Assert.Equal(SessionStatusConstants.Active, s.Status));
+    }
+
+    [Fact]
+    public async Task GetSessionsByStatusAsync_ReturnsExpiredActiveSessionsWhenRequestingEndedStatus()
+    {
+        var status = SessionStatusConstants.Ended;
+        var endedSession = CreateTestSession(status: SessionStatusConstants.Ended);
+        var expiredActiveSession = CreateTestSession(status: SessionStatusConstants.Active);
+        var normalizedExpiredSession = CreateTestSession(
+            id: expiredActiveSession.Id,
+            scheduleId: expiredActiveSession.ScheduleId,
+            status: SessionStatusConstants.Ended,
+            sessionDate: expiredActiveSession.SessionDate);
+
+        _mockSessionRepository
+            .Setup(r => r.GetSessionsByStatusAsync(status))
+            .ReturnsAsync([endedSession]);
+        _mockSessionRepository
+            .Setup(r => r.GetAllSessionsAsync())
+            .ReturnsAsync([endedSession, expiredActiveSession]);
+        _mockAutomaticSessionEndService
+            .Setup(service => service.AutoEndIfExpiredAsync(It.Is<Session>(session => session.Id == expiredActiveSession.Id)))
+            .ReturnsAsync(normalizedExpiredSession);
+
+        var result = (await _sessionService.GetSessionsByStatusAsync(status)).ToList();
+
+        Assert.Equal(2, result.Count);
+        Assert.Contains(result, session => session.Id == endedSession.Id);
+        Assert.Contains(result, session => session.Id == expiredActiveSession.Id);
     }
 
     #endregion

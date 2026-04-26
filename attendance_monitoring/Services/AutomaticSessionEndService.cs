@@ -44,11 +44,47 @@ public sealed class AutomaticSessionEndService(
 
     public async Task<Session> AutoEndIfExpiredAsync(Session session)
     {
+        var (_, normalizedSession) = await TryAutoEndIfExpiredAsync(session).ConfigureAwait(false);
+        return normalizedSession;
+    }
+
+    public async Task<int> AutoEndExpiredSessionsAsync()
+    {
+        if (!_options.Enabled)
+        {
+            logger.LogDebug("Session auto-end scan skipped because auto-end is disabled.");
+            return 0;
+        }
+
+        var now = clock.GetLocalNow();
+        var candidates = await sessionRepository
+            .GetActiveSessionsForAutoEndScanAsync(now.Date)
+            .ConfigureAwait(false);
+
+        var endedCount = 0;
+        foreach (var session in candidates)
+        {
+            var (updatedHere, _) = await TryAutoEndIfExpiredAsync(session).ConfigureAwait(false);
+            if (updatedHere)
+            {
+                endedCount++;
+            }
+        }
+
+        logger.LogInformation(
+            "Session auto-end scan completed. Auto-ended {EndedCount} session(s).",
+            endedCount);
+
+        return endedCount;
+    }
+
+    private async Task<(bool UpdatedHere, Session Session)> TryAutoEndIfExpiredAsync(Session session)
+    {
         ArgumentNullException.ThrowIfNull(session);
 
         if (!IsPastAutoEndBoundary(session))
         {
-            return session;
+            return (false, session);
         }
 
         var boundary = CalculateAutoEndBoundary(session);
@@ -73,6 +109,7 @@ public sealed class AutomaticSessionEndService(
                 session.Id,
                 boundary,
                 processedAt);
+            return (true, session);
         }
         catch (DbUpdateConcurrencyException ex)
         {
@@ -84,7 +121,7 @@ public sealed class AutomaticSessionEndService(
             var currentSession = await sessionRepository.GetSessionByIdAsync(session.Id).ConfigureAwait(false);
             if (currentSession != null)
             {
-                return currentSession;
+                return (false, currentSession);
             }
 
             session.Status = originalStatus;
@@ -93,39 +130,7 @@ public sealed class AutomaticSessionEndService(
             session.Description = originalDescription;
         }
 
-        return session;
-    }
-
-    public async Task<int> AutoEndExpiredSessionsAsync()
-    {
-        if (!_options.Enabled)
-        {
-            logger.LogDebug("Session auto-end scan skipped because auto-end is disabled.");
-            return 0;
-        }
-
-        var now = clock.GetLocalNow();
-        var candidates = await sessionRepository
-            .GetActiveSessionsForAutoEndScanAsync(now.Date)
-            .ConfigureAwait(false);
-
-        var endedCount = 0;
-        foreach (var session in candidates)
-        {
-            if (!IsPastAutoEndBoundary(session))
-            {
-                continue;
-            }
-
-            await AutoEndIfExpiredAsync(session).ConfigureAwait(false);
-            endedCount++;
-        }
-
-        logger.LogInformation(
-            "Session auto-end scan completed. Auto-ended {EndedCount} session(s).",
-            endedCount);
-
-        return endedCount;
+        return (false, session);
     }
 
     private static string AppendAutoEndNote(string? existingDescription)
@@ -140,9 +145,12 @@ public sealed class AutomaticSessionEndService(
             return existingDescription;
         }
 
-        var combined = $"{existingDescription}\n\n{AutoEndNote}";
-        return combined.Length <= 500
-            ? combined
-            : combined[^500..];
+        const string separator = "\n\n";
+        var maxExistingDescriptionLength = Math.Max(0, 500 - separator.Length - AutoEndNote.Length);
+        var trimmedDescription = existingDescription.Length <= maxExistingDescriptionLength
+            ? existingDescription
+            : existingDescription[..maxExistingDescriptionLength];
+
+        return $"{trimmedDescription}{separator}{AutoEndNote}";
     }
 }

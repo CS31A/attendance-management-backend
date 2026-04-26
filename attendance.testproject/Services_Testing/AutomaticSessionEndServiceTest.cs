@@ -138,6 +138,80 @@ public class AutomaticSessionEndServiceTest
         repository.Verify(repo => repo.SaveChangesAsync(), Times.Never);
     }
 
+    [Fact]
+    public async Task AutoEndExpiredSessionsAsync_CountsOnlySessionsUpdatedByThisInvocation()
+    {
+        var repository = new Mock<ISessionRepository>();
+        var service = CreateService(
+            repository,
+            localNow: new DateTime(2026, 4, 26, 11, 52, 0));
+        var sessionEndedHere = CreateSession(
+            sessionDate: new DateTime(2026, 4, 26),
+            timeIn: new TimeOnly(10, 0),
+            timeOut: new TimeOnly(11, 30));
+        var sessionEndedElsewhere = CreateSession(
+            sessionDate: new DateTime(2026, 4, 26),
+            timeIn: new TimeOnly(10, 0),
+            timeOut: new TimeOnly(11, 30));
+        var manuallyEndedSession = CreateSession(
+            sessionDate: new DateTime(2026, 4, 26),
+            timeIn: new TimeOnly(10, 0),
+            timeOut: new TimeOnly(11, 30),
+            status: SessionStatusConstants.Ended);
+        manuallyEndedSession.Id = sessionEndedElsewhere.Id;
+        manuallyEndedSession.ActualEndTime = new DateTime(2026, 4, 26, 11, 50, 0);
+        manuallyEndedSession.EndedBy = Guid.NewGuid();
+        manuallyEndedSession.Description = "Ended manually";
+
+        repository
+            .Setup(repo => repo.GetActiveSessionsForAutoEndScanAsync(new DateTime(2026, 4, 26)))
+            .ReturnsAsync([sessionEndedHere, sessionEndedElsewhere]);
+        repository
+            .Setup(repo => repo.UpdateSessionAsync(It.Is<Session>(session => session.Id == sessionEndedHere.Id)))
+            .ReturnsAsync((Session updated) => updated);
+        repository
+            .Setup(repo => repo.UpdateSessionAsync(It.Is<Session>(session => session.Id == sessionEndedElsewhere.Id)))
+            .ThrowsAsync(new DbUpdateConcurrencyException("manual end won"));
+        repository
+            .Setup(repo => repo.SaveChangesAsync())
+            .ReturnsAsync(1);
+        repository
+            .Setup(repo => repo.GetSessionByIdAsync(sessionEndedElsewhere.Id))
+            .ReturnsAsync(manuallyEndedSession);
+
+        var endedCount = await service.AutoEndExpiredSessionsAsync();
+
+        Assert.Equal(1, endedCount);
+        repository.Verify(repo => repo.SaveChangesAsync(), Times.Once);
+    }
+
+    [Fact]
+    public async Task AutoEndIfExpiredAsync_PreservesDescriptionPrefixWhenAppendingAutoEndNote()
+    {
+        var repository = new Mock<ISessionRepository>();
+        var service = CreateService(
+            repository,
+            localNow: new DateTime(2026, 4, 26, 11, 52, 0));
+        var session = CreateSession(
+            sessionDate: new DateTime(2026, 4, 26),
+            timeIn: new TimeOnly(10, 0),
+            timeOut: new TimeOnly(11, 30));
+        session.Description = $"START-{new string('A', 470)}";
+
+        repository
+            .Setup(repo => repo.UpdateSessionAsync(It.IsAny<Session>()))
+            .ReturnsAsync((Session updated) => updated);
+        repository
+            .Setup(repo => repo.SaveChangesAsync())
+            .ReturnsAsync(1);
+
+        var result = await service.AutoEndIfExpiredAsync(session);
+
+        Assert.StartsWith("START-", result.Description);
+        Assert.EndsWith("Auto-ended by system after scheduled end grace period.", result.Description);
+        Assert.True(result.Description!.Length <= 500);
+    }
+
     private static AutomaticSessionEndService CreateService(
         Mock<ISessionRepository>? repository = null,
         DateTime? localNow = null,

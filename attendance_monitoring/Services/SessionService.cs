@@ -165,7 +165,9 @@ public class SessionService : ISessionService
 
         try
         {
-            var sessions = await _sessionRepository.GetSessionsByStatusAsync(status).ConfigureAwait(false);
+            var sessions = status == SessionStatusConstants.Ended
+                ? await _sessionRepository.GetAllSessionsAsync().ConfigureAwait(false)
+                : await _sessionRepository.GetSessionsByStatusAsync(status).ConfigureAwait(false);
             var sessionList = sessions.ToList();
 
             var normalizedSessions = await NormalizeExpiredSessionsAsync(sessionList).ConfigureAwait(false);

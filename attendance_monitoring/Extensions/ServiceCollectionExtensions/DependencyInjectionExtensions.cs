@@ -47,9 +47,6 @@ public static class DependencyInjectionExtensions
     /// <returns>The service collection for chaining.</returns>
     public static IServiceCollection AddApplicationServices(this IServiceCollection services)
     {
-        services.AddOptions<SessionAutoEndOptions>()
-            .BindConfiguration(SessionAutoEndOptions.SectionName);
-
         // Register ConfiguredTimeZoneProvider with fallback to system local time
         services.AddSingleton<ConfiguredTimeZoneProvider>(sp =>
         {
