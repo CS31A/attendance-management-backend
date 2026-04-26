@@ -110,9 +110,9 @@ public class AttendanceRepositoryTest : IDisposable
         var section = new Section { Id = Guid.NewGuid(), Name = "Section A" };
         var classroom = new Classroom { Id = Guid.NewGuid(), Name = "Room 101" };
         var instructor = new Instructor { Id = Guid.NewGuid(), Firstname = "John", Lastname = "Doe", UserId = "instructor1" };
-        var student1 = new Student { Id = Guid.NewGuid(), Firstname = "Alice", Lastname = "Smith", UserId = "student1", SectionId = section.Id };
-        var student2 = new Student { Id = Guid.NewGuid(), Firstname = "Bob", Lastname = "Johnson", UserId = "student2", SectionId = section.Id };
-        var student3 = new Student { Id = Guid.NewGuid(), Firstname = "Charlie", Lastname = "Brown", UserId = "student3", SectionId = section.Id };
+        var student1 = new Student { Id = Guid.NewGuid(), Firstname = "Alice", Lastname = "Smith", UserId = "student1", SectionId = section.Id, Usn = "C23-6769-MAN121" };
+        var student2 = new Student { Id = Guid.NewGuid(), Firstname = "Bob", Lastname = "Johnson", UserId = "student2", SectionId = section.Id, Usn = "C23-6770-MAN122" };
+        var student3 = new Student { Id = Guid.NewGuid(), Firstname = "Charlie", Lastname = "Brown", UserId = "student3", SectionId = section.Id, Usn = "C23-6771-MAN123" };
 
         var schedule = new Schedules
         {
