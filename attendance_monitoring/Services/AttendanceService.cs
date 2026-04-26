@@ -310,7 +310,7 @@ public class AttendanceService(
         {
             StudentId = student.Id,
             StudentName = $"{student.Firstname} {student.Lastname}",
-            StudentNumber = student.Id.ToString(),
+            StudentNumber = student.Usn ?? string.Empty,
             TotalSessions = totalSessions,
             PresentCount = presentCount,
             LateCount = lateCount,
@@ -871,7 +871,7 @@ public class AttendanceService(
             Id = record.Id,
             StudentId = record.Student.Id,
             StudentName = $"{record.Student.Firstname} {record.Student.Lastname}",
-            StudentNumber = record.Student.Id.ToString(),
+            StudentNumber = record.Student.Usn ?? string.Empty,
             SessionId = record.Session.Id,
             SessionDate = record.Session.SessionDate,
             QrCodeId = record.QrCode?.Id,
