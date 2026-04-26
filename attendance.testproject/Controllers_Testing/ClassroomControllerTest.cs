@@ -160,7 +160,7 @@ public class ClassroomControllerTest
         // Assert
         var createdAtActionResult = Assert.IsType<CreatedAtActionResult>(result.Result);
         var classroom = Assert.IsType<Classroom>(createdAtActionResult.Value);
-        Assert.Equal(nameof(ClassroomController.GetClassroom), createdAtActionResult.ActionName);
+        Assert.Equal(nameof(ClassroomController.GetClassroomByUuid), createdAtActionResult.ActionName);
         Assert.Equal(createdClassroom.Id, createdAtActionResult.RouteValues!["id"]);
         Assert.Equal(createdClassroom.Id, classroom.Id);
         Assert.Equal("Room 301", classroom.Name);

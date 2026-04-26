@@ -213,7 +213,7 @@ public class CourseControllerTest
 
         // Assert
         var createdAtResult = Assert.IsType<CreatedAtActionResult>(result.Result);
-        Assert.Equal(nameof(CourseController.GetCourse), createdAtResult.ActionName);
+        Assert.Equal(nameof(CourseController.GetCourseByUuid), createdAtResult.ActionName);
         Assert.Equal(createdCourse.Id, createdAtResult.RouteValues!["id"]);
         var course = Assert.IsType<Course>(createdAtResult.Value);
         Assert.Equal(createdCourse.Id, course.Id);
