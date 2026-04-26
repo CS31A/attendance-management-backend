@@ -118,7 +118,7 @@ public class CourseController(ICourseService courseService, ILogger<CourseContro
 
             var course = await courseService.CreateCourseAsync(createCourse, User);
             logger.LogInformation("Successfully created course with ID: {Id} and name: {CourseName}", course.Id, course.Name);
-            return CreatedAtAction(nameof(GetCourse), new { id = course.Id }, course);
+            return CreatedAtAction(nameof(GetCourseByUuid), new { id = course.Id }, course);
         }
         catch (EntityServiceException ex)
         {

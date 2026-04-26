@@ -109,7 +109,7 @@ public class SubjectController(ISubjectService subjectService, ILogger<SubjectCo
 
         logger.LogInformation("Successfully created subject with ID: {Id} and name: {SubjectName}", subject.Id,
             subject.Name);
-        return CreatedAtAction(nameof(GetSubject), new { id = subject.Id }, subject);
+        return CreatedAtAction(nameof(GetSubjectByUuid), new { id = subject.Id }, subject);
         // Exceptions are handled by global exception handler
     }
 

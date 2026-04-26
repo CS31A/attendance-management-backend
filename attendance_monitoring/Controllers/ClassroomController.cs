@@ -109,7 +109,7 @@ public class ClassroomController(IClassroomService classroomService, ILogger<Cla
 
         logger.LogInformation("Successfully created classroom with ID: {Id} and name: {ClassroomName}", classroom.Id,
             classroom.Name);
-        return CreatedAtAction(nameof(GetClassroom), new { id = classroom.Id }, classroom);
+        return CreatedAtAction(nameof(GetClassroomByUuid), new { id = classroom.Id }, classroom);
         // Exceptions are handled by global exception handler
     }
 

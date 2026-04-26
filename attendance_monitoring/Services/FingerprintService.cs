@@ -142,7 +142,7 @@ public class FingerprintService(
     {
         ValidateDeviceApiKey(deviceId, apiKey);
 
-        var device = await GetProvisionedActiveDeviceAsync(deviceId).ConfigureAwait(false);
+        var device = await GetOrCreateManagedDeviceAsync(deviceId).ConfigureAwait(false);
         await ExpireStaleEnrollmentSessionsAsync(device.Id).ConfigureAwait(false);
 
         var enrollmentSession = await context.FingerprintEnrollmentSessions
@@ -346,7 +346,7 @@ public class FingerprintService(
 
         ValidateDeviceApiKey(request.DeviceId, apiKey);
 
-        var device = await GetProvisionedActiveDeviceAsync(request.DeviceId).ConfigureAwait(false);
+        var device = await GetOrCreateManagedDeviceAsync(request.DeviceId).ConfigureAwait(false);
         var scanEvent = new FingerprintScanEvent
         {
             DeviceId = device.Id,
