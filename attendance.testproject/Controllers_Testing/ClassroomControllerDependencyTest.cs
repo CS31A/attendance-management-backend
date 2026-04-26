@@ -21,7 +21,7 @@ public class ClassroomControllerDependencyTest
     [Fact]
     public async Task HasSchedulesInClassroom_ReturnsOk_WithBooleanResult()
     {
-        const int classroomId = 5;
+        var classroomId = Guid.NewGuid();
         _mockClassroomService
             .Setup(service => service.HasSchedulesInClassroomAsync(classroomId))
             .ReturnsAsync(true);
@@ -35,17 +35,17 @@ public class ClassroomControllerDependencyTest
     [Fact]
     public async Task HasSchedulesInClassroom_ReturnsBadRequest_ForInvalidId()
     {
-        var result = await _controller.HasSchedulesInClassroom(0);
+        var result = await _controller.HasSchedulesInClassroom(Guid.Empty);
 
         var badRequestResult = Assert.IsType<BadRequestObjectResult>(result.Result);
         Assert.Equal("Classroom ID must be greater than 0.", badRequestResult.Value);
-        _mockClassroomService.Verify(service => service.HasSchedulesInClassroomAsync(It.IsAny<int>()), Times.Never);
+        _mockClassroomService.Verify(service => service.HasSchedulesInClassroomAsync(It.IsAny<Guid>()), Times.Never);
     }
 
     [Fact]
     public async Task HasSchedulesInClassroom_ReturnsServerError_WhenServiceThrowsException()
     {
-        const int classroomId = 12;
+        var classroomId = Guid.NewGuid();
         _mockClassroomService
             .Setup(service => service.HasSchedulesInClassroomAsync(classroomId))
             .ThrowsAsync(new EntityServiceException("Classroom", $"HasSchedulesInClassroom: {classroomId}", "Error checking classroom dependencies"));
@@ -60,7 +60,7 @@ public class ClassroomControllerDependencyTest
     [Fact]
     public async Task HasSessionsInClassroom_ReturnsOk_WithBooleanResult()
     {
-        const int classroomId = 8;
+        var classroomId = Guid.NewGuid();
         _mockClassroomService
             .Setup(service => service.HasSessionsInClassroomAsync(classroomId))
             .ReturnsAsync(true);
@@ -74,17 +74,17 @@ public class ClassroomControllerDependencyTest
     [Fact]
     public async Task HasSessionsInClassroom_ReturnsBadRequest_ForInvalidId()
     {
-        var result = await _controller.HasSessionsInClassroom(-1);
+        var result = await _controller.HasSessionsInClassroom(Guid.Empty);
 
         var badRequestResult = Assert.IsType<BadRequestObjectResult>(result.Result);
         Assert.Equal("Classroom ID must be greater than 0.", badRequestResult.Value);
-        _mockClassroomService.Verify(service => service.HasSessionsInClassroomAsync(It.IsAny<int>()), Times.Never);
+        _mockClassroomService.Verify(service => service.HasSessionsInClassroomAsync(It.IsAny<Guid>()), Times.Never);
     }
 
     [Fact]
     public async Task HasSessionsInClassroom_ReturnsServerError_WhenServiceThrowsException()
     {
-        const int classroomId = 15;
+        var classroomId = Guid.NewGuid();
         _mockClassroomService
             .Setup(service => service.HasSessionsInClassroomAsync(classroomId))
             .ThrowsAsync(new EntityServiceException("Classroom", $"HasSessionsInClassroom: {classroomId}", "Error checking classroom dependencies"));

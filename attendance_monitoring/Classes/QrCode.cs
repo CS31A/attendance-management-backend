@@ -16,17 +16,14 @@ namespace attendance_monitoring.Classes;
 public class QrCode
 {
     [Key]
-    [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
-    public int Id { get; set; }
-
-    public Guid Uuid { get; set; }
+    public Guid Id { get; set; }
 
     /// <summary>
     /// Foreign key to the session this QR code belongs to.
     /// Session contains: ScheduleId, ActualRoomId, SectionId (via Schedule)
     /// </summary>
     [Required]
-    public int SessionId { get; set; }
+    public Guid SessionId { get; set; }
 
     /// <summary>
     /// Unique hash for QR code validation

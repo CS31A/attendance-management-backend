@@ -153,7 +153,7 @@ public class FingerprintControllerTest
         {
             new()
             {
-                Uuid = deviceUuid,
+                Id = deviceUuid,
                 DeviceIdentifier = "esp32-01",
                 Name = "Lab Scanner",
                 Location = "Lab 201",

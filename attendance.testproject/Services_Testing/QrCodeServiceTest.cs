@@ -43,7 +43,7 @@ public class QrCodeServiceTest
         var qrCode = CreateQrCode();
         var qrCodeRepository = CreateAuthorizedRepository();
         qrCodeRepository
-            .Setup(repository => repository.GetQrCodeByUuidAsync(qrCode.Uuid))
+            .Setup(repository => repository.GetQrCodeByUuidAsync(qrCode.Id))
             .ReturnsAsync(qrCode);
         qrCodeRepository
             .Setup(repository => repository.UpdateQrCodeAsync(It.IsAny<QrCode>()))
@@ -51,12 +51,12 @@ public class QrCodeServiceTest
 
         var service = CreateFacade(writeService: CreateWriteService(qrCodeRepository.Object));
 
-        var response = await service.UpdateQrCodeByUuidAsync(qrCode.Uuid, new UpdateQrCode { IsActive = false }, CreateUser());
+        var response = await service.UpdateQrCodeByUuidAsync(qrCode.Id, new UpdateQrCode { IsActive = false }, CreateUser());
 
         Assert.NotNull(response);
-        Assert.Equal(qrCode.Uuid, response.Id);
-        qrCodeRepository.Verify(repository => repository.GetQrCodeByUuidAsync(qrCode.Uuid), Times.Once);
-        qrCodeRepository.Verify(repository => repository.UpdateQrCodeAsync(It.Is<QrCode>(entity => entity.Uuid == qrCode.Uuid && entity.IsActive == false)), Times.Once);
+        Assert.Equal(qrCode.Id, response.Id);
+        qrCodeRepository.Verify(repository => repository.GetQrCodeByUuidAsync(qrCode.Id), Times.Once);
+        qrCodeRepository.Verify(repository => repository.UpdateQrCodeAsync(It.Is<QrCode>(entity => entity.Id == qrCode.Id && entity.IsActive == false)), Times.Once);
         qrCodeRepository.Verify(repository => repository.SaveChangesAsync(), Times.Once);
     }
 
@@ -66,7 +66,7 @@ public class QrCodeServiceTest
         var qrCode = CreateQrCode();
         var qrCodeRepository = CreateAuthorizedRepository();
         qrCodeRepository
-            .Setup(repository => repository.GetQrCodeByUuidAsync(qrCode.Uuid))
+            .Setup(repository => repository.GetQrCodeByUuidAsync(qrCode.Id))
             .ReturnsAsync(qrCode);
         qrCodeRepository
             .Setup(repository => repository.UpdateQrCodeAsync(It.IsAny<QrCode>()))
@@ -74,10 +74,10 @@ public class QrCodeServiceTest
 
         var service = CreateFacade(writeService: CreateWriteService(qrCodeRepository.Object));
 
-        await service.RevokeQrCodeByUuidAsync(qrCode.Uuid, "rotated", CreateUser());
+        await service.RevokeQrCodeByUuidAsync(qrCode.Id, "rotated", CreateUser());
 
-        qrCodeRepository.Verify(repository => repository.GetQrCodeByUuidAsync(qrCode.Uuid), Times.Once);
-        qrCodeRepository.Verify(repository => repository.UpdateQrCodeAsync(It.Is<QrCode>(entity => entity.Uuid == qrCode.Uuid && entity.IsActive == false && entity.RevocationReason == "rotated")), Times.Once);
+        qrCodeRepository.Verify(repository => repository.GetQrCodeByUuidAsync(qrCode.Id), Times.Once);
+        qrCodeRepository.Verify(repository => repository.UpdateQrCodeAsync(It.Is<QrCode>(entity => entity.Id == qrCode.Id && entity.IsActive == false && entity.RevocationReason == "rotated")), Times.Once);
         qrCodeRepository.Verify(repository => repository.SaveChangesAsync(), Times.Once);
     }
 
@@ -87,7 +87,7 @@ public class QrCodeServiceTest
         var qrCode = CreateQrCode(expiresAt: DateTime.UtcNow.AddMinutes(10), isActive: false);
         var qrCodeRepository = CreateAuthorizedRepository();
         qrCodeRepository
-            .Setup(repository => repository.GetQrCodeByUuidAsync(qrCode.Uuid))
+            .Setup(repository => repository.GetQrCodeByUuidAsync(qrCode.Id))
             .ReturnsAsync(qrCode);
         qrCodeRepository
             .Setup(repository => repository.ReactivateQrCodeAsync(qrCode.Id))
@@ -95,9 +95,9 @@ public class QrCodeServiceTest
 
         var service = CreateFacade(writeService: CreateWriteService(qrCodeRepository.Object));
 
-        await service.ReactivateQrCodeByUuidAsync(qrCode.Uuid, CreateUser());
+        await service.ReactivateQrCodeByUuidAsync(qrCode.Id, CreateUser());
 
-        qrCodeRepository.Verify(repository => repository.GetQrCodeByUuidAsync(qrCode.Uuid), Times.Once);
+        qrCodeRepository.Verify(repository => repository.GetQrCodeByUuidAsync(qrCode.Id), Times.Once);
         qrCodeRepository.Verify(repository => repository.ReactivateQrCodeAsync(qrCode.Id), Times.Once);
         qrCodeRepository.Verify(repository => repository.SaveChangesAsync(), Times.Once);
     }
@@ -108,7 +108,7 @@ public class QrCodeServiceTest
         var qrCode = CreateQrCode();
         var qrCodeRepository = CreateAuthorizedRepository(adminOnly: true);
         qrCodeRepository
-            .Setup(repository => repository.GetQrCodeByUuidAsync(qrCode.Uuid))
+            .Setup(repository => repository.GetQrCodeByUuidAsync(qrCode.Id))
             .ReturnsAsync(qrCode);
         qrCodeRepository
             .Setup(repository => repository.DeleteQrCodeAsync(qrCode.Id))
@@ -116,9 +116,9 @@ public class QrCodeServiceTest
 
         var service = CreateFacade(writeService: CreateWriteService(qrCodeRepository.Object, adminOnly: true));
 
-        await service.DeleteQrCodeByUuidAsync(qrCode.Uuid, CreateUser());
+        await service.DeleteQrCodeByUuidAsync(qrCode.Id, CreateUser());
 
-        qrCodeRepository.Verify(repository => repository.GetQrCodeByUuidAsync(qrCode.Uuid), Times.Once);
+        qrCodeRepository.Verify(repository => repository.GetQrCodeByUuidAsync(qrCode.Id), Times.Once);
         qrCodeRepository.Verify(repository => repository.DeleteQrCodeAsync(qrCode.Id), Times.Once);
         qrCodeRepository.Verify(repository => repository.SaveChangesAsync(), Times.Once);
     }
@@ -130,7 +130,7 @@ public class QrCodeServiceTest
         var qrCode = CreateQrCode(expiresAt: originalExpiration);
         var qrCodeRepository = CreateAuthorizedRepository();
         qrCodeRepository
-            .Setup(repository => repository.GetQrCodeByUuidAsync(qrCode.Uuid))
+            .Setup(repository => repository.GetQrCodeByUuidAsync(qrCode.Id))
             .ReturnsAsync(qrCode);
         qrCodeRepository
             .Setup(repository => repository.UpdateQrCodeAsync(It.IsAny<QrCode>()))
@@ -138,11 +138,11 @@ public class QrCodeServiceTest
 
         var service = CreateFacade(writeService: CreateWriteService(qrCodeRepository.Object));
 
-        var response = await service.ExtendQrCodeExpirationByUuidAsync(qrCode.Uuid, 10, CreateUser());
+        var response = await service.ExtendQrCodeExpirationByUuidAsync(qrCode.Id, 10, CreateUser());
 
         Assert.NotNull(response);
-        qrCodeRepository.Verify(repository => repository.GetQrCodeByUuidAsync(qrCode.Uuid), Times.Once);
-        qrCodeRepository.Verify(repository => repository.UpdateQrCodeAsync(It.Is<QrCode>(entity => entity.Uuid == qrCode.Uuid && entity.ExpiresAt == originalExpiration.AddMinutes(10))), Times.Once);
+        qrCodeRepository.Verify(repository => repository.GetQrCodeByUuidAsync(qrCode.Id), Times.Once);
+        qrCodeRepository.Verify(repository => repository.UpdateQrCodeAsync(It.Is<QrCode>(entity => entity.Id == qrCode.Id && entity.ExpiresAt == originalExpiration.AddMinutes(10))), Times.Once);
         qrCodeRepository.Verify(repository => repository.SaveChangesAsync(), Times.Once);
     }
 
@@ -150,15 +150,15 @@ public class QrCodeServiceTest
     public async Task CreateQrCodeAsync_CanonicalSessionId_ResolvesSessionIdBeforePersisting()
     {
         var sessionUuid = Guid.NewGuid();
-        var capturedSessionId = 0;
+        var capturedSessionId = Guid.NewGuid();
         var qrCodeRepository = CreateAuthorizedRepository();
         var sessionRepository = new Mock<ISessionRepository>();
         sessionRepository
             .Setup(repository => repository.GetSessionByUuidAsync(sessionUuid))
-            .ReturnsAsync(new Session { Id = 42, Uuid = sessionUuid, Status = SessionStatusConstants.Active });
+            .ReturnsAsync(new Session { Id = sessionUuid, Status = SessionStatusConstants.Active });
         sessionRepository
-            .Setup(repository => repository.GetSessionByIdAsync(42))
-            .ReturnsAsync(new Session { Id = 42, Uuid = sessionUuid, Status = SessionStatusConstants.Active });
+            .Setup(repository => repository.GetSessionByIdAsync(sessionUuid))
+            .ReturnsAsync(new Session { Id = sessionUuid, Status = SessionStatusConstants.Active });
         qrCodeRepository
             .Setup(repository => repository.CreateQrCodeAsync(It.IsAny<QrCode>()))
             .Callback<QrCode>(entity => capturedSessionId = entity.SessionId)
@@ -175,23 +175,23 @@ public class QrCodeServiceTest
             },
             CreateUser());
 
-        Assert.Equal(42, capturedSessionId);
-        sessionRepository.Verify(repository => repository.GetSessionByUuidAsync(sessionUuid), Times.Once);
+        Assert.Equal(sessionUuid, capturedSessionId);
+        sessionRepository.Verify(repository => repository.GetSessionByIdAsync(sessionUuid), Times.Once);
     }
 
     [Fact]
     public async Task GenerateQrCodeAsync_CanonicalSessionId_ResolvesSessionIdBeforePersisting()
     {
         var sessionUuid = Guid.NewGuid();
-        var capturedSessionId = 0;
+        var capturedSessionId = Guid.Empty;
         var qrCodeRepository = CreateAuthorizedRepository();
         var sessionRepository = new Mock<ISessionRepository>();
         sessionRepository
             .Setup(repository => repository.GetSessionByUuidAsync(sessionUuid))
-            .ReturnsAsync(new Session { Id = 42, Uuid = sessionUuid, Status = SessionStatusConstants.Active });
+            .ReturnsAsync(new Session { Id = sessionUuid, Status = SessionStatusConstants.Active });
         sessionRepository
-            .Setup(repository => repository.GetSessionByIdAsync(42))
-            .ReturnsAsync(new Session { Id = 42, Uuid = sessionUuid, Status = SessionStatusConstants.Active });
+            .Setup(repository => repository.GetSessionByIdAsync(sessionUuid))
+            .ReturnsAsync(new Session { Id = sessionUuid, Status = SessionStatusConstants.Active });
         qrCodeRepository
             .Setup(repository => repository.QrHashExistsAsync(It.IsAny<string>()))
             .ReturnsAsync(false);
@@ -212,8 +212,8 @@ public class QrCodeServiceTest
             CreateUser());
 
         Assert.True(result.Success);
-        Assert.Equal(42, capturedSessionId);
-        sessionRepository.Verify(repository => repository.GetSessionByUuidAsync(sessionUuid), Times.Once);
+        Assert.Equal(sessionUuid, capturedSessionId);
+        sessionRepository.Verify(repository => repository.GetSessionByIdAsync(sessionUuid), Times.Once);
     }
 
     private static QrCodeService CreateFacade(
@@ -294,12 +294,11 @@ public class QrCodeServiceTest
     {
         return new QrCode
         {
-            Id = 15,
-            Uuid = uuid ?? Guid.NewGuid(),
-            SessionId = 7,
+            Id = uuid ?? Guid.NewGuid(),
+            SessionId = Guid.NewGuid(),
             Session = new Session
             {
-                Id = 7,
+                Id = Guid.NewGuid(),
                 Schedule = new Schedules
                 {
                     Subject = new Subject { Name = "Software Engineering" },

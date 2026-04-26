@@ -91,7 +91,7 @@ public class NotificationService : INotificationService
         }
     }
 
-    public async Task NotifyQrCodeGeneratedAsync(int qrCodeId, string instructorId)
+    public async Task NotifyQrCodeGeneratedAsync(Guid qrCodeId, string instructorId)
     {
         try
         {
@@ -115,7 +115,7 @@ public class NotificationService : INotificationService
         }
     }
 
-    public async Task NotifyStudentCheckedInAsync(string studentId, string instructorId, int sessionId, string status)
+    public async Task NotifyStudentCheckedInAsync(string studentId, string instructorId, Guid sessionId, string status)
     {
         try
         {
@@ -154,7 +154,7 @@ public class NotificationService : INotificationService
         }
     }
 
-    public async Task NotifySessionStartedAsync(int sessionId, IEnumerable<string> studentIds)
+    public async Task NotifySessionStartedAsync(Guid sessionId, IEnumerable<string> studentIds)
     {
         try
         {
@@ -183,7 +183,7 @@ public class NotificationService : INotificationService
         }
     }
 
-    public async Task NotifySessionEndedAsync(int sessionId, IEnumerable<string> studentIds)
+    public async Task NotifySessionEndedAsync(Guid sessionId, IEnumerable<string> studentIds)
     {
         try
         {

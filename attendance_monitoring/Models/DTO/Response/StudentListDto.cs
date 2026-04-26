@@ -7,12 +7,12 @@ namespace attendance_monitoring.Models.DTO.Response;
 /// </summary>
 public class StudentListDto
 {
-    public int Id { get; set; }
+    public Guid Id { get; set; }
     public string Firstname { get; set; } = string.Empty;
     public string Lastname { get; set; } = string.Empty;
     public bool IsRegular { get; set; }
     public string UserId { get; set; } = string.Empty;
-    public int SectionId { get; set; }
+    public Guid SectionId { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
     public bool IsDeleted { get; set; }

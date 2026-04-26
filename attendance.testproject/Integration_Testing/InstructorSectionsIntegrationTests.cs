@@ -25,7 +25,7 @@ public sealed class InstructorSectionsIntegrationTests
             await dbContext.Instructors
                 .AsNoTracking()
                 .Where(instructor => instructor.Id == scenario.InstructorId)
-                .Select(instructor => instructor.Uuid)
+                .Select(instructor => instructor.Id)
                 .SingleAsync(cancellationToken));
         
         host.AuthenticateAs(
@@ -110,7 +110,7 @@ public sealed class InstructorSectionsIntegrationTests
             await dbContext.Instructors
                 .AsNoTracking()
                 .Where(instructor => instructor.Id == scenario.InstructorWithNoSchedulesId)
-                .Select(instructor => instructor.Uuid)
+                .Select(instructor => instructor.Id)
                 .SingleAsync(cancellationToken));
         
         host.AuthenticateAs(

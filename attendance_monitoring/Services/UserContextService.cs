@@ -68,7 +68,7 @@ public class UserContextService(UserManager<IdentityUser> userManager, Applicati
     /// </summary>
     /// <param name="userPrincipal">The user's claims principal</param>
     /// <returns>Instructor ID if user is an instructor, null otherwise</returns>
-    public async Task<int?> GetInstructorIdAsync(ClaimsPrincipal userPrincipal)
+    public async Task<Guid?> GetInstructorIdAsync(ClaimsPrincipal userPrincipal)
     {
         var userId = await GetUserIdAsync(userPrincipal).ConfigureAwait(false);
         if (string.IsNullOrEmpty(userId))
@@ -83,7 +83,7 @@ public class UserContextService(UserManager<IdentityUser> userManager, Applicati
             .FirstOrDefaultAsync()
             .ConfigureAwait(false);
 
-        return instructor == 0 ? null : instructor;
+        return instructor == Guid.Empty ? null : instructor;
     }
     #endregion
 

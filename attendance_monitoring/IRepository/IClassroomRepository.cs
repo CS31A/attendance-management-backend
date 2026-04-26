@@ -18,21 +18,21 @@ public interface IClassroomRepository : ISaveableRepository
     /// </summary>
     /// <param name="id">The classroom ID.</param>
     /// <returns>The classroom if found; otherwise, null.</returns>
-    Task<Classroom?> GetClassroomByIdAsync(int id);
+    Task<Classroom?> GetClassroomByIdAsync(Guid id);
 
     /// <summary>
     /// Retrieves a classroom by its UUID.
     /// </summary>
-    /// <param name="uuid">The classroom UUID.</param>
+    /// <param name="id">The classroom UUID.</param>
     /// <returns>The classroom if found; otherwise, null.</returns>
-    Task<Classroom?> GetClassroomByUuidAsync(Guid uuid);
+    Task<Classroom?> GetClassroomByUuidAsync(Guid id);
 
     /// <summary>
     /// Retrieves a classroom by its UUID with change tracking enabled for updates.
     /// </summary>
-    /// <param name="uuid">The classroom UUID.</param>
+    /// <param name="id">The classroom UUID.</param>
     /// <returns>The classroom if found; otherwise, null.</returns>
-    Task<Classroom?> GetClassroomByUuidTrackedAsync(Guid uuid);
+    Task<Classroom?> GetClassroomByUuidTrackedAsync(Guid id);
 
     /// <summary>
     /// Creates a new classroom.
@@ -53,21 +53,21 @@ public interface IClassroomRepository : ISaveableRepository
     /// </summary>
     /// <param name="id">The classroom ID.</param>
     /// <returns>True if the classroom was deleted; otherwise, false.</returns>
-    Task<bool> DeleteClassroomAsync(int id);
+    Task<bool> DeleteClassroomAsync(Guid id);
 
     /// <summary>
     /// Checks if schedules reference the classroom.
     /// </summary>
     /// <param name="id">The classroom ID.</param>
     /// <returns>True if schedules exist for the classroom; otherwise, false.</returns>
-    Task<bool> HasSchedulesInClassroomAsync(int id);
+    Task<bool> HasSchedulesInClassroomAsync(Guid id);
 
     /// <summary>
     /// Checks if sessions reference the classroom as an actual room.
     /// </summary>
     /// <param name="id">The classroom ID.</param>
     /// <returns>True if sessions exist for the classroom; otherwise, false.</returns>
-    Task<bool> HasSessionsInClassroomAsync(int id);
+    Task<bool> HasSessionsInClassroomAsync(Guid id);
 
     /// <summary>
     /// Gets a classroom by its name.

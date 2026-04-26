@@ -9,5 +9,5 @@ public class QrCodeGenerationResponseDto
     public DateTime GeneratedAt { get; set; }
     public DateTime ExpiresAt { get; set; }
     public int? MaxUsage { get; set; }
-    public int QrCodeId { get; set; }
+    public Guid QrCodeId { get; set; }
 }

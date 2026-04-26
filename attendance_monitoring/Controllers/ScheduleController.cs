@@ -67,7 +67,7 @@ namespace attendance_monitoring.Controllers
         /// <response code="500">Internal server error</response>
         [HttpGet("{id:int}")]
         [ApiExplorerSettings(IgnoreApi = true)]
-        public async Task<ActionResult<ScheduleResponseDto>> GetSchedule(int id)
+        public async Task<ActionResult<ScheduleResponseDto>> GetSchedule(Guid id)
         {
             logger.LogInformation("Getting schedule with ID: {Id}", id);
             try
@@ -76,7 +76,7 @@ namespace attendance_monitoring.Controllers
                 logger.LogInformation("Successfully retrieved schedule with ID: {Id}", id);
                 return Ok(schedule);
             }
-            catch (EntityNotFoundException<int> ex)
+            catch (EntityNotFoundException<Guid> ex)
             {
                 logger.LogWarning(ex, "Schedule with ID {Id} not found", id);
                 return NotFound(new { message = ex.Message });
@@ -85,18 +85,18 @@ namespace attendance_monitoring.Controllers
         }
 
         [HttpGet("{id:guid}")]
-        public async Task<ActionResult<ScheduleResponseDto>> GetScheduleByUuid([FromRoute(Name = "id")] Guid uuid)
+        public async Task<ActionResult<ScheduleResponseDto>> GetScheduleByUuid([FromRoute(Name = "id")] Guid id)
         {
-            logger.LogInformation("Getting schedule with UUID: {Uuid}", uuid);
+            logger.LogInformation("Getting schedule with UUID: {Id}", id);
             try
             {
-                var schedule = await scheduleService.GetScheduleByUuidAsync(uuid);
-                logger.LogInformation("Successfully retrieved schedule with UUID: {Uuid}", uuid);
+                var schedule = await scheduleService.GetScheduleByUuidAsync(id);
+                logger.LogInformation("Successfully retrieved schedule with UUID: {Id}", id);
                 return Ok(schedule);
             }
             catch (EntityNotFoundException<Guid> ex)
             {
-                logger.LogWarning(ex, "Schedule with UUID {Uuid} not found", uuid);
+                logger.LogWarning(ex, "Schedule with UUID {Id} not found", id);
                 return NotFound(new { message = ex.Message });
             }
         }
@@ -109,7 +109,7 @@ namespace attendance_monitoring.Controllers
         /// <response code="200">Returns the list of schedules for the instructor</response>
         /// <response code="500">Internal server error</response>
         [HttpGet("{instructorId:int}/all")]
-        public async Task<ActionResult<IEnumerable<ScheduleResponseDto>>> GetSchedulesByInstructor(int instructorId)
+        public async Task<ActionResult<IEnumerable<ScheduleResponseDto>>> GetSchedulesByInstructor(Guid instructorId)
         {
             logger.LogInformation("Getting schedules for instructor ID: {InstructorId}", instructorId);
 
@@ -128,8 +128,8 @@ namespace attendance_monitoring.Controllers
         /// <response code="200">Returns the list of schedules for the section</response>
         /// <response code="400">Invalid request or error retrieving schedules</response>
         /// <response code="500">Internal server error</response>
-        [HttpGet("by-section/{sectionId:int}")]
-        public async Task<ActionResult<IEnumerable<ScheduleResponseDto>>> GetSchedulesBySection(int sectionId)
+        [HttpGet("by-section/{sectionId:guid}")]
+        public async Task<ActionResult<IEnumerable<ScheduleResponseDto>>> GetSchedulesBySection(Guid sectionId)
         {
             logger.LogInformation("Getting schedules for section ID: {SectionId}", sectionId);
 
@@ -142,11 +142,11 @@ namespace attendance_monitoring.Controllers
 
         [Authorize(Policy = "PrivilegedPolicy")]
         [HttpGet("{id:int}/has-sessions")]
-        public async Task<ActionResult<bool>> HasSessionsInSchedule(int id)
+        public async Task<ActionResult<bool>> HasSessionsInSchedule(Guid id)
         {
             try
             {
-                if (id <= 0)
+                if (id == Guid.Empty)
                 {
                     logger.LogWarning("Invalid schedule ID {ScheduleId} provided for dependency check.", id);
                     return BadRequest("Schedule ID must be greater than 0.");
@@ -190,7 +190,7 @@ namespace attendance_monitoring.Controllers
             var schedule = await scheduleService.CreateScheduleAsync(createSchedule);
 
             logger.LogInformation("Successfully created schedule with ID: {Id} and TimeIn: {TimeIn}, TimeOut: {TimeOut}", schedule.Id, schedule.TimeIn, schedule.TimeOut);
-            return CreatedAtAction(nameof(GetSchedule), new { id = schedule.Id }, schedule);
+            return CreatedAtAction(nameof(GetScheduleByUuid), new { id = schedule.Id }, schedule);
             // Exceptions are handled by global exception handler
         }
 
@@ -212,7 +212,7 @@ namespace attendance_monitoring.Controllers
         [HttpPatch("{id:int}")]
         [ApiExplorerSettings(IgnoreApi = true)]
         [Authorize(Policy = "AdminPolicy")]
-        public async Task<ActionResult<Schedules>> UpdateSchedule(int id, UpdateSchedule updateSchedule)
+        public async Task<ActionResult<Schedules>> UpdateSchedule(Guid id, UpdateSchedule updateSchedule)
         {
             logger.LogInformation("Updating schedule with ID: {Id}", id);
             if (!ModelState.IsValid)
@@ -230,18 +230,18 @@ namespace attendance_monitoring.Controllers
 
         [HttpPatch("{id:guid}")]
         [Authorize(Policy = "AdminPolicy")]
-        public async Task<ActionResult<Schedules>> UpdateScheduleByUuid([FromRoute(Name = "id")] Guid uuid, UpdateSchedule updateSchedule)
+        public async Task<ActionResult<Schedules>> UpdateScheduleByUuid([FromRoute(Name = "id")] Guid id, UpdateSchedule updateSchedule)
         {
-            logger.LogInformation("Updating schedule with UUID: {Uuid}", uuid);
+            logger.LogInformation("Updating schedule with UUID: {Id}", id);
             if (!ModelState.IsValid)
             {
-                logger.LogWarning("Schedule update failed due to invalid model state for schedule UUID: {Uuid}", uuid);
+                logger.LogWarning("Schedule update failed due to invalid model state for schedule UUID: {Id}", id);
                 return BadRequest(ModelState);
             }
 
-            var schedule = await scheduleService.UpdateScheduleByUuidAsync(uuid, updateSchedule);
+            var schedule = await scheduleService.UpdateScheduleByUuidAsync(id, updateSchedule);
 
-            logger.LogInformation("Successfully updated schedule with UUID: {Uuid}", uuid);
+            logger.LogInformation("Successfully updated schedule with UUID: {Id}", id);
             return Ok(schedule);
         }
 
@@ -261,7 +261,7 @@ namespace attendance_monitoring.Controllers
         [HttpDelete("{id:int}")]
         [ApiExplorerSettings(IgnoreApi = true)]
         [Authorize(Policy = "AdminPolicy")]
-        public async Task<ActionResult> DeleteSchedule(int id)
+        public async Task<ActionResult> DeleteSchedule(Guid id)
         {
             logger.LogInformation("Deleting schedule with ID: {Id}", id);
 
@@ -274,13 +274,13 @@ namespace attendance_monitoring.Controllers
 
         [HttpDelete("{id:guid}")]
         [Authorize(Policy = "AdminPolicy")]
-        public async Task<ActionResult> DeleteScheduleByUuid([FromRoute(Name = "id")] Guid uuid)
+        public async Task<ActionResult> DeleteScheduleByUuid([FromRoute(Name = "id")] Guid id)
         {
-            logger.LogInformation("Deleting schedule with UUID: {Uuid}", uuid);
+            logger.LogInformation("Deleting schedule with UUID: {Id}", id);
 
-            await scheduleService.DeleteScheduleByUuidAsync(uuid, User);
+            await scheduleService.DeleteScheduleByUuidAsync(id, User);
 
-            logger.LogInformation("Successfully deleted schedule with UUID: {Uuid}", uuid);
+            logger.LogInformation("Successfully deleted schedule with UUID: {Id}", id);
             return NoContent();
         }
 

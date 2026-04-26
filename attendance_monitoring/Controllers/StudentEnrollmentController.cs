@@ -42,11 +42,6 @@ public class StudentEnrollmentController : ControllerBase
             _logger.LogInformation("Successfully enrolled student {StudentId}", request.StudentId);
             return Ok(response);
         }
-        catch (EntityNotFoundException<int> ex)
-        {
-            _logger.LogWarning(ex, "Entity not found while enrolling student {StudentId}", request.StudentId);
-            return NotFound(new { message = ex.Message });
-        }
         catch (EntityNotFoundException<Guid> ex)
         {
             _logger.LogWarning(ex, "Entity not found while enrolling student {StudentId}", request.StudentId);
@@ -57,7 +52,7 @@ public class StudentEnrollmentController : ControllerBase
             _logger.LogWarning(ex, "Duplicate enrollment attempt for student {StudentId}", request.StudentId);
             return Conflict(new { message = ex.Message });
         }
-        catch (EntityAlreadyExistsException<int> ex)
+        catch (EntityAlreadyExistsException<Guid> ex)
         {
             _logger.LogWarning(ex, "Duplicate enrollment attempt for student {StudentId}", request.StudentId);
             return Conflict(new { message = ex.Message });
@@ -75,7 +70,7 @@ public class StudentEnrollmentController : ControllerBase
     [HttpGet("student/{studentId:int}")]
     [ApiExplorerSettings(IgnoreApi = true)]
     [Authorize(Roles = "Admin,Instructor,Student")]
-    public async Task<ActionResult<StudentSectionsResponseDto>> GetStudentEnrollments(int studentId)
+    public async Task<ActionResult<StudentSectionsResponseDto>> GetStudentEnrollments(Guid studentId)
     {
         _logger.LogInformation("Retrieving enrollments for student {StudentId}", studentId);
 
@@ -84,14 +79,14 @@ public class StudentEnrollmentController : ControllerBase
         {
             student = await _enrollmentService.GetStudentByIdAsync(studentId).ConfigureAwait(false);
         }
-        catch (EntityNotFoundException<int> ex)
+        catch (EntityNotFoundException<Guid> ex)
         {
             _logger.LogWarning(ex, "Student {StudentId} not found while retrieving enrollments", studentId);
             return NotFound(new { message = ex.Message });
         }
 
         var enrollments = await _enrollmentService.GetStudentEnrollmentsAsync(studentId);
-        var response = MapStudentSectionsResponse(student.Uuid, enrollments);
+        var response = MapStudentSectionsResponse(student.Id, enrollments);
 
         _logger.LogInformation("Successfully retrieved {Count} enrollments for student {StudentId}",
             response.Enrollments.Count, studentId);
@@ -120,7 +115,7 @@ public class StudentEnrollmentController : ControllerBase
     [HttpGet("section/{sectionId:int}/students")]
     [ApiExplorerSettings(IgnoreApi = true)]
     [Authorize(Roles = "Admin,Instructor")]
-    public async Task<ActionResult<IEnumerable<StudentEnrollmentResponseDto>>> GetSectionStudents(int sectionId)
+    public async Task<ActionResult<IEnumerable<StudentEnrollmentResponseDto>>> GetSectionStudents(Guid sectionId)
     {
         _logger.LogInformation("Retrieving active students for section {SectionId}", sectionId);
 
@@ -150,7 +145,7 @@ public class StudentEnrollmentController : ControllerBase
     [HttpPatch("{enrollmentId:int}/drop")]
     [ApiExplorerSettings(IgnoreApi = true)]
     [Authorize(Roles = "Admin")]
-    public async Task<ActionResult> DropStudent(int enrollmentId)
+    public async Task<ActionResult> DropStudent(Guid enrollmentId)
     {
         try
         {
@@ -166,7 +161,7 @@ public class StudentEnrollmentController : ControllerBase
             _logger.LogInformation("Successfully dropped student from enrollment {EnrollmentId}", enrollmentId);
             return Ok(new { message = "Student successfully dropped from enrollment" });
         }
-        catch (EntityNotFoundException<int> ex)
+        catch (EntityNotFoundException<Guid> ex)
         {
             _logger.LogWarning(ex, "Enrollment {EnrollmentId} not found", enrollmentId);
             return NotFound(new { message = ex.Message });
@@ -175,25 +170,25 @@ public class StudentEnrollmentController : ControllerBase
 
     [HttpPatch("{id:guid}/drop")]
     [Authorize(Roles = "Admin")]
-    public async Task<ActionResult> DropStudentByUuid([FromRoute(Name = "id")] Guid uuid)
+    public async Task<ActionResult> DropStudentByUuid([FromRoute(Name = "id")] Guid id)
     {
         try
         {
-            _logger.LogInformation("Dropping student from enrollment UUID {EnrollmentUuid}", uuid);
-            var success = await _enrollmentService.DropStudentFromSubjectAsync(uuid);
+            _logger.LogInformation("Dropping student from enrollment UUID {EnrollmentUuid}", id);
+            var success = await _enrollmentService.DropStudentFromSubjectAsync(id);
 
             if (!success)
             {
-                _logger.LogWarning("Enrollment UUID {EnrollmentUuid} not found", uuid);
+                _logger.LogWarning("Enrollment UUID {EnrollmentUuid} not found", id);
                 return NotFound(new { message = "Enrollment not found" });
             }
 
-            _logger.LogInformation("Successfully dropped student from enrollment UUID {EnrollmentUuid}", uuid);
+            _logger.LogInformation("Successfully dropped student from enrollment UUID {EnrollmentUuid}", id);
             return Ok(new { message = "Student successfully dropped from enrollment" });
         }
         catch (EntityNotFoundException<Guid> ex)
         {
-            _logger.LogWarning(ex, "Enrollment UUID {EnrollmentUuid} not found", uuid);
+            _logger.LogWarning(ex, "Enrollment UUID {EnrollmentUuid} not found", id);
             return NotFound(new { message = ex.Message });
         }
     }
@@ -204,7 +199,7 @@ public class StudentEnrollmentController : ControllerBase
     [HttpPatch("{enrollmentId:int}/reenroll")]
     [ApiExplorerSettings(IgnoreApi = true)]
     [Authorize(Roles = "Admin")]
-    public async Task<ActionResult> ReenrollStudent(int enrollmentId)
+    public async Task<ActionResult> ReenrollStudent(Guid enrollmentId)
     {
         try
         {
@@ -220,7 +215,7 @@ public class StudentEnrollmentController : ControllerBase
             _logger.LogInformation("Successfully re-enrolled student for enrollment {EnrollmentId}", enrollmentId);
             return Ok(new { message = "Student successfully re-enrolled" });
         }
-        catch (EntityNotFoundException<int> ex)
+        catch (EntityNotFoundException<Guid> ex)
         {
             _logger.LogWarning(ex, "Enrollment {EnrollmentId} not found", enrollmentId);
             return NotFound(new { message = ex.Message });
@@ -229,25 +224,25 @@ public class StudentEnrollmentController : ControllerBase
 
     [HttpPatch("{id:guid}/reenroll")]
     [Authorize(Roles = "Admin")]
-    public async Task<ActionResult> ReenrollStudentByUuid([FromRoute(Name = "id")] Guid uuid)
+    public async Task<ActionResult> ReenrollStudentByUuid([FromRoute(Name = "id")] Guid id)
     {
         try
         {
-            _logger.LogInformation("Re-enrolling student for enrollment UUID {EnrollmentUuid}", uuid);
-            var success = await _enrollmentService.ReenrollStudentAsync(uuid);
+            _logger.LogInformation("Re-enrolling student for enrollment UUID {EnrollmentUuid}", id);
+            var success = await _enrollmentService.ReenrollStudentAsync(id);
 
             if (!success)
             {
-                _logger.LogWarning("Enrollment UUID {EnrollmentUuid} not found", uuid);
+                _logger.LogWarning("Enrollment UUID {EnrollmentUuid} not found", id);
                 return NotFound(new { message = "Enrollment not found" });
             }
 
-            _logger.LogInformation("Successfully re-enrolled student for enrollment UUID {EnrollmentUuid}", uuid);
+            _logger.LogInformation("Successfully re-enrolled student for enrollment UUID {EnrollmentUuid}", id);
             return Ok(new { message = "Student successfully re-enrolled" });
         }
         catch (EntityNotFoundException<Guid> ex)
         {
-            _logger.LogWarning(ex, "Enrollment UUID {EnrollmentUuid} not found", uuid);
+            _logger.LogWarning(ex, "Enrollment UUID {EnrollmentUuid} not found", id);
             return NotFound(new { message = ex.Message });
         }
     }
@@ -257,7 +252,7 @@ public class StudentEnrollmentController : ControllerBase
     /// </summary>
     [HttpGet("check/legacy")]
     [Authorize(Roles = "Admin,Instructor,Student")]
-    public async Task<ActionResult<bool>> CheckEnrollment([FromQuery] int studentId, [FromQuery] int sectionId, [FromQuery] int subjectId)
+    public async Task<ActionResult<bool>> CheckEnrollment([FromQuery] Guid studentId, [FromQuery] Guid sectionId, [FromQuery] Guid subjectId)
     {
         _logger.LogInformation("Checking enrollment for student {StudentId}, section {SectionId}, subject {SubjectId}",
             studentId, sectionId, subjectId);
@@ -283,14 +278,14 @@ public class StudentEnrollmentController : ControllerBase
     {
         return new StudentEnrollmentResponseDto
         {
-            Id = enrollment.Uuid,
-            StudentId = enrollment.Student?.Uuid ?? Guid.Empty,
+            Id = enrollment.Id,
+            StudentId = enrollment.Student?.Id ?? Guid.Empty,
             StudentFirstname = enrollment.Student?.Firstname,
             StudentLastname = enrollment.Student?.Lastname,
             StudentEmail = enrollment.Student?.User?.Email,
-            SectionId = enrollment.Section?.Uuid ?? Guid.Empty,
+            SectionId = enrollment.Section?.Id ?? Guid.Empty,
             SectionName = enrollment.Section?.Name,
-            SubjectId = enrollment.Subject?.Uuid ?? Guid.Empty,
+            SubjectId = enrollment.Subject?.Id ?? Guid.Empty,
             SubjectName = enrollment.Subject?.Name,
             SubjectCode = enrollment.Subject?.Code,
             IsActive = enrollment.IsActive,
@@ -317,10 +312,10 @@ public class StudentEnrollmentController : ControllerBase
             IsRegular = student?.IsRegular ?? false,
             Enrollments = enrollmentList.Select(e => new EnrollmentSummaryDto
             {
-                EnrollmentId = e.Uuid,
-                SectionId = e.Section?.Uuid ?? Guid.Empty,
+                EnrollmentId = e.Id,
+                SectionId = e.Section?.Id ?? Guid.Empty,
                 SectionName = e.Section?.Name,
-                SubjectId = e.Subject?.Uuid ?? Guid.Empty,
+                SubjectId = e.Subject?.Id ?? Guid.Empty,
                 SubjectName = e.Subject?.Name,
                 SubjectCode = e.Subject?.Code,
                 EnrollmentType = e.EnrollmentType,

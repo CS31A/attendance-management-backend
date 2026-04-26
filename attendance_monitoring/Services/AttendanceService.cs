@@ -77,7 +77,7 @@ public class AttendanceService(
             var recordWithNav = await attendanceRepository.GetByIdAsync(createdRecord.Id).ConfigureAwait(false);
             if (recordWithNav == null)
             {
-                throw new EntityNotFoundException<int>("AttendanceRecord", createdRecord.Id, $"Attendance record with ID {createdRecord.Id} was not found after creation");
+                throw new EntityNotFoundException<Guid>("AttendanceRecord", createdRecord.Id, $"Attendance record with ID {createdRecord.Id} was not found after creation");
             }
             return MapToResponseDto(recordWithNav);
         }
@@ -106,7 +106,7 @@ public class AttendanceService(
     /// <summary>
     /// Creates an attendance record from a QR code scan.
     /// </summary>
-    public async Task<AttendanceRecordResponseDto> CreateAttendanceFromQrScanAsync(int studentId, int sessionId, int qrCodeId, DateTime checkInTime)
+    public async Task<AttendanceRecordResponseDto> CreateAttendanceFromQrScanAsync(Guid studentId, Guid sessionId, Guid qrCodeId, DateTime checkInTime)
     {
         logger.LogInformation("Creating attendance record from QR scan for StudentId: {StudentId}, SessionId: {SessionId}",
             studentId, sessionId);
@@ -115,7 +115,7 @@ public class AttendanceService(
         var session = await sessionRepository.GetSessionByIdAsync(sessionId).ConfigureAwait(false);
         if (session == null)
         {
-            throw new EntityNotFoundException<int>("Session", sessionId);
+            throw new EntityNotFoundException<Guid>("Session", sessionId);
         }
 
         // Determine attendance status based on check-in time
@@ -145,7 +145,7 @@ public class AttendanceService(
             var recordWithNav = await attendanceRepository.GetByIdAsync(createdRecord.Id).ConfigureAwait(false);
             if (recordWithNav == null)
             {
-                throw new EntityNotFoundException<int>("AttendanceRecord", createdRecord.Id, $"Attendance record with ID {createdRecord.Id} was not found after creation");
+                throw new EntityNotFoundException<Guid>("AttendanceRecord", createdRecord.Id, $"Attendance record with ID {createdRecord.Id} was not found after creation");
             }
             return MapToResponseDto(recordWithNav);
         }
@@ -166,7 +166,7 @@ public class AttendanceService(
     /// <summary>
     /// Retrieves an attendance record by its ID.
     /// </summary>
-    public async Task<AttendanceRecordResponseDto?> GetAttendanceByIdAsync(int id, ClaimsPrincipal user)
+    public async Task<AttendanceRecordResponseDto?> GetAttendanceByIdAsync(Guid id, ClaimsPrincipal user)
     {
         logger.LogInformation("Retrieving attendance record with ID: {Id}", id);
 
@@ -174,7 +174,7 @@ public class AttendanceService(
         if (record == null)
         {
             logger.LogWarning("Attendance record with ID {Id} not found", id);
-            throw new EntityNotFoundException<int>("AttendanceRecord", id);
+            throw new EntityNotFoundException<Guid>("AttendanceRecord", id);
         }
 
         // Authorization: Students can only view their own records, Instructors/Admins can view all
@@ -190,20 +190,20 @@ public class AttendanceService(
     /// <summary>
     /// Retrieves an attendance record by its UUID.
     /// </summary>
-    public async Task<AttendanceRecordResponseDto?> GetAttendanceByUuidAsync(Guid uuid, ClaimsPrincipal user)
+    public async Task<AttendanceRecordResponseDto?> GetAttendanceByUuidAsync(Guid id, ClaimsPrincipal user)
     {
-        logger.LogInformation("Retrieving attendance record with UUID: {AttendanceUuid}", uuid);
+        logger.LogInformation("Retrieving attendance record with UUID: {AttendanceUuid}", id);
 
-        var record = await attendanceRepository.GetAttendanceByUuidAsync(uuid).ConfigureAwait(false);
+        var record = await attendanceRepository.GetAttendanceByUuidAsync(id).ConfigureAwait(false);
         if (record == null)
         {
-            logger.LogWarning("Attendance record with UUID {AttendanceUuid} not found", uuid);
-            throw new EntityNotFoundException<Guid>("AttendanceRecord", uuid);
+            logger.LogWarning("Attendance record with UUID {AttendanceUuid} not found", id);
+            throw new EntityNotFoundException<Guid>("AttendanceRecord", id);
         }
 
         if (!await IsAuthorizedToViewAttendanceAsync(user, record).ConfigureAwait(false))
         {
-            logger.LogWarning("User not authorized to view attendance record UUID {AttendanceUuid}", uuid);
+            logger.LogWarning("User not authorized to view attendance record UUID {AttendanceUuid}", id);
             throw new UnauthorizedAccessException("You are not authorized to view this attendance record");
         }
 
@@ -255,7 +255,7 @@ public class AttendanceService(
     /// <summary>
     /// Retrieves attendance history for a specific student.
     /// </summary>
-    public async Task<StudentAttendanceHistoryDto> GetStudentAttendanceHistoryAsync(int studentId, ClaimsPrincipal user)
+    public async Task<StudentAttendanceHistoryDto> GetStudentAttendanceHistoryAsync(Guid studentId, ClaimsPrincipal user)
     {
         logger.LogInformation("Retrieving attendance history for StudentId: {StudentId}", studentId);
 
@@ -264,7 +264,7 @@ public class AttendanceService(
         if (student == null)
         {
             logger.LogWarning("Student with ID {StudentId} not found", studentId);
-            throw new EntityNotFoundException<int>("Student", studentId);
+            throw new EntityNotFoundException<Guid>("Student", studentId);
         }
 
         // Authorization check - fail-secure pattern
@@ -308,9 +308,9 @@ public class AttendanceService(
 
         return new StudentAttendanceHistoryDto
         {
-            StudentId = student.Uuid,
+            StudentId = student.Id,
             StudentName = $"{student.Firstname} {student.Lastname}",
-            StudentNumber = student.Id.ToString(),
+            StudentNumber = student.Usn ?? string.Empty,
             TotalSessions = totalSessions,
             PresentCount = presentCount,
             LateCount = lateCount,
@@ -335,7 +335,7 @@ public class AttendanceService(
     /// <summary>
     /// Retrieves attendance information for a specific session.
     /// </summary>
-    public async Task<SessionAttendanceDto> GetSessionAttendanceAsync(int sessionId, ClaimsPrincipal user)
+    public async Task<SessionAttendanceDto> GetSessionAttendanceAsync(Guid sessionId, ClaimsPrincipal user)
     {
         logger.LogInformation("Retrieving session attendance for SessionId: {SessionId}", sessionId);
 
@@ -344,7 +344,7 @@ public class AttendanceService(
         if (session == null)
         {
             logger.LogWarning("Session with ID {SessionId} not found", sessionId);
-            throw new EntityNotFoundException<int>("Session", sessionId);
+            throw new EntityNotFoundException<Guid>("Session", sessionId);
         }
 
         // Authorization: Instructors can only view their own session attendance
@@ -391,10 +391,10 @@ public class AttendanceService(
             var attendanceRecord = attendanceRecords.FirstOrDefault(a => a.StudentId == enrollment.StudentId);
             studentAttendanceRecords.Add(new StudentAttendanceRecordDto
             {
-                StudentId = enrollment.Student.Uuid,
+                StudentId = enrollment.Student.Id,
                 StudentName = $"{enrollment.Student.Firstname} {enrollment.Student.Lastname}",
-                StudentNumber = enrollment.Student.Id.ToString(),
-                AttendanceRecordId = attendanceRecord?.Uuid,
+                StudentNumber = enrollment.Student.Usn ?? string.Empty,
+                AttendanceRecordId = attendanceRecord?.Id,
                 Status = attendanceRecord?.Status ?? "Absent",
                 CheckInTime = attendanceRecord?.CheckInTime,
                 IsManualEntry = attendanceRecord?.IsManualEntry ?? false
@@ -412,9 +412,9 @@ public class AttendanceService(
 
         return new SessionAttendanceDto
         {
-            SessionId = session.Uuid,
+            SessionId = session.Id,
             SessionDate = session.SessionDate,
-            ScheduleId = session.Schedule.Uuid,
+            ScheduleId = session.Schedule.Id,
             ScheduleTitle = $"{session.Schedule.Subject.Name} - {session.Schedule.Section.Name}",
             SubjectName = session.Schedule.Subject.Name,
             SectionName = session.Schedule.Section.Name,
@@ -528,7 +528,7 @@ public class AttendanceService(
     /// <summary>
     /// Updates an existing attendance record.
     /// </summary>
-    public async Task<AttendanceRecordResponseDto> UpdateAttendanceAsync(int id, UpdateAttendanceRequest request, ClaimsPrincipal user)
+    public async Task<AttendanceRecordResponseDto> UpdateAttendanceAsync(Guid id, UpdateAttendanceRequest request, ClaimsPrincipal user)
     {
         logger.LogInformation("Updating attendance record with ID: {Id}", id);
 
@@ -536,7 +536,7 @@ public class AttendanceService(
         if (record == null)
         {
             logger.LogWarning("Attendance record with ID {Id} not found", id);
-            throw new EntityNotFoundException<int>("AttendanceRecord", id);
+            throw new EntityNotFoundException<Guid>("AttendanceRecord", id);
         }
 
         // Authorization: Only instructors and admins can update attendance
@@ -590,7 +590,7 @@ public class AttendanceService(
         var updatedRecord = await attendanceRepository.GetByIdAsync(id).ConfigureAwait(false);
         if (updatedRecord == null)
         {
-            throw new EntityNotFoundException<int>("AttendanceRecord", id, $"Attendance record with ID {id} was not found after update");
+            throw new EntityNotFoundException<Guid>("AttendanceRecord", id, $"Attendance record with ID {id} was not found after update");
         }
         return MapToResponseDto(updatedRecord);
     }
@@ -598,15 +598,15 @@ public class AttendanceService(
     /// <summary>
     /// Updates an existing attendance record by its UUID.
     /// </summary>
-    public async Task<AttendanceRecordResponseDto> UpdateAttendanceByUuidAsync(Guid uuid, UpdateAttendanceRequest request, ClaimsPrincipal user)
+    public async Task<AttendanceRecordResponseDto> UpdateAttendanceByUuidAsync(Guid id, UpdateAttendanceRequest request, ClaimsPrincipal user)
     {
-        logger.LogInformation("Updating attendance record with UUID: {AttendanceUuid}", uuid);
+        logger.LogInformation("Updating attendance record with UUID: {AttendanceUuid}", id);
 
-        var record = await attendanceRepository.GetAttendanceByUuidAsync(uuid).ConfigureAwait(false);
+        var record = await attendanceRepository.GetAttendanceByUuidAsync(id).ConfigureAwait(false);
         if (record == null)
         {
-            logger.LogWarning("Attendance record with UUID {AttendanceUuid} not found", uuid);
-            throw new EntityNotFoundException<Guid>("AttendanceRecord", uuid);
+            logger.LogWarning("Attendance record with UUID {AttendanceUuid} not found", id);
+            throw new EntityNotFoundException<Guid>("AttendanceRecord", id);
         }
 
         return await UpdateAttendanceAsync(record.Id, request, user).ConfigureAwait(false);
@@ -615,7 +615,7 @@ public class AttendanceService(
     /// <summary>
     /// Deletes an attendance record.
     /// </summary>
-    public async Task<bool> DeleteAttendanceAsync(int id, ClaimsPrincipal user)
+    public async Task<bool> DeleteAttendanceAsync(Guid id, ClaimsPrincipal user)
     {
         logger.LogInformation("Deleting attendance record with ID: {Id}", id);
 
@@ -623,7 +623,7 @@ public class AttendanceService(
         if (record == null)
         {
             logger.LogWarning("Attendance record with ID {Id} not found", id);
-            throw new EntityNotFoundException<int>("AttendanceRecord", id);
+            throw new EntityNotFoundException<Guid>("AttendanceRecord", id);
         }
 
         // Authorization: Only admins can delete attendance records
@@ -647,15 +647,15 @@ public class AttendanceService(
     /// <summary>
     /// Deletes an attendance record by its UUID.
     /// </summary>
-    public async Task<bool> DeleteAttendanceByUuidAsync(Guid uuid, ClaimsPrincipal user)
+    public async Task<bool> DeleteAttendanceByUuidAsync(Guid id, ClaimsPrincipal user)
     {
-        logger.LogInformation("Deleting attendance record with UUID: {AttendanceUuid}", uuid);
+        logger.LogInformation("Deleting attendance record with UUID: {AttendanceUuid}", id);
 
-        var record = await attendanceRepository.GetAttendanceByUuidAsync(uuid).ConfigureAwait(false);
+        var record = await attendanceRepository.GetAttendanceByUuidAsync(id).ConfigureAwait(false);
         if (record == null)
         {
-            logger.LogWarning("Attendance record with UUID {AttendanceUuid} not found", uuid);
-            throw new EntityNotFoundException<Guid>("AttendanceRecord", uuid);
+            logger.LogWarning("Attendance record with UUID {AttendanceUuid} not found", id);
+            throw new EntityNotFoundException<Guid>("AttendanceRecord", id);
         }
 
         return await DeleteAttendanceAsync(record.Id, user).ConfigureAwait(false);
@@ -668,7 +668,7 @@ public class AttendanceService(
     /// <summary>
     /// Checks if a student can mark attendance for a session.
     /// </summary>
-    public async Task<bool> CanMarkAttendanceAsync(int studentId, int sessionId)
+    public async Task<bool> CanMarkAttendanceAsync(Guid studentId, Guid sessionId)
     {
         // Check if record already exists
         var hasRecord = await attendanceRepository.HasAttendanceRecordAsync(studentId, sessionId).ConfigureAwait(false);
@@ -712,7 +712,7 @@ public class AttendanceService(
 
     #region Private Helper Methods
 
-    private async Task<bool> VerifyStudentEnrollmentAsync(int studentId, Session session)
+    private async Task<bool> VerifyStudentEnrollmentAsync(Guid studentId, Session session)
     {
         if (session.Schedule == null)
         {
@@ -868,13 +868,13 @@ public class AttendanceService(
 
         var response = new AttendanceRecordResponseDto
         {
-            Id = record.Uuid,
-            StudentId = record.Student.Uuid,
+            Id = record.Id,
+            StudentId = record.Student.Id,
             StudentName = $"{record.Student.Firstname} {record.Student.Lastname}",
-            StudentNumber = record.Student.Id.ToString(),
-            SessionId = record.Session.Uuid,
+            StudentNumber = record.Student.Usn ?? string.Empty,
+            SessionId = record.Session.Id,
             SessionDate = record.Session.SessionDate,
-            QrCodeId = record.QrCode?.Uuid,
+            QrCodeId = record.QrCode?.Id,
             CheckInTime = record.CheckInTime,
             Status = record.Status,
             Notes = record.Notes,
@@ -882,7 +882,7 @@ public class AttendanceService(
             EnteredBy = record.EnteredBy,
             CreatedAt = record.CreatedAt,
             UpdatedAt = record.UpdatedAt,
-            ScheduleId = record.Session.Schedule.Uuid,
+            ScheduleId = record.Session.Schedule.Id,
             ScheduleTitle = $"{record.Session.Schedule.Subject.Name} - {record.Session.Schedule.Section.Name}",
             SubjectName = record.Session.Schedule.Subject.Name,
             SectionName = record.Session.Schedule.Section.Name,

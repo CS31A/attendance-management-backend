@@ -46,8 +46,8 @@ public class SubjectServiceTest
         // Arrange
         var subjects = new List<Subject>
         {
-            new Subject { Id = 1, Name = "Mathematics", Code = "MATH101" },
-            new Subject { Id = 2, Name = "Physics", Code = "PHYS101" }
+            new Subject { Id = Guid.NewGuid(), Name = "Mathematics", Code = "MATH101" },
+            new Subject { Id = Guid.NewGuid(), Name = "Physics", Code = "PHYS101" }
         };
         _mockSubjectRepository.Setup(r => r.GetAllSubjectsAsync()).ReturnsAsync(subjects);
 
@@ -84,7 +84,7 @@ public class SubjectServiceTest
     public async Task GetSubjectByIdAsync_Success_ReturnsSubject()
     {
         // Arrange
-        const int subjectId = 1;
+        var subjectId = Guid.NewGuid();
         var subject = new Subject { Id = subjectId, Name = "Mathematics", Code = "MATH101" };
         _mockSubjectRepository.Setup(r => r.GetSubjectByIdAsync(subjectId)).ReturnsAsync(subject);
 
@@ -102,11 +102,11 @@ public class SubjectServiceTest
     public async Task GetSubjectByIdAsync_NotFound_ThrowsEntityNotFoundException()
     {
         // Arrange
-        const int subjectId = 999;
+        var subjectId = Guid.NewGuid();
         _mockSubjectRepository.Setup(r => r.GetSubjectByIdAsync(subjectId)).ReturnsAsync((Subject?)null);
 
         // Act & Assert
-        var exception = await Assert.ThrowsAsync<EntityNotFoundException<int>>(() => _service.GetSubjectByIdAsync(subjectId));
+        var exception = await Assert.ThrowsAsync<EntityNotFoundException<Guid>>(() => _service.GetSubjectByIdAsync(subjectId));
         Assert.Equal("Subject", exception.EntityName);
         Assert.Equal(subjectId, exception.Key);
     }
@@ -115,7 +115,7 @@ public class SubjectServiceTest
     public async Task GetSubjectByIdAsync_RepositoryFailure_WrapsInEntityServiceException()
     {
         // Arrange
-        const int subjectId = 1;
+        var subjectId = Guid.NewGuid();
         var expectedException = new InvalidOperationException("Database error");
         _mockSubjectRepository.Setup(r => r.GetSubjectByIdAsync(subjectId)).ThrowsAsync(expectedException);
 
@@ -132,13 +132,13 @@ public class SubjectServiceTest
     public async Task GetSubjectByUuidAsync_Success_ReturnsSubject()
     {
         var subjectUuid = Guid.NewGuid();
-        var subject = new Subject { Id = 1, Uuid = subjectUuid, Name = "Mathematics", Code = "MATH101" };
+        var subject = new Subject { Id = subjectUuid, Name = "Mathematics", Code = "MATH101" };
         _mockSubjectRepository.Setup(r => r.GetSubjectByUuidAsync(subjectUuid)).ReturnsAsync(subject);
 
         var result = await _service.GetSubjectByUuidAsync(subjectUuid);
 
         Assert.NotNull(result);
-        Assert.Equal(subjectUuid, result.Uuid);
+        Assert.Equal(subjectUuid, result.Id);
     }
 
     [Fact]
@@ -230,7 +230,7 @@ public class SubjectServiceTest
             Name = "Mathematics",
             Code = "MATH101"
         };
-        var existingSubject = new Subject { Id = 1, Name = "Physics", Code = "MATH101" };
+        var existingSubject = new Subject { Id = Guid.NewGuid(), Name = "Physics", Code = "MATH101" };
 
         _mockSubjectRepository.Setup(r => r.GetSubjectByCodeAsync("MATH101")).ReturnsAsync(existingSubject);
 
@@ -254,7 +254,7 @@ public class SubjectServiceTest
         var dbUpdateException = new DbUpdateException("Update exception", innerException);
 
         _mockSubjectRepository.Setup(r => r.GetSubjectByCodeAsync("MATH101")).ReturnsAsync((Subject?)null);
-        _mockSubjectRepository.Setup(r => r.CreateSubject(It.IsAny<Subject>())).ReturnsAsync(new Subject { Id = 1 });
+        _mockSubjectRepository.Setup(r => r.CreateSubject(It.IsAny<Subject>())).ReturnsAsync(new Subject { Id = Guid.NewGuid() });
         _mockSubjectRepository.Setup(r => r.SaveChangesAsync()).ThrowsAsync(dbUpdateException);
 
         // Act & Assert
@@ -294,7 +294,7 @@ public class SubjectServiceTest
     public async Task UpdateSubjectAsync_Success_UpdatesSubject()
     {
         // Arrange
-        const int subjectId = 1;
+        var subjectId = Guid.NewGuid();
         var updateSubject = new UpdateSubject
         {
             Name = "Mathematics Updated",
@@ -337,12 +337,12 @@ public class SubjectServiceTest
     public async Task UpdateSubjectAsync_SubjectNotFound_ThrowsEntityNotFoundException()
     {
         // Arrange
-        const int subjectId = 999;
+        var subjectId = Guid.NewGuid();
         var updateSubject = new UpdateSubject { Name = "Mathematics", Code = "MATH101" };
         _mockSubjectRepository.Setup(r => r.GetSubjectByIdAsync(subjectId)).ReturnsAsync((Subject?)null);
 
         // Act & Assert
-        var exception = await Assert.ThrowsAsync<EntityNotFoundException<int>>(() => _service.UpdateSubjectAsync(subjectId, updateSubject));
+        var exception = await Assert.ThrowsAsync<EntityNotFoundException<Guid>>(() => _service.UpdateSubjectAsync(subjectId, updateSubject));
         Assert.Equal("Subject", exception.EntityName);
         Assert.Equal(subjectId, exception.Key);
     }
@@ -351,10 +351,10 @@ public class SubjectServiceTest
     public async Task UpdateSubjectAsync_DuplicateCodePrecheck_ThrowsEntityAlreadyExistsException()
     {
         // Arrange
-        const int subjectId = 1;
+        var subjectId = Guid.NewGuid();
         var updateSubject = new UpdateSubject { Name = "Mathematics", Code = "PHYS101" };
         var existingSubject = new Subject { Id = subjectId, Name = "Mathematics", Code = "MATH101" };
-        var duplicateSubject = new Subject { Id = 2, Name = "Physics", Code = "PHYS101" };
+        var duplicateSubject = new Subject { Id = Guid.NewGuid(), Name = "Physics", Code = "PHYS101" };
 
         _mockSubjectRepository.Setup(r => r.GetSubjectByIdAsync(subjectId)).ReturnsAsync(existingSubject);
         _mockSubjectRepository.Setup(r => r.GetSubjectByCodeAsync("PHYS101")).ReturnsAsync(duplicateSubject);
@@ -370,7 +370,7 @@ public class SubjectServiceTest
     public async Task UpdateSubjectAsync_DuplicateKeyDbUpdateException_ThrowsEntityAlreadyExistsException()
     {
         // Arrange
-        const int subjectId = 1;
+        var subjectId = Guid.NewGuid();
         var updateSubject = new UpdateSubject { Name = "Mathematics", Code = "MATH101" };
         var existingSubject = new Subject { Id = subjectId, Name = "Mathematics", Code = "MATH101" };
         var innerException = new Exception("Violation of UNIQUE KEY constraint 'UK_Subjects_Code'");
@@ -390,7 +390,7 @@ public class SubjectServiceTest
     public async Task UpdateSubjectAsync_SaveChangesAsyncZero_ThrowsEntityServiceException()
     {
         // Arrange
-        const int subjectId = 1;
+        var subjectId = Guid.NewGuid();
         var updateSubject = new UpdateSubject { Name = "Mathematics", Code = "MATH101" };
         var existingSubject = new Subject { Id = subjectId, Name = "Mathematics", Code = "MATH101" };
 
@@ -408,7 +408,7 @@ public class SubjectServiceTest
     public async Task UpdateSubjectAsync_RepositoryFailure_WrapsInEntityServiceException()
     {
         // Arrange
-        const int subjectId = 1;
+        var subjectId = Guid.NewGuid();
         var updateSubject = new UpdateSubject { Name = "Mathematics", Code = "MATH101" };
         var existingSubject = new Subject { Id = subjectId, Name = "Mathematics", Code = "MATH101" };
         var expectedException = new InvalidOperationException("Database error");
@@ -432,7 +432,7 @@ public class SubjectServiceTest
     public async Task HasSchedulesInSubjectAsync_Success_ReturnsTrue()
     {
         // Arrange
-        const int subjectId = 1;
+        var subjectId = Guid.NewGuid();
         _mockSubjectRepository.Setup(r => r.HasSchedulesInSubjectAsync(subjectId)).ReturnsAsync(true);
 
         // Act
@@ -447,7 +447,7 @@ public class SubjectServiceTest
     public async Task HasSchedulesInSubjectAsync_Success_ReturnsFalse()
     {
         // Arrange
-        const int subjectId = 1;
+        var subjectId = Guid.NewGuid();
         _mockSubjectRepository.Setup(r => r.HasSchedulesInSubjectAsync(subjectId)).ReturnsAsync(false);
 
         // Act
@@ -461,7 +461,7 @@ public class SubjectServiceTest
     public async Task HasSchedulesInSubjectAsync_RepositoryFailure_WrapsInEntityServiceException()
     {
         // Arrange
-        const int subjectId = 1;
+        var subjectId = Guid.NewGuid();
         var expectedException = new InvalidOperationException("Database error");
         _mockSubjectRepository.Setup(r => r.HasSchedulesInSubjectAsync(subjectId)).ThrowsAsync(expectedException);
 
@@ -482,7 +482,7 @@ public class SubjectServiceTest
     public async Task HasEnrollmentsInSubjectAsync_Success_ReturnsTrue()
     {
         // Arrange
-        const int subjectId = 1;
+        var subjectId = Guid.NewGuid();
         _mockSubjectRepository.Setup(r => r.HasEnrollmentsInSubjectAsync(subjectId)).ReturnsAsync(true);
 
         // Act
@@ -497,7 +497,7 @@ public class SubjectServiceTest
     public async Task HasEnrollmentsInSubjectAsync_Success_ReturnsFalse()
     {
         // Arrange
-        const int subjectId = 1;
+        var subjectId = Guid.NewGuid();
         _mockSubjectRepository.Setup(r => r.HasEnrollmentsInSubjectAsync(subjectId)).ReturnsAsync(false);
 
         // Act
@@ -511,7 +511,7 @@ public class SubjectServiceTest
     public async Task HasEnrollmentsInSubjectAsync_RepositoryFailure_WrapsInEntityServiceException()
     {
         // Arrange
-        const int subjectId = 1;
+        var subjectId = Guid.NewGuid();
         var expectedException = new InvalidOperationException("Database error");
         _mockSubjectRepository.Setup(r => r.HasEnrollmentsInSubjectAsync(subjectId)).ThrowsAsync(expectedException);
 
@@ -532,7 +532,7 @@ public class SubjectServiceTest
     public async Task DeleteSubjectAsync_Success_DeletesSubject()
     {
         // Arrange
-        const int subjectId = 1;
+        var subjectId = Guid.NewGuid();
         var existingSubject = new Subject { Id = subjectId, Name = "Mathematics", Code = "MATH101" };
 
         _mockSubjectRepository.Setup(r => r.GetSubjectByIdAsync(subjectId)).ReturnsAsync(existingSubject);
@@ -551,11 +551,11 @@ public class SubjectServiceTest
     public async Task DeleteSubjectAsync_SubjectNotFound_ThrowsEntityNotFoundException()
     {
         // Arrange
-        const int subjectId = 999;
+        var subjectId = Guid.NewGuid();
         _mockSubjectRepository.Setup(r => r.GetSubjectByIdAsync(subjectId)).ReturnsAsync((Subject?)null);
 
         // Act & Assert
-        var exception = await Assert.ThrowsAsync<EntityNotFoundException<int>>(() => _service.DeleteSubjectAsync(subjectId));
+        var exception = await Assert.ThrowsAsync<EntityNotFoundException<Guid>>(() => _service.DeleteSubjectAsync(subjectId));
         Assert.Equal("Subject", exception.EntityName);
         Assert.Equal(subjectId, exception.Key);
     }
@@ -564,7 +564,7 @@ public class SubjectServiceTest
     public async Task DeleteSubjectAsync_RepositoryDeleteReturnsFalse_ThrowsEntityServiceException()
     {
         // Arrange
-        const int subjectId = 1;
+        var subjectId = Guid.NewGuid();
         var existingSubject = new Subject { Id = subjectId, Name = "Mathematics", Code = "MATH101" };
 
         _mockSubjectRepository.Setup(r => r.GetSubjectByIdAsync(subjectId)).ReturnsAsync(existingSubject);
@@ -580,7 +580,7 @@ public class SubjectServiceTest
     public async Task DeleteSubjectAsync_SaveChangesAsyncZero_ThrowsEntityServiceException()
     {
         // Arrange
-        const int subjectId = 1;
+        var subjectId = Guid.NewGuid();
         var existingSubject = new Subject { Id = subjectId, Name = "Mathematics", Code = "MATH101" };
 
         _mockSubjectRepository.Setup(r => r.GetSubjectByIdAsync(subjectId)).ReturnsAsync(existingSubject);
@@ -597,7 +597,7 @@ public class SubjectServiceTest
     public async Task DeleteSubjectAsync_SchedulesForeignKeyConflict_ThrowsEntityConflictException()
     {
         // Arrange
-        const int subjectId = 1;
+        var subjectId = Guid.NewGuid();
         var existingSubject = new Subject { Id = subjectId, Name = "Mathematics", Code = "MATH101" };
         var innerException = new Exception("The DELETE statement conflicted with the REFERENCE constraint \"FK_Schedules_Subjects\"");
         var dbUpdateException = new DbUpdateException("Update exception", innerException);
@@ -616,7 +616,7 @@ public class SubjectServiceTest
     public async Task DeleteSubjectAsync_EnrollmentsForeignKeyConflict_ThrowsEntityConflictException()
     {
         // Arrange
-        const int subjectId = 1;
+        var subjectId = Guid.NewGuid();
         var existingSubject = new Subject { Id = subjectId, Name = "Mathematics", Code = "MATH101" };
         var innerException = new Exception("The DELETE statement conflicted with the REFERENCE constraint \"FK_StudentEnrollments_Subjects\"");
         var dbUpdateException = new DbUpdateException("Update exception", innerException);
@@ -635,7 +635,7 @@ public class SubjectServiceTest
     public async Task DeleteSubjectAsync_GenericForeignKeyConflict_ThrowsEntityConflictException()
     {
         // Arrange
-        const int subjectId = 1;
+        var subjectId = Guid.NewGuid();
         var existingSubject = new Subject { Id = subjectId, Name = "Mathematics", Code = "MATH101" };
         var innerException = new Exception("The DELETE statement conflicted with the REFERENCE constraint \"FK_Unknown_Subjects\"");
         var dbUpdateException = new DbUpdateException("Update exception", innerException);
@@ -654,7 +654,7 @@ public class SubjectServiceTest
     public async Task DeleteSubjectAsync_RepositoryFailure_WrapsInEntityServiceException()
     {
         // Arrange
-        const int subjectId = 1;
+        var subjectId = Guid.NewGuid();
         var existingSubject = new Subject { Id = subjectId, Name = "Mathematics", Code = "MATH101" };
         var expectedException = new InvalidOperationException("Database error");
 

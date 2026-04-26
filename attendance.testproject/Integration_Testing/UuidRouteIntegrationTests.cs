@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using attendance.testproject.Integration_Testing.Support;
 using attendance_monitoring.Classes;
+using attendance_monitoring.Models.DTO.Request;
 using attendance_monitoring.Models.DTO.Response;
 using Microsoft.EntityFrameworkCore;
 
@@ -21,7 +22,7 @@ public sealed class UuidRouteIntegrationTests
                 .SingleAsync(c => c.Name == "Integration Course", cancellationToken));
 
         var legacyResponse = await host.Client.GetAsync($"/api/course/{expected.Id}");
-        var uuidResponse = await host.Client.GetAsync($"/api/course/{expected.Uuid}");
+        var uuidResponse = await host.Client.GetAsync($"/api/course/{expected.Id}");
         var legacyPayload = await legacyResponse.Content.ReadFromJsonAsync<Course>();
         var uuidPayload = await uuidResponse.Content.ReadFromJsonAsync<Course>();
 
@@ -31,7 +32,7 @@ public sealed class UuidRouteIntegrationTests
         Assert.NotNull(uuidPayload);
         Assert.Equal(legacyPayload.Id, uuidPayload.Id);
         Assert.Equal(expected.Id, uuidPayload.Id);
-        Assert.Equal(expected.Uuid, uuidPayload.Uuid);
+        Assert.Equal(expected.Id, uuidPayload.Id);
         Assert.Equal(expected.Name, uuidPayload.Name);
     }
 
@@ -47,7 +48,7 @@ public sealed class UuidRouteIntegrationTests
                 .SingleAsync(subject => subject.Code == "ITEST1", cancellationToken));
 
         var legacyResponse = await host.Client.GetAsync($"/api/subjects/{expected.Id}");
-        var uuidResponse = await host.Client.GetAsync($"/api/subjects/{expected.Uuid}");
+        var uuidResponse = await host.Client.GetAsync($"/api/subjects/{expected.Id}");
         var legacyPayload = await legacyResponse.Content.ReadFromJsonAsync<Subject>();
         var uuidPayload = await uuidResponse.Content.ReadFromJsonAsync<Subject>();
 
@@ -57,7 +58,7 @@ public sealed class UuidRouteIntegrationTests
         Assert.NotNull(uuidPayload);
         Assert.Equal(legacyPayload.Id, uuidPayload.Id);
         Assert.Equal(expected.Id, uuidPayload.Id);
-        Assert.Equal(expected.Uuid, uuidPayload.Uuid);
+        Assert.Equal(expected.Id, uuidPayload.Id);
         Assert.Equal(expected.Code, uuidPayload.Code);
         Assert.Equal(expected.Name, uuidPayload.Name);
     }
@@ -75,7 +76,7 @@ public sealed class UuidRouteIntegrationTests
                 .SingleAsync(section => section.Name == "INT-SEC-A", cancellationToken));
 
         var legacyResponse = await host.Client.GetAsync($"/api/sections/{expected.Id}");
-        var uuidResponse = await host.Client.GetAsync($"/api/sections/{expected.Uuid}");
+        var uuidResponse = await host.Client.GetAsync($"/api/sections/{expected.Id}");
         var legacyPayload = await legacyResponse.Content.ReadFromJsonAsync<SectionResponseDto>();
         var uuidPayload = await uuidResponse.Content.ReadFromJsonAsync<SectionResponseDto>();
 
@@ -84,8 +85,8 @@ public sealed class UuidRouteIntegrationTests
         Assert.NotNull(legacyPayload);
         Assert.NotNull(uuidPayload);
         Assert.Equal(legacyPayload.Id, uuidPayload.Id);
-        Assert.Equal(expected.Uuid, uuidPayload.Id);
-        Assert.Equal(expected.Course!.Uuid, uuidPayload.CourseId);
+        Assert.Equal(expected.Id, uuidPayload.Id);
+        Assert.Equal(expected.Course!.Id, uuidPayload.CourseId);
         Assert.Equal(expected.Name, uuidPayload.Name);
     }
 
@@ -101,7 +102,7 @@ public sealed class UuidRouteIntegrationTests
                 .SingleAsync(classroom => classroom.Name == "Integration Room 1", cancellationToken));
 
         var legacyResponse = await host.Client.GetAsync($"/api/classrooms/{expected.Id}");
-        var uuidResponse = await host.Client.GetAsync($"/api/classrooms/{expected.Uuid}");
+        var uuidResponse = await host.Client.GetAsync($"/api/classrooms/{expected.Id}");
         var legacyPayload = await legacyResponse.Content.ReadFromJsonAsync<Classroom>();
         var uuidPayload = await uuidResponse.Content.ReadFromJsonAsync<Classroom>();
 
@@ -111,7 +112,7 @@ public sealed class UuidRouteIntegrationTests
         Assert.NotNull(uuidPayload);
         Assert.Equal(legacyPayload.Id, uuidPayload.Id);
         Assert.Equal(expected.Id, uuidPayload.Id);
-        Assert.Equal(expected.Uuid, uuidPayload.Uuid);
+        Assert.Equal(expected.Id, uuidPayload.Id);
         Assert.Equal(expected.Name, uuidPayload.Name);
     }
 
@@ -140,7 +141,7 @@ public sealed class UuidRouteIntegrationTests
         });
 
         var legacyResponse = await host.Client.GetAsync($"/api/schedules/{expected.Id}");
-        var uuidResponse = await host.Client.GetAsync($"/api/schedules/{expected.Uuid}");
+        var uuidResponse = await host.Client.GetAsync($"/api/schedules/{expected.Id}");
         var legacyPayload = await legacyResponse.Content.ReadFromJsonAsync<ScheduleResponseDto>();
         var uuidPayload = await uuidResponse.Content.ReadFromJsonAsync<ScheduleResponseDto>();
 
@@ -150,12 +151,48 @@ public sealed class UuidRouteIntegrationTests
         Assert.NotNull(uuidPayload);
 
         Assert.Equal(legacyPayload.Id, uuidPayload.Id);
-        Assert.Equal(expected.Uuid, uuidPayload.Id);
-        Assert.Equal(expected.Subject.Uuid, uuidPayload.Subject.Id);
-        Assert.Equal(expected.Classroom.Uuid, uuidPayload.Classroom.Id);
-        Assert.Equal(expected.Section.Uuid, uuidPayload.Section.Id);
-        Assert.Equal(expected.Section.Course!.Uuid, uuidPayload.Section.CourseId);
-        Assert.Equal(expected.Instructor.Uuid, uuidPayload.Instructor.Id);
+        Assert.Equal(expected.Id, uuidPayload.Id);
+        Assert.Equal(expected.Subject.Id, uuidPayload.Subject.Id);
+        Assert.Equal(expected.Classroom.Id, uuidPayload.Classroom.Id);
+        Assert.Equal(expected.Section.Id, uuidPayload.Section.Id);
+        Assert.Equal(expected.Section.Course!.Id, uuidPayload.Section.CourseId);
+        Assert.Equal(expected.Instructor.Id, uuidPayload.Instructor.Id);
+    }
+
+    [Fact]
+    public async Task CreateSchedule_ReturnsCreatedWithUuidLocation()
+    {
+        await using var host = await ApiIntegrationHost.CreateAttendanceQrAsync(AttendanceQrSeedData.ValidAttendanceCreate);
+        host.AuthenticateAs(userId: host.AttendanceQrScenario!.AdminUserId, username: "integration-admin", role: "Admin");
+
+        var request = await host.ExecuteDbContextAsync(async (dbContext, cancellationToken) =>
+        {
+            var seededSchedule = await dbContext.Schedules
+                .AsNoTracking()
+                .SingleAsync(schedule => schedule.Id == dbContext.Sessions
+                    .Where(session => session.Id == host.AttendanceQrScenario!.SessionId)
+                    .Select(session => session.ScheduleId)
+                    .Single(), cancellationToken);
+
+            return new CreateSchedule
+            {
+                DayOfWeek = "Saturday",
+                TimeIn = new TimeOnly(14, 0),
+                TimeOut = new TimeOnly(15, 0),
+                SubjectId = seededSchedule.SubjectId,
+                ClassroomId = seededSchedule.ClassroomId,
+                SectionId = seededSchedule.SectionId,
+                InstructorId = seededSchedule.InstructorId
+            };
+        });
+
+        var response = await host.Client.PostAsJsonAsync("/api/schedules", request);
+        var payload = await response.Content.ReadFromJsonAsync<Schedules>();
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        Assert.NotNull(payload);
+        Assert.NotEqual(Guid.Empty, payload.Id);
+        Assert.Equal($"/api/schedules/{payload.Id}", response.Headers.Location?.AbsolutePath);
     }
 
     [Fact]
@@ -172,7 +209,7 @@ public sealed class UuidRouteIntegrationTests
                 .SingleAsync(item => item.Id == host.AttendanceQrScenario!.SessionId, cancellationToken));
 
         var legacyResponse = await host.Client.GetAsync($"/api/sessions/{expected.Id}");
-        var uuidResponse = await host.Client.GetAsync($"/api/sessions/{expected.Uuid}");
+        var uuidResponse = await host.Client.GetAsync($"/api/sessions/{expected.Id}");
         var legacyPayload = await legacyResponse.Content.ReadFromJsonAsync<SessionResponseDto>();
         var uuidPayload = await uuidResponse.Content.ReadFromJsonAsync<SessionResponseDto>();
 
@@ -181,9 +218,9 @@ public sealed class UuidRouteIntegrationTests
         Assert.NotNull(legacyPayload);
         Assert.NotNull(uuidPayload);
         Assert.Equal(legacyPayload.Id, uuidPayload.Id);
-        Assert.Equal(expected.Uuid, uuidPayload.Id);
-        Assert.Equal(expected.Schedule!.Uuid, uuidPayload.ScheduleId);
-        Assert.Equal(expected.ActualRoom?.Uuid, uuidPayload.ActualRoomId);
+        Assert.Equal(expected.Id, uuidPayload.Id);
+        Assert.Equal(expected.Schedule!.Id, uuidPayload.ScheduleId);
+        Assert.Equal(expected.ActualRoom?.Id, uuidPayload.ActualRoomId);
     }
 
     [Fact]
@@ -201,7 +238,7 @@ public sealed class UuidRouteIntegrationTests
                 .SingleAsync(item => item.StudentId == host.AttendanceQrScenario!.StudentId, cancellationToken));
 
         var legacyResponse = await host.Client.GetAsync($"/api/studentenrollment/student/{expected.StudentId}");
-        var uuidResponse = await host.Client.GetAsync($"/api/studentenrollment/student/{expected.Student!.Uuid}");
+        var uuidResponse = await host.Client.GetAsync($"/api/studentenrollment/student/{expected.Student!.Id}");
         var legacyPayload = await legacyResponse.Content.ReadFromJsonAsync<StudentSectionsResponseDto>();
         var uuidPayload = await uuidResponse.Content.ReadFromJsonAsync<StudentSectionsResponseDto>();
 
@@ -215,10 +252,10 @@ public sealed class UuidRouteIntegrationTests
         var legacyEnrollment = legacyPayload.Enrollments[0];
         var uuidEnrollment = uuidPayload.Enrollments[0];
 
-        Assert.Equal(expected.Student.Uuid, uuidPayload.StudentId);
-        Assert.Equal(expected.Uuid, uuidEnrollment.EnrollmentId);
-        Assert.Equal(expected.Section!.Uuid, uuidEnrollment.SectionId);
-        Assert.Equal(expected.Subject!.Uuid, uuidEnrollment.SubjectId);
+        Assert.Equal(expected.Student.Id, uuidPayload.StudentId);
+        Assert.Equal(expected.Id, uuidEnrollment.EnrollmentId);
+        Assert.Equal(expected.Section!.Id, uuidEnrollment.SectionId);
+        Assert.Equal(expected.Subject!.Id, uuidEnrollment.SubjectId);
     }
 
     [Fact]
@@ -236,7 +273,7 @@ public sealed class UuidRouteIntegrationTests
                 .SingleAsync(item => item.Id == host.AttendanceQrScenario!.ExistingAttendanceRecordId, cancellationToken));
 
         var legacyResponse = await host.Client.GetAsync($"/api/attendance/{expected.Id}");
-        var uuidResponse = await host.Client.GetAsync($"/api/attendance/{expected.Uuid}");
+        var uuidResponse = await host.Client.GetAsync($"/api/attendance/{expected.Id}");
         var legacyPayload = await legacyResponse.Content.ReadFromJsonAsync<AttendanceRecordResponseDto>();
         var uuidPayload = await uuidResponse.Content.ReadFromJsonAsync<AttendanceRecordResponseDto>();
 
@@ -246,10 +283,10 @@ public sealed class UuidRouteIntegrationTests
         Assert.NotNull(uuidPayload);
 
         Assert.Equal(legacyPayload.Id, uuidPayload.Id);
-        Assert.Equal(expected.Uuid, uuidPayload.Id);
-        Assert.Equal(expected.Student!.Uuid, uuidPayload.StudentId);
-        Assert.Equal(expected.Session!.Uuid, uuidPayload.SessionId);
-        Assert.Equal(expected.Session.Schedule.Uuid, uuidPayload.ScheduleId);
+        Assert.Equal(expected.Id, uuidPayload.Id);
+        Assert.Equal(expected.Student!.Id, uuidPayload.StudentId);
+        Assert.Equal(expected.Session!.Id, uuidPayload.SessionId);
+        Assert.Equal(expected.Session.Schedule.Id, uuidPayload.ScheduleId);
     }
 
     [Fact]
@@ -265,7 +302,7 @@ public sealed class UuidRouteIntegrationTests
                 .SingleAsync(item => item.Id == host.AttendanceQrScenario!.SessionId, cancellationToken));
 
         var legacyResponse = await host.Client.GetAsync($"/api/attendance/session/{expectedSession.Id}");
-        var uuidResponse = await host.Client.GetAsync($"/api/attendance/session/{expectedSession.Uuid}");
+        var uuidResponse = await host.Client.GetAsync($"/api/attendance/session/{expectedSession.Id}");
         var legacyPayload = await legacyResponse.Content.ReadFromJsonAsync<SessionAttendanceDto>();
         var uuidPayload = await uuidResponse.Content.ReadFromJsonAsync<SessionAttendanceDto>();
 
@@ -277,8 +314,8 @@ public sealed class UuidRouteIntegrationTests
         Assert.NotEmpty(uuidPayload.AttendanceRecords);
 
         Assert.Equal(legacyPayload.SessionId, uuidPayload.SessionId);
-        Assert.Equal(expectedSession.Uuid, uuidPayload.SessionId);
-        Assert.Equal(expectedSession.Schedule.Uuid, uuidPayload.ScheduleId);
+        Assert.Equal(expectedSession.Id, uuidPayload.SessionId);
+        Assert.Equal(expectedSession.Schedule.Id, uuidPayload.ScheduleId);
         Assert.Equal(legacyPayload.AttendanceRecords[0].AttendanceRecordId, uuidPayload.AttendanceRecords[0].AttendanceRecordId);
         Assert.NotEqual(Guid.Empty, uuidPayload.AttendanceRecords[0].AttendanceRecordId ?? Guid.Empty);
         Assert.NotEqual(Guid.Empty, uuidPayload.AttendanceRecords[0].StudentId);
@@ -298,7 +335,7 @@ public sealed class UuidRouteIntegrationTests
                 .SingleAsync(item => item.Id == host.AttendanceQrScenario!.QrCodeId, cancellationToken));
 
         var legacyResponse = await host.Client.GetAsync($"/api/qrcode/{expected.Id}");
-        var uuidResponse = await host.Client.GetAsync($"/api/qrcode/{expected.Uuid}");
+        var uuidResponse = await host.Client.GetAsync($"/api/qrcode/{expected.Id}");
         var legacyPayload = await legacyResponse.Content.ReadFromJsonAsync<QrCodeResponseDto>();
         var uuidPayload = await uuidResponse.Content.ReadFromJsonAsync<QrCodeResponseDto>();
 
@@ -308,9 +345,9 @@ public sealed class UuidRouteIntegrationTests
         Assert.NotNull(uuidPayload);
 
         Assert.Equal(legacyPayload.Id, uuidPayload.Id);
-        Assert.Equal(expected.Uuid, uuidPayload.Id);
-        Assert.Equal(expected.Session!.Uuid, uuidPayload.SessionId);
-        Assert.Equal(expected.Session.Schedule?.Uuid, uuidPayload.ScheduleId);
+        Assert.Equal(expected.Id, uuidPayload.Id);
+        Assert.Equal(expected.Session!.Id, uuidPayload.SessionId);
+        Assert.Equal(expected.Session.Schedule?.Id, uuidPayload.ScheduleId);
         Assert.Equal(expected.QrHash, uuidPayload.QrHash);
     }
 }

@@ -60,7 +60,7 @@ public class SessionService : ISessionService
     /// <summary>
     /// Retrieves a session by its ID.
     /// </summary>
-    public async Task<SessionResponseDto?> GetSessionByIdAsync(int id)
+    public async Task<SessionResponseDto?> GetSessionByIdAsync(Guid id)
     {
         _logger.LogInformation("Retrieving session by ID: {SessionId}", id);
 
@@ -71,13 +71,13 @@ public class SessionService : ISessionService
             if (session == null)
             {
                 _logger.LogWarning("Session with ID {SessionId} not found", id);
-                throw new EntityNotFoundException<int>("Session", id);
+                throw new EntityNotFoundException<Guid>("Session", id);
             }
 
             _logger.LogInformation("Successfully retrieved session with ID: {SessionId}", id);
             return MapToResponseDto(session);
         }
-        catch (EntityNotFoundException<int>)
+        catch (EntityNotFoundException<Guid>)
         {
             throw;
         }
@@ -115,7 +115,7 @@ public class SessionService : ISessionService
     /// <summary>
     /// Retrieves sessions for a specific schedule.
     /// </summary>
-    public async Task<IEnumerable<SessionResponseDto>> GetSessionsByScheduleIdAsync(int scheduleId)
+    public async Task<IEnumerable<SessionResponseDto>> GetSessionsByScheduleIdAsync(Guid scheduleId)
     {
         _logger.LogInformation("Retrieving sessions for schedule ID: {ScheduleId}", scheduleId);
 
@@ -259,7 +259,7 @@ public class SessionService : ISessionService
     /// Updates the actual room for a session.
     /// Only active sessions can have their room updated.
     /// </summary>
-    public async Task<SessionResponseDto> UpdateSessionRoomAsync(int sessionId, UpdateSessionRoom updateRequest)
+    public async Task<SessionResponseDto> UpdateSessionRoomAsync(Guid sessionId, UpdateSessionRoom updateRequest)
     {
         if (!updateRequest.ActualRoomId.HasValue || updateRequest.ActualRoomId.Value == Guid.Empty)
         {
@@ -283,7 +283,7 @@ public class SessionService : ISessionService
             if (session == null)
             {
                 _logger.LogWarning("Session with ID {SessionId} not found", sessionId);
-                throw new EntityNotFoundException<int>("Session", sessionId);
+                throw new EntityNotFoundException<Guid>("Session", sessionId);
             }
 
             // Validate session status - only active sessions can have room changes
@@ -321,7 +321,7 @@ public class SessionService : ISessionService
                 : throw new EntityServiceException("Session", $"UpdateSessionRoom: {sessionId}",
                     "Failed to retrieve updated session");
         }
-        catch (EntityNotFoundException<int>)
+        catch (EntityNotFoundException<Guid>)
         {
             throw;
         }
@@ -476,7 +476,7 @@ public class SessionService : ISessionService
     /// <summary>
     /// Starts a session, marking it as active.
     /// </summary>
-    public async Task<SessionResponseDto> StartSessionAsync(int sessionId, StartSession request)
+    public async Task<SessionResponseDto> StartSessionAsync(Guid sessionId, StartSession request)
     {
         _logger.LogInformation("Starting session ID: {SessionId}", sessionId);
 
@@ -513,7 +513,7 @@ public class SessionService : ISessionService
             if (session == null)
             {
                 _logger.LogWarning("Session with ID {SessionId} not found", sessionId);
-                throw new EntityNotFoundException<int>("Session", sessionId);
+                throw new EntityNotFoundException<Guid>("Session", sessionId);
             }
 
             // Validate that the instructor is authorized to start this session
@@ -567,7 +567,7 @@ public class SessionService : ISessionService
                 {
                     var errorMessage = $"Classroom with ID {actualRoomId.Value} not found.";
                     _logger.LogWarning("Session start failed: {ErrorMessage}", errorMessage);
-                    throw new EntityNotFoundException<int>("Classroom", actualRoomId.Value);
+                    throw new EntityNotFoundException<Guid>("Classroom", actualRoomId.Value);
                 }
             }
 
@@ -611,7 +611,7 @@ public class SessionService : ISessionService
                 "Session start could not be completed because the session was updated by another request.",
                 ex);
         }
-        catch (EntityNotFoundException<int>)
+        catch (EntityNotFoundException<Guid>)
         {
             throw;
         }
@@ -633,7 +633,7 @@ public class SessionService : ISessionService
     /// <summary>
     /// Ends an active session.
     /// </summary>
-    public async Task<SessionResponseDto> EndSessionAsync(int sessionId, EndSession request)
+    public async Task<SessionResponseDto> EndSessionAsync(Guid sessionId, EndSession request)
     {
         _logger.LogInformation("Ending session ID: {SessionId}", sessionId);
 
@@ -670,7 +670,7 @@ public class SessionService : ISessionService
             if (session == null)
             {
                 _logger.LogWarning("Session with ID {SessionId} not found", sessionId);
-                throw new EntityNotFoundException<int>("Session", sessionId);
+                throw new EntityNotFoundException<Guid>("Session", sessionId);
             }
 
             // Validate that the instructor is authorized to end this session
@@ -737,7 +737,7 @@ public class SessionService : ISessionService
                 "Session could not be updated because it was modified by another request.",
                 ex);
         }
-        catch (EntityNotFoundException<int>)
+        catch (EntityNotFoundException<Guid>)
         {
             throw;
         }
@@ -759,7 +759,7 @@ public class SessionService : ISessionService
     /// <summary>
     /// Cancels a session that has not started yet.
     /// </summary>
-    public async Task<SessionResponseDto> CancelSessionAsync(int sessionId, CancelSession request)
+    public async Task<SessionResponseDto> CancelSessionAsync(Guid sessionId, CancelSession request)
     {
         _logger.LogInformation("Cancelling session ID: {SessionId}", sessionId);
 
@@ -796,7 +796,7 @@ public class SessionService : ISessionService
             if (session == null)
             {
                 _logger.LogWarning("Session with ID {SessionId} not found", sessionId);
-                throw new EntityNotFoundException<int>("Session", sessionId);
+                throw new EntityNotFoundException<Guid>("Session", sessionId);
             }
 
             // Validate that the instructor is authorized to cancel this session
@@ -852,7 +852,7 @@ public class SessionService : ISessionService
                 "Session could not be updated because it was modified by another request.",
                 ex);
         }
-        catch (EntityNotFoundException<int>)
+        catch (EntityNotFoundException<Guid>)
         {
             throw;
         }
@@ -878,7 +878,7 @@ public class SessionService : ISessionService
     /// <summary>
     /// Retrieves the user IDs of all students enrolled in the session's section and subject.
     /// </summary>
-    private async Task<IEnumerable<string>> GetEnrolledStudentIdsAsync(int sessionId)
+    private async Task<IEnumerable<string>> GetEnrolledStudentIdsAsync(Guid sessionId)
     {
         try
         {
@@ -922,21 +922,21 @@ public class SessionService : ISessionService
 
         return new SessionResponseDto
         {
-            Id = session.Uuid,
-            ScheduleId = session.Schedule?.Uuid ?? Guid.Empty,
+            Id = session.Id,
+            ScheduleId = session.Schedule?.Id ?? Guid.Empty,
             Status = session.Status,
             SessionDate = session.SessionDate,
             ActualStartTime = session.ActualStartTime,
             ActualEndTime = session.ActualEndTime,
             AttendanceCutOff = session.AttendanceCutOff,
             Description = session.Description,
-            ActualRoomId = session.ActualRoom?.Uuid,
+            ActualRoomId = session.ActualRoom?.Id,
             ActualRoomName = session.ActualRoom?.Name,
-            StartedById = session.InstructorWhoStarted?.Uuid,
+            StartedById = session.InstructorWhoStarted?.Id,
             StartedByName = session.InstructorWhoStarted != null
                 ? $"{session.InstructorWhoStarted.Firstname} {session.InstructorWhoStarted.Lastname}"
                 : null,
-            EndedById = session.InstructorWhoEnded?.Uuid,
+            EndedById = session.InstructorWhoEnded?.Id,
             EndedByName = session.InstructorWhoEnded != null
                 ? $"{session.InstructorWhoEnded.Firstname} {session.InstructorWhoEnded.Lastname}"
                 : null,
@@ -963,12 +963,12 @@ public class SessionService : ISessionService
 
     #region UUID Entrypoints
 
-    public async Task<SessionResponseDto?> GetSessionByUuidAsync(Guid uuid)
+    public async Task<SessionResponseDto?> GetSessionByUuidAsync(Guid id)
     {
-        var session = await _sessionRepository.GetSessionByUuidAsync(uuid).ConfigureAwait(false);
+        var session = await _sessionRepository.GetSessionByUuidAsync(id).ConfigureAwait(false);
         if (session == null)
         {
-            throw new EntityNotFoundException<Guid>("Session", uuid);
+            throw new EntityNotFoundException<Guid>("Session", id);
         }
         return MapToResponseDto(session);
     }

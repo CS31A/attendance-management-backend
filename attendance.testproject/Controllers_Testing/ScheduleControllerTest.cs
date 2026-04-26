@@ -1,4 +1,6 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using System.Reflection;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Routing;
 using attendance_monitoring.Controllers;
 using attendance_monitoring.IServices;
 using attendance_monitoring.Classes;
@@ -34,13 +36,29 @@ public class ScheduleControllerTest
         }, "TestAuthentication"));
     }
 
+    [Fact]
+    public void SectionFilterRoute_AcceptsGuidSectionId()
+    {
+        Assert.Equal("by-section/{sectionId:guid}", GetHttpTemplate(nameof(ScheduleController.GetSchedulesBySection)));
+    }
+
+    private static string? GetHttpTemplate(string methodName)
+    {
+        var method = typeof(ScheduleController).GetMethod(methodName, BindingFlags.Instance | BindingFlags.Public);
+        Assert.NotNull(method);
+        return method!.GetCustomAttributes()
+            .OfType<HttpMethodAttribute>()
+            .Single()
+            .Template;
+    }
+
     #region GetSchedule Tests
 
     [Fact]
     public async Task GetSchedule_ReturnsOkResult_WithSchedule()
     {
         // Arrange
-        int scheduleId = 1;
+        var scheduleId = Guid.NewGuid();
         var expectedScheduleId = Guid.NewGuid();
         var expectedSchedule = new ScheduleResponseDto
         {
@@ -133,7 +151,7 @@ public class ScheduleControllerTest
     [Fact]
     public async Task HasSessionsInSchedule_ReturnsOk_WithBooleanResult()
     {
-        const int scheduleId = 6;
+        var scheduleId = Guid.NewGuid();
         _mockScheduleService
             .Setup(service => service.HasSessionsInScheduleAsync(scheduleId))
             .ReturnsAsync(true);
@@ -147,17 +165,17 @@ public class ScheduleControllerTest
     [Fact]
     public async Task HasSessionsInSchedule_ReturnsBadRequest_ForInvalidId()
     {
-        var result = await _scheduleController.HasSessionsInSchedule(0);
+        var result = await _scheduleController.HasSessionsInSchedule(Guid.Empty);
 
         var badRequestResult = Assert.IsType<BadRequestObjectResult>(result.Result);
         Assert.Equal("Schedule ID must be greater than 0.", badRequestResult.Value);
-        _mockScheduleService.Verify(service => service.HasSessionsInScheduleAsync(It.IsAny<int>()), Times.Never);
+        _mockScheduleService.Verify(service => service.HasSessionsInScheduleAsync(It.IsAny<Guid>()), Times.Never);
     }
 
     [Fact]
     public async Task HasSessionsInSchedule_ReturnsServerError_WhenServiceThrowsEntityServiceException()
     {
-        const int scheduleId = 14;
+        var scheduleId = Guid.NewGuid();
         _mockScheduleService
             .Setup(service => service.HasSessionsInScheduleAsync(scheduleId))
             .ThrowsAsync(new EntityServiceException("Schedule", $"HasSessionsInSchedule: {scheduleId}", "Error checking schedule dependencies"));
@@ -190,7 +208,7 @@ public class ScheduleControllerTest
 
         var createdSchedule = new Schedules
         {
-            Id = 1,
+            Id = Guid.NewGuid(),
             TimeIn = createSchedule.TimeIn,
             TimeOut = createSchedule.TimeOut,
             DayOfWeek = createSchedule.DayOfWeek
@@ -205,9 +223,9 @@ public class ScheduleControllerTest
 
         // Assert
         var createdAtActionResult = Assert.IsType<CreatedAtActionResult>(result.Result);
-        Assert.Equal(nameof(_scheduleController.GetSchedule), createdAtActionResult.ActionName);
+        Assert.Equal(nameof(_scheduleController.GetScheduleByUuid), createdAtActionResult.ActionName);
         var schedule = Assert.IsType<Schedules>(createdAtActionResult.Value);
-        Assert.Equal(1, schedule.Id);
+        Assert.NotEqual(Guid.Empty, schedule.Id);
 
         _mockScheduleService.Verify(s => s.CreateScheduleAsync(createSchedule), Times.Once);
     }
@@ -319,7 +337,7 @@ public class ScheduleControllerTest
     public async Task UpdateSchedule_ReturnsOkResult_WithUpdatedSchedule()
     {
         // Arrange
-        int scheduleId = 1;
+        var scheduleId = Guid.NewGuid();
         var updateSchedule = new UpdateSchedule
         {
             TimeIn = new TimeOnly(9, 0),
@@ -365,8 +383,7 @@ public class ScheduleControllerTest
 
         var updatedSchedule = new Schedules
         {
-            Id = 17,
-            Uuid = scheduleUuid,
+            Id = scheduleUuid,
             TimeIn = new TimeOnly(9, 0),
             TimeOut = new TimeOnly(10, 0),
             DayOfWeek = updateSchedule.DayOfWeek!
@@ -380,7 +397,7 @@ public class ScheduleControllerTest
 
         var okResult = Assert.IsType<OkObjectResult>(result.Result);
         var schedule = Assert.IsType<Schedules>(okResult.Value);
-        Assert.Equal(scheduleUuid, schedule.Uuid);
+        Assert.Equal(scheduleUuid, schedule.Id);
     }
 
     [Fact]
@@ -422,7 +439,7 @@ public class ScheduleControllerTest
     public async Task UpdateSchedule_ReturnsOkResult_WithPartialUpdate()
     {
         // Arrange - Test PATCH endpoint with only TimeIn field provided
-        int scheduleId = 1;
+        var scheduleId = Guid.NewGuid();
         var updateSchedule = new UpdateSchedule
         {
             TimeIn = new TimeOnly(10, 0) // Only updating TimeIn
@@ -456,7 +473,7 @@ public class ScheduleControllerTest
     public async Task UpdateSchedule_ReturnsBadRequest_WhenModelStateIsInvalid()
     {
         // Arrange
-        int scheduleId = 1;
+        var scheduleId = Guid.NewGuid();
         var updateSchedule = new UpdateSchedule
         {
             TimeIn = new TimeOnly(9, 0),
@@ -482,7 +499,7 @@ public class ScheduleControllerTest
     public async Task UpdateSchedule_ThrowsValidationException_WhenServiceThrowsError()
     {
         // Arrange
-        int scheduleId = 1;
+        var scheduleId = Guid.NewGuid();
         var updateSchedule = new UpdateSchedule
         {
             TimeIn = new TimeOnly(9, 0),
@@ -508,7 +525,7 @@ public class ScheduleControllerTest
     public async Task UpdateSchedule_ThrowsException_WhenExceptionOccurs()
     {
         // Arrange
-        int scheduleId = 1;
+        var scheduleId = Guid.NewGuid();
         var updateSchedule = new UpdateSchedule
         {
             TimeIn = new TimeOnly(9, 0),
@@ -533,7 +550,7 @@ public class ScheduleControllerTest
     public async Task UpdateSchedule_ThrowsValidationException_WhenTimeOutBeforeTimeIn()
     {
         // Arrange
-        int scheduleId = 1;
+        var scheduleId = Guid.NewGuid();
         var updateSchedule = new UpdateSchedule
         {
             TimeIn = new TimeOnly(10, 0),  // 10:00 AM
@@ -554,7 +571,7 @@ public class ScheduleControllerTest
     public async Task UpdateSchedule_ThrowsValidationException_WhenInvalidDayOfWeek()
     {
         // Arrange
-        int scheduleId = 1;
+        var scheduleId = Guid.NewGuid();
         var updateSchedule = new UpdateSchedule
         {
             DayOfWeek = "InvalidDay"
@@ -578,7 +595,7 @@ public class ScheduleControllerTest
     public async Task DeleteSchedule_ReturnsNoContent_WhenSuccessful()
     {
         // Arrange
-        int scheduleId = 1;
+        var scheduleId = Guid.NewGuid();
 
         _mockScheduleService
             .Setup(s => s.DeleteScheduleAsync(scheduleId, It.IsAny<ClaimsPrincipal>()))
@@ -625,7 +642,7 @@ public class ScheduleControllerTest
     public async Task DeleteSchedule_ThrowsValidationException_WhenServiceThrowsError()
     {
         // Arrange
-        int scheduleId = 1;
+        var scheduleId = Guid.NewGuid();
         string errorMessage = "Cannot delete schedule with existing dependencies";
 
         _mockScheduleService
@@ -642,7 +659,7 @@ public class ScheduleControllerTest
     public async Task DeleteSchedule_ThrowsException_WhenUnexpectedExceptionOccurs()
     {
         // Arrange
-        int scheduleId = 1;
+        var scheduleId = Guid.NewGuid();
 
         _mockScheduleService
             .Setup(s => s.DeleteScheduleAsync(scheduleId, It.IsAny<ClaimsPrincipal>()))

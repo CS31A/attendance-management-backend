@@ -81,7 +81,7 @@ namespace attendance_monitoring.Services
         /// <returns>The instructor with the specified ID</returns>
         /// <exception cref="T:attendance_monitoring.Exceptions.EntityNotFoundException{System.Int32}">Thrown when the instructor is not found</exception>
         /// <exception cref="EntityServiceException">Thrown when an error occurs during retrieval</exception>
-        public async Task<Instructor> GetInstructorByIdAsync(int id)
+        public async Task<Instructor> GetInstructorByIdAsync(Guid id)
         {
             try
             {
@@ -90,13 +90,13 @@ namespace attendance_monitoring.Services
                 if (instructor == null)
                 {
                     _logger.LogWarning("Instructor with ID {Id} not found", id);
-                    throw new EntityNotFoundException<int>("Instructor", id);
+                    throw new EntityNotFoundException<Guid>("Instructor", id);
                 }
 
                 _logger.LogInformation("Successfully retrieved instructor with ID: {Id}", id);
                 return instructor;
             }
-            catch (EntityNotFoundException<int>)
+            catch (EntityNotFoundException<Guid>)
             {
                 // Re-throw EntityNotFoundException as-is
                 throw;
@@ -117,7 +117,7 @@ namespace attendance_monitoring.Services
         /// <returns>A collection of subjects taught by the instructor</returns>
         /// <exception cref="T:attendance_monitoring.Exceptions.EntityNotFoundException{System.Int32}">Thrown when the instructor is not found</exception>
         /// <exception cref="EntityServiceException">Thrown when an error occurs during retrieval</exception>
-        public async Task<IEnumerable<SubjectResponseDto>> GetSubjectsByInstructorIdAsync(int instructorId)
+        public async Task<IEnumerable<SubjectResponseDto>> GetSubjectsByInstructorIdAsync(Guid instructorId)
         {
             try
             {
@@ -128,14 +128,14 @@ namespace attendance_monitoring.Services
                 if (instructor == null)
                 {
                     _logger.LogWarning("Instructor with ID {InstructorId} not found", instructorId);
-                    throw new EntityNotFoundException<int>("Instructor", instructorId);
+                    throw new EntityNotFoundException<Guid>("Instructor", instructorId);
                 }
 
                 // Get subjects from schedules
                 var subjects = await _scheduleRepository.GetSubjectsByInstructorIdAsync(instructorId).ConfigureAwait(false);
                 var subjectDtos = subjects.Select(s => new SubjectResponseDto
                 {
-                    Id = s.Uuid,
+                    Id = s.Id,
                     Name = s.Name,
                     Code = s.Code,
                     CreatedAt = s.CreatedAt,
@@ -146,7 +146,7 @@ namespace attendance_monitoring.Services
                     subjectDtos.Count, instructorId);
                 return subjectDtos;
             }
-            catch (EntityNotFoundException<int>)
+            catch (EntityNotFoundException<Guid>)
             {
                 // Re-throw EntityNotFoundException as-is
                 throw;
@@ -350,7 +350,7 @@ namespace attendance_monitoring.Services
         /// <exception cref="T:attendance_monitoring.Exceptions.EntityNotFoundException{System.Int32}">Thrown when the instructor is not found</exception>
         /// <exception cref="EntityUnauthorizedException">Thrown when the user is not authorized to update the instructor</exception>
         /// <exception cref="EntityServiceException">Thrown when instructor update fails</exception>
-        public async Task<Instructor> UpdateInstructorAsync(int id, UpdateInstructor updateInstructor, ClaimsPrincipal userPrincipal)
+        public async Task<Instructor> UpdateInstructorAsync(Guid id, UpdateInstructor updateInstructor, ClaimsPrincipal userPrincipal)
         {
             try
             {
@@ -367,7 +367,7 @@ namespace attendance_monitoring.Services
                 if (existingInstructor == null)
                 {
                     _logger.LogWarning("Instructor update failed: Instructor with ID {Id} not found", id);
-                    throw new EntityNotFoundException<int>("Instructor", id);
+                    throw new EntityNotFoundException<Guid>("Instructor", id);
                 }
 
                 var isAuthorized = await _userContextService.IsAuthorizedAsync(userPrincipal, existingInstructor.UserId, RoleConstants.Admin, RoleConstants.Instructor).ConfigureAwait(false);
@@ -402,7 +402,7 @@ namespace attendance_monitoring.Services
                 _logger.LogInformation("Successfully updated instructor with ID: {Id}", id);
                 return updatedInstructor;
             }
-            catch (EntityNotFoundException<int>)
+            catch (EntityNotFoundException<Guid>)
             {
                 // Re-throw EntityNotFoundException as-is
                 throw;
@@ -434,13 +434,13 @@ namespace attendance_monitoring.Services
         /// <exception cref="T:attendance_monitoring.Exceptions.EntityNotFoundException{System.Int32}">Thrown when the instructor is not found</exception>
         /// <exception cref="EntityUnauthorizedException">Thrown when the user is not authorized to delete the instructor</exception>
         /// <exception cref="EntityServiceException">Thrown when instructor deletion fails</exception>
-        public async Task SoftDeleteInstructorAsync(int id, ClaimsPrincipal userPrincipal)
+        public async Task SoftDeleteInstructorAsync(Guid id, ClaimsPrincipal userPrincipal)
         {
             try
             {
                 _logger.LogInformation("Soft deleting instructor with ID: {Id}", id);
 
-                if (id <= 0)
+                if (id == Guid.Empty)
                 {
                     _logger.LogWarning("Instructor soft delete failed: Invalid instructor ID {Id}", id);
                     throw new EntityServiceException("Instructor", $"SoftDeleteInstructor: {id}", "Invalid instructor ID");
@@ -457,7 +457,7 @@ namespace attendance_monitoring.Services
                 if (existingInstructor == null)
                 {
                     _logger.LogWarning("Instructor soft delete failed: Instructor with ID {Id} not found", id);
-                    throw new EntityNotFoundException<int>("Instructor", id);
+                    throw new EntityNotFoundException<Guid>("Instructor", id);
                 }
 
                 var isAuthorized = await _userContextService.IsAuthorizedAsync(userPrincipal, existingInstructor.UserId, RoleConstants.Admin, RoleConstants.Instructor).ConfigureAwait(false);
@@ -477,7 +477,7 @@ namespace attendance_monitoring.Services
                 await _instructorRepository.SaveChangesAsync().ConfigureAwait(false);
                 _logger.LogInformation("Successfully soft deleted instructor with ID: {Id}", id);
             }
-            catch (EntityNotFoundException<int>)
+            catch (EntityNotFoundException<Guid>)
             {
                 // Re-throw EntityNotFoundException as-is
                 throw;
@@ -510,13 +510,13 @@ namespace attendance_monitoring.Services
         /// <exception cref="EntityNotFoundException{TKey}">Thrown when instructor not found</exception>
         /// <exception cref="EntityUnauthorizedException">Thrown when user is not authorized</exception>
         /// <exception cref="EntityServiceException">Thrown when an error occurs during deletion</exception>
-        public async Task HardDeleteInstructorAsync(int id, ClaimsPrincipal userPrincipal)
+        public async Task HardDeleteInstructorAsync(Guid id, ClaimsPrincipal userPrincipal)
         {
             _logger.LogInformation("Hard deleting instructor with ID: {Id}", id);
 
             try
             {
-                if (id <= 0)
+                if (id == Guid.Empty)
                 {
                     _logger.LogWarning("Instructor hard delete failed: Invalid instructor ID {Id}", id);
                     throw new ValidationException("Invalid instructor ID");
@@ -533,7 +533,7 @@ namespace attendance_monitoring.Services
                 if (existingInstructor == null)
                 {
                     _logger.LogWarning("Instructor hard delete failed: Instructor with ID {Id} not found", id);
-                    throw new EntityNotFoundException<int>("Instructor", id);
+                    throw new EntityNotFoundException<Guid>("Instructor", id);
                 }
 
                 var isAuthorized = await _userContextService.IsAuthorizedAsync(userPrincipal, existingInstructor.UserId, "Admin").ConfigureAwait(false);
@@ -557,7 +557,7 @@ namespace attendance_monitoring.Services
             {
                 throw;
             }
-            catch (EntityNotFoundException<int>)
+            catch (EntityNotFoundException<Guid>)
             {
                 throw;
             }
@@ -587,13 +587,13 @@ namespace attendance_monitoring.Services
         /// <exception cref="EntityNotFoundException{TKey}">Thrown when instructor not found</exception>
         /// <exception cref="EntityUnauthorizedException">Thrown when user is not authorized</exception>
         /// <exception cref="EntityServiceException">Thrown when an error occurs during restore</exception>
-        public async Task RestoreInstructorAsync(int id, ClaimsPrincipal userPrincipal)
+        public async Task RestoreInstructorAsync(Guid id, ClaimsPrincipal userPrincipal)
         {
             _logger.LogInformation("Restoring instructor with ID: {Id}", id);
 
             try
             {
-                if (id <= 0)
+                if (id == Guid.Empty)
                 {
                     _logger.LogWarning("Instructor restore failed: Invalid instructor ID {Id}", id);
                     throw new ValidationException("Invalid instructor ID");
@@ -610,7 +610,7 @@ namespace attendance_monitoring.Services
                 if (existingInstructor == null)
                 {
                     _logger.LogWarning("Instructor restore failed: Instructor with ID {Id} not found", id);
-                    throw new EntityNotFoundException<int>("Instructor", id);
+                    throw new EntityNotFoundException<Guid>("Instructor", id);
                 }
 
                 var isAuthorized = await _userContextService.IsAuthorizedAsync(userPrincipal, existingInstructor.UserId, RoleConstants.Admin, RoleConstants.Instructor).ConfigureAwait(false);
@@ -641,7 +641,7 @@ namespace attendance_monitoring.Services
             {
                 throw;
             }
-            catch (EntityNotFoundException<int>)
+            catch (EntityNotFoundException<Guid>)
             {
                 throw;
             }
@@ -702,7 +702,7 @@ namespace attendance_monitoring.Services
                     _logger.LogInformation("No schedules found for instructor ID: {InstructorId}", instructor.Id);
                     return new InstructorSectionsWithStudentsResponseDto
                     {
-                        InstructorId = instructor.Uuid,
+                        InstructorId = instructor.Id,
                         InstructorFirstname = instructor.Firstname ?? string.Empty,
                         InstructorLastname = instructor.Lastname ?? string.Empty,
                         Sections = new List<SectionWithStudentsDto>()
@@ -723,7 +723,7 @@ namespace attendance_monitoring.Services
                     var regularStudents = (await _instructorRepository.GetRegularStudentsBySectionIdAsync(section.Id).ConfigureAwait(false))
                         .Select(student => new StudentDto
                         {
-                            StudentId = student.Uuid,
+                            StudentId = student.Id,
                             Firstname = student.Firstname,
                             Lastname = student.Lastname,
                             IsRegular = true,
@@ -747,7 +747,7 @@ namespace attendance_monitoring.Services
                                     && se.Student.SectionId != section.Id)
                                 .Select(se => new StudentDto
                                 {
-                                    StudentId = se.Student.Uuid,
+                                    StudentId = se.Student.Id,
                                     Firstname = se.Student.Firstname,
                                     Lastname = se.Student.Lastname,
                                     IsRegular = false,
@@ -765,14 +765,14 @@ namespace attendance_monitoring.Services
 
                             return new SubjectScheduleDto
                             {
-                                SubjectId = schedule.Subject.Uuid,
+                                SubjectId = schedule.Subject.Id,
                                 SubjectName = schedule.Subject.Name,
                                 SubjectCode = schedule.Subject.Code,
-                                ScheduleId = schedule.Uuid,
+                                ScheduleId = schedule.Id,
                                 DayOfWeek = schedule.DayOfWeek,
                                 TimeIn = schedule.TimeIn,
                                 TimeOut = schedule.TimeOut,
-                                ClassroomId = schedule.Classroom.Uuid,
+                                ClassroomId = schedule.Classroom.Id,
                                 ClassroomName = schedule.Classroom.Name,
                                 Students = enrolledStudents
                             };
@@ -782,9 +782,9 @@ namespace attendance_monitoring.Services
 
                     sectionDtos.Add(new SectionWithStudentsDto
                     {
-                        SectionId = section.Uuid,
+                        SectionId = section.Id,
                         SectionName = section.Name,
-                        CourseId = GetRequiredCourse(section).Uuid,
+                        CourseId = GetRequiredCourse(section).Id,
                         CourseName = GetRequiredCourse(section).Name,
                         Subjects = subjectSchedules
                     });
@@ -792,7 +792,7 @@ namespace attendance_monitoring.Services
 
                 var response = new InstructorSectionsWithStudentsResponseDto
                 {
-                    InstructorId = instructor.Uuid,
+                    InstructorId = instructor.Id,
                     InstructorFirstname = instructor.Firstname ?? string.Empty,
                     InstructorLastname = instructor.Lastname ?? string.Empty,
                     Sections = sectionDtos.OrderBy(s => s.SectionName).ToList()
@@ -883,9 +883,9 @@ namespace attendance_monitoring.Services
 
                     overviewDtos.Add(new InstructorSectionOverviewDto
                     {
-                        SectionId = section.Uuid,
+                        SectionId = section.Id,
                         SectionName = section.Name,
-                        CourseId = GetRequiredCourse(section).Uuid,
+                        CourseId = GetRequiredCourse(section).Id,
                         CourseName = GetRequiredCourse(section).Name,
                         HandledClassCount = handledClassCount,
                         UniqueStudentCount = uniqueStudentCount
@@ -920,7 +920,7 @@ namespace attendance_monitoring.Services
         /// <exception cref="T:attendance_monitoring.Exceptions.EntityNotFoundException{System.String}">Thrown when the instructor is not found</exception>
         /// <exception cref="EntityUnauthorizedException">Thrown when the instructor is not authorized to view the section</exception>
         /// <exception cref="EntityServiceException">Thrown when an error occurs during retrieval</exception>
-        public async Task<InstructorSectionDetailDto> GetInstructorSectionDetailAsync(ClaimsPrincipal userPrincipal, int sectionId)
+        public async Task<InstructorSectionDetailDto> GetInstructorSectionDetailAsync(ClaimsPrincipal userPrincipal, Guid sectionId)
         {
             try
             {
@@ -944,7 +944,7 @@ namespace attendance_monitoring.Services
                 if (sectionExists == null)
                 {
                     _logger.LogWarning("Section with ID {SectionId} not found", sectionId);
-                    throw new EntityNotFoundException<int>("Section", sectionId);
+                    throw new EntityNotFoundException<Guid>("Section", sectionId);
                 }
 
                 var isHandlingSection = await _instructorRepository.IsInstructorHandlingSectionAsync(instructor.Id, sectionId).ConfigureAwait(false);
@@ -967,7 +967,7 @@ namespace attendance_monitoring.Services
                 if (section == null)
                 {
                     _logger.LogWarning("Section with ID {SectionId} not found", sectionId);
-                    throw new EntityNotFoundException<int>("Section", sectionId);
+                    throw new EntityNotFoundException<Guid>("Section", sectionId);
                 }
 
                 var handledClasses = new List<InstructorHandledClassDto>();
@@ -1020,14 +1020,14 @@ namespace attendance_monitoring.Services
 
                     handledClasses.Add(new InstructorHandledClassDto
                     {
-                        SubjectId = schedule.Subject.Uuid,
+                        SubjectId = schedule.Subject.Id,
                         SubjectName = schedule.Subject.Name,
                         SubjectCode = schedule.Subject.Code,
-                        ScheduleId = schedule.Uuid,
+                        ScheduleId = schedule.Id,
                         DayOfWeek = schedule.DayOfWeek,
                         TimeIn = schedule.TimeIn,
                         TimeOut = schedule.TimeOut,
-                        ClassroomId = schedule.Classroom.Uuid,
+                        ClassroomId = schedule.Classroom.Id,
                         ClassroomName = schedule.Classroom.Name,
                         StudentCount = allStudents.Count,
                         Students = allStudents
@@ -1040,9 +1040,9 @@ namespace attendance_monitoring.Services
 
                 var detailDto = new InstructorSectionDetailDto
                 {
-                    SectionId = section.Uuid,
+                    SectionId = section.Id,
                     SectionName = section.Name,
-                    CourseId = GetRequiredCourse(section).Uuid,
+                    CourseId = GetRequiredCourse(section).Id,
                     CourseName = GetRequiredCourse(section).Name,
                     HandledClassCount = handledClasses.Count,
                     HomeSectionStudentCount = homeSectionStudentDtos.Count,
@@ -1059,7 +1059,7 @@ namespace attendance_monitoring.Services
             {
                 throw;
             }
-            catch (EntityNotFoundException<int>)
+            catch (EntityNotFoundException<Guid>)
             {
                 throw;
             }
@@ -1098,7 +1098,7 @@ namespace attendance_monitoring.Services
         /// <exception cref="T:attendance_monitoring.Exceptions.EntityNotFoundException{System.Int32}">Thrown when the student is not found</exception>
         /// <exception cref="EntityUnauthorizedException">Thrown when the instructor is not authorized to view the student</exception>
         /// <exception cref="EntityServiceException">Thrown when an error occurs during retrieval</exception>
-        public async Task<InstructorStudentDetailDto> GetInstructorStudentDetailAsync(ClaimsPrincipal userPrincipal, int studentId)
+        public async Task<InstructorStudentDetailDto> GetInstructorStudentDetailAsync(ClaimsPrincipal userPrincipal, Guid studentId)
         {
             try
             {
@@ -1122,7 +1122,7 @@ namespace attendance_monitoring.Services
                 if (student == null)
                 {
                     _logger.LogWarning("Student with ID {StudentId} not found", studentId);
-                    throw new EntityNotFoundException<int>("Student", studentId);
+                    throw new EntityNotFoundException<Guid>("Student", studentId);
                 }
 
                 var isStudentVisible = await IsStudentVisibleToInstructorAsync(instructor.Id, student).ConfigureAwait(false);
@@ -1142,10 +1142,10 @@ namespace attendance_monitoring.Services
                     .Select(group => group.First())
                     .Select(schedule => new InstructorStudentEnrollmentDto
                     {
-                        SubjectId = schedule.Subject.Uuid,
+                        SubjectId = schedule.Subject.Id,
                         SubjectName = schedule.Subject.Name,
                         SubjectCode = schedule.Subject.Code,
-                        SectionId = schedule.Section.Uuid,
+                        SectionId = schedule.Section.Id,
                         SectionName = schedule.Section.Name,
                         EnrollmentType = EnrollmentTypeConstants.Regular
                     });
@@ -1154,10 +1154,10 @@ namespace attendance_monitoring.Services
                     .Where(se => se.IsActive)
                     .Select(se => new InstructorStudentEnrollmentDto
                     {
-                        SubjectId = se.Subject.Uuid,
+                        SubjectId = se.Subject.Id,
                         SubjectName = se.Subject.Name,
                         SubjectCode = se.Subject.Code,
-                        SectionId = se.Section.Uuid,
+                        SectionId = se.Section.Id,
                         SectionName = se.Section.Name,
                         EnrollmentType = se.EnrollmentType
                     });
@@ -1185,7 +1185,7 @@ namespace attendance_monitoring.Services
 
                     fingerprintDto = new InstructorStudentFingerprintDto
                     {
-                        Id = fingerprint.Uuid,
+                        Id = fingerprint.Id,
                         DeviceId = fingerprint.DeviceId,
                         DeviceName = device?.Name ?? fingerprint.DeviceId,
                         DeviceLocation = device?.Location ?? string.Empty,
@@ -1195,12 +1195,12 @@ namespace attendance_monitoring.Services
 
                 var detailDto = new InstructorStudentDetailDto
                 {
-                    StudentId = student.Uuid,
+                    StudentId = student.Id,
                     Firstname = student.Firstname,
                     Lastname = student.Lastname,
-                    SectionId = student.Section?.Uuid,
+                    SectionId = student.Section?.Id,
                     SectionName = student.Section?.Name,
-                    CourseId = student.Section?.Course?.Uuid,
+                    CourseId = student.Section?.Course?.Id,
                     CourseName = student.Section?.Course?.Name,
                     IsRegular = student.IsRegular,
                     EnrollmentType = student.IsRegular ? EnrollmentTypeConstants.Regular : EnrollmentTypeConstants.Irregular,
@@ -1225,7 +1225,7 @@ namespace attendance_monitoring.Services
             {
                 throw;
             }
-            catch (EntityNotFoundException<int>)
+            catch (EntityNotFoundException<Guid>)
             {
                 throw;
             }
@@ -1241,7 +1241,7 @@ namespace attendance_monitoring.Services
             }
         }
 
-        private async Task<bool> IsStudentVisibleToInstructorAsync(int instructorId, Student student)
+        private async Task<bool> IsStudentVisibleToInstructorAsync(Guid instructorId, Student student)
         {
             var isHandlingStudentSection = await _instructorRepository.IsInstructorHandlingSectionAsync(instructorId, student.SectionId).ConfigureAwait(false);
             if (isHandlingStudentSection)
@@ -1299,7 +1299,7 @@ namespace attendance_monitoring.Services
                 ?? throw new InvalidOperationException($"Section {section.Id} is missing required course data.");
         }
 
-        private async Task<Dictionary<int, StudentFingerprintDisplay>> BuildFingerprintLookupAsync(IEnumerable<Student> students)
+        private async Task<Dictionary<Guid, StudentFingerprintDisplay>> BuildFingerprintLookupAsync(IEnumerable<Student> students)
         {
             var studentList = students
                 .GroupBy(student => student.Id)
@@ -1312,7 +1312,7 @@ namespace attendance_monitoring.Services
 
             if (studentUserIds.Count == 0)
             {
-                return new Dictionary<int, StudentFingerprintDisplay>();
+                return new Dictionary<Guid, StudentFingerprintDisplay>();
             }
 
             var fingerprints = await _fingerprintRepository.GetActiveFingerprintsAsync().ConfigureAwait(false);
@@ -1349,13 +1349,13 @@ namespace attendance_monitoring.Services
             Student student,
             bool isRegular,
             string enrollmentType,
-            IReadOnlyDictionary<int, StudentFingerprintDisplay> fingerprintLookup)
+            IReadOnlyDictionary<Guid, StudentFingerprintDisplay> fingerprintLookup)
         {
             fingerprintLookup.TryGetValue(student.Id, out var fingerprint);
 
             return new InstructorHandledClassStudentDto
             {
-                StudentId = student.Uuid,
+                StudentId = student.Id,
                 Firstname = student.Firstname,
                 Lastname = student.Lastname,
                 IsRegular = isRegular,
@@ -1368,14 +1368,14 @@ namespace attendance_monitoring.Services
 
         private static InstructorHomeSectionStudentDto CreateHomeSectionStudentDto(
             Student student,
-            int sectionId,
-            IReadOnlyDictionary<int, StudentFingerprintDisplay> fingerprintLookup)
+            Guid sectionId,
+            IReadOnlyDictionary<Guid, StudentFingerprintDisplay> fingerprintLookup)
         {
             fingerprintLookup.TryGetValue(student.Id, out var fingerprint);
 
             return new InstructorHomeSectionStudentDto
             {
-                StudentId = student.Uuid,
+                StudentId = student.Id,
                 Firstname = student.Firstname,
                 Lastname = student.Lastname,
                 IsRegular = student.SectionId == sectionId,

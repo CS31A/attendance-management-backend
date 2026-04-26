@@ -27,14 +27,14 @@ namespace attendance_monitoring.Controllers
 
         [HttpGet("{id:int}")]
         [ApiExplorerSettings(IgnoreApi = true)]
-        public async Task<ActionResult<SectionResponseDto>> GetSection(int id)
+        public async Task<ActionResult<SectionResponseDto>> GetSection(Guid id)
         {
             try
             {
                 var section = await sectionService.GetSectionByIdAsync(id);
                 return Ok(MapSectionResponse(section));
             }
-            catch (EntityNotFoundException<int> ex)
+            catch (EntityNotFoundException<Guid> ex)
             {
                 logger.LogWarning(ex, "Section with ID {SectionId} not found", id);
                 return NotFound($"Section with ID {id} not found");
@@ -47,21 +47,21 @@ namespace attendance_monitoring.Controllers
         }
 
         [HttpGet("{id:guid}")]
-        public async Task<ActionResult<SectionResponseDto>> GetSectionByUuid([FromRoute(Name = "id")] Guid uuid)
+        public async Task<ActionResult<SectionResponseDto>> GetSectionByUuid([FromRoute(Name = "id")] Guid id)
         {
             try
             {
-                var section = await sectionService.GetSectionByUuidAsync(uuid);
+                var section = await sectionService.GetSectionByUuidAsync(id);
                 return Ok(MapSectionResponse(section));
             }
             catch (EntityNotFoundException<Guid> ex)
             {
-                logger.LogWarning(ex, "Section with UUID {SectionUuid} not found", uuid);
-                return NotFound($"Section with UUID {uuid} not found");
+                logger.LogWarning(ex, "Section with UUID {SectionId} not found", id);
+                return NotFound($"Section with UUID {id} not found");
             }
             catch (EntityServiceException ex)
             {
-                logger.LogError(ex, "Service error occurred while retrieving section with UUID {SectionUuid}", uuid);
+                logger.LogError(ex, "Service error occurred while retrieving section with UUID {SectionId}", id);
                 return StatusCode(500, "An error occurred while retrieving the section");
             }
         }
@@ -122,7 +122,7 @@ namespace attendance_monitoring.Controllers
         [Authorize(Policy = "AdminPolicy")]
         [HttpPut("{id:int}")]
         [ApiExplorerSettings(IgnoreApi = true)]
-        public async Task<ActionResult<SectionResponseDto>> UpdateSection(int id, [FromBody] CreateSection updateSection)
+        public async Task<ActionResult<SectionResponseDto>> UpdateSection(Guid id, [FromBody] CreateSection updateSection)
         {
             try
             {
@@ -140,7 +140,7 @@ namespace attendance_monitoring.Controllers
                 var updatedSection = await sectionService.UpdateSectionAsync(id, section);
                 return Ok(updatedSection);
             }
-            catch (EntityNotFoundException<int> ex)
+            catch (EntityNotFoundException<Guid> ex)
             {
                 logger.LogWarning(ex, "Section with ID {SectionId} not found for update", id);
                 return NotFound($"Section with ID {id} not found");
@@ -149,11 +149,6 @@ namespace attendance_monitoring.Controllers
             {
                 logger.LogError(ex, "Service error occurred while updating section with ID {SectionId}", id);
                 return BadRequest(ex.Message);
-            }
-            catch (EntityNotFoundException<Guid> ex)
-            {
-                logger.LogWarning(ex, "Referenced course ID {CourseId} was not found while updating section ID {SectionId}", updateSection.CourseId, id);
-                return NotFound(new { message = ex.Message });
             }
             catch (ValidationException ex)
             {
@@ -164,7 +159,7 @@ namespace attendance_monitoring.Controllers
 
         [Authorize(Policy = "AdminPolicy")]
         [HttpPut("{id:guid}")]
-        public async Task<ActionResult<SectionResponseDto>> UpdateSectionByUuid([FromRoute(Name = "id")] Guid uuid, [FromBody] CreateSection updateSection)
+        public async Task<ActionResult<SectionResponseDto>> UpdateSectionByUuid([FromRoute(Name = "id")] Guid id, [FromBody] CreateSection updateSection)
         {
             try
             {
@@ -179,22 +174,22 @@ namespace attendance_monitoring.Controllers
                     CourseId = courseId
                 };
 
-                var updatedSection = await sectionService.UpdateSectionByUuidAsync(uuid, section);
+                var updatedSection = await sectionService.UpdateSectionByUuidAsync(id, section);
                 return Ok(updatedSection);
             }
             catch (EntityNotFoundException<Guid> ex)
             {
-                logger.LogWarning(ex, "Section or course UUID not found while updating section UUID {SectionUuid}", uuid);
+                logger.LogWarning(ex, "Section or course UUID not found while updating section UUID {SectionId}", id);
                 return NotFound(new { message = ex.Message });
             }
             catch (EntityServiceException ex)
             {
-                logger.LogError(ex, "Service error occurred while updating section with UUID {SectionUuid}", uuid);
+                logger.LogError(ex, "Service error occurred while updating section with UUID {SectionId}", id);
                 return BadRequest(ex.Message);
             }
             catch (ValidationException ex)
             {
-                logger.LogWarning(ex, "Invalid section update request for section UUID {SectionUuid}", uuid);
+                logger.LogWarning(ex, "Invalid section update request for section UUID {SectionId}", id);
                 return BadRequest(new { message = ex.Message });
             }
         }
@@ -202,14 +197,14 @@ namespace attendance_monitoring.Controllers
         [Authorize(Policy = "AdminPolicy")]
         [HttpDelete("{id:int}")]
         [ApiExplorerSettings(IgnoreApi = true)]
-        public async Task<ActionResult> DeleteSection(int id)
+        public async Task<ActionResult> DeleteSection(Guid id)
         {
             try
             {
                 await sectionService.DeleteSectionAsync(id);
                 return NoContent();
             }
-            catch (EntityNotFoundException<int> ex)
+            catch (EntityNotFoundException<Guid> ex)
             {
                 logger.LogWarning(ex, "Section with ID {SectionId} not found for deletion", id);
                 return NotFound($"Section with ID {id} not found");
@@ -228,37 +223,37 @@ namespace attendance_monitoring.Controllers
 
         [Authorize(Policy = "AdminPolicy")]
         [HttpDelete("{id:guid}")]
-        public async Task<ActionResult> DeleteSectionByUuid([FromRoute(Name = "id")] Guid uuid)
+        public async Task<ActionResult> DeleteSectionByUuid([FromRoute(Name = "id")] Guid id)
         {
             try
             {
-                await sectionService.DeleteSectionByUuidAsync(uuid);
+                await sectionService.DeleteSectionByUuidAsync(id);
                 return NoContent();
             }
             catch (EntityNotFoundException<Guid> ex)
             {
-                logger.LogWarning(ex, "Section with UUID {SectionUuid} not found for deletion", uuid);
+                logger.LogWarning(ex, "Section with UUID {SectionId} not found for deletion", id);
                 return NotFound(new { message = ex.Message });
             }
             catch (EntityConflictException ex)
             {
-                logger.LogWarning(ex, "Cannot delete section UUID {SectionUuid}: {ConflictReason}", uuid, ex.Message);
+                logger.LogWarning(ex, "Cannot delete section UUID {SectionId}: {ConflictReason}", id, ex.Message);
                 return Conflict(CreateErrorResponse(ex.Message, StatusCodes.Status409Conflict));
             }
             catch (EntityServiceException ex)
             {
-                logger.LogError(ex, "Service error occurred while deleting section with UUID {SectionUuid}", uuid);
+                logger.LogError(ex, "Service error occurred while deleting section with UUID {SectionId}", id);
                 return StatusCode(500, "An error occurred while deleting the section");
             }
         }
 
         [Authorize(Policy = "UserPolicy")]
         [HttpGet("{sectionId:int}/active-students")]
-        public async Task<ActionResult<IEnumerable<Student>>> GetActiveStudentsBySectionId(int sectionId)
+        public async Task<ActionResult<IEnumerable<Student>>> GetActiveStudentsBySectionId(Guid sectionId)
         {
             try
             {
-                if (sectionId <= 0)
+                if (sectionId == Guid.Empty)
                 {
                     logger.LogWarning("Invalid section ID {SectionId} provided for active students retrieval.", sectionId);
                     return BadRequest("Section ID must be greater than 0.");
@@ -276,11 +271,11 @@ namespace attendance_monitoring.Controllers
 
         [Authorize(Policy = "UserPolicy")]
         [HttpGet("{sectionId:int}/all-students")]
-        public async Task<ActionResult<IEnumerable<Student>>> GetAllStudentsBySectionId(int sectionId)
+        public async Task<ActionResult<IEnumerable<Student>>> GetAllStudentsBySectionId(Guid sectionId)
         {
             try
             {
-                if (sectionId <= 0)
+                if (sectionId == Guid.Empty)
                 {
                     logger.LogWarning("Invalid section ID {SectionId} provided for all students retrieval.", sectionId);
                     return BadRequest("Section ID must be greater than 0.");
@@ -298,11 +293,11 @@ namespace attendance_monitoring.Controllers
 
         [Authorize(Policy = "PrivilegedPolicy")]
         [HttpGet("{sectionId:int}/has-students")]
-        public async Task<ActionResult<bool>> HasStudentsInSection(int sectionId)
+        public async Task<ActionResult<bool>> HasStudentsInSection(Guid sectionId)
         {
             try
             {
-                if (sectionId <= 0)
+                if (sectionId == Guid.Empty)
                 {
                     logger.LogWarning("Invalid section ID {SectionId} provided for dependency check.", sectionId);
                     return BadRequest("Section ID must be greater than 0.");
@@ -320,11 +315,11 @@ namespace attendance_monitoring.Controllers
 
         [Authorize(Policy = "PrivilegedPolicy")]
         [HttpGet("{sectionId:int}/has-enrollments")]
-        public async Task<ActionResult<bool>> HasStudentEnrollmentsInSection(int sectionId)
+        public async Task<ActionResult<bool>> HasStudentEnrollmentsInSection(Guid sectionId)
         {
             try
             {
-                if (sectionId <= 0)
+                if (sectionId == Guid.Empty)
                 {
                     logger.LogWarning("Invalid section ID {SectionId} provided for dependency check.", sectionId);
                     return BadRequest("Section ID must be greater than 0.");
@@ -342,11 +337,11 @@ namespace attendance_monitoring.Controllers
 
         [Authorize(Policy = "PrivilegedPolicy")]
         [HttpGet("{sectionId:int}/has-schedules")]
-        public async Task<ActionResult<bool>> HasSchedulesInSection(int sectionId)
+        public async Task<ActionResult<bool>> HasSchedulesInSection(Guid sectionId)
         {
             try
             {
-                if (sectionId <= 0)
+                if (sectionId == Guid.Empty)
                 {
                     logger.LogWarning("Invalid section ID {SectionId} provided for dependency check.", sectionId);
                     return BadRequest("Section ID must be greater than 0.");
@@ -362,7 +357,7 @@ namespace attendance_monitoring.Controllers
             }
         }
 
-        private async Task<int> ResolveCourseIdAsync(CreateSection request)
+        private async Task<Guid> ResolveCourseIdAsync(CreateSection request)
         {
             if (!request.CourseId.HasValue || request.CourseId.Value == Guid.Empty)
             {
@@ -382,9 +377,9 @@ namespace attendance_monitoring.Controllers
         {
             return new SectionResponseDto
             {
-                Id = section.Uuid,
+                Id = section.Id,
                 Name = section.Name,
-                CourseId = section.Course?.Uuid,
+                CourseId = section.Course?.Id,
                 CreatedAt = section.CreatedAt,
                 UpdatedAt = section.UpdatedAt
             };

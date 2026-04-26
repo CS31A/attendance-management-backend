@@ -29,7 +29,7 @@ public class InstructorRepositoryTest : IDisposable
     public async Task GetSchedulesWithRelatedDataByInstructorIdAsync_ReturnsSchedulesWithRelatedEntities_WhenInstructorHasSchedules()
     {
         // Arrange
-        var instructorId = 1;
+        var instructorId = Guid.NewGuid();
         await SeedTestDataAsync(instructorId);
 
         // Act
@@ -67,7 +67,7 @@ public class InstructorRepositoryTest : IDisposable
     public async Task GetSchedulesWithRelatedDataByInstructorIdAsync_ExcludesDeletedStudents_WhenStudentEnrollmentsExist()
     {
         // Arrange
-        var instructorId = 2;
+        var instructorId = Guid.NewGuid();
         await SeedTestDataWithDeletedStudentsAsync(instructorId);
 
         // Act
@@ -96,8 +96,8 @@ public class InstructorRepositoryTest : IDisposable
     public async Task GetSchedulesWithRelatedDataByInstructorIdAsync_ReturnsEmptyList_WhenInstructorHasNoSchedules()
     {
         // Arrange
-        var instructorId = 999; // Non-existent instructor
-        await SeedTestDataAsync(1); // Seed data for different instructor
+        var instructorId = Guid.NewGuid(); // Non-existent instructor
+        await SeedTestDataAsync(Guid.NewGuid()); // Seed data for different instructor
 
         // Act
         var result = await _repository.GetSchedulesWithRelatedDataByInstructorIdAsync(instructorId);
@@ -110,7 +110,7 @@ public class InstructorRepositoryTest : IDisposable
     public async Task GetSchedulesWithRelatedDataByInstructorIdAsync_LoadsStudentEnrollmentsWithStudents_WhenEnrollmentsExist()
     {
         // Arrange
-        var instructorId = 3;
+        var instructorId = Guid.NewGuid();
         await SeedTestDataWithIrregularStudentsAsync(instructorId);
 
         // Act
@@ -132,49 +132,49 @@ public class InstructorRepositoryTest : IDisposable
         });
     }
 
-    private async Task SeedTestDataAsync(int instructorId)
+    private async Task SeedTestDataAsync(Guid instructorId)
     {
         var user = new IdentityUser
         {
             Id = $"user-{instructorId}",
-            UserName = $"instructor{instructorId}@example.com",
-            NormalizedUserName = $"INSTRUCTOR{instructorId}@EXAMPLE.COM",
-            Email = $"instructor{instructorId}@example.com",
-            NormalizedEmail = $"INSTRUCTOR{instructorId}@EXAMPLE.COM",
+            UserName = $"instructor-{instructorId}@example.com",
+            NormalizedUserName = $"INSTRUCTOR-{instructorId}@EXAMPLE.COM".ToUpper(),
+            Email = $"instructor-{instructorId}@example.com",
+            NormalizedEmail = $"INSTRUCTOR-{instructorId}@EXAMPLE.COM".ToUpper(),
         };
 
-        var course = new Course 
-        { 
-            Id = instructorId, 
-            Name = "Bachelor of Science in Computer Science" 
+        var course = new Course
+        {
+            Id = Guid.NewGuid(),
+            Name = "Bachelor of Science in Computer Science"
         };
 
-        var section = new Section 
-        { 
-            Id = instructorId, 
-            Name = "BSCS 3A", 
-            CourseId = course.Id, 
-            Course = course 
+        var section = new Section
+        {
+            Id = Guid.NewGuid(),
+            Name = "BSCS 3A",
+            CourseId = course.Id,
+            Course = course
         };
 
-        var subject1 = new Subject 
-        { 
-            Id = instructorId * 10, 
-            Name = "Math", 
-            Code = "MATH101" 
+        var subject1 = new Subject
+        {
+            Id = Guid.NewGuid(),
+            Name = "Math",
+            Code = "MATH101"
         };
 
-        var subject2 = new Subject 
-        { 
-            Id = instructorId * 10 + 1, 
-            Name = "Physics", 
-            Code = "PHYS101" 
+        var subject2 = new Subject
+        {
+            Id = Guid.NewGuid(),
+            Name = "Physics",
+            Code = "PHYS101"
         };
 
-        var classroom = new Classroom 
-        { 
-            Id = instructorId, 
-            Name = "Room 101" 
+        var classroom = new Classroom
+        {
+            Id = Guid.NewGuid(),
+            Name = "Room 101"
         };
 
         var instructor = new Instructor
@@ -188,7 +188,7 @@ public class InstructorRepositoryTest : IDisposable
 
         var schedule1 = new Schedules
         {
-            Id = instructorId * 100,
+            Id = Guid.NewGuid(),
             TimeIn = new TimeOnly(8, 0),
             TimeOut = new TimeOnly(10, 0),
             DayOfWeek = "Monday",
@@ -204,7 +204,7 @@ public class InstructorRepositoryTest : IDisposable
 
         var schedule2 = new Schedules
         {
-            Id = instructorId * 100 + 1,
+            Id = Guid.NewGuid(),
             TimeIn = new TimeOnly(10, 0),
             TimeOut = new TimeOnly(12, 0),
             DayOfWeek = "Tuesday",
@@ -229,42 +229,42 @@ public class InstructorRepositoryTest : IDisposable
         await _context.SaveChangesAsync();
     }
 
-    private async Task SeedTestDataWithDeletedStudentsAsync(int instructorId)
+    private async Task SeedTestDataWithDeletedStudentsAsync(Guid instructorId)
     {
         var user = new IdentityUser
         {
             Id = $"user-{instructorId}",
-            UserName = $"instructor{instructorId}@example.com",
-            NormalizedUserName = $"INSTRUCTOR{instructorId}@EXAMPLE.COM",
-            Email = $"instructor{instructorId}@example.com",
-            NormalizedEmail = $"INSTRUCTOR{instructorId}@EXAMPLE.COM",
+            UserName = $"instructor-{instructorId}@example.com",
+            NormalizedUserName = $"INSTRUCTOR-{instructorId}@EXAMPLE.COM".ToUpper(),
+            Email = $"instructor-{instructorId}@example.com",
+            NormalizedEmail = $"INSTRUCTOR-{instructorId}@EXAMPLE.COM".ToUpper(),
         };
 
-        var course = new Course 
-        { 
-            Id = instructorId, 
-            Name = "Bachelor of Science in Information Technology" 
+        var course = new Course
+        {
+            Id = Guid.NewGuid(),
+            Name = "Bachelor of Science in Information Technology"
         };
 
-        var section = new Section 
-        { 
-            Id = instructorId, 
-            Name = "BSIT 2A", 
-            CourseId = course.Id, 
-            Course = course 
+        var section = new Section
+        {
+            Id = Guid.NewGuid(),
+            Name = "BSIT 2A",
+            CourseId = course.Id,
+            Course = course
         };
 
-        var subject = new Subject 
-        { 
-            Id = instructorId * 10, 
-            Name = "Database Systems", 
-            Code = "DB101" 
+        var subject = new Subject
+        {
+            Id = Guid.NewGuid(),
+            Name = "Database Systems",
+            Code = "DB101"
         };
 
-        var classroom = new Classroom 
-        { 
-            Id = instructorId, 
-            Name = "Room 202" 
+        var classroom = new Classroom
+        {
+            Id = Guid.NewGuid(),
+            Name = "Room 202"
         };
 
         var instructor = new Instructor
@@ -278,7 +278,7 @@ public class InstructorRepositoryTest : IDisposable
 
         var schedule = new Schedules
         {
-            Id = instructorId * 100,
+            Id = Guid.NewGuid(),
             TimeIn = new TimeOnly(13, 0),
             TimeOut = new TimeOnly(15, 0),
             DayOfWeek = "Wednesday",
@@ -293,112 +293,17 @@ public class InstructorRepositoryTest : IDisposable
         };
 
         // Create students - some deleted, some active
-        var studentUser1 = new IdentityUser
-        {
-            Id = $"student-{instructorId}-1",
-            UserName = $"student{instructorId}1@example.com",
-            NormalizedUserName = $"STUDENT{instructorId}1@EXAMPLE.COM",
-            Email = $"student{instructorId}1@example.com",
-            NormalizedEmail = $"STUDENT{instructorId}1@EXAMPLE.COM",
-        };
+        var studentUser1 = new IdentityUser { Id = $"student-{instructorId}-1", UserName = $"s1-{instructorId}@example.com", NormalizedUserName = $"S1-{instructorId}@EXAMPLE.COM".ToUpper(), Email = $"s1-{instructorId}@example.com", NormalizedEmail = $"S1-{instructorId}@EXAMPLE.COM".ToUpper() };
+        var studentUser2 = new IdentityUser { Id = $"student-{instructorId}-2", UserName = $"s2-{instructorId}@example.com", NormalizedUserName = $"S2-{instructorId}@EXAMPLE.COM".ToUpper(), Email = $"s2-{instructorId}@example.com", NormalizedEmail = $"S2-{instructorId}@EXAMPLE.COM".ToUpper() };
+        var studentUser3 = new IdentityUser { Id = $"student-{instructorId}-3", UserName = $"s3-{instructorId}@example.com", NormalizedUserName = $"S3-{instructorId}@EXAMPLE.COM".ToUpper(), Email = $"s3-{instructorId}@example.com", NormalizedEmail = $"S3-{instructorId}@EXAMPLE.COM".ToUpper() };
 
-        var studentUser2 = new IdentityUser
-        {
-            Id = $"student-{instructorId}-2",
-            UserName = $"student{instructorId}2@example.com",
-            NormalizedUserName = $"STUDENT{instructorId}2@EXAMPLE.COM",
-            Email = $"student{instructorId}2@example.com",
-            NormalizedEmail = $"STUDENT{instructorId}2@EXAMPLE.COM",
-        };
+        var activeStudent1 = new Student { Id = Guid.NewGuid(), Firstname = "Alice", Lastname = "Johnson", UserId = studentUser1.Id, User = studentUser1, SectionId = section.Id, Section = section, IsRegular = true, Usn = $"INSTR-TEST-{instructorId}-001", IsDeleted = false };
+        var activeStudent2 = new Student { Id = Guid.NewGuid(), Firstname = "Bob", Lastname = "Williams", UserId = studentUser2.Id, User = studentUser2, SectionId = section.Id, Section = section, IsRegular = false, Usn = $"INSTR-TEST-{instructorId}-002", IsDeleted = false };
+        var deletedStudent = new Student { Id = Guid.NewGuid(), Firstname = "Charlie", Lastname = "Brown", UserId = studentUser3.Id, User = studentUser3, SectionId = section.Id, Section = section, IsRegular = true, Usn = $"INSTR-TEST-{instructorId}-003", IsDeleted = true, DeletedAt = DateTime.UtcNow.AddDays(-1) };
 
-        var studentUser3 = new IdentityUser
-        {
-            Id = $"student-{instructorId}-3",
-            UserName = $"student{instructorId}3@example.com",
-            NormalizedUserName = $"STUDENT{instructorId}3@EXAMPLE.COM",
-            Email = $"student{instructorId}3@example.com",
-            NormalizedEmail = $"STUDENT{instructorId}3@EXAMPLE.COM",
-        };
-
-        var activeStudent1 = new Student
-        {
-            Id = instructorId * 1000 + 1,
-            Firstname = "Alice",
-            Lastname = "Johnson",
-            UserId = studentUser1.Id,
-            User = studentUser1,
-            SectionId = section.Id,
-            Section = section,
-            IsRegular = true,
-            IsDeleted = false,
-        };
-
-        var activeStudent2 = new Student
-        {
-            Id = instructorId * 1000 + 2,
-            Firstname = "Bob",
-            Lastname = "Williams",
-            UserId = studentUser2.Id,
-            User = studentUser2,
-            SectionId = section.Id,
-            Section = section,
-            IsRegular = false,
-            IsDeleted = false,
-        };
-
-        var deletedStudent = new Student
-        {
-            Id = instructorId * 1000 + 3,
-            Firstname = "Charlie",
-            Lastname = "Brown",
-            UserId = studentUser3.Id,
-            User = studentUser3,
-            SectionId = section.Id,
-            Section = section,
-            IsRegular = true,
-            IsDeleted = true,
-            DeletedAt = DateTime.UtcNow.AddDays(-1),
-        };
-
-        // Create enrollments - active and inactive
-        var activeEnrollment1 = new StudentEnrollment
-        {
-            Id = instructorId * 10000 + 1,
-            StudentId = activeStudent1.Id,
-            Student = activeStudent1,
-            SectionId = section.Id,
-            Section = section,
-            SubjectId = subject.Id,
-            Subject = subject,
-            IsActive = true,
-            EnrollmentType = "Regular",
-        };
-
-        var activeEnrollment2 = new StudentEnrollment
-        {
-            Id = instructorId * 10000 + 2,
-            StudentId = activeStudent2.Id,
-            Student = activeStudent2,
-            SectionId = section.Id,
-            Section = section,
-            SubjectId = subject.Id,
-            Subject = subject,
-            IsActive = true,
-            EnrollmentType = "Irregular",
-        };
-
-        var inactiveEnrollment = new StudentEnrollment
-        {
-            Id = instructorId * 10000 + 3,
-            StudentId = deletedStudent.Id,
-            Student = deletedStudent,
-            SectionId = section.Id,
-            Section = section,
-            SubjectId = subject.Id,
-            Subject = subject,
-            IsActive = false,
-            EnrollmentType = "Regular",
-        };
+        var activeEnrollment1 = new StudentEnrollment { Id = Guid.NewGuid(), StudentId = activeStudent1.Id, Student = activeStudent1, SectionId = section.Id, Section = section, SubjectId = subject.Id, Subject = subject, IsActive = true, EnrollmentType = "Regular" };
+        var activeEnrollment2 = new StudentEnrollment { Id = Guid.NewGuid(), StudentId = activeStudent2.Id, Student = activeStudent2, SectionId = section.Id, Section = section, SubjectId = subject.Id, Subject = subject, IsActive = true, EnrollmentType = "Irregular" };
+        var inactiveEnrollment = new StudentEnrollment { Id = Guid.NewGuid(), StudentId = deletedStudent.Id, Student = deletedStudent, SectionId = section.Id, Section = section, SubjectId = subject.Id, Subject = subject, IsActive = false, EnrollmentType = "Regular" };
 
         _context.Users.AddRange(user, studentUser1, studentUser2, studentUser3);
         _context.Courses.Add(course);
@@ -413,56 +318,26 @@ public class InstructorRepositoryTest : IDisposable
         await _context.SaveChangesAsync();
     }
 
-    private async Task SeedTestDataWithIrregularStudentsAsync(int instructorId)
+    private async Task SeedTestDataWithIrregularStudentsAsync(Guid instructorId)
     {
         var user = new IdentityUser
         {
             Id = $"user-{instructorId}",
-            UserName = $"instructor{instructorId}@example.com",
-            NormalizedUserName = $"INSTRUCTOR{instructorId}@EXAMPLE.COM",
-            Email = $"instructor{instructorId}@example.com",
-            NormalizedEmail = $"INSTRUCTOR{instructorId}@EXAMPLE.COM",
+            UserName = $"instructor-{instructorId}@example.com",
+            NormalizedUserName = $"INSTRUCTOR-{instructorId}@EXAMPLE.COM".ToUpper(),
+            Email = $"instructor-{instructorId}@example.com",
+            NormalizedEmail = $"INSTRUCTOR-{instructorId}@EXAMPLE.COM".ToUpper(),
         };
 
-        var course = new Course 
-        { 
-            Id = instructorId, 
-            Name = "Bachelor of Science in Engineering" 
-        };
-
-        var section = new Section 
-        { 
-            Id = instructorId, 
-            Name = "BSE 1A", 
-            CourseId = course.Id, 
-            Course = course 
-        };
-
-        var subject = new Subject 
-        { 
-            Id = instructorId * 10, 
-            Name = "Calculus", 
-            Code = "CALC101" 
-        };
-
-        var classroom = new Classroom 
-        { 
-            Id = instructorId, 
-            Name = "Room 303" 
-        };
-
-        var instructor = new Instructor
-        {
-            Id = instructorId,
-            Firstname = "Robert",
-            Lastname = "Davis",
-            UserId = user.Id,
-            User = user,
-        };
+        var course = new Course { Id = Guid.NewGuid(), Name = "Bachelor of Science in Engineering" };
+        var section = new Section { Id = Guid.NewGuid(), Name = "BSE 1A", CourseId = course.Id, Course = course };
+        var subject = new Subject { Id = Guid.NewGuid(), Name = "Calculus", Code = "CALC101" };
+        var classroom = new Classroom { Id = Guid.NewGuid(), Name = "Room 303" };
+        var instructor = new Instructor { Id = instructorId, Firstname = "Robert", Lastname = "Davis", UserId = user.Id, User = user };
 
         var schedule = new Schedules
         {
-            Id = instructorId * 100,
+            Id = Guid.NewGuid(),
             TimeIn = new TimeOnly(14, 0),
             TimeOut = new TimeOnly(16, 0),
             DayOfWeek = "Thursday",
@@ -476,111 +351,17 @@ public class InstructorRepositoryTest : IDisposable
             Instructor = instructor,
         };
 
-        // Create irregular students with enrollments
-        var studentUser1 = new IdentityUser
-        {
-            Id = $"student-{instructorId}-1",
-            UserName = $"student{instructorId}1@example.com",
-            NormalizedUserName = $"STUDENT{instructorId}1@EXAMPLE.COM",
-            Email = $"student{instructorId}1@example.com",
-            NormalizedEmail = $"STUDENT{instructorId}1@EXAMPLE.COM",
-        };
+        var studentUser1 = new IdentityUser { Id = $"student-{instructorId}-1", UserName = $"s1-{instructorId}@example.com", NormalizedUserName = $"S1-{instructorId}@EXAMPLE.COM".ToUpper(), Email = $"s1-{instructorId}@example.com", NormalizedEmail = $"S1-{instructorId}@EXAMPLE.COM".ToUpper() };
+        var studentUser2 = new IdentityUser { Id = $"student-{instructorId}-2", UserName = $"s2-{instructorId}@example.com", NormalizedUserName = $"S2-{instructorId}@EXAMPLE.COM".ToUpper(), Email = $"s2-{instructorId}@example.com", NormalizedEmail = $"S2-{instructorId}@EXAMPLE.COM".ToUpper() };
+        var studentUser3 = new IdentityUser { Id = $"student-{instructorId}-3", UserName = $"s3-{instructorId}@example.com", NormalizedUserName = $"S3-{instructorId}@EXAMPLE.COM".ToUpper(), Email = $"s3-{instructorId}@example.com", NormalizedEmail = $"S3-{instructorId}@EXAMPLE.COM".ToUpper() };
 
-        var studentUser2 = new IdentityUser
-        {
-            Id = $"student-{instructorId}-2",
-            UserName = $"student{instructorId}2@example.com",
-            NormalizedUserName = $"STUDENT{instructorId}2@EXAMPLE.COM",
-            Email = $"student{instructorId}2@example.com",
-            NormalizedEmail = $"STUDENT{instructorId}2@EXAMPLE.COM",
-        };
+        var student1 = new Student { Id = Guid.NewGuid(), Firstname = "Emma", Lastname = "Wilson", UserId = studentUser1.Id, User = studentUser1, SectionId = section.Id, Section = section, IsRegular = false, Usn = $"INSTR-IRREG-{instructorId}-001", IsDeleted = false };
+        var student2 = new Student { Id = Guid.NewGuid(), Firstname = "Oliver", Lastname = "Martinez", UserId = studentUser2.Id, User = studentUser2, SectionId = section.Id, Section = section, IsRegular = false, Usn = $"INSTR-IRREG-{instructorId}-002", IsDeleted = false };
+        var student3 = new Student { Id = Guid.NewGuid(), Firstname = "Sophia", Lastname = "Garcia", UserId = studentUser3.Id, User = studentUser3, SectionId = section.Id, Section = section, IsRegular = true, Usn = $"INSTR-IRREG-{instructorId}-003", IsDeleted = false };
 
-        var studentUser3 = new IdentityUser
-        {
-            Id = $"student-{instructorId}-3",
-            UserName = $"student{instructorId}3@example.com",
-            NormalizedUserName = $"STUDENT{instructorId}3@EXAMPLE.COM",
-            Email = $"student{instructorId}3@example.com",
-            NormalizedEmail = $"STUDENT{instructorId}3@EXAMPLE.COM",
-        };
-
-        var student1 = new Student
-        {
-            Id = instructorId * 1000 + 1,
-            Firstname = "Emma",
-            Lastname = "Wilson",
-            UserId = studentUser1.Id,
-            User = studentUser1,
-            SectionId = section.Id,
-            Section = section,
-            IsRegular = false,
-            IsDeleted = false,
-        };
-
-        var student2 = new Student
-        {
-            Id = instructorId * 1000 + 2,
-            Firstname = "Oliver",
-            Lastname = "Martinez",
-            UserId = studentUser2.Id,
-            User = studentUser2,
-            SectionId = section.Id,
-            Section = section,
-            IsRegular = false,
-            IsDeleted = false,
-        };
-
-        var student3 = new Student
-        {
-            Id = instructorId * 1000 + 3,
-            Firstname = "Sophia",
-            Lastname = "Garcia",
-            UserId = studentUser3.Id,
-            User = studentUser3,
-            SectionId = section.Id,
-            Section = section,
-            IsRegular = true,
-            IsDeleted = false,
-        };
-
-        var enrollment1 = new StudentEnrollment
-        {
-            Id = instructorId * 10000 + 1,
-            StudentId = student1.Id,
-            Student = student1,
-            SectionId = section.Id,
-            Section = section,
-            SubjectId = subject.Id,
-            Subject = subject,
-            IsActive = true,
-            EnrollmentType = "Irregular",
-        };
-
-        var enrollment2 = new StudentEnrollment
-        {
-            Id = instructorId * 10000 + 2,
-            StudentId = student2.Id,
-            Student = student2,
-            SectionId = section.Id,
-            Section = section,
-            SubjectId = subject.Id,
-            Subject = subject,
-            IsActive = true,
-            EnrollmentType = "Retake",
-        };
-
-        var enrollment3 = new StudentEnrollment
-        {
-            Id = instructorId * 10000 + 3,
-            StudentId = student3.Id,
-            Student = student3,
-            SectionId = section.Id,
-            Section = section,
-            SubjectId = subject.Id,
-            Subject = subject,
-            IsActive = true,
-            EnrollmentType = "Regular",
-        };
+        var enrollment1 = new StudentEnrollment { Id = Guid.NewGuid(), StudentId = student1.Id, Student = student1, SectionId = section.Id, Section = section, SubjectId = subject.Id, Subject = subject, IsActive = true, EnrollmentType = "Irregular" };
+        var enrollment2 = new StudentEnrollment { Id = Guid.NewGuid(), StudentId = student2.Id, Student = student2, SectionId = section.Id, Section = section, SubjectId = subject.Id, Subject = subject, IsActive = true, EnrollmentType = "Retake" };
+        var enrollment3 = new StudentEnrollment { Id = Guid.NewGuid(), StudentId = student3.Id, Student = student3, SectionId = section.Id, Section = section, SubjectId = subject.Id, Subject = subject, IsActive = true, EnrollmentType = "Regular" };
 
         _context.Users.AddRange(user, studentUser1, studentUser2, studentUser3);
         _context.Courses.Add(course);

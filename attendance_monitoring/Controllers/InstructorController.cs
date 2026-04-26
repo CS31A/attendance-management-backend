@@ -72,7 +72,7 @@ public class InstructorController(IInstructorService instructorService, ILogger<
 
     // GET: api/Instructor/5
     [HttpGet("{id:int}")]
-    public async Task<ActionResult<Instructor>> GetInstructor(int id)
+    public async Task<ActionResult<Instructor>> GetInstructor(Guid id)
     {
         try
         {
@@ -81,7 +81,7 @@ public class InstructorController(IInstructorService instructorService, ILogger<
             logger.LogInformation("Successfully retrieved instructor with ID: {Id}", id);
             return Ok(instructor);
         }
-        catch (EntityNotFoundException<int> ex)
+        catch (EntityNotFoundException<Guid> ex)
         {
             logger.LogWarning(ex, "Instructor with ID {Id} not found", id);
             return NotFound($"Instructor with ID {id} not found");
@@ -95,7 +95,7 @@ public class InstructorController(IInstructorService instructorService, ILogger<
 
     // GET: api/instructors/{instructorId}/subjects
     [HttpGet("{instructorId:int}/subjects")]
-    public async Task<ActionResult<IEnumerable<SubjectResponseDto>>> GetInstructorSubjects(int instructorId)
+    public async Task<ActionResult<IEnumerable<SubjectResponseDto>>> GetInstructorSubjects(Guid instructorId)
     {
         try
         {
@@ -104,7 +104,7 @@ public class InstructorController(IInstructorService instructorService, ILogger<
             logger.LogInformation("Successfully retrieved subjects for instructor ID: {InstructorId}", instructorId);
             return Ok(subjects);
         }
-        catch (EntityNotFoundException<int> ex)
+        catch (EntityNotFoundException<Guid> ex)
         {
             logger.LogWarning(ex, "Instructor with ID {InstructorId} not found", instructorId);
             return NotFound($"Instructor with ID {instructorId} not found");
@@ -314,7 +314,7 @@ public class InstructorController(IInstructorService instructorService, ILogger<
     // PATCH: api/Instructor/{id}
     [HttpPatch("{id:int}")]
     [Authorize(Policy = "PrivilegedPolicy")]
-    public async Task<ActionResult<Instructor>> PatchInstructor(int id, UpdateInstructor updateInstructor)
+    public async Task<ActionResult<Instructor>> PatchInstructor(Guid id, UpdateInstructor updateInstructor)
     {
         try
         {
@@ -329,7 +329,7 @@ public class InstructorController(IInstructorService instructorService, ILogger<
             logger.LogInformation("Successfully updated instructor with ID: {Id}", id);
             return Ok(instructor);
         }
-        catch (EntityNotFoundException<int> ex)
+        catch (EntityNotFoundException<Guid> ex)
         {
             logger.LogWarning(ex, "Instructor with ID {Id} not found", id);
             return NotFound($"Instructor with ID {id} not found");
@@ -353,7 +353,7 @@ public class InstructorController(IInstructorService instructorService, ILogger<
     // PATCH: api/Instructor/{id}/soft-delete
     [HttpPatch("{id:int}/soft-delete")]
     [Authorize(Policy = "PrivilegedPolicy")]
-    public async Task<ActionResult<SoftDeleteResponse>> SoftDeleteInstructor(int id)
+    public async Task<ActionResult<SoftDeleteResponse>> SoftDeleteInstructor(Guid id)
     {
         try
         {
@@ -366,7 +366,7 @@ public class InstructorController(IInstructorService instructorService, ILogger<
                 Message = "Instructor marked as deleted successfully"
             });
         }
-        catch (EntityNotFoundException<int> ex)
+        catch (EntityNotFoundException<Guid> ex)
         {
             logger.LogWarning(ex, "Instructor with ID {Id} not found", id);
             return NotFound(new SoftDeleteResponse
@@ -398,7 +398,7 @@ public class InstructorController(IInstructorService instructorService, ILogger<
     // DELETE: api/Instructor/{id}
     [HttpDelete("{id:int}")]
     [Authorize(Policy = "AdminPolicy")]
-    public async Task<ActionResult<SoftDeleteResponse>> HardDeleteInstructor(int id)
+    public async Task<ActionResult<SoftDeleteResponse>> HardDeleteInstructor(Guid id)
     {
         logger.LogInformation("Hard deleting instructor with ID: {Id}", id);
         await instructorService.HardDeleteInstructorAsync(id, User);
@@ -414,7 +414,7 @@ public class InstructorController(IInstructorService instructorService, ILogger<
     // PATCH: api/Instructor/{id}/restore
     [HttpPatch("{id:int}/restore")]
     [Authorize(Policy = "AdminPolicy")]
-    public async Task<ActionResult<SoftDeleteResponse>> RestoreInstructor(int id)
+    public async Task<ActionResult<SoftDeleteResponse>> RestoreInstructor(Guid id)
     {
         logger.LogInformation("Restoring instructor with ID: {Id}", id);
         await instructorService.RestoreInstructorAsync(id, User);

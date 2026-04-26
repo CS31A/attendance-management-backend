@@ -1,5 +1,3 @@
-using System.Text.RegularExpressions;
-
 namespace attendance.testproject.Architecture_Testing;
 
 public class UuidMigrationGuardrailTests
@@ -21,22 +19,45 @@ public class UuidMigrationGuardrailTests
         "NotSupportedException"
     ];
 
-    private static readonly string[] RequiredSnapshotIndexNames =
+    private static readonly string[] GuidPrimaryKeyEntityNames =
     [
-        "IX_Courses_Uuid",
-        "IX_Subjects_Uuid",
-        "IX_Sections_Uuid",
-        "IX_Classrooms_Uuid",
-        "IX_Schedules_Uuid",
-        "IX_StudentEnrollments_Uuid",
-        "IX_Sessions_Uuid",
-        "IX_AttendanceRecords_Uuid",
-        "IX_QrCodes_Uuid",
-        "IX_Fingerprints_Uuid",
-        "IX_FingerprintDevices_Uuid",
-        "IX_FingerprintEnrollmentSessions_Uuid",
-        "IX_FingerprintScanEvents_Uuid"
+        "Admin",
+        "AttendanceRecord",
+        "Classroom",
+        "Course",
+        "Fingerprint",
+        "FingerprintDevice",
+        "FingerprintEnrollmentSession",
+        "FingerprintScanEvent",
+        "Instructor",
+        "QrCode",
+        "Schedules",
+        "Section",
+        "Session",
+        "Student",
+        "StudentEnrollment",
+        "Subject"
     ];
+
+    private static readonly Dictionary<string, string> GuidPrimaryKeyEntityFiles = new()
+    {
+        ["Admin"] = "Admin.cs",
+        ["AttendanceRecord"] = "AttendanceRecord.cs",
+        ["Classroom"] = "Classroom.cs",
+        ["Course"] = "Course.cs",
+        ["Fingerprint"] = "Fingerprint.cs",
+        ["FingerprintDevice"] = "FingerprintDevice.cs",
+        ["FingerprintEnrollmentSession"] = "FingerprintEnrollmentSession.cs",
+        ["FingerprintScanEvent"] = "FingerprintScanEvent.cs",
+        ["Instructor"] = "Instructor.cs",
+        ["QrCode"] = "QrCode.cs",
+        ["Schedules"] = "Schedule.cs",
+        ["Section"] = "Section.cs",
+        ["Session"] = "Session.cs",
+        ["Student"] = "Student.cs",
+        ["StudentEnrollment"] = "StudentEnrollment.cs",
+        ["Subject"] = "Subject.cs"
+    };
 
     [Fact]
     public void UuidMigrationSources_ShouldRemainForwardOnlyAndAnomalyGuarded()
@@ -62,17 +83,96 @@ public class UuidMigrationGuardrailTests
     }
 
     [Fact]
-    public void ApplicationDbContextModelSnapshot_ShouldContainAllWidenedUuidIndexes()
+    public void ApplicationDbContextModelSnapshot_ShouldUseGuidIdsAndNoUuidProperties()
     {
         var snapshotRelativePath = Path.Combine("attendance_monitoring", "Migrations", "ApplicationDbContextModelSnapshot.cs");
         var snapshotPath = Path.Combine(RepositoryRoot, snapshotRelativePath);
         var snapshotContent = File.ReadAllText(snapshotPath);
 
-        var missingIndexes = RequiredSnapshotIndexNames
-            .Where(indexName => !Regex.IsMatch(snapshotContent, Regex.Escape(indexName)))
-            .ToList();
+        var entityBlocks = ExtractSnapshotEntityBlocks(snapshotContent);
+        var offenders = new List<string>();
 
-        Assert.True(missingIndexes.Count == 0,
-            $"Model snapshot missing widened UUID indexes: {string.Join(", ", missingIndexes)}");
+        foreach (var entityName in GuidPrimaryKeyEntityNames)
+        {
+            if (!entityBlocks.TryGetValue(entityName, out var entityBlock))
+            {
+                offenders.Add($"{entityName} missing from model snapshot");
+                continue;
+            }
+
+            if (!entityBlock.Contains("b.Property<Guid>(\"Id\")", StringComparison.Ordinal))
+            {
+                offenders.Add($"{entityName} does not declare Guid Id");
+            }
+
+            if (entityBlock.Contains("b.Property<int>(\"Id\")", StringComparison.Ordinal))
+            {
+                offenders.Add($"{entityName} still declares int Id");
+            }
+
+            if (entityBlock.Contains("b.Property<Guid>(\"Uuid\")", StringComparison.Ordinal))
+            {
+                offenders.Add($"{entityName} still declares Uuid");
+            }
+
+            if (!entityBlock.Contains("b.HasKey(\"Id\")", StringComparison.Ordinal))
+            {
+                offenders.Add($"{entityName} does not use Id as key");
+            }
+        }
+
+        Assert.True(offenders.Count == 0,
+            $"Model snapshot is not Guid-primary-key-only: {string.Join(", ", offenders)}");
+    }
+
+    [Fact]
+    public void TargetEntitySources_ShouldUseGuidIdsAndNoUuidProperties()
+    {
+        var offenders = new List<string>();
+
+        foreach (var (entityName, fileName) in GuidPrimaryKeyEntityFiles)
+        {
+            var path = Path.Combine(RepositoryRoot, "attendance_monitoring", "Classes", fileName);
+            var content = File.ReadAllText(path);
+
+            if (!content.Contains("public Guid Id { get; set; }", StringComparison.Ordinal))
+            {
+                offenders.Add($"{entityName} source does not declare Guid Id");
+            }
+
+            if (content.Contains("public int Id { get; set; }", StringComparison.Ordinal))
+            {
+                offenders.Add($"{entityName} source still declares int Id");
+            }
+
+            if (content.Contains("public Guid Uuid { get; set; }", StringComparison.Ordinal))
+            {
+                offenders.Add($"{entityName} source still declares Uuid");
+            }
+        }
+
+        Assert.True(offenders.Count == 0,
+            $"Target entity sources are not Guid-primary-key-only: {string.Join(", ", offenders)}");
+    }
+
+    private static Dictionary<string, string> ExtractSnapshotEntityBlocks(string snapshotContent)
+    {
+        var blocks = new Dictionary<string, string>(StringComparer.Ordinal);
+
+        foreach (var entityName in GuidPrimaryKeyEntityNames)
+        {
+            var marker = $"modelBuilder.Entity(\"attendance_monitoring.Classes.{entityName}\"";
+            var start = snapshotContent.IndexOf(marker, StringComparison.Ordinal);
+            if (start < 0)
+            {
+                continue;
+            }
+
+            var nextEntity = snapshotContent.IndexOf("\n            modelBuilder.Entity(", start + marker.Length, StringComparison.Ordinal);
+            var end = nextEntity >= 0 ? nextEntity : snapshotContent.Length;
+            blocks[entityName] = snapshotContent[start..end];
+        }
+
+        return blocks;
     }
 }

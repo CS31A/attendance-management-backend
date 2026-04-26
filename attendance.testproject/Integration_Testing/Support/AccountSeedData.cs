@@ -43,7 +43,7 @@ internal static class AccountSeedData
         await userManager.AddToRoleAsync(user, role);
 
         // Create role-specific entity
-        int? roleSpecificId = null;
+        Guid? roleSpecificId = null;
 
         switch (role)
         {
@@ -71,6 +71,7 @@ internal static class AccountSeedData
                     Lastname = role,
                     Section = section,
                     IsRegular = true,
+                    Usn = $"TEST-{role.ToUpper()}-001",
                     CreatedAt = now,
                     UpdatedAt = now
                 };

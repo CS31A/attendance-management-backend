@@ -8,5 +8,5 @@ public class ValidateQrCode
     [StringLength(255)]
     public string QrHash { get; set; } = string.Empty;
 
-    public int? StudentId { get; set; }
+    public Guid? StudentId { get; set; }
 }

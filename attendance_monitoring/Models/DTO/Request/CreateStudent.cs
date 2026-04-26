@@ -17,5 +17,5 @@ public class CreateStudent
     public bool IsRegular { get; set; } = true;
 
     [Required]
-    public int SectionId { get; set; }
+    public Guid SectionId { get; set; }
 }

@@ -29,8 +29,8 @@ public class CourseControllerTest
         // Arrange
         var expectedCourses = new List<Course>
         {
-            new() { Id = 1, Name = "Bachelor of Science in Computer Science", CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow },
-            new() { Id = 2, Name = "Bachelor of Science in Information Technology", CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow }
+            new() { Id = Guid.NewGuid(), Name = "Bachelor of Science in Computer Science", CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow },
+            new() { Id = Guid.NewGuid(), Name = "Bachelor of Science in Information Technology", CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow }
         };
 
         _mockCourseService
@@ -70,7 +70,7 @@ public class CourseControllerTest
     public async Task GetCourse_ReturnsOkResult_WhenCourseExists()
     {
         // Arrange
-        const int courseId = 1;
+        var courseId = Guid.NewGuid();
         var expectedCourse = new Course
         {
             Id = courseId,
@@ -100,8 +100,7 @@ public class CourseControllerTest
         var courseUuid = Guid.NewGuid();
         var expectedCourse = new Course
         {
-            Id = 12,
-            Uuid = courseUuid,
+            Id = courseUuid,
             Name = "Bachelor of Science in Data Science",
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
@@ -115,7 +114,7 @@ public class CourseControllerTest
 
         var okResult = Assert.IsType<OkObjectResult>(result.Result);
         var course = Assert.IsType<Course>(okResult.Value);
-        Assert.Equal(courseUuid, course.Uuid);
+        Assert.Equal(courseUuid, course.Id);
         _mockCourseService.Verify(s => s.GetCourseByUuidAsync(courseUuid), Times.Once);
     }
 
@@ -156,10 +155,10 @@ public class CourseControllerTest
     public async Task GetCourse_ReturnsNotFound_WhenCourseDoesNotExist()
     {
         // Arrange
-        const int courseId = 99;
+        var courseId = Guid.NewGuid();
         _mockCourseService
             .Setup(s => s.GetCourseByIdAsync(courseId))
-            .ThrowsAsync(new EntityNotFoundException<int>("Course", courseId));
+            .ThrowsAsync(new EntityNotFoundException<Guid>("Course", courseId));
 
         // Act
         var result = await _controller.GetCourse(courseId);
@@ -174,7 +173,7 @@ public class CourseControllerTest
     public async Task GetCourse_ReturnsServerError_WhenServiceThrowsException()
     {
         // Arrange
-        const int courseId = 5;
+        var courseId = Guid.NewGuid();
         _mockCourseService
             .Setup(s => s.GetCourseByIdAsync(courseId))
             .ThrowsAsync(new EntityServiceException("Course", "GetCourseById", "Unexpected failure"));
@@ -199,7 +198,7 @@ public class CourseControllerTest
 
         var createdCourse = new Course
         {
-            Id = 10,
+            Id = Guid.NewGuid(),
             Name = createCourse.Name,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
@@ -263,7 +262,7 @@ public class CourseControllerTest
     public async Task UpdateCourse_ReturnsOkResult_WhenUpdateSucceeds()
     {
         // Arrange
-        const int courseId = 7;
+        var courseId = Guid.NewGuid();
         var updateCourse = new UpdateCourse { Name = "Bachelor of Science in Information Systems" };
         var user = new ClaimsPrincipal(new ClaimsIdentity());
         SetControllerUser(user);
@@ -301,8 +300,7 @@ public class CourseControllerTest
 
         var updatedCourse = new Course
         {
-            Id = 19,
-            Uuid = courseUuid,
+            Id = courseUuid,
             Name = updateCourse.Name,
             CreatedAt = DateTime.UtcNow.AddDays(-7),
             UpdatedAt = DateTime.UtcNow
@@ -316,7 +314,7 @@ public class CourseControllerTest
 
         var okResult = Assert.IsType<OkObjectResult>(result.Result);
         var course = Assert.IsType<Course>(okResult.Value);
-        Assert.Equal(courseUuid, course.Uuid);
+        Assert.Equal(courseUuid, course.Id);
         _mockCourseService.Verify(s => s.UpdateCourseByUuidAsync(courseUuid, updateCourse, user), Times.Once);
     }
 
@@ -363,14 +361,14 @@ public class CourseControllerTest
     public async Task UpdateCourse_ReturnsNotFound_WhenCourseDoesNotExist()
     {
         // Arrange
-        const int courseId = 100;
+        var courseId = Guid.NewGuid();
         var updateCourse = new UpdateCourse { Name = "Bachelor of Science in Information Systems" };
         var user = new ClaimsPrincipal(new ClaimsIdentity());
         SetControllerUser(user);
 
         _mockCourseService
             .Setup(s => s.UpdateCourseAsync(courseId, updateCourse, user))
-            .ThrowsAsync(new EntityNotFoundException<int>("Course", courseId));
+            .ThrowsAsync(new EntityNotFoundException<Guid>("Course", courseId));
 
         // Act
         var result = await _controller.UpdateCourse(courseId, updateCourse);
@@ -385,7 +383,7 @@ public class CourseControllerTest
     public async Task UpdateCourse_ReturnsBadRequest_WhenServiceException()
     {
         // Arrange
-        const int courseId = 8;
+        var courseId = Guid.NewGuid();
         var updateCourse = new UpdateCourse { Name = "Bachelor of Science in Information Systems" };
         var user = new ClaimsPrincipal(new ClaimsIdentity());
         SetControllerUser(user);
@@ -408,7 +406,7 @@ public class CourseControllerTest
     public async Task DeleteCourse_ReturnsNoContent_WhenDeletionSucceeds()
     {
         // Arrange
-        const int courseId = 11;
+        var courseId = Guid.NewGuid();
         var user = new ClaimsPrincipal(new ClaimsIdentity());
         SetControllerUser(user);
 
@@ -482,13 +480,13 @@ public class CourseControllerTest
     public async Task DeleteCourse_ReturnsNotFound_WhenCourseDoesNotExist()
     {
         // Arrange
-        const int courseId = 200;
+        var courseId = Guid.NewGuid();
         var user = new ClaimsPrincipal(new ClaimsIdentity());
         SetControllerUser(user);
 
         _mockCourseService
             .Setup(s => s.DeleteCourseAsync(courseId, user))
-            .ThrowsAsync(new EntityNotFoundException<int>("Course", courseId));
+            .ThrowsAsync(new EntityNotFoundException<Guid>("Course", courseId));
 
         // Act
         var result = await _controller.DeleteCourse(courseId);
@@ -503,7 +501,7 @@ public class CourseControllerTest
     public async Task DeleteCourse_ReturnsBadRequest_WhenServiceException()
     {
         // Arrange
-        const int courseId = 201;
+        var courseId = Guid.NewGuid();
         var user = new ClaimsPrincipal(new ClaimsIdentity());
         SetControllerUser(user);
         const string errorMessage = "Unable to delete course";

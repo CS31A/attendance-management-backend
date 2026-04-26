@@ -30,7 +30,7 @@ public class InstructorRepository(ApplicationDbContext context) : IInstructorRep
     /// Retrieves an instructor by ID (read-only).
     /// Performance: Single query, no navigation properties loaded.
     /// </summary>
-    public async Task<Instructor?> GetInstructorByIdAsync(int id)
+    public async Task<Instructor?> GetInstructorByIdAsync(Guid id)
     {
         return await context.Instructors
             .AsNoTracking()
@@ -44,11 +44,11 @@ public class InstructorRepository(ApplicationDbContext context) : IInstructorRep
     /// Retrieves an instructor by UUID (read-only).
     /// Performance: Single query, no navigation properties loaded.
     /// </summary>
-    public async Task<Instructor?> GetInstructorByUuidAsync(Guid uuid)
+    public async Task<Instructor?> GetInstructorByUuidAsync(Guid id)
     {
         return await context.Instructors
             .AsNoTracking()
-            .FirstOrDefaultAsync(i => i.Uuid == uuid && !i.IsDeleted)
+            .FirstOrDefaultAsync(i => i.Id == id && !i.IsDeleted)
             .ConfigureAwait(false);
     }
     #endregion
@@ -58,7 +58,7 @@ public class InstructorRepository(ApplicationDbContext context) : IInstructorRep
     /// Retrieves an instructor by ID with change tracking for updates.
     /// Performance: Single query, no navigation properties loaded.
     /// </summary>
-    public async Task<Instructor?> GetInstructorByIdTrackedAsync(int id)
+    public async Task<Instructor?> GetInstructorByIdTrackedAsync(Guid id)
     {
         return await context.Instructors
             .FirstOrDefaultAsync(i => i.Id == id && !i.IsDeleted)
@@ -71,10 +71,10 @@ public class InstructorRepository(ApplicationDbContext context) : IInstructorRep
     /// Retrieves an instructor by UUID with change tracking for updates.
     /// Performance: Single query, no navigation properties loaded.
     /// </summary>
-    public async Task<Instructor?> GetInstructorByUuidTrackedAsync(Guid uuid)
+    public async Task<Instructor?> GetInstructorByUuidTrackedAsync(Guid id)
     {
         return await context.Instructors
-            .FirstOrDefaultAsync(i => i.Uuid == uuid && !i.IsDeleted)
+            .FirstOrDefaultAsync(i => i.Id == id && !i.IsDeleted)
             .ConfigureAwait(false);
     }
     #endregion
@@ -99,7 +99,7 @@ public class InstructorRepository(ApplicationDbContext context) : IInstructorRep
     /// Retrieves an instructor by ID regardless of delete status.
     /// Performance: Single query, no navigation properties loaded.
     /// </summary>
-    public async Task<Instructor?> GetInstructorByIdIgnoreDeleteStatus(int id)
+    public async Task<Instructor?> GetInstructorByIdIgnoreDeleteStatus(Guid id)
     {
         return await context.Instructors
             .AsNoTracking()
@@ -140,7 +140,7 @@ public class InstructorRepository(ApplicationDbContext context) : IInstructorRep
     #region Delete Operations
 
     #region SoftDeleteInstructorAsync
-    public async Task<bool> SoftDeleteInstructorAsync(int id)
+    public async Task<bool> SoftDeleteInstructorAsync(Guid id)
     {
         var instructor = await context.Instructors.FindAsync(id).ConfigureAwait(false);
         if (instructor == null)
@@ -156,7 +156,7 @@ public class InstructorRepository(ApplicationDbContext context) : IInstructorRep
     #endregion
 
     #region HardDeleteInstructorAsync
-    public async Task<bool> HardDeleteInstructorAsync(int id)
+    public async Task<bool> HardDeleteInstructorAsync(Guid id)
     {
         var instructor = await context.Instructors.FindAsync(id).ConfigureAwait(false);
         if (instructor == null)
@@ -168,7 +168,7 @@ public class InstructorRepository(ApplicationDbContext context) : IInstructorRep
     #endregion
 
     #region RestoreInstructorAsync
-    public async Task<bool> RestoreInstructorAsync(int id)
+    public async Task<bool> RestoreInstructorAsync(Guid id)
     {
         var instructor = await context.Instructors.FindAsync(id).ConfigureAwait(false);
         if (instructor == null)
@@ -198,7 +198,7 @@ public class InstructorRepository(ApplicationDbContext context) : IInstructorRep
     /// Note: Soft-delete filtering is NOT applied to Schedules in this query.
     /// Performance: Single query with multiple joins.
     /// </summary>
-    public async Task<IEnumerable<Schedules>> GetSchedulesWithRelatedDataByInstructorIdAsync(int instructorId)
+    public async Task<IEnumerable<Schedules>> GetSchedulesWithRelatedDataByInstructorIdAsync(Guid instructorId)
     {
         return await context.Schedules
             .AsNoTracking()
@@ -220,7 +220,7 @@ public class InstructorRepository(ApplicationDbContext context) : IInstructorRep
     /// Retrieves regular students whose primary section matches the supplied section.
     /// Soft-deleted students are excluded.
     /// </summary>
-    public async Task<IEnumerable<Student>> GetRegularStudentsBySectionIdAsync(int sectionId)
+    public async Task<IEnumerable<Student>> GetRegularStudentsBySectionIdAsync(Guid sectionId)
     {
         return await context.Students
             .AsNoTracking()
@@ -237,7 +237,7 @@ public class InstructorRepository(ApplicationDbContext context) : IInstructorRep
     /// Retrieves all sections handled by the instructor, including course data.
     /// Performance: Single query with course eager loading.
     /// </summary>
-    public async Task<IEnumerable<Section>> GetHandledSectionsByInstructorIdAsync(int instructorId)
+    public async Task<IEnumerable<Section>> GetHandledSectionsByInstructorIdAsync(Guid instructorId)
     {
         return await context.Sections
             .AsNoTracking()
@@ -254,7 +254,7 @@ public class InstructorRepository(ApplicationDbContext context) : IInstructorRep
     /// Retrieves handled classes for a specific section and instructor with related data.
     /// Uses eager loading to prevent N+1 queries for subject, classroom, section, and enrolled students.
     /// </summary>
-    public async Task<IEnumerable<Schedules>> GetHandledClassesBySectionAndInstructorAsync(int sectionId, int instructorId)
+    public async Task<IEnumerable<Schedules>> GetHandledClassesBySectionAndInstructorAsync(Guid sectionId, Guid instructorId)
     {
         return await context.Schedules
             .AsNoTracking()
@@ -278,7 +278,7 @@ public class InstructorRepository(ApplicationDbContext context) : IInstructorRep
     /// <summary>
     /// Retrieves all non-deleted students whose home section matches the supplied section.
     /// </summary>
-    public async Task<IEnumerable<Student>> GetHomeSectionStudentsAsync(int sectionId)
+    public async Task<IEnumerable<Student>> GetHomeSectionStudentsAsync(Guid sectionId)
     {
         return await GetRegularStudentsBySectionIdAsync(sectionId).ConfigureAwait(false);
     }
@@ -289,7 +289,7 @@ public class InstructorRepository(ApplicationDbContext context) : IInstructorRep
     /// Determines whether the instructor handles the supplied section.
     /// Performance: Uses an existence check without loading entities.
     /// </summary>
-    public async Task<bool> IsInstructorHandlingSectionAsync(int instructorId, int sectionId)
+    public async Task<bool> IsInstructorHandlingSectionAsync(Guid instructorId, Guid sectionId)
     {
         return await context.Schedules
             .AsNoTracking()
@@ -303,7 +303,7 @@ public class InstructorRepository(ApplicationDbContext context) : IInstructorRep
     /// Retrieves a student with related section, course, and active enrollment data.
     /// Uses split query execution to avoid cartesian explosion when loading multiple navigations.
     /// </summary>
-    public async Task<Student?> GetStudentWithDetailsAsync(int studentId)
+    public async Task<Student?> GetStudentWithDetailsAsync(Guid studentId)
     {
         return await context.Students
             .AsNoTracking()
@@ -324,7 +324,7 @@ public class InstructorRepository(ApplicationDbContext context) : IInstructorRep
     /// Retrieves attendance records for a student in sessions taught by the supplied instructor.
     /// Uses eager loading for session and schedule data commonly needed by higher layers.
     /// </summary>
-    public async Task<IEnumerable<AttendanceRecord>> GetStudentAttendanceForInstructorSubjectsAsync(int studentId, int instructorId)
+    public async Task<IEnumerable<AttendanceRecord>> GetStudentAttendanceForInstructorSubjectsAsync(Guid studentId, Guid instructorId)
     {
         return await context.AttendanceRecords
             .AsNoTracking()

@@ -8,13 +8,11 @@ namespace attendance_monitoring.Classes;
 
 [Index(nameof(UserId), IsUnique = true)]
 [Index(nameof(IsDeleted))]
+[Index(nameof(Usn), IsUnique = true)]
 public class Student
 {
     [Key]
-    [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
-    public int Id { get; set; }
-
-    public Guid Uuid { get; set; }
+    public Guid Id { get; set; }
 
     [Required]
     [StringLength(100)]
@@ -24,11 +22,17 @@ public class Student
     [StringLength(100)]
     public string Lastname { get; set; } = string.Empty;
     public bool IsRegular { get; set; }
+    
+    // Universal Student Number (USN) - school-specific student identifier
+    [Required]
+    [StringLength(50)]
+    public string Usn { get; set; } = string.Empty;
+    
     // Foreign key to Identity user - should not be nullable
     public string UserId { get; set; } = string.Empty;
 
     // Foreign key to Section - primary/home section (kept for backward compatibility)
-    public int SectionId { get; set; }
+    public Guid SectionId { get; set; }
 
     // Navigation property - required relationship
     [ForeignKey("UserId")]

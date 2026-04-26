@@ -69,10 +69,10 @@ public class AttendanceServiceUuidTests
     public async Task GetAttendanceByUuidAsync_ReturnsAttendance_WhenAuthorizedInstructor()
     {
         var user = CreateInstructorUser("instructor-user");
-        var attendance = CreateAttendanceRecord(11, 3, 7);
+        var attendance = CreateAttendanceRecord(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid());
 
         _mockAttendanceRepository
-            .Setup(repository => repository.GetAttendanceByUuidAsync(attendance.Uuid))
+            .Setup(repository => repository.GetAttendanceByUuidAsync(attendance.Id))
             .ReturnsAsync(attendance);
         _mockUserManager
             .Setup(manager => manager.FindByIdAsync("instructor-user"))
@@ -81,10 +81,10 @@ public class AttendanceServiceUuidTests
             .Setup(repository => repository.GetInstructorByUserIdAsync("instructor-user"))
             .ReturnsAsync(new Instructor { Id = attendance.Session!.Schedule!.InstructorId });
 
-        var result = await _attendanceService.GetAttendanceByUuidAsync(attendance.Uuid, user);
+        var result = await _attendanceService.GetAttendanceByUuidAsync(attendance.Id, user);
 
-        Assert.Equal(attendance.Uuid, result!.Id);
-        _mockAttendanceRepository.Verify(repository => repository.GetAttendanceByUuidAsync(attendance.Uuid), Times.Once);
+        Assert.Equal(attendance.Id, result!.Id);
+        _mockAttendanceRepository.Verify(repository => repository.GetAttendanceByUuidAsync(attendance.Id), Times.Once);
     }
 
     [Fact]
@@ -113,41 +113,43 @@ public class AttendanceServiceUuidTests
         };
 
         AttendanceRecord? capturedRecord = null;
+        var sectionId = Guid.NewGuid();
+        var subjectId = Guid.NewGuid();
+        var instructorId = Guid.NewGuid();
 
         _mockUserManager
             .Setup(manager => manager.FindByIdAsync("instructor-user"))
             .ReturnsAsync(new IdentityUser { Id = "instructor-user" });
         _mockStudentRepository
             .Setup(repository => repository.GetStudentByUuidAsync(studentUuid))
-            .ReturnsAsync(new Student { Id = 21, Uuid = studentUuid, SectionId = 9 });
+            .ReturnsAsync(new Student { Id = studentUuid, SectionId = sectionId });
         _mockSessionRepository
             .Setup(repository => repository.GetSessionByUuidAsync(sessionUuid))
             .ReturnsAsync(new Session
             {
-                Id = 44,
-                Uuid = sessionUuid,
-                Schedule = new Schedules { InstructorId = 10, SectionId = 9, SubjectId = 13 }
+                Id = sessionUuid,
+                Schedule = new Schedules { InstructorId = instructorId, SectionId = sectionId, SubjectId = subjectId }
             });
         _mockStudentEnrollmentRepository
-            .Setup(repository => repository.GetStudentEnrollmentsAsync(21))
-            .ReturnsAsync([new StudentEnrollment { StudentId = 21, SectionId = 9 }]);
+            .Setup(repository => repository.GetStudentEnrollmentsAsync(studentUuid))
+            .ReturnsAsync([new StudentEnrollment { StudentId = studentUuid, SectionId = sectionId, SubjectId = subjectId }]);
         _mockAttendanceRepository
             .Setup(repository => repository.CreateAsync(It.IsAny<AttendanceRecord>()))
             .Callback<AttendanceRecord>(record =>
             {
                 capturedRecord = record;
-                record.Uuid = Guid.NewGuid();
+                record.Id = Guid.NewGuid();
             })
-            .ReturnsAsync((AttendanceRecord record) => new AttendanceRecord { Id = 100, Uuid = record.Uuid });
+            .ReturnsAsync((AttendanceRecord record) => new AttendanceRecord { Id = record.Id });
         _mockAttendanceRepository
             .Setup(repository => repository.SaveChangesAsync())
             .ReturnsAsync(1);
         _mockAttendanceRepository
-            .Setup(repository => repository.GetByIdAsync(100))
+            .Setup(repository => repository.GetByIdAsync(It.IsAny<Guid>()))
             .ReturnsAsync(() =>
             {
-                var created = CreateAttendanceRecord(100, 21, 44);
-                created.Uuid = capturedRecord!.Uuid;
+                var created = CreateAttendanceRecord(capturedRecord!.Id, studentUuid, sessionUuid);
+                created.Id = capturedRecord!.Id;
                 created.Status = request.Status;
                 created.CheckInTime = capturedRecord.CheckInTime;
                 created.IsManualEntry = true;
@@ -158,13 +160,13 @@ public class AttendanceServiceUuidTests
         var result = await _attendanceService.CreateAttendanceAsync(request, CreateInstructorUser("instructor-user"));
 
         Assert.NotNull(capturedRecord);
-        Assert.Equal(21, capturedRecord.StudentId);
-        Assert.Equal(44, capturedRecord.SessionId);
-        Assert.Equal(capturedRecord.Uuid, result.Id);
+        Assert.Equal(studentUuid, capturedRecord.StudentId);
+        Assert.Equal(sessionUuid, capturedRecord.SessionId);
+        Assert.Equal(capturedRecord.Id, result.Id);
         _mockStudentRepository.Verify(repository => repository.GetStudentByUuidAsync(studentUuid), Times.Once);
         _mockSessionRepository.Verify(repository => repository.GetSessionByUuidAsync(sessionUuid), Times.Once);
-        _mockStudentRepository.Verify(repository => repository.GetStudentByIdAsync(It.IsAny<int>()), Times.Never);
-        _mockSessionRepository.Verify(repository => repository.GetSessionByIdAsync(It.IsAny<int>()), Times.Never);
+        _mockStudentRepository.Verify(repository => repository.GetStudentByIdAsync(It.IsAny<Guid>()), Times.Never);
+        _mockSessionRepository.Verify(repository => repository.GetSessionByIdAsync(It.IsAny<Guid>()), Times.Never);
     }
 
     [Fact]
@@ -186,21 +188,22 @@ public class AttendanceServiceUuidTests
     [Fact]
     public async Task UpdateAttendanceByUuidAsync_UsesResolvedLegacyId()
     {
-        var attendance = CreateAttendanceRecord(11, 3, 7);
+        var attendance = CreateAttendanceRecord(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid());
         var request = new UpdateAttendanceRequest { Status = "Late", Notes = "Updated via UUID" };
+        var instructorId = attendance.Session!.Schedule!.InstructorId;
 
         _mockAttendanceRepository
-            .Setup(repository => repository.GetAttendanceByUuidAsync(attendance.Uuid))
+            .Setup(repository => repository.GetAttendanceByUuidAsync(attendance.Id))
             .ReturnsAsync(attendance);
         _mockAttendanceRepository
             .Setup(repository => repository.GetByIdTrackedAsync(attendance.Id))
-            .ReturnsAsync(CreateAttendanceRecord(attendance.Id, 3, 7));
+            .ReturnsAsync(attendance);
         _mockUserManager
             .Setup(manager => manager.FindByIdAsync("instructor-user"))
             .ReturnsAsync(new IdentityUser { Id = "instructor-user" });
         _mockInstructorRepository
             .Setup(repository => repository.GetInstructorByUserIdAsync("instructor-user"))
-            .ReturnsAsync(new Instructor { Id = attendance.Session!.Schedule!.InstructorId });
+            .ReturnsAsync(new Instructor { Id = instructorId });
         _mockAttendanceRepository
             .Setup(repository => repository.UpdateAsync(It.IsAny<AttendanceRecord>()))
             .ReturnsAsync((AttendanceRecord record) => record);
@@ -211,28 +214,28 @@ public class AttendanceServiceUuidTests
             .Setup(repository => repository.GetByIdAsync(attendance.Id))
             .ReturnsAsync(() =>
             {
-                var updated = CreateAttendanceRecord(attendance.Id, 3, 7);
-                updated.Uuid = attendance.Uuid;
+                var updated = CreateAttendanceRecord(attendance.Id, Guid.NewGuid(), Guid.NewGuid());
+                updated.Id = attendance.Id;
                 updated.Status = request.Status!;
                 updated.Notes = request.Notes;
                 return updated;
             });
 
-        var result = await _attendanceService.UpdateAttendanceByUuidAsync(attendance.Uuid, request, CreateInstructorUser("instructor-user"));
+        var result = await _attendanceService.UpdateAttendanceByUuidAsync(attendance.Id, request, CreateInstructorUser("instructor-user"));
 
-        Assert.Equal(attendance.Uuid, result.Id);
+        Assert.Equal(attendance.Id, result.Id);
         Assert.Equal("Late", result.Status);
-        _mockAttendanceRepository.Verify(repository => repository.GetAttendanceByUuidAsync(attendance.Uuid), Times.Once);
+        _mockAttendanceRepository.Verify(repository => repository.GetAttendanceByUuidAsync(attendance.Id), Times.Once);
         _mockAttendanceRepository.Verify(repository => repository.GetByIdTrackedAsync(attendance.Id), Times.Once);
     }
 
     [Fact]
     public async Task DeleteAttendanceByUuidAsync_UsesResolvedLegacyId()
     {
-        var attendance = CreateAttendanceRecord(11, 3, 7);
+        var attendance = CreateAttendanceRecord(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid());
 
         _mockAttendanceRepository
-            .Setup(repository => repository.GetAttendanceByUuidAsync(attendance.Uuid))
+            .Setup(repository => repository.GetAttendanceByUuidAsync(attendance.Id))
             .ReturnsAsync(attendance);
         _mockAttendanceRepository
             .Setup(repository => repository.GetByIdAsync(attendance.Id))
@@ -244,10 +247,10 @@ public class AttendanceServiceUuidTests
             .Setup(repository => repository.SaveChangesAsync())
             .ReturnsAsync(1);
 
-        var deleted = await _attendanceService.DeleteAttendanceByUuidAsync(attendance.Uuid, CreateAdminUser("admin-user"));
+        var deleted = await _attendanceService.DeleteAttendanceByUuidAsync(attendance.Id, CreateAdminUser("admin-user"));
 
         Assert.True(deleted);
-        _mockAttendanceRepository.Verify(repository => repository.GetAttendanceByUuidAsync(attendance.Uuid), Times.Once);
+        _mockAttendanceRepository.Verify(repository => repository.GetAttendanceByUuidAsync(attendance.Id), Times.Once);
         _mockAttendanceRepository.Verify(repository => repository.DeleteAsync(attendance.Id), Times.Once);
     }
 
@@ -267,12 +270,11 @@ public class AttendanceServiceUuidTests
             ],
             "TestAuth"));
 
-    private static AttendanceRecord CreateAttendanceRecord(int attendanceId, int studentId, int sessionId)
+    private static AttendanceRecord CreateAttendanceRecord(Guid attendanceId, Guid studentId, Guid sessionId)
     {
         return new AttendanceRecord
         {
             Id = attendanceId,
-            Uuid = Guid.NewGuid(),
             StudentId = studentId,
             SessionId = sessionId,
             CheckInTime = DateTime.UtcNow.AddMinutes(-5),
@@ -285,26 +287,25 @@ public class AttendanceServiceUuidTests
                 Id = studentId,
                 Firstname = "Sam",
                 Lastname = "Student",
-                SectionId = 9
+                SectionId = Guid.NewGuid()
             },
             Session = new Session
             {
                 Id = sessionId,
-                Uuid = Guid.NewGuid(),
                 SessionDate = DateTime.UtcNow.Date,
-                ScheduleId = 4,
+                ScheduleId = Guid.NewGuid(),
                 Schedule = new Schedules
                 {
-                    Id = 4,
-                    InstructorId = 10,
-                    SectionId = 9,
-                    SubjectId = 13,
-                    Subject = new Subject { Id = 13, Name = "Testing" },
-                    Section = new Section { Id = 9, Name = "BSCS-3A" },
-                    Classroom = new Classroom { Id = 2, Name = "Room 204" },
-                    Instructor = new Instructor { Id = 10, Firstname = "Ada", Lastname = "Lovelace" }
+                    Id = Guid.NewGuid(),
+                    InstructorId = Guid.NewGuid(),
+                    SectionId = Guid.NewGuid(),
+                    SubjectId = Guid.NewGuid(),
+                    Subject = new Subject { Id = Guid.NewGuid(), Name = "Testing" },
+                    Section = new Section { Id = Guid.NewGuid(), Name = "BSCS-3A" },
+                    Classroom = new Classroom { Id = Guid.NewGuid(), Name = "Room 204" },
+                    Instructor = new Instructor { Id = Guid.NewGuid(), Firstname = "Ada", Lastname = "Lovelace" }
                 },
-                ActualRoom = new Classroom { Id = 2, Name = "Room 204" }
+                ActualRoom = new Classroom { Id = Guid.NewGuid(), Name = "Room 204" }
             }
         };
     }

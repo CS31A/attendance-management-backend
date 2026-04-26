@@ -27,7 +27,7 @@ public interface IAttendanceRepository : ISaveableRepository
     /// </summary>
     /// <param name="id">The attendance record ID</param>
     /// <returns>The attendance record if found, null otherwise</returns>
-    Task<AttendanceRecord?> GetByIdAsync(int id);
+    Task<AttendanceRecord?> GetByIdAsync(Guid id);
 
     /// <summary>
     /// Retrieves an attendance record by its ID with all navigation properties loaded, with change tracking enabled.
@@ -35,22 +35,22 @@ public interface IAttendanceRepository : ISaveableRepository
     /// </summary>
     /// <param name="id">The attendance record ID</param>
     /// <returns>The attendance record if found, null otherwise</returns>
-    Task<AttendanceRecord?> GetByIdTrackedAsync(int id);
+    Task<AttendanceRecord?> GetByIdTrackedAsync(Guid id);
 
     /// <summary>
     /// Retrieves an attendance record by its UUID with all navigation properties loaded.
     /// </summary>
-    /// <param name="uuid">The attendance record UUID</param>
+    /// <param name="id">The attendance record UUID</param>
     /// <returns>The attendance record if found, null otherwise</returns>
-    Task<AttendanceRecord?> GetAttendanceByUuidAsync(Guid uuid);
+    Task<AttendanceRecord?> GetAttendanceByUuidAsync(Guid id);
 
     /// <summary>
     /// Retrieves an attendance record by its UUID with all navigation properties loaded, with change tracking enabled.
     /// Use for update operations where the entity needs to be tracked for changes.
     /// </summary>
-    /// <param name="uuid">The attendance record UUID</param>
+    /// <param name="id">The attendance record UUID</param>
     /// <returns>The attendance record if found, null otherwise</returns>
-    Task<AttendanceRecord?> GetAttendanceByUuidTrackedAsync(Guid uuid);
+    Task<AttendanceRecord?> GetAttendanceByUuidTrackedAsync(Guid id);
 
     /// <summary>
     /// Retrieves all attendance records with pagination support.
@@ -65,7 +65,7 @@ public interface IAttendanceRepository : ISaveableRepository
     /// </summary>
     /// <param name="studentId">The student ID</param>
     /// <returns>Collection of attendance records for the student</returns>
-    Task<List<AttendanceRecord>> GetByStudentIdAsync(int studentId);
+    Task<List<AttendanceRecord>> GetByStudentIdAsync(Guid studentId);
 
     /// <summary>
     /// Retrieves all attendance records for a specific session.
@@ -73,7 +73,7 @@ public interface IAttendanceRepository : ISaveableRepository
     /// </summary>
     /// <param name="sessionId">The session ID</param>
     /// <returns>Collection of attendance records for the session</returns>
-    Task<List<AttendanceRecord>> GetBySessionIdAsync(int sessionId);
+    Task<List<AttendanceRecord>> GetBySessionIdAsync(Guid sessionId);
 
     /// <summary>
     /// Retrieves attendance records for a session optimized for roster display.
@@ -82,7 +82,7 @@ public interface IAttendanceRepository : ISaveableRepository
     /// </summary>
     /// <param name="sessionId">The session ID</param>
     /// <returns>Collection of roster DTOs with student names and attendance status</returns>
-    Task<List<SessionAttendanceRosterDto>> GetBySessionIdForRosterAsync(int sessionId);
+    Task<List<SessionAttendanceRosterDto>> GetBySessionIdForRosterAsync(Guid sessionId);
 
     /// <summary>
     /// Retrieves a specific attendance record for a student in a session.
@@ -91,7 +91,7 @@ public interface IAttendanceRepository : ISaveableRepository
     /// <param name="sessionId">The session ID</param>
     /// <param name="studentId">The student ID</param>
     /// <returns>The attendance record if found, null otherwise</returns>
-    Task<AttendanceRecord?> GetBySessionAndStudentAsync(int sessionId, int studentId);
+    Task<AttendanceRecord?> GetBySessionAndStudentAsync(Guid sessionId, Guid studentId);
 
     /// <summary>
     /// Retrieves minimal attendance record data for a student in a session.
@@ -101,7 +101,7 @@ public interface IAttendanceRepository : ISaveableRepository
     /// <param name="sessionId">The session ID</param>
     /// <param name="studentId">The student ID</param>
     /// <returns>Minimal attendance DTO if found, null otherwise</returns>
-    Task<AttendanceMinimalDto?> GetBySessionAndStudentMinimalAsync(int sessionId, int studentId);
+    Task<AttendanceMinimalDto?> GetBySessionAndStudentMinimalAsync(Guid sessionId, Guid studentId);
 
     /// <summary>
     /// Retrieves attendance records for a student within a date range.
@@ -110,14 +110,14 @@ public interface IAttendanceRepository : ISaveableRepository
     /// <param name="startDate">The start date of the range</param>
     /// <param name="endDate">The end date of the range</param>
     /// <returns>Collection of attendance records within the date range</returns>
-    Task<List<AttendanceRecord>> GetByStudentAndDateRangeAsync(int studentId, DateTime startDate, DateTime endDate);
+    Task<List<AttendanceRecord>> GetByStudentAndDateRangeAsync(Guid studentId, DateTime startDate, DateTime endDate);
 
     /// <summary>
     /// Retrieves attendance records for multiple sessions.
     /// </summary>
     /// <param name="sessionIds">The list of session IDs</param>
     /// <returns>Collection of attendance records for the specified sessions</returns>
-    Task<List<AttendanceRecord>> GetBySessionIdsAsync(List<int> sessionIds);
+    Task<List<AttendanceRecord>> GetBySessionIdsAsync(List<Guid> sessionIds);
 
     /// <summary>
     /// Updates an existing attendance record.
@@ -131,7 +131,7 @@ public interface IAttendanceRepository : ISaveableRepository
     /// </summary>
     /// <param name="id">The attendance record ID</param>
     /// <returns>True if deleted successfully, false otherwise</returns>
-    Task<bool> DeleteAsync(int id);
+    Task<bool> DeleteAsync(Guid id);
 
     /// <summary>
     /// Checks if an attendance record exists for a specific student and session.
@@ -140,7 +140,7 @@ public interface IAttendanceRepository : ISaveableRepository
     /// <param name="studentId">The student ID</param>
     /// <param name="sessionId">The session ID</param>
     /// <returns>True if an attendance record exists, false otherwise</returns>
-    Task<bool> HasAttendanceRecordAsync(int studentId, int sessionId);
+    Task<bool> HasAttendanceRecordAsync(Guid studentId, Guid sessionId);
 
     /// <summary>
     /// Checks if a student has any attendance records.
@@ -148,7 +148,7 @@ public interface IAttendanceRepository : ISaveableRepository
     /// </summary>
     /// <param name="studentId">The student ID</param>
     /// <returns>True if the student has any attendance records, false otherwise</returns>
-    Task<bool> HasAnyAttendanceAsync(int studentId);
+    Task<bool> HasAnyAttendanceAsync(Guid studentId);
 
     /// <summary>
     /// Checks if a session has any attendance records.
@@ -156,7 +156,7 @@ public interface IAttendanceRepository : ISaveableRepository
     /// </summary>
     /// <param name="sessionId">The session ID</param>
     /// <returns>True if the session has any attendance records, false otherwise</returns>
-    Task<bool> SessionHasAttendanceAsync(int sessionId);
+    Task<bool> SessionHasAttendanceAsync(Guid sessionId);
 
     /// <summary>
     /// Gets attendance record for a specific student and session combination.
@@ -165,7 +165,7 @@ public interface IAttendanceRepository : ISaveableRepository
     /// <param name="studentId">The student ID</param>
     /// <param name="sessionId">The session ID</param>
     /// <returns>The attendance record if found, null otherwise</returns>
-    Task<AttendanceRecord?> GetAttendanceByStudentAndSessionAsync(int studentId, int sessionId);
+    Task<AttendanceRecord?> GetAttendanceByStudentAndSessionAsync(Guid studentId, Guid sessionId);
 
     /// <summary>
     /// Gets the count of attendance records for a student, optionally filtered by status.
@@ -173,7 +173,7 @@ public interface IAttendanceRepository : ISaveableRepository
     /// <param name="studentId">The student ID</param>
     /// <param name="status">Optional status filter (Present, Late, Excused, Absent)</param>
     /// <returns>The count of matching attendance records</returns>
-    Task<int> GetAttendanceCountAsync(int studentId, string? status = null);
+    Task<int> GetAttendanceCountAsync(Guid studentId, string? status = null);
 
     /// <summary>
     /// Retrieves all attendance records for listing with pagination support using DTO projection.
@@ -209,11 +209,11 @@ public interface IAttendanceRepository : ISaveableRepository
     /// <param name="pageSize">Records per page</param>
     /// <returns>Tuple containing filtered records and total count</returns>
     Task<(List<AttendanceRecord> Records, int TotalCount)> GetFilteredAsync(
-        int? studentId = null,
-        int? sessionId = null,
-        int? scheduleId = null,
-        int? sectionId = null,
-        int? subjectId = null,
+        Guid? studentId = null,
+        Guid? sessionId = null,
+        Guid? scheduleId = null,
+        Guid? sectionId = null,
+        Guid? subjectId = null,
         string? status = null,
         DateTime? startDate = null,
         DateTime? endDate = null,
@@ -236,11 +236,11 @@ public interface IAttendanceRepository : ISaveableRepository
     /// <param name="isManualEntry">Optional manual entry filter</param>
     /// <returns>Statistics tuple with counts and averages</returns>
     Task<(int Total, int Present, int Late, int Absent, int Excused, long AvgCheckInTicks)> GetStatisticsAsync(
-        int? studentId = null,
-        int? sessionId = null,
-        int? scheduleId = null,
-        int? sectionId = null,
-        int? subjectId = null,
+        Guid? studentId = null,
+        Guid? sessionId = null,
+        Guid? scheduleId = null,
+        Guid? sectionId = null,
+        Guid? subjectId = null,
         string? status = null,
         DateTime? startDate = null,
         DateTime? endDate = null,

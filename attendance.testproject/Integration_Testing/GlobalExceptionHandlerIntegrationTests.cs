@@ -37,7 +37,7 @@ public sealed class GlobalExceptionHandlerIntegrationTests
     public async Task UseGlobalExceptionHandler_ReturnsNotFound_ForEntityNotFoundException()
     {
         await using var testHost = await CreateTestHostAsync(
-            () => throw new EntityNotFoundException<int>("Subject", 42));
+            () => throw new EntityNotFoundException<Guid>("Subject", Guid.Parse("12345678-1234-1234-1234-123456789abc")));
 
         var response = await testHost.Client.GetAsync("/throw");
         var error = await response.Content.ReadFromJsonAsync<ErrorResponseDto>();
@@ -46,7 +46,7 @@ public sealed class GlobalExceptionHandlerIntegrationTests
         Assert.NotNull(error);
         Assert.False(error.Success);
         Assert.Equal(StatusCodes.Status404NotFound, error.StatusCode);
-        Assert.Equal("Subject with ID 42 was not found.", error.Message);
+        Assert.Equal("Subject with ID 12345678-1234-1234-1234-123456789abc was not found.", error.Message);
         Assert.Equal("/throw", error.Path);
     }
 

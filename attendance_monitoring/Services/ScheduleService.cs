@@ -39,7 +39,7 @@ namespace attendance_monitoring.Services
             }
         }
 
-        public async Task<ScheduleResponseDto> GetScheduleByIdAsync(int id)
+        public async Task<ScheduleResponseDto> GetScheduleByIdAsync(Guid id)
         {
             logger.LogInformation("Retrieving schedule by ID: {Id}", id);
             try
@@ -48,13 +48,13 @@ namespace attendance_monitoring.Services
                 if (schedule == null)
                 {
                     logger.LogWarning("Schedule with ID {Id} not found", id);
-                    throw new EntityNotFoundException<int>("Schedule", id);
+                    throw new EntityNotFoundException<Guid>("Schedule", id);
                 }
 
                 logger.LogInformation("Successfully retrieved schedule with ID: {Id}", id);
                 return ScheduleServiceSupport.MapToResponseDto(schedule);
             }
-            catch (EntityNotFoundException<int>)
+            catch (EntityNotFoundException<Guid>)
             {
                 throw;
             }
@@ -65,19 +65,19 @@ namespace attendance_monitoring.Services
             }
         }
 
-        public async Task<ScheduleResponseDto> GetScheduleByUuidAsync(Guid uuid)
+        public async Task<ScheduleResponseDto> GetScheduleByUuidAsync(Guid id)
         {
-            logger.LogInformation("Retrieving schedule by UUID: {Uuid}", uuid);
+            logger.LogInformation("Retrieving schedule by UUID: {Id}", id);
             try
             {
-                var schedule = await scheduleRepository.GetScheduleByUuidAsync(uuid).ConfigureAwait(false);
+                var schedule = await scheduleRepository.GetScheduleByUuidAsync(id).ConfigureAwait(false);
                 if (schedule == null)
                 {
-                    logger.LogWarning("Schedule with UUID {Uuid} not found", uuid);
-                    throw new EntityNotFoundException<Guid>("Schedule", uuid);
+                    logger.LogWarning("Schedule with UUID {Id} not found", id);
+                    throw new EntityNotFoundException<Guid>("Schedule", id);
                 }
 
-                logger.LogInformation("Successfully retrieved schedule with UUID: {Uuid}", uuid);
+                logger.LogInformation("Successfully retrieved schedule with UUID: {Id}", id);
                 return ScheduleServiceSupport.MapToResponseDto(schedule);
             }
             catch (EntityNotFoundException<Guid>)
@@ -86,12 +86,12 @@ namespace attendance_monitoring.Services
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "Error occurred while retrieving schedule with UUID {Uuid}", uuid);
-                throw new EntityServiceException("Schedule", $"GetScheduleByUuid: {uuid}", "An error occurred while retrieving the schedule", ex);
+                logger.LogError(ex, "Error occurred while retrieving schedule with UUID {Id}", id);
+                throw new EntityServiceException("Schedule", $"GetScheduleByUuid: {id}", "An error occurred while retrieving the schedule", ex);
             }
         }
 
-        public async Task<IEnumerable<ScheduleResponseDto>> GetSchedulesByInstructorIdAsync(int instructorId)
+        public async Task<IEnumerable<ScheduleResponseDto>> GetSchedulesByInstructorIdAsync(Guid instructorId)
         {
             logger.LogInformation("Retrieving schedules for instructor ID: {InstructorId}", instructorId);
             try
@@ -110,7 +110,7 @@ namespace attendance_monitoring.Services
             }
         }
 
-        public async Task<IEnumerable<ScheduleResponseDto>> GetSchedulesBySectionIdAsync(int sectionId)
+        public async Task<IEnumerable<ScheduleResponseDto>> GetSchedulesBySectionIdAsync(Guid sectionId)
         {
             logger.LogInformation("Retrieving schedules for section ID: {SectionId}", sectionId);
             try
@@ -175,7 +175,7 @@ namespace attendance_monitoring.Services
         #endregion
 
         #region Dependency Check Operations
-        public async Task<bool> HasSessionsInScheduleAsync(int id)
+        public async Task<bool> HasSessionsInScheduleAsync(Guid id)
         {
             logger.LogInformation("Checking if schedule {ScheduleId} has sessions", id);
             try
@@ -241,10 +241,6 @@ namespace attendance_monitoring.Services
             {
                 throw;
             }
-            catch (EntityNotFoundException<int>)
-            {
-                throw;
-            }
             catch (EntityNotFoundException<Guid>)
             {
                 throw;
@@ -258,7 +254,7 @@ namespace attendance_monitoring.Services
 
         #endregion
         #region Update Operations
-        public async Task<Schedules> UpdateScheduleAsync(int id, UpdateSchedule updateSchedule)
+        public async Task<Schedules> UpdateScheduleAsync(Guid id, UpdateSchedule updateSchedule)
         {
             logger.LogInformation("Updating schedule with ID: {Id}", id);
             try
@@ -267,7 +263,7 @@ namespace attendance_monitoring.Services
                 if (existingSchedule == null)
                 {
                     logger.LogWarning("Schedule update failed: Schedule with ID {Id} not found", id);
-                    throw new EntityNotFoundException<int>("Schedule", id);
+                    throw new EntityNotFoundException<Guid>("Schedule", id);
                 }
 
                 // Validate DayOfWeek if provided
@@ -344,10 +340,6 @@ namespace attendance_monitoring.Services
             {
                 throw;
             }
-            catch (EntityNotFoundException<int>)
-            {
-                throw;
-            }
             catch (EntityNotFoundException<Guid>)
             {
                 throw;
@@ -365,12 +357,12 @@ namespace attendance_monitoring.Services
 
         #endregion
 
-        public async Task<Schedules> UpdateScheduleByUuidAsync(Guid uuid, UpdateSchedule updateSchedule)
+        public async Task<Schedules> UpdateScheduleByUuidAsync(Guid id, UpdateSchedule updateSchedule)
         {
-            var existingSchedule = await scheduleRepository.GetScheduleByUuidAsync(uuid).ConfigureAwait(false);
+            var existingSchedule = await scheduleRepository.GetScheduleByUuidAsync(id).ConfigureAwait(false);
             if (existingSchedule == null)
             {
-                throw new EntityNotFoundException<Guid>("Schedule", uuid);
+                throw new EntityNotFoundException<Guid>("Schedule", id);
             }
 
             return await UpdateScheduleAsync(existingSchedule.Id, updateSchedule).ConfigureAwait(false);
@@ -378,7 +370,7 @@ namespace attendance_monitoring.Services
 
         #region Delete Operations
 
-        public async Task DeleteScheduleAsync(int id, ClaimsPrincipal user)
+        public async Task DeleteScheduleAsync(Guid id, ClaimsPrincipal user)
         {
             logger.LogInformation("Deleting schedule with ID: {Id}", id);
             try
@@ -387,14 +379,14 @@ namespace attendance_monitoring.Services
                 if (existingSchedule == null)
                 {
                     logger.LogWarning("Schedule deletion failed: Schedule with ID {Id} not found", id);
-                    throw new EntityNotFoundException<int>("Schedule", id);
+                    throw new EntityNotFoundException<Guid>("Schedule", id);
                 }
 
                 var result = await scheduleRepository.DeleteScheduleAsync(id).ConfigureAwait(false);
                 if (!result)
                 {
                     logger.LogWarning("Schedule deletion failed: Schedule with ID {Id} not found", id);
-                    throw new EntityNotFoundException<int>("Schedule", id);
+                    throw new EntityNotFoundException<Guid>("Schedule", id);
                 }
 
                 var rowsAffected = await scheduleRepository.SaveChangesAsync().ConfigureAwait(false);
@@ -406,7 +398,7 @@ namespace attendance_monitoring.Services
 
                 logger.LogInformation("Successfully deleted schedule with ID: {Id}", id);
             }
-            catch (EntityNotFoundException<int>)
+            catch (EntityNotFoundException<Guid>)
             {
                 throw;
             }
@@ -428,12 +420,12 @@ namespace attendance_monitoring.Services
             }
         }
 
-        public async Task DeleteScheduleByUuidAsync(Guid uuid, ClaimsPrincipal user)
+        public async Task DeleteScheduleByUuidAsync(Guid id, ClaimsPrincipal user)
         {
-            var existingSchedule = await scheduleRepository.GetScheduleByUuidAsync(uuid).ConfigureAwait(false);
+            var existingSchedule = await scheduleRepository.GetScheduleByUuidAsync(id).ConfigureAwait(false);
             if (existingSchedule == null)
             {
-                throw new EntityNotFoundException<Guid>("Schedule", uuid);
+                throw new EntityNotFoundException<Guid>("Schedule", id);
             }
 
             await DeleteScheduleAsync(existingSchedule.Id, user).ConfigureAwait(false);

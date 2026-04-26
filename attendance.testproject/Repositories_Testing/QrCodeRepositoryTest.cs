@@ -21,8 +21,7 @@ public sealed class QrCodeRepositoryTest : IDisposable
 
         var subject = new Subject
         {
-            Id = 1,
-            Uuid = Guid.NewGuid(),
+            Id = Guid.NewGuid(),
             Name = "Software Engineering",
             Code = "SE101",
             CreatedAt = DateTime.UtcNow,
@@ -31,18 +30,16 @@ public sealed class QrCodeRepositoryTest : IDisposable
 
         var section = new Section
         {
-            Id = 1,
-            Uuid = Guid.NewGuid(),
+            Id = Guid.NewGuid(),
             Name = "BSCS-3A",
-            CourseId = 1,
+            CourseId = Guid.NewGuid(),
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow,
         };
 
         var instructor = new Instructor
         {
-            Id = 1,
-            Uuid = Guid.NewGuid(),
+            Id = Guid.NewGuid(),
             Firstname = "Ada",
             Lastname = "Lovelace",
             UserId = "instructor-1",
@@ -52,8 +49,7 @@ public sealed class QrCodeRepositoryTest : IDisposable
 
         var classroom = new Classroom
         {
-            Id = 1,
-            Uuid = Guid.NewGuid(),
+            Id = Guid.NewGuid(),
             Name = "Room 201",
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow,
@@ -61,8 +57,7 @@ public sealed class QrCodeRepositoryTest : IDisposable
 
         var schedule = new Schedules
         {
-            Id = 1,
-            Uuid = Guid.NewGuid(),
+            Id = Guid.NewGuid(),
             DayOfWeek = "Monday",
             TimeIn = new TimeOnly(8, 0),
             TimeOut = new TimeOnly(10, 0),
@@ -80,8 +75,7 @@ public sealed class QrCodeRepositoryTest : IDisposable
 
         var session = new Session
         {
-            Id = 1,
-            Uuid = Guid.NewGuid(),
+            Id = Guid.NewGuid(),
             ScheduleId = schedule.Id,
             Schedule = schedule,
             SessionDate = DateTime.UtcNow.Date,
@@ -95,8 +89,7 @@ public sealed class QrCodeRepositoryTest : IDisposable
 
         var qrCode = new QrCode
         {
-            Id = 1,
-            Uuid = Guid.NewGuid(),
+            Id = Guid.NewGuid(),
             SessionId = session.Id,
             Session = session,
             QrHash = "qr-hash-1",
@@ -116,7 +109,7 @@ public sealed class QrCodeRepositoryTest : IDisposable
         _context.QrCodes.Add(qrCode);
         _context.SaveChanges();
 
-        _qrCodeUuid = _context.QrCodes.AsNoTracking().Single(qr => qr.Id == qrCode.Id).Uuid;
+        _qrCodeUuid = _context.QrCodes.AsNoTracking().Single(qr => qr.Id == qrCode.Id).Id;
         _context.ChangeTracker.Clear();
     }
 
