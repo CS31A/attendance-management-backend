@@ -410,6 +410,7 @@ public class AttendanceRepositoryTest : IDisposable
             User = studentUser1,
             UserId = studentUser1.Id,
             Section = sectionA,
+            Usn = "ATT-TEST-001",
             CreatedAt = now,
             UpdatedAt = now,
         };
@@ -421,6 +422,7 @@ public class AttendanceRepositoryTest : IDisposable
             User = studentUser2,
             UserId = studentUser2.Id,
             Section = sectionA,
+            Usn = "ATT-TEST-002",
             CreatedAt = now,
             UpdatedAt = now,
         };
@@ -432,6 +434,7 @@ public class AttendanceRepositoryTest : IDisposable
             User = studentUser3,
             UserId = studentUser3.Id,
             Section = sectionB,
+            Usn = "ATT-TEST-003",
             CreatedAt = now,
             UpdatedAt = now,
         };
@@ -604,6 +607,7 @@ public class AttendanceRepositoryTest : IDisposable
             User = studentUser1,
             UserId = studentUser1.Id,
             Section = section,
+            Usn = "ATT-STATS-001",
             CreatedAt = now,
             UpdatedAt = now,
         };
@@ -615,6 +619,7 @@ public class AttendanceRepositoryTest : IDisposable
             User = studentUser2,
             UserId = studentUser2.Id,
             Section = section,
+            Usn = "ATT-STATS-002",
             CreatedAt = now,
             UpdatedAt = now,
         };

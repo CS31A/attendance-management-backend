@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using attendance_monitoring.Data;
 
@@ -11,9 +12,11 @@ using attendance_monitoring.Data;
 namespace attendance_monitoring.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260426042514_BackfillUsnForExistingStudents")]
+    partial class BackfillUsnForExistingStudents
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -994,7 +997,6 @@ namespace attendance_monitoring.Migrations
                         .HasColumnType("nvarchar(450)");
 
                     b.Property<string>("Usn")
-                        .IsRequired()
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
 
@@ -1008,7 +1010,8 @@ namespace attendance_monitoring.Migrations
                         .IsUnique();
 
                     b.HasIndex("Usn")
-                        .IsUnique();
+                        .IsUnique()
+                        .HasFilter("[Usn] IS NOT NULL");
 
                     b.ToTable("Students");
                 });

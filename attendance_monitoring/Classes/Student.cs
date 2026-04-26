@@ -24,9 +24,9 @@ public class Student
     public bool IsRegular { get; set; }
     
     // Universal Student Number (USN) - school-specific student identifier
-    // Nullable initially for migration, will be made required after data backfill
+    [Required]
     [StringLength(50)]
-    public string? Usn { get; set; }
+    public string Usn { get; set; } = string.Empty;
     
     // Foreign key to Identity user - should not be nullable
     public string UserId { get; set; } = string.Empty;

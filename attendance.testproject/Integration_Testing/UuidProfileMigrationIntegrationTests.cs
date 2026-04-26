@@ -58,6 +58,7 @@ public sealed class UuidProfileMigrationIntegrationTests
                 Lastname = "Student",
                 IsRegular = true,
                 SectionId = scenario.PrimarySectionId,
+                Usn = $"UUID-TEST-{suffix}",
                 CreatedAt = now,
                 UpdatedAt = now
             };

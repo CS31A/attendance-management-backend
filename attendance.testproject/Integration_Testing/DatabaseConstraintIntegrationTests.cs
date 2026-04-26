@@ -377,6 +377,7 @@ public class DatabaseConstraintIntegrationTests : IDisposable
             Lastname = "Student",
             UserId = userId,
             SectionId = Guid.NewGuid(),
+            Usn = "CONSTRAINT-TEST-001",
             IsDeleted = false
         };
 
@@ -413,6 +414,7 @@ public class DatabaseConstraintIntegrationTests : IDisposable
             Lastname = "Student",
             UserId = userId,
             SectionId = Guid.NewGuid(),
+            Usn = "HEALTHY-TEST-001",
             IsDeleted = false,
             DeletedAt = null // Consistent soft delete state
         };

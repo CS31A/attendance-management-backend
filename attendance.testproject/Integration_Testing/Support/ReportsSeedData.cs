@@ -122,6 +122,7 @@ internal static class ReportsSeedData
             Lastname = "Student",
             Section = section,
             IsRegular = true,
+            Usn = "TEST-SAM-REPORT-001",
             CreatedAt = now,
             UpdatedAt = now
         };
@@ -133,6 +134,7 @@ internal static class ReportsSeedData
             Lastname = "Outsider",
             Section = outsiderSection,
             IsRegular = true,
+            Usn = "TEST-OLLY-REPORT-001",
             CreatedAt = now,
             UpdatedAt = now
         };

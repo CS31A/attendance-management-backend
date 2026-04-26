@@ -108,6 +108,7 @@ internal static class InstructorSeedData
             Lastname = "Johnson",
             Section = section1,
             IsRegular = true,
+            Usn = "TEST-ALICE-001",
             CreatedAt = now,
             UpdatedAt = now
         };
@@ -119,6 +120,7 @@ internal static class InstructorSeedData
             Lastname = "Williams",
             Section = section1,
             IsRegular = true,
+            Usn = "TEST-BOB-001",
             CreatedAt = now,
             UpdatedAt = now
         };
@@ -130,6 +132,7 @@ internal static class InstructorSeedData
             Lastname = "Brown",
             Section = section2,
             IsRegular = false,
+            Usn = "TEST-CHARLIE-001",
             CreatedAt = now,
             UpdatedAt = now
         };

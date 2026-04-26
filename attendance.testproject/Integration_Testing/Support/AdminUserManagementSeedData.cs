@@ -72,6 +72,7 @@ internal static class AdminUserManagementSeedData
                 Lastname = "Active",
                 IsRegular = true,
                 SectionId = primarySection.Id,
+                Usn = "TEST-ACTIVE-001",
                 CreatedAt = now,
                 UpdatedAt = now
             },
@@ -82,6 +83,7 @@ internal static class AdminUserManagementSeedData
                 Lastname = "Archived",
                 IsRegular = false,
                 SectionId = primarySection.Id,
+                Usn = "TEST-ARCHIVE-001",
                 CreatedAt = now.AddDays(-3),
                 UpdatedAt = now.AddDays(-1),
                 IsDeleted = true,
@@ -94,6 +96,7 @@ internal static class AdminUserManagementSeedData
                 Lastname = "Conflict",
                 IsRegular = true,
                 SectionId = alternateSection.Id,
+                Usn = "TEST-CONFLICT-001",
                 CreatedAt = now,
                 UpdatedAt = now
             });

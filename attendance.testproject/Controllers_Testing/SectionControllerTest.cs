@@ -77,6 +77,7 @@ public class SectionControllerTest
             Lastname = lastname,
             UserId = userId,
             SectionId = sectionId ?? Guid.NewGuid(),
+            Usn = $"SECTION-TEST-{Guid.NewGuid().ToString().Substring(0, 8)}",
             CreatedAt = new DateTime(2024, 1, 1, 8, 0, 0, DateTimeKind.Utc),
             UpdatedAt = new DateTime(2024, 1, 2, 8, 0, 0, DateTimeKind.Utc)
         };

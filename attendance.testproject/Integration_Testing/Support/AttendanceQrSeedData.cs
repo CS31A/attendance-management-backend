@@ -84,6 +84,7 @@ internal static class AttendanceQrSeedData
             Lastname = "Student",
             Section = section,
             IsRegular = true,
+            Usn = "TEST-SAM-001",
             CreatedAt = now,
             UpdatedAt = now
         };
@@ -95,6 +96,7 @@ internal static class AttendanceQrSeedData
             Lastname = "Outsider",
             Section = outsiderSection,
             IsRegular = true,
+            Usn = "TEST-OLLY-001",
             CreatedAt = now,
             UpdatedAt = now
         };

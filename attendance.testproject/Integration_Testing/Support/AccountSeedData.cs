@@ -71,6 +71,7 @@ internal static class AccountSeedData
                     Lastname = role,
                     Section = section,
                     IsRegular = true,
+                    Usn = $"TEST-{role.ToUpper()}-001",
                     CreatedAt = now,
                     UpdatedAt = now
                 };

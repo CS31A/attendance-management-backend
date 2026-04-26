@@ -91,6 +91,7 @@ public sealed class SliceAUuidRepositoryTest : IDisposable
             UserId = "student-1",
             SectionId = _section.Id,
             Section = _section,
+            Usn = "SLICE-TEST-001",
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow,
         };
