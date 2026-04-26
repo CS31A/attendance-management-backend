@@ -206,7 +206,7 @@ public class ClassroomController(IClassroomService classroomService, ILogger<Cla
     }
 
     [Authorize(Policy = "PrivilegedPolicy")]
-    [HttpGet("{id:int}/has-schedules")]
+    [HttpGet("{id:guid}/has-schedules")]
     public async Task<ActionResult<bool>> HasSchedulesInClassroom(Guid id)
     {
         try
@@ -228,7 +228,7 @@ public class ClassroomController(IClassroomService classroomService, ILogger<Cla
     }
 
     [Authorize(Policy = "PrivilegedPolicy")]
-    [HttpGet("{id:int}/has-sessions")]
+    [HttpGet("{id:guid}/has-sessions")]
     public async Task<ActionResult<bool>> HasSessionsInClassroom(Guid id)
     {
         try

@@ -141,7 +141,7 @@ namespace attendance_monitoring.Controllers
         }
 
         [Authorize(Policy = "PrivilegedPolicy")]
-        [HttpGet("{id:int}/has-sessions")]
+        [HttpGet("{id:guid}/has-sessions")]
         public async Task<ActionResult<bool>> HasSessionsInSchedule(Guid id)
         {
             try

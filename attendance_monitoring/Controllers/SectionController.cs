@@ -248,7 +248,7 @@ namespace attendance_monitoring.Controllers
         }
 
         [Authorize(Policy = "UserPolicy")]
-        [HttpGet("{sectionId:int}/active-students")]
+        [HttpGet("{sectionId:guid}/active-students")]
         public async Task<ActionResult<IEnumerable<Student>>> GetActiveStudentsBySectionId(Guid sectionId)
         {
             try
@@ -270,7 +270,7 @@ namespace attendance_monitoring.Controllers
         }
 
         [Authorize(Policy = "UserPolicy")]
-        [HttpGet("{sectionId:int}/all-students")]
+        [HttpGet("{sectionId:guid}/all-students")]
         public async Task<ActionResult<IEnumerable<Student>>> GetAllStudentsBySectionId(Guid sectionId)
         {
             try
@@ -292,7 +292,7 @@ namespace attendance_monitoring.Controllers
         }
 
         [Authorize(Policy = "PrivilegedPolicy")]
-        [HttpGet("{sectionId:int}/has-students")]
+        [HttpGet("{sectionId:guid}/has-students")]
         public async Task<ActionResult<bool>> HasStudentsInSection(Guid sectionId)
         {
             try
@@ -314,7 +314,7 @@ namespace attendance_monitoring.Controllers
         }
 
         [Authorize(Policy = "PrivilegedPolicy")]
-        [HttpGet("{sectionId:int}/has-enrollments")]
+        [HttpGet("{sectionId:guid}/has-enrollments")]
         public async Task<ActionResult<bool>> HasStudentEnrollmentsInSection(Guid sectionId)
         {
             try
@@ -336,7 +336,7 @@ namespace attendance_monitoring.Controllers
         }
 
         [Authorize(Policy = "PrivilegedPolicy")]
-        [HttpGet("{sectionId:int}/has-schedules")]
+        [HttpGet("{sectionId:guid}/has-schedules")]
         public async Task<ActionResult<bool>> HasSchedulesInSection(Guid sectionId)
         {
             try

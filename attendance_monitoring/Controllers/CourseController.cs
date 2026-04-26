@@ -256,7 +256,7 @@ public class CourseController(ICourseService courseService, ILogger<CourseContro
     }
 
     [Authorize(Policy = "PrivilegedPolicy")]
-    [HttpGet("{id:int}/has-sections")]
+    [HttpGet("{id:guid}/has-sections")]
     public async Task<ActionResult<bool>> HasSectionsInCourse(Guid id)
     {
         try

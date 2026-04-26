@@ -206,7 +206,7 @@ public class SubjectController(ISubjectService subjectService, ILogger<SubjectCo
     }
 
     [Authorize(Policy = "PrivilegedPolicy")]
-    [HttpGet("{id:int}/has-schedules")]
+    [HttpGet("{id:guid}/has-schedules")]
     public async Task<ActionResult<bool>> HasSchedulesInSubject(Guid id)
     {
         try
@@ -228,7 +228,7 @@ public class SubjectController(ISubjectService subjectService, ILogger<SubjectCo
     }
 
     [Authorize(Policy = "PrivilegedPolicy")]
-    [HttpGet("{id:int}/has-enrollments")]
+    [HttpGet("{id:guid}/has-enrollments")]
     public async Task<ActionResult<bool>> HasEnrollmentsInSubject(Guid id)
     {
         try
