@@ -36,6 +36,12 @@ public class NotificationService : INotificationService
 
     public async Task SendToUserAsync(string userId, NotificationDto notification)
     {
+        if (string.IsNullOrWhiteSpace(userId))
+        {
+            _logger.LogWarning("Notification not delivered because user ID is missing: {Title}", notification.Title);
+            return;
+        }
+
         try
         {
             if (await _connectionManager.IsOnlineAsync(userId))

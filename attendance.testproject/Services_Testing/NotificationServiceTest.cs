@@ -25,6 +25,7 @@ public class NotificationServiceTest
         await service.NotifySessionStartedAsync(sessionId, studentIds, instructorId);
 
         // Assert
+        Assert.Equal(3, sentNotifications.Count);
         Assert.Equal(["student-1-connection"], sentNotifications[0].Connections);
         Assert.Equal(["student-2-connection"], sentNotifications[1].Connections);
         Assert.Equal(["instructor-1-connection"], sentNotifications[2].Connections);
@@ -50,6 +51,7 @@ public class NotificationServiceTest
         await service.NotifySessionEndedAsync(sessionId, studentIds, instructorId);
 
         // Assert
+        Assert.Equal(3, sentNotifications.Count);
         Assert.Equal(["student-1-connection"], sentNotifications[0].Connections);
         Assert.Equal(["student-2-connection"], sentNotifications[1].Connections);
         Assert.Equal(["instructor-1-connection"], sentNotifications[2].Connections);
@@ -79,6 +81,40 @@ public class NotificationServiceTest
         var sent = Assert.Single(sentNotifications);
         Assert.Equal(["student-1-connection"], sent.Connections);
         Assert.Equal("Attendance Recorded", sent.Notification.Title);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    public async Task SendToUserAsync_InvalidUserId_DoesNotQueryConnectionManager(string? userId)
+    {
+        // Arrange
+        var hubContext = new Mock<IHubContext<NotificationHub>>();
+        var connectionManager = new Mock<IUserConnectionManager>(MockBehavior.Strict);
+        var service = new NotificationService(
+            hubContext.Object,
+            connectionManager.Object,
+            Mock.Of<INotificationPreferenceService>(),
+            Mock.Of<IQrCodeRepository>(),
+            Mock.Of<ISessionRepository>(),
+            Mock.Of<IStudentRepository>(),
+            Mock.Of<ILogger<NotificationService>>());
+
+        var notification = new NotificationDto
+        {
+            Title = "Session Started",
+            Message = "Test notification",
+            Type = "Info",
+            Category = "Session"
+        };
+
+        // Act
+        await service.SendToUserAsync(userId!, notification);
+
+        // Assert
+        connectionManager.Verify(
+            manager => manager.IsOnlineAsync(It.IsAny<string>()),
+            Times.Never);
     }
 
     private static NotificationService CreateNotificationService(
