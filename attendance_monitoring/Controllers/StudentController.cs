@@ -194,7 +194,7 @@ public class StudentController(IStudentService studentService, ILogger<StudentCo
             return NotFound(new SoftDeleteResponse
             {
                 Success = false,
-                Message = $"Student with ID {id} not found"
+                Message = "Student not found"
             });
         }
         catch (EntityUnauthorizedException ex)

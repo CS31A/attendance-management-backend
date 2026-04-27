@@ -372,7 +372,7 @@ public class InstructorController(IInstructorService instructorService, ILogger<
             return NotFound(new SoftDeleteResponse
             {
                 Success = false,
-                Message = $"Instructor with ID {id} not found"
+                Message = "Instructor not found"
             });
         }
         catch (EntityUnauthorizedException ex)

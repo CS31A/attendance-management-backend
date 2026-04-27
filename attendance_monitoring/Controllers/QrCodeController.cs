@@ -196,7 +196,7 @@ public class QrCodeController(
         if (qrCode == null)
         {
             logger.LogWarning("QR code with ID {QrCodeId} not found", id);
-            return NotFound(new { message = $"QR code with ID {id} not found" });
+            return NotFound(new { message = "QR code not found" });
         }
 
         logger.LogInformation("Successfully retrieved QR code with ID: {QrCodeId}", id);
@@ -240,7 +240,7 @@ public class QrCodeController(
         if (qrCode == null)
         {
             logger.LogWarning("QR code with ID {QrCodeId} not found", id);
-            return NotFound(new { message = $"QR code with ID {id} not found" });
+            return NotFound(new { message = "QR code not found" });
         }
 
         // Regenerate QR image from hash (same logic as generate endpoint)
@@ -266,7 +266,7 @@ public class QrCodeController(
         if (qrCode == null)
         {
             logger.LogWarning("QR code with UUID {QrCodeUuid} not found", id);
-            return NotFound(new { message = $"QR code with UUID {id} not found" });
+            return NotFound(new { message = "QR code not found" });
         }
 
         using var qrGenerator = new QRCodeGenerator();
@@ -294,7 +294,7 @@ public class QrCodeController(
         if (qrCode == null)
         {
             logger.LogWarning("QR code with hash {QrHash} not found", qrHash);
-            return NotFound(new { message = $"QR code with hash {qrHash} not found" });
+            return NotFound(new { message = "QR code not found" });
         }
 
         logger.LogInformation("Successfully retrieved QR code with hash: {QrHash}", qrHash);
@@ -336,7 +336,7 @@ public class QrCodeController(
                 if (session == null)
                 {
                     logger.LogWarning("Session {SessionId} not found", sessionId);
-                    return NotFound(new { message = $"Session {sessionId} not found", errorCode = "SESSION_NOT_FOUND" });
+                    return NotFound(new { message = "Session not found", errorCode = "SESSION_NOT_FOUND" });
                 }
 
                 if (session.Schedule.InstructorId != instructorId.Value)
@@ -394,7 +394,7 @@ public class QrCodeController(
                 if (session == null)
                 {
                     logger.LogWarning("Session UUID {SessionUuid} not found", sessionUuid);
-                    return NotFound(new { message = $"Session {sessionUuid} not found", errorCode = "SESSION_NOT_FOUND" });
+                    return NotFound(new { message = "Session not found", errorCode = "SESSION_NOT_FOUND" });
                 }
 
                 if (session.Schedule.InstructorId != instructorId.Value)
