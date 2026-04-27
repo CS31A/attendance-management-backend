@@ -355,7 +355,7 @@ public class QrCodeController(
             if (!qrCodesList.Any())
             {
                 logger.LogWarning("No QR codes found for session ID {SessionId}", sessionId);
-                return NotFound(new { message = $"No QR codes found for session {sessionId}", errorCode = "NO_QRCODES_FOUND" });
+                return NotFound(new { message = "No QR codes found for this session", errorCode = "NO_QRCODES_FOUND" });
             }
 
             logger.LogInformation("Successfully retrieved {Count} QR codes for session ID: {SessionId}",
@@ -413,7 +413,7 @@ public class QrCodeController(
             if (!qrCodesList.Any())
             {
                 logger.LogWarning("No QR codes found for session UUID {SessionUuid}", sessionUuid);
-                return NotFound(new { message = $"No QR codes found for session {sessionUuid}", errorCode = "NO_QRCODES_FOUND" });
+                return NotFound(new { message = "No QR codes found for this session", errorCode = "NO_QRCODES_FOUND" });
             }
 
             logger.LogInformation("Successfully retrieved {Count} QR codes for session UUID: {SessionUuid}",
