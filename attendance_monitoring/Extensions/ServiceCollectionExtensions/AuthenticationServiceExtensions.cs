@@ -55,11 +55,20 @@ public static class AuthenticationServiceExtensions
             {
                 OnMessageReceived = context =>
                 {
-                    // If the request is for a web endpoint and contains cookies, use the cookie token
-                    if (context.Request.Cookies.ContainsKey("accessToken"))
+                    var path = context.HttpContext.Request.Path;
+
+                    // For SignalR connections, check query string token first
+                    var accessToken = context.Request.Query["access_token"];
+                    if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/notificationHub"))
+                    {
+                        context.Token = accessToken;
+                    }
+                    // Otherwise fall back to cookie for web endpoints
+                    else if (context.Request.Cookies.ContainsKey("accessToken"))
                     {
                         context.Token = context.Request.Cookies["accessToken"];
                     }
+
                     return Task.CompletedTask;
                 },
                 OnTokenValidated = async context =>

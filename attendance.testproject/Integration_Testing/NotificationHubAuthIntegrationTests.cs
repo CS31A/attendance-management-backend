@@ -43,6 +43,16 @@ public sealed class NotificationHubAuthIntegrationTests
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
 
+    [Fact]
+    public async Task PostNotificationHubNegotiate_AcceptsValidAccessTokenQueryString()
+    {
+        await using var host = await CreateHostAsync();
+
+        var response = await host.Client.PostAsync($"/notificationHub/negotiate?negotiateVersion=1&access_token={CreateJwt()}", null);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+
     private static async Task<SignalRAuthHost> CreateHostAsync()
     {
         var builder = WebApplication.CreateBuilder(new WebApplicationOptions
