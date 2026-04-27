@@ -8,7 +8,7 @@ namespace attendance_monitoring.Classes;
 [Index(nameof(DayOfWeek))]
 [Index(nameof(TimeIn))]
 [Index(nameof(TimeOut))]
-[Index(nameof(TimeIn), nameof(TimeOut), IsUnique = true)]
+[Index(nameof(ClassroomId), nameof(DayOfWeek), nameof(TimeIn), nameof(TimeOut), IsUnique = true)]
 public class Schedules
 {
     [Key]
