@@ -213,7 +213,7 @@ Recurring class schedules linking subjects, sections, instructors, and classroom
 - `IX_Schedules_DayOfWeek`
 - `IX_Schedules_TimeIn`
 - `IX_Schedules_TimeOut`
-- `IX_Schedules_TimeIn_TimeOut` (Unique)
+- `IX_Schedules_ClassroomId_DayOfWeek_TimeIn_TimeOut` (Unique)
 
 ### Attendance System
 
