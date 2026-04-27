@@ -36,6 +36,12 @@ public class NotificationService : INotificationService
 
     public async Task SendToUserAsync(string userId, NotificationDto notification)
     {
+        if (string.IsNullOrWhiteSpace(userId))
+        {
+            _logger.LogWarning("Notification not delivered because user ID is missing: {Title}", notification.Title);
+            return;
+        }
+
         try
         {
             if (await _connectionManager.IsOnlineAsync(userId))
@@ -154,7 +160,7 @@ public class NotificationService : INotificationService
         }
     }
 
-    public async Task NotifySessionStartedAsync(Guid sessionId, IEnumerable<string> studentIds)
+    public async Task NotifySessionStartedAsync(Guid sessionId, IEnumerable<string> studentIds, string instructorId)
     {
         try
         {
@@ -170,12 +176,18 @@ public class NotificationService : INotificationService
                 Metadata = new { SessionId = sessionId }
             };
 
-            foreach (var studentId in studentIds)
+            var studentRecipients = studentIds.Distinct().ToList();
+            foreach (var studentId in studentRecipients)
             {
                 await SendToUserAsync(studentId, notification);
             }
 
-            _logger.LogInformation("Session started notification sent to {Count} students", studentIds.Count());
+            await SendToUserAsync(instructorId, notification);
+
+            _logger.LogInformation(
+                "Session started notification sent to {StudentCount} students and instructor {InstructorId}",
+                studentRecipients.Count,
+                instructorId);
         }
         catch (Exception ex)
         {
@@ -183,7 +195,7 @@ public class NotificationService : INotificationService
         }
     }
 
-    public async Task NotifySessionEndedAsync(Guid sessionId, IEnumerable<string> studentIds)
+    public async Task NotifySessionEndedAsync(Guid sessionId, IEnumerable<string> studentIds, string instructorId)
     {
         try
         {
@@ -199,12 +211,18 @@ public class NotificationService : INotificationService
                 Metadata = new { SessionId = sessionId }
             };
 
-            foreach (var studentId in studentIds)
+            var studentRecipients = studentIds.Distinct().ToList();
+            foreach (var studentId in studentRecipients)
             {
                 await SendToUserAsync(studentId, notification);
             }
 
-            _logger.LogInformation("Session ended notification sent to {Count} students", studentIds.Count());
+            await SendToUserAsync(instructorId, notification);
+
+            _logger.LogInformation(
+                "Session ended notification sent to {StudentCount} students and instructor {InstructorId}",
+                studentRecipients.Count,
+                instructorId);
         }
         catch (Exception ex)
         {

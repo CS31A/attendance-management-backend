@@ -619,9 +619,9 @@ public class SessionService : ISessionService
             _logger.LogInformation("Successfully started session ID: {SessionId} by instructor ID: {InstructorId}",
                 sessionId, instructor.Id);
 
-            // Send real-time notification to enrolled students
+            // Send real-time notification to enrolled students and the responsible instructor
             var enrolledStudentIds = await GetEnrolledStudentIdsAsync(sessionId).ConfigureAwait(false);
-            await _notificationService.NotifySessionStartedAsync(sessionId, enrolledStudentIds).ConfigureAwait(false);
+            await _notificationService.NotifySessionStartedAsync(sessionId, enrolledStudentIds, instructor.UserId).ConfigureAwait(false);
 
             // Retrieve updated session with navigation properties
             var updatedSession = await _sessionRepository.GetSessionByIdAsync(sessionId).ConfigureAwait(false);
@@ -747,9 +747,9 @@ public class SessionService : ISessionService
             _logger.LogInformation("Successfully ended session ID: {SessionId} by instructor ID: {InstructorId}",
                 sessionId, instructor.Id);
 
-            // Send real-time notification to enrolled students
+            // Send real-time notification to enrolled students and the responsible instructor
             var enrolledStudentIds = await GetEnrolledStudentIdsAsync(sessionId).ConfigureAwait(false);
-            await _notificationService.NotifySessionEndedAsync(sessionId, enrolledStudentIds).ConfigureAwait(false);
+            await _notificationService.NotifySessionEndedAsync(sessionId, enrolledStudentIds, instructor.UserId).ConfigureAwait(false);
 
             // Retrieve updated session with navigation properties
             var updatedSession = await _sessionRepository.GetSessionByIdAsync(sessionId).ConfigureAwait(false);

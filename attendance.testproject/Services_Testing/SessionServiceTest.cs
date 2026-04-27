@@ -707,6 +707,11 @@ public class SessionServiceTest
             .Setup(r => r.GetSessionByIdAsync(sessionId))
             .ReturnsAsync(() => session); // Return the updated session
 
+        var studentUserIds = new[] { "student-1", "student-2" };
+        _mockEnrollmentRepository
+            .Setup(r => r.GetActiveSectionEnrollmentsAsync(session.Schedule.SectionId))
+            .ReturnsAsync(CreateTestEnrollments(session.Schedule.SectionId, session.Schedule.SubjectId, studentUserIds));
+
         // Act
         var beforeStart = DateTime.Now;
         var result = await _sessionService.StartSessionAsync(sessionId, request);
@@ -743,6 +748,11 @@ public class SessionServiceTest
                 s.RowVersion != null &&
                 s.RowVersion.SequenceEqual(request.RowVersion)
             )), Times.Once);
+
+        _mockNotificationService.Verify(n => n.NotifySessionStartedAsync(
+            sessionId,
+            It.Is<IEnumerable<string>>(ids => studentUserIds.All(ids.Contains)),
+            instructor.UserId), Times.Once);
     }
 
     [Fact]
@@ -1049,6 +1059,11 @@ public class SessionServiceTest
             .Setup(r => r.GetSessionByIdAsync(session.Id))
             .ReturnsAsync(() => session); // Return the updated session
 
+        var studentUserIds = new[] { "student-1", "student-2" };
+        _mockEnrollmentRepository
+            .Setup(r => r.GetActiveSectionEnrollmentsAsync(session.Schedule.SectionId))
+            .ReturnsAsync(CreateTestEnrollments(session.Schedule.SectionId, session.Schedule.SubjectId, studentUserIds));
+
         // Act
         var beforeEnd = DateTime.Now;
         var result = await _sessionService.EndSessionAsync(sessionId, request);
@@ -1079,6 +1094,11 @@ public class SessionServiceTest
                 s.RowVersion != null &&
                 s.RowVersion.SequenceEqual(request.RowVersion)
             )), Times.Once);
+
+        _mockNotificationService.Verify(n => n.NotifySessionEndedAsync(
+            sessionId,
+            It.Is<IEnumerable<string>>(ids => studentUserIds.All(ids.Contains)),
+            instructor.UserId), Times.Once);
     }
 
     [Fact]
@@ -1705,6 +1725,32 @@ public class SessionServiceTest
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
+    }
+
+    private static List<StudentEnrollment> CreateTestEnrollments(
+        Guid sectionId,
+        Guid subjectId,
+        IEnumerable<string> studentUserIds)
+    {
+        return studentUserIds
+            .Select(userId => new StudentEnrollment
+            {
+                Id = Guid.NewGuid(),
+                StudentId = Guid.NewGuid(),
+                SectionId = sectionId,
+                SubjectId = subjectId,
+                IsActive = true,
+                Student = new Student
+                {
+                    Id = Guid.NewGuid(),
+                    Firstname = "Test",
+                    Lastname = "Student",
+                    Usn = Student.CreatePendingUsn(),
+                    UserId = userId,
+                    SectionId = sectionId
+                }
+            })
+            .ToList();
     }
 
     [Fact]
