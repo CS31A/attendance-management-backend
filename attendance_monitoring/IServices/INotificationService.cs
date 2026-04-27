@@ -11,6 +11,6 @@ public interface INotificationService
     // Specialized methods for critical scenarios
     Task NotifyQrCodeGeneratedAsync(Guid qrCodeId, string instructorId);
     Task NotifyStudentCheckedInAsync(string studentId, string instructorId, Guid sessionId, string status);
-    Task NotifySessionStartedAsync(Guid sessionId, IEnumerable<string> studentIds);
-    Task NotifySessionEndedAsync(Guid sessionId, IEnumerable<string> studentIds);
+    Task NotifySessionStartedAsync(Guid sessionId, IEnumerable<string> studentIds, string instructorId);
+    Task NotifySessionEndedAsync(Guid sessionId, IEnumerable<string> studentIds, string instructorId);
 }
