@@ -31,6 +31,11 @@ public class QrCodeInfoDto
     public string SessionSubject { get; set; } = string.Empty;
 
     /// <summary>
+    /// Schedule title (for frontend display)
+    /// </summary>
+    public string ScheduleTitle { get; set; } = string.Empty;
+
+    /// <summary>
     /// When the QR code was generated
     /// </summary>
     public DateTime GeneratedAt { get; set; }

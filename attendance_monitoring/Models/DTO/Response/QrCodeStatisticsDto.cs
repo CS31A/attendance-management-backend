@@ -21,6 +21,11 @@ public class QrCodeStatisticsDto
     public int PresentCount { get; set; }
 
     /// <summary>
+    /// Number of successful scans (for frontend display)
+    /// </summary>
+    public int SuccessfulScans { get; set; }
+
+    /// <summary>
     /// Number of scans with "Late" status
     /// </summary>
     public int LateCount { get; set; }
