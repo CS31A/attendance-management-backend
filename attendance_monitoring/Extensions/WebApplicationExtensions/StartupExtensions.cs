@@ -20,19 +20,20 @@ public static class StartupExtensions
     {
         var logger = app.Services.GetRequiredService<ILogger<WebApplication>>();
 
-        using (var scope = app.Services.CreateScope())
-        {
-            var dataSeederService = scope.ServiceProvider
-                .GetRequiredService<IDataSeederService>();
-
-            try
-            {
-                await dataSeederService.SeedDataAsync();
-            }
-            catch (Exception ex)
-            {
-                logger.LogError(ex, "Data seeding failed. Application will continue without seed data.");
-            }
-        }
+        // Data seeder disabled
+        // using (var scope = app.Services.CreateScope())
+        // {
+        //     var dataSeederService = scope.ServiceProvider
+        //         .GetRequiredService<IDataSeederService>();
+        //
+        //     try
+        //     {
+        //         await dataSeederService.SeedDataAsync();
+        //     }
+        //     catch (Exception ex)
+        //     {
+        //         logger.LogError(ex, "Data seeding failed. Application will continue without seed data.");
+        //     }
+        // }
     }
 }
