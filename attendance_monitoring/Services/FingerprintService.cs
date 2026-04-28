@@ -880,10 +880,11 @@ public class FingerprintService(
 
         if (session.AttendanceCutOff.HasValue)
         {
+            var attendanceCutOffUtc = DateTime.SpecifyKind(session.AttendanceCutOff.Value, DateTimeKind.Utc);
             lateCutoffMinutes = Math.Max(
                 0,
                 (int)Math.Round(
-                    (session.AttendanceCutOff.Value - sessionStartTime).TotalMinutes,
+                    (attendanceCutOffUtc - sessionStartTime).TotalMinutes,
                     MidpointRounding.AwayFromZero));
         }
 
