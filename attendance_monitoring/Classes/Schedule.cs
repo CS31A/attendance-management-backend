@@ -8,6 +8,8 @@ namespace attendance_monitoring.Classes;
 [Index(nameof(DayOfWeek))]
 [Index(nameof(TimeIn))]
 [Index(nameof(TimeOut))]
+// WARNING: If this index name changes, update ScheduleConflictValidator.IsScheduleDuplicateConstraintViolation
+// which hardcodes "IX_Schedules_ClassroomId_DayOfWeek_TimeIn_TimeOut" for duplicate detection.
 [Index(nameof(ClassroomId), nameof(DayOfWeek), nameof(TimeIn), nameof(TimeOut), IsUnique = true)]
 public class Schedules
 {
