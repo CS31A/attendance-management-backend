@@ -402,6 +402,21 @@ public class ScheduleServiceTest : IDisposable
     }
 
     [Fact]
+    public async Task CreateScheduleAsync_TransientConcurrencyDbUpdateException_ThrowsEntityConflictException()
+    {
+        var createSchedule = CreateValidScheduleRequest();
+        _mockScheduleRepository
+            .Setup(r => r.AddScheduleAsync(It.IsAny<Schedules>()))
+            .ThrowsAsync(CreateTransientScheduleConcurrencyException());
+
+        var exception = await Assert.ThrowsAsync<EntityConflictException>(() => _service.CreateScheduleAsync(createSchedule));
+
+        Assert.Equal("Schedule", exception.EntityName);
+        Assert.Equal("concurrency", exception.ConflictType);
+        Assert.Contains("Please retry", exception.Message);
+    }
+
+    [Fact]
     public async Task GetScheduleByUuidAsync_ReturnsMappedSchedule_WhenFound()
     {
         var scheduleUuid = Guid.NewGuid();
@@ -844,6 +859,23 @@ public class ScheduleServiceTest : IDisposable
         Assert.Contains("Schedule conflict", exception.Message);
     }
 
+    [Fact]
+    public async Task UpdateScheduleAsync_TransientConcurrencyDbUpdateException_ThrowsEntityConflictException()
+    {
+        var scheduleId = Guid.NewGuid();
+        var existingSchedule = CreateExistingSchedule(scheduleId);
+        _mockScheduleRepository.Setup(r => r.GetScheduleByIdAsync(scheduleId)).ReturnsAsync(existingSchedule);
+        _mockScheduleRepository
+            .Setup(r => r.UpdateScheduleAsync(It.IsAny<Schedules>()))
+            .ThrowsAsync(CreateTransientScheduleConcurrencyException());
+
+        var exception = await Assert.ThrowsAsync<EntityConflictException>(() => _service.UpdateScheduleAsync(scheduleId, new UpdateSchedule { DayOfWeek = "Tuesday" }));
+
+        Assert.Equal("Schedule", exception.EntityName);
+        Assert.Equal("concurrency", exception.ConflictType);
+        Assert.Contains("Please retry", exception.Message);
+    }
+
     #endregion
 
     private CreateSchedule CreateValidScheduleRequest()
@@ -1005,5 +1037,12 @@ public class ScheduleServiceTest : IDisposable
         return new DbUpdateException(
             "Could not save schedule",
             new InvalidOperationException("Cannot insert duplicate key row in object 'dbo.Schedules' with unique index 'IX_Schedules_ClassroomId_DayOfWeek_TimeIn_TimeOut'."));
+    }
+
+    private static DbUpdateException CreateTransientScheduleConcurrencyException()
+    {
+        return new DbUpdateException(
+            "Could not save schedule",
+            new InvalidOperationException("Transaction (Process ID 54) was deadlocked on lock resources with another process and has been chosen as the deadlock victim. Rerun the transaction."));
     }
 }

@@ -144,6 +144,24 @@ public static class ExceptionHandlingHelper
             : new EntityServiceException(entityName, operation, message);
     }
 
+    public static bool IsTransientConcurrencyFailure(Exception ex)
+    {
+        for (var current = ex; current != null; current = current.InnerException)
+        {
+            var message = current.Message;
+            if (message.Contains("deadlocked on lock resources", StringComparison.OrdinalIgnoreCase) ||
+                message.Contains("deadlock victim", StringComparison.OrdinalIgnoreCase) ||
+                message.Contains("snapshot isolation transaction aborted due to update conflict", StringComparison.OrdinalIgnoreCase) ||
+                message.Contains("could not serialize access", StringComparison.OrdinalIgnoreCase) ||
+                message.Contains("serialization failure", StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     private static bool IsUniqueConstraintViolationMessage(string message)
     {
         return message.Contains("UNIQUE constraint failed", StringComparison.OrdinalIgnoreCase) ||

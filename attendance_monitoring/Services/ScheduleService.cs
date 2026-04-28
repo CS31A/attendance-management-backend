@@ -220,7 +220,7 @@ namespace attendance_monitoring.Services
                 var sectionId = await ScheduleServiceSupport.ResolveSectionIdAsync(context, createSchedule.SectionId).ConfigureAwait(false);
                 var instructorId = await ScheduleServiceSupport.ResolveInstructorIdAsync(context, createSchedule.InstructorId).ConfigureAwait(false);
 
-                return await ExecuteInSerializableTransactionAsync(async () =>
+                return await ExecuteInTransactionAsync(async () =>
                 {
                     await ScheduleConflictValidator.ValidateScheduleDoesNotOverlapAsync(
                         scheduleRepository,
@@ -266,6 +266,11 @@ namespace attendance_monitoring.Services
             {
                 logger.LogWarning(ex, "Schedule creation failed due to duplicate schedule constraint");
                 throw ScheduleConflictValidator.CreateDuplicateScheduleConflict(ex);
+            }
+            catch (Exception ex) when (ScheduleConflictValidator.IsTransientConcurrencyConflict(ex))
+            {
+                logger.LogWarning(ex, "Schedule creation failed due to concurrent schedule change");
+                throw ScheduleConflictValidator.CreateTransientConcurrencyConflict(ex);
             }
             catch (Exception ex)
             {
@@ -333,7 +338,7 @@ namespace attendance_monitoring.Services
                     ? existingSchedule.DayOfWeek
                     : updateSchedule.DayOfWeek;
 
-                return await ExecuteInSerializableTransactionAsync(async () =>
+                return await ExecuteInTransactionAsync(async () =>
                 {
                     await ScheduleConflictValidator.ValidateScheduleDoesNotOverlapAsync(
                         scheduleRepository,
@@ -395,6 +400,11 @@ namespace attendance_monitoring.Services
             {
                 logger.LogWarning(ex, "Schedule update failed due to duplicate schedule constraint for ID: {Id}", id);
                 throw ScheduleConflictValidator.CreateDuplicateScheduleConflict(ex);
+            }
+            catch (Exception ex) when (ScheduleConflictValidator.IsTransientConcurrencyConflict(ex))
+            {
+                logger.LogWarning(ex, "Schedule update failed due to concurrent schedule change for ID: {Id}", id);
+                throw ScheduleConflictValidator.CreateTransientConcurrencyConflict(ex);
             }
             catch (Exception ex)
             {
@@ -500,7 +510,7 @@ namespace attendance_monitoring.Services
             };
         }
 
-        private async Task<T> ExecuteInSerializableTransactionAsync<T>(Func<Task<T>> operation)
+        private async Task<T> ExecuteInTransactionAsync<T>(Func<Task<T>> operation)
         {
             if (context.Database.IsInMemory() || context.Database.CurrentTransaction != null)
             {
@@ -510,7 +520,11 @@ namespace attendance_monitoring.Services
             var strategy = context.Database.CreateExecutionStrategy();
             return await strategy.ExecuteAsync(async () =>
             {
-                await using var transaction = await context.Database.BeginTransactionAsync(IsolationLevel.Serializable).ConfigureAwait(false);
+                // ReadCommitted is sufficient because the overlap queries use
+                // WITH (UPDLOCK, HOLDLOCK) which provides the required serialization.
+                // Serializable isolation caused 82% deadlock rates under concurrent load;
+                // see https://michaeljswart.com/2011/09/mythbusting-concurrent-updateinsert-solutions/
+                await using var transaction = await context.Database.BeginTransactionAsync(IsolationLevel.ReadCommitted).ConfigureAwait(false);
                 try
                 {
                     var result = await operation().ConfigureAwait(false);

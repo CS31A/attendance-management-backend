@@ -28,6 +28,20 @@ internal static class ScheduleConflictValidator
             ex);
     }
 
+    public static bool IsTransientConcurrencyConflict(Exception ex)
+    {
+        return ExceptionHandlingHelper.IsTransientConcurrencyFailure(ex);
+    }
+
+    public static EntityConflictException CreateTransientConcurrencyConflict(Exception ex)
+    {
+        return new EntityConflictException(
+            "Schedule",
+            "concurrency",
+            "Schedule conflict: another schedule change completed at the same time. Please retry.",
+            ex);
+    }
+
     public static async Task ValidateScheduleDoesNotOverlapAsync(
         IScheduleRepository scheduleRepository,
         Guid classroomId,
@@ -38,6 +52,10 @@ internal static class ScheduleConflictValidator
         TimeOnly timeOut,
         Guid? excludedScheduleId = null)
     {
+        // Each overlap query uses WITH (UPDLOCK, HOLDLOCK) to serialize concurrent
+        // writers on the same resource+day+time-range. Sequential execution is
+        // intentional: the first query acquires the range lock, and subsequent
+        // queries in the same transaction inherit the lock scope.
         var classroomConflict = await scheduleRepository.FindClassroomOverlapAsync(
             classroomId,
             dayOfWeek,

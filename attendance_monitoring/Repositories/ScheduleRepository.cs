@@ -214,12 +214,13 @@ namespace attendance_monitoring.Repositories
             TimeOnly timeOut,
             Guid? excludedScheduleId = null)
         {
-            return FindOverlapAsync(
+            return FindOverlapWithLockAsync(
+                classroomId,
                 dayOfWeek,
                 timeIn,
                 timeOut,
                 excludedScheduleId,
-                schedule => schedule.ClassroomId == classroomId);
+                "ClassroomId");
         }
 
         public Task<ScheduleConflictDetails?> FindInstructorOverlapAsync(
@@ -229,12 +230,13 @@ namespace attendance_monitoring.Repositories
             TimeOnly timeOut,
             Guid? excludedScheduleId = null)
         {
-            return FindOverlapAsync(
+            return FindOverlapWithLockAsync(
+                instructorId,
                 dayOfWeek,
                 timeIn,
                 timeOut,
                 excludedScheduleId,
-                schedule => schedule.InstructorId == instructorId);
+                "InstructorId");
         }
 
         public Task<ScheduleConflictDetails?> FindSectionOverlapAsync(
@@ -244,12 +246,82 @@ namespace attendance_monitoring.Repositories
             TimeOnly timeOut,
             Guid? excludedScheduleId = null)
         {
-            return FindOverlapAsync(
+            return FindOverlapWithLockAsync(
+                sectionId,
                 dayOfWeek,
                 timeIn,
                 timeOut,
                 excludedScheduleId,
-                schedule => schedule.SectionId == sectionId);
+                "SectionId");
+        }
+
+        /// <summary>
+        /// Finds the first overlapping schedule for a given resource (classroom, instructor, or section)
+        /// using UPDLOCK + HOLDLOCK to prevent TOCTOU race conditions under concurrent writes.
+        /// </summary>
+        /// <remarks>
+        /// UPDLOCK acquires update locks (incompatible with other UPDLOCKs) so concurrent
+        /// transactions block instead of deadlocking. HOLDLOCK holds range locks until
+        /// transaction commit, preventing phantom inserts in the checked time range.
+        /// See: https://michaeljswart.com/2011/09/mythbusting-concurrent-updateinsert-solutions/
+        /// </remarks>
+        private async Task<ScheduleConflictDetails?> FindOverlapWithLockAsync(
+            Guid resourceId,
+            string dayOfWeek,
+            TimeOnly timeIn,
+            TimeOnly timeOut,
+            Guid? excludedScheduleId,
+            string predicateColumn)
+        {
+            if (!context.Database.IsSqlServer())
+            {
+                return await FindOverlapAsync(
+                    dayOfWeek,
+                    timeIn,
+                    timeOut,
+                    excludedScheduleId,
+                    predicateColumn switch
+                    {
+                        "ClassroomId" => schedule => schedule.ClassroomId == resourceId,
+                        "InstructorId" => schedule => schedule.InstructorId == resourceId,
+                        "SectionId" => schedule => schedule.SectionId == resourceId,
+                        _ => throw new ArgumentOutOfRangeException(nameof(predicateColumn), predicateColumn, "Unsupported schedule overlap predicate."),
+                    }).ConfigureAwait(false);
+            }
+
+            // Step 1: Lock the range and find the conflicting schedule ID in a single round-trip.
+            // The WITH (UPDLOCK, HOLDLOCK) hint serializes concurrent writers on the same
+            // (resource, day, time-range) without the deadlock risk of SERIALIZABLE isolation.
+            var excludedScheduleParameter = excludedScheduleId.HasValue
+                ? excludedScheduleId.Value
+                : (object)DBNull.Value;
+            var overlapSql = $@"
+                SELECT TOP 1 s.Id AS Value
+                FROM Schedules s WITH (UPDLOCK, HOLDLOCK)
+                WHERE s.{predicateColumn} = {{0}}
+                  AND s.DayOfWeek = {{1}}
+                  AND s.TimeIn < {{2}} AND {{3}} < s.TimeOut
+                  AND ({{4}} IS NULL OR s.Id != {{4}})
+                ORDER BY s.TimeIn";
+            var conflictingId = await context.Database
+                .SqlQueryRaw<Guid>(
+                    overlapSql,
+                    resourceId,
+                    dayOfWeek,
+                    timeOut,
+                    timeIn,
+                    excludedScheduleParameter)
+                .FirstOrDefaultAsync();
+
+            if (conflictingId == Guid.Empty)
+            {
+                return null;
+            }
+
+            // Step 2: Retrieve full conflict details with navigation properties.
+            // This is a fast PK lookup; the range lock from Step 1 is still held
+            // because both queries execute within the same transaction.
+            return await GetScheduleConflictDetailsAsync(conflictingId);
         }
 
         private Task<ScheduleConflictDetails?> FindOverlapAsync(
@@ -278,6 +350,38 @@ namespace attendance_monitoring.Repositories
                     InstructorName = schedule.Instructor.Firstname + " " + schedule.Instructor.Lastname,
                 })
                 .FirstOrDefaultAsync();
+        }
+
+        private async Task<ScheduleConflictDetails?> GetScheduleConflictDetailsAsync(Guid scheduleId)
+        {
+            var schedule = await context.Schedules
+                .AsNoTracking()
+                .Include(s => s.Subject)
+                .Include(s => s.Classroom)
+                .Include(s => s.Section)
+                .Include(s => s.Instructor)
+                    .ThenInclude(i => i.User)
+                .FirstOrDefaultAsync(s => s.Id == scheduleId)
+                .ConfigureAwait(false);
+
+            if (schedule == null)
+            {
+                return null;
+            }
+
+            return new ScheduleConflictDetails
+            {
+                ScheduleId = schedule.Id,
+                DayOfWeek = schedule.DayOfWeek,
+                TimeIn = schedule.TimeIn,
+                TimeOut = schedule.TimeOut,
+                SubjectName = schedule.Subject?.Name,
+                ClassroomName = schedule.Classroom?.Name,
+                SectionName = schedule.Section?.Name,
+                InstructorName = schedule.Instructor != null
+                    ? $"{schedule.Instructor.Firstname} {schedule.Instructor.Lastname}"
+                    : null,
+            };
         }
         #endregion
 
