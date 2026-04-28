@@ -836,10 +836,6 @@ namespace attendance_monitoring.Migrations
 
                     b.HasIndex("DayOfWeek");
 
-                    b.HasIndex("InstructorId");
-
-                    b.HasIndex("SectionId");
-
                     b.HasIndex("SubjectId");
 
                     b.HasIndex("TimeIn");
@@ -848,6 +844,10 @@ namespace attendance_monitoring.Migrations
 
                     b.HasIndex("ClassroomId", "DayOfWeek", "TimeIn", "TimeOut")
                         .IsUnique();
+
+                    b.HasIndex("InstructorId", "DayOfWeek", "TimeIn", "TimeOut");
+
+                    b.HasIndex("SectionId", "DayOfWeek", "TimeIn", "TimeOut");
 
                     b.ToTable("Schedules");
                 });
