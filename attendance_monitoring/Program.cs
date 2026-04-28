@@ -64,6 +64,9 @@ app.UseStaticFiles();
 // Core pipeline (HTTPS, CORS, Auth)
 app.UseCorePipeline();
 
+// Health check endpoints
+app.MapHealthCheckEndpoints();
+
 // Global exception handler
 app.UseGlobalExceptionHandler();
 

@@ -51,9 +51,11 @@ This document lists all the API endpoints for the attendance monitoring system.
 - `PUT /api/Course/{id}`: Update a course record
 - `DELETE /api/Course/{id}`: Delete a course by ID
 
-## HealthCheckController
+## Health Endpoints (Middleware)
 
-- `GET /api/health`: Check the health of the API and database connection
+- `GET /health/live`: Liveness probe — returns 200 OK when the application is running (no dependencies checked)
+- `GET /health/ready`: Readiness probe — checks database connectivity and data integrity; returns per-check statuses
+- `GET /health`: Detailed health — runs all registered health checks with durations and diagnostics
 
 ## InstructorController
 

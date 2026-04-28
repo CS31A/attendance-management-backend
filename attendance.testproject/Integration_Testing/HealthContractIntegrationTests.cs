@@ -1,17 +1,14 @@
 using System.Net;
 using System.Text.Json;
-using attendance_monitoring.Controllers;
 using attendance_monitoring.Data;
 using attendance_monitoring.Extensions.ServiceCollectionExtensions;
 using attendance_monitoring.Extensions.WebApplicationExtensions;
 using attendance_monitoring.IServices;
-using attendance_monitoring.Models.DTO.Response;
 using attendance_monitoring.Services;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.AspNetCore.Mvc.ApplicationParts;
 using Microsoft.AspNetCore.TestHost;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Hosting;
@@ -21,97 +18,80 @@ namespace attendance.testproject.Integration_Testing;
 public sealed class HealthContractIntegrationTests
 {
     [Fact]
-    public async Task GetApiHealthReady_ReturnsCamelCaseHealthPayload()
+    public async Task GetHealthLive_ReturnsHealthy()
     {
-        await using var host = await HealthContractHost.CreateAsync();
+        await using var host = await HealthEndpointHost.CreateAsync();
 
-        var response = await host.Client.GetAsync("/api/health/ready");
+        var response = await host.Client.GetAsync("/health/live");
+        var payload = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.True(payload.RootElement.TryGetProperty("status", out var status));
+        Assert.Equal("Healthy", status.GetString());
+        Assert.True(payload.RootElement.TryGetProperty("timestamp", out _));
+    }
+
+    [Fact]
+    public async Task GetHealthReady_Returns200WithChecks()
+    {
+        await using var host = await HealthEndpointHost.CreateAsync();
+
+        var response = await host.Client.GetAsync("/health/ready");
         var payload = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.True(payload.RootElement.TryGetProperty("status", out var status));
         Assert.True(payload.RootElement.TryGetProperty("timestamp", out _));
-        Assert.True(payload.RootElement.TryGetProperty("service", out _));
-        Assert.True(payload.RootElement.TryGetProperty("database", out var database));
-        Assert.True(payload.RootElement.TryGetProperty("dataIntegrity", out var dataIntegrity));
-
-        Assert.Equal("healthy", status.GetString());
-        Assert.True(database.TryGetProperty("status", out var databaseStatus));
-        Assert.True(database.TryGetProperty("connected", out var databaseConnected));
-        Assert.Equal("healthy", databaseStatus.GetString());
-        Assert.True(databaseConnected.GetBoolean());
-
-        Assert.True(dataIntegrity.TryGetProperty("status", out var integrityStatus));
-        Assert.True(dataIntegrity.TryGetProperty("orphanedUserCount", out _));
-        Assert.True(dataIntegrity.TryGetProperty("totalSoftDeleteInconsistencies", out _));
-        Assert.True(dataIntegrity.TryGetProperty("softDeleteInconsistencies", out var softDeleteInconsistencies));
-        Assert.True(dataIntegrity.TryGetProperty("checkedAt", out _));
-        Assert.True(dataIntegrity.TryGetProperty("isHealthy", out var integrityHealthy));
-        Assert.Equal("healthy", integrityStatus.GetString());
-        Assert.True(integrityHealthy.GetBoolean());
-
-        Assert.True(softDeleteInconsistencies.TryGetProperty("students", out _));
-        Assert.True(softDeleteInconsistencies.TryGetProperty("instructors", out _));
-        Assert.True(softDeleteInconsistencies.TryGetProperty("admins", out _));
-
-        Assert.False(payload.RootElement.TryGetProperty("Status", out _));
-        Assert.False(database.TryGetProperty("Connected", out _));
-        Assert.False(dataIntegrity.TryGetProperty("SoftDeleteInconsistencies", out _));
+        Assert.True(payload.RootElement.TryGetProperty("checks", out var checks));
+        Assert.True(checks.GetArrayLength() >= 1);
     }
 
     [Fact]
-    public async Task GetSwaggerV1SwaggerJson_UsesCamelCaseHealthSchemaProperties()
+    public async Task GetHealthDetailed_ReturnsAllChecks()
     {
-        await using var host = await HealthContractHost.CreateAsync();
+        await using var host = await HealthEndpointHost.CreateAsync();
 
-        var response = await host.Client.GetAsync("/swagger/v1/swagger.json");
-        var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
-        var schemas = document.RootElement
-            .GetProperty("components")
-            .GetProperty("schemas");
+        var response = await host.Client.GetAsync("/health");
+        var payload = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        Assert.True(schemas.TryGetProperty(nameof(HealthStatusResponseDto), out var healthSchema));
-        Assert.True(schemas.TryGetProperty(nameof(HealthComponentStatusDto), out var componentSchema));
-        Assert.True(schemas.TryGetProperty(nameof(DataIntegrityStatusResponseDto), out var dataIntegritySchema));
-        Assert.True(schemas.TryGetProperty(nameof(SoftDeleteInconsistenciesResponseDto), out var softDeleteSchema));
+        Assert.True(payload.RootElement.TryGetProperty("status", out var status));
+        Assert.True(payload.RootElement.TryGetProperty("timestamp", out _));
+        Assert.True(payload.RootElement.TryGetProperty("totalDuration", out _));
+        Assert.True(payload.RootElement.TryGetProperty("checks", out var checks));
+        Assert.True(checks.GetArrayLength() >= 1);
 
-        AssertContainsCamelCaseProperties(healthSchema, "status", "timestamp", "service", "database", "dataIntegrity");
-        AssertContainsCamelCaseProperties(componentSchema, "status", "connected", "error");
-        AssertContainsCamelCaseProperties(
-            dataIntegritySchema,
-            "orphanedUserCount",
-            "totalSoftDeleteInconsistencies",
-            "softDeleteInconsistencies",
-            "checkedAt",
-            "isHealthy",
-            "status",
-            "error");
-        AssertContainsCamelCaseProperties(softDeleteSchema, "students", "instructors", "admins");
-    }
-
-    private static void AssertContainsCamelCaseProperties(JsonElement schema, params string[] propertyNames)
-    {
-        var properties = schema.GetProperty("properties");
-
-        foreach (var propertyName in propertyNames)
+        foreach (var check in checks.EnumerateArray())
         {
-            Assert.True(properties.TryGetProperty(propertyName, out _), $"Expected schema property '{propertyName}'.");
-            Assert.False(properties.TryGetProperty(ToPascalCase(propertyName), out _), $"Unexpected PascalCase schema property '{ToPascalCase(propertyName)}'.");
+            Assert.True(check.TryGetProperty("name", out _));
+            Assert.True(check.TryGetProperty("status", out _));
+            Assert.True(check.TryGetProperty("duration", out _));
         }
     }
 
-    private static string ToPascalCase(string value) => char.ToUpperInvariant(value[0]) + value[1..];
+    [Fact]
+    public async Task GetHealthReady_ReturnsUnhealthy_WhenDatabaseIsUnavailable()
+    {
+        // Use a connection string pointing to a nonexistent directory to force SQLite failure
+        var connectionString = "Data Source=/invalid-nonexistent-path/db.sqlite";
+        await using var host = await HealthEndpointHost.CreateAsync(connectionString);
+        var response = await host.Client.GetAsync("/health/ready");
+        var payload = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
 
-    private sealed class HealthContractHost : IAsyncDisposable
+        Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
+        Assert.True(payload.RootElement.TryGetProperty("status", out var status));
+        Assert.Equal("Unhealthy", status.GetString());
+    }
+
+    private sealed class HealthEndpointHost : IAsyncDisposable
     {
         private readonly WebApplication _app;
-        private readonly SqliteConnection _connection;
+        private readonly SqliteConnection? _connection;
 
-        private HealthContractHost(
+        private HealthEndpointHost(
             WebApplication app,
             HttpClient client,
-            SqliteConnection connection)
+            SqliteConnection? connection)
         {
             _app = app;
             Client = client;
@@ -120,11 +100,18 @@ public sealed class HealthContractIntegrationTests
 
         public HttpClient Client { get; }
 
-        public static async Task<HealthContractHost> CreateAsync()
+        public static async Task<HealthEndpointHost> CreateAsync(string? connectionStringOverride = null)
         {
-            var connectionString = $"Data Source=file:health-contract-{Guid.NewGuid():N}?mode=memory&cache=shared";
-            var connection = new SqliteConnection(connectionString);
-            await connection.OpenAsync();
+            var useRealDb = string.IsNullOrEmpty(connectionStringOverride);
+            var connectionString = connectionStringOverride
+                ?? $"Data Source=file:health-integration-{Guid.NewGuid():N}?mode=memory&cache=shared";
+
+            SqliteConnection? connection = null;
+            if (useRealDb)
+            {
+                connection = new SqliteConnection(connectionString);
+                await connection.OpenAsync();
+            }
 
             var builder = WebApplication.CreateBuilder(new WebApplicationOptions
             {
@@ -134,15 +121,9 @@ public sealed class HealthContractIntegrationTests
             builder.WebHost.UseTestServer();
             builder.Services.AddLogging();
             builder.Services.AddRouting();
-            builder.Services.AddResponseHandling();
-            builder.Services.AddApiDocumentation();
             builder.Services.AddDbContext<ApplicationDbContext>(options => options.UseSqlite(connectionString));
-            builder.Services.AddControllers()
-                .ConfigureApplicationPartManager(manager =>
-                {
-                    manager.ApplicationParts.Clear();
-                    manager.ApplicationParts.Add(new AssemblyPart(typeof(HealthCheckController).Assembly));
-                });
+
+            builder.Services.AddHealthCheckServices();
 
             var cleanupService = new Mock<IOrphanedUserCleanupService>(MockBehavior.Strict);
             cleanupService
@@ -158,16 +139,20 @@ public sealed class HealthContractIntegrationTests
                 });
 
             builder.Services.AddSingleton(cleanupService);
-            builder.Services.AddSingleton<IOrphanedUserCleanupService>(sp => sp.GetRequiredService<Mock<IOrphanedUserCleanupService>>().Object);
+            builder.Services.AddSingleton<IOrphanedUserCleanupService>(
+                sp => sp.GetRequiredService<Mock<IOrphanedUserCleanupService>>().Object);
 
             var app = builder.Build();
-            app.UseDevelopmentTools();
-            app.MapControllers();
 
-            using (var scope = app.Services.CreateScope())
+            app.MapHealthCheckEndpoints();
+
+            if (useRealDb)
             {
-                var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-                await dbContext.Database.EnsureCreatedAsync();
+                using (var scope = app.Services.CreateScope())
+                {
+                    var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+                    await dbContext.Database.EnsureCreatedAsync();
+                }
             }
 
             await app.StartAsync();
@@ -175,14 +160,15 @@ public sealed class HealthContractIntegrationTests
             var client = app.GetTestClient();
             client.BaseAddress = new Uri("https://localhost");
 
-            return new HealthContractHost(app, client, connection);
+            return new HealthEndpointHost(app, client, connection);
         }
 
         public async ValueTask DisposeAsync()
         {
             Client.Dispose();
             await _app.DisposeAsync();
-            await _connection.DisposeAsync();
+            if (_connection is not null)
+                await _connection.DisposeAsync();
         }
     }
 }
