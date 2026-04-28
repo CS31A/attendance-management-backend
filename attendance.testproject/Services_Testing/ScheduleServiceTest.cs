@@ -119,7 +119,6 @@ public class ScheduleServiceTest : IDisposable
     private Guid ClassroomUuid => _context.Classrooms.Single().Id;
     private Guid SectionUuid => _context.Sections.Single().Id;
     private Guid InstructorUuid => _context.Instructors.Single().Id;
-    private const string ConflictMessage = "Schedule conflict: classroom Room 101 is already booked on Monday from 08:00 to 10:00.";
 
     public void Dispose()
     {
