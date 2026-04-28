@@ -233,6 +233,63 @@ public class FingerprintServiceTest
     }
 
     [Fact]
+    public async Task CancelEnrollmentSessionAsync_WithPendingSession_CancelsSessionAndReleasesDevice()
+    {
+        var service = CreateService();
+        var now = DateTime.UtcNow;
+        var device = new FingerprintDevice
+        {
+            Id = Guid.NewGuid(),
+            DeviceIdentifier = "esp32-attendance-01",
+            IsActive = true,
+            CreatedAt = now,
+            UpdatedAt = now
+        };
+        var student = new Student
+        {
+            Id = Guid.NewGuid(),
+            UserId = "user-1",
+            Firstname = "John",
+            Lastname = "Doe",
+            IsDeleted = false
+        };
+        var enrollmentSession = new FingerprintEnrollmentSession
+        {
+            EnrollmentSessionId = Guid.NewGuid(),
+            DeviceId = device.Id,
+            StudentId = student.Id,
+            RequestedByUserId = "admin-1",
+            AssignedSensorFingerprintId = 9,
+            Status = "Pending",
+            ExpiresAt = now.AddMinutes(5),
+            CreatedAt = now,
+            UpdatedAt = now
+        };
+
+        _context.FingerprintDevices.Add(device);
+        _context.Students.Add(student);
+        _context.FingerprintEnrollmentSessions.Add(enrollmentSession);
+        await _context.SaveChangesAsync();
+
+        _mockStudentRepository
+            .Setup(repository => repository.GetStudentByIdAsync(student.Id))
+            .ReturnsAsync(student);
+
+        var response = await service.CancelEnrollmentSessionAsync(enrollmentSession.Id, CreatePrivilegedPrincipal());
+
+        Assert.True(response.Success);
+        Assert.Equal("Cancelled", response.Status);
+
+        var persistedSession = await _context.FingerprintEnrollmentSessions.SingleAsync();
+        Assert.Equal("Cancelled", persistedSession.Status);
+        Assert.NotNull(persistedSession.CompletedAt);
+        Assert.Equal("Enrollment cancelled by user", persistedSession.FailureReason);
+
+        var pendingResponse = await service.GetPendingEnrollmentSessionAsync(device.DeviceIdentifier, "device-secret");
+        Assert.Null(pendingResponse);
+    }
+
+    [Fact]
     public async Task GetPendingEnrollmentSessionAsync_WithGlobalKeyForDifferentDevice_ThrowsUnauthorized()
     {
         var configuration = new ConfigurationBuilder()
@@ -347,6 +404,63 @@ public class FingerprintServiceTest
         Assert.NotEqual(Guid.Empty, persistedSession.Id);
         Assert.NotEqual(Guid.Empty, persistedSession.EnrollmentSessionId);
         Assert.NotEqual(persistedSession.Id, persistedSession.EnrollmentSessionId);
+    }
+
+    [Fact]
+    public async Task CompleteEnrollmentSessionAsync_WithCancelledSession_DoesNotCreateFingerprint()
+    {
+        var service = CreateService();
+        var student = new Student
+        {
+            Id = Guid.NewGuid(),
+            UserId = "user-1",
+            Firstname = "John",
+            Lastname = "Doe",
+            IsDeleted = false
+        };
+        var device = new FingerprintDevice
+        {
+            Id = Guid.NewGuid(),
+            DeviceIdentifier = "esp32-attendance-01",
+            IsActive = true,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+        var enrollmentSession = new FingerprintEnrollmentSession
+        {
+            EnrollmentSessionId = Guid.NewGuid(),
+            DeviceId = device.Id,
+            StudentId = student.Id,
+            RequestedByUserId = "admin-1",
+            AssignedSensorFingerprintId = 9,
+            Status = "Cancelled",
+            ExpiresAt = DateTime.UtcNow.AddMinutes(5),
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow,
+            CompletedAt = DateTime.UtcNow,
+            FailureReason = "Enrollment cancelled by user"
+        };
+
+        _context.FingerprintDevices.Add(device);
+        _context.FingerprintEnrollmentSessions.Add(enrollmentSession);
+        await _context.SaveChangesAsync();
+
+        var ex = await Assert.ThrowsAsync<ValidationException>(() =>
+            service.CompleteEnrollmentSessionAsync(
+                new CompleteFingerprintEnrollmentRequest
+                {
+                    Id = enrollmentSession.Id,
+                    DeviceId = device.DeviceIdentifier,
+                    SensorFingerprintId = enrollmentSession.AssignedSensorFingerprintId,
+                    Success = true,
+                    BackupTemplateBase64 = Convert.ToBase64String("raw-template-data"u8.ToArray())
+                },
+                "device-secret"));
+
+        Assert.Equal("The fingerprint enrollment session is not active", ex.Message);
+        _mockFingerprintRepository.Verify(
+            repository => repository.CreateFingerprintAsync(It.IsAny<Fingerprint>()),
+            Times.Never);
     }
 
     [Fact]

@@ -146,6 +146,39 @@ public class FingerprintControllerTest
     }
 
     [Fact]
+    public async Task CancelEnrollmentSession_ReturnsCancelledSession()
+    {
+        var sessionId = Guid.NewGuid();
+        var response = new FingerprintEnrollmentSessionResponseDto
+        {
+            Success = true,
+            Message = "Fingerprint enrollment session ready",
+            EnrollmentSessionId = sessionId,
+            StudentId = Guid.NewGuid(),
+            StudentName = "Test Student",
+            DeviceId = "esp32-test",
+            AssignedSensorFingerprintId = 5,
+            Status = "Cancelled",
+            ExpiresAt = DateTime.UtcNow.AddMinutes(5),
+            FailureReason = "Enrollment cancelled by user"
+        };
+
+        _mockFingerprintService
+            .Setup(service => service.CancelEnrollmentSessionAsync(sessionId, It.IsAny<ClaimsPrincipal>()))
+            .ReturnsAsync(response);
+
+        var result = await _controller.CancelEnrollmentSession(sessionId);
+
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        var dto = Assert.IsType<FingerprintEnrollmentSessionResponseDto>(okResult.Value);
+        Assert.Equal(sessionId, dto.EnrollmentSessionId);
+        Assert.Equal("Cancelled", dto.Status);
+        _mockFingerprintService.Verify(
+            service => service.CancelEnrollmentSessionAsync(sessionId, It.IsAny<ClaimsPrincipal>()),
+            Times.Once);
+    }
+
+    [Fact]
     public async Task GetDevices_ReturnsActiveDevices()
     {
         var deviceUuid = Guid.NewGuid();

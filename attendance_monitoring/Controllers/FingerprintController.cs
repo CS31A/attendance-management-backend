@@ -160,6 +160,40 @@ public class FingerprintController(
         }
     }
 
+    /// <summary>
+    /// Cancels an active enrollment session so the device can accept new enrollment work.
+    /// Requires Admin or Instructor role.
+    /// </summary>
+    [HttpDelete("enrollment-sessions/{sessionId:guid}")]
+    [Authorize(Policy = "PrivilegedPolicy")]
+    [ProducesResponseType(typeof(FingerprintEnrollmentSessionResponseDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(FingerprintEnrollmentSessionResponseDto), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(FingerprintEnrollmentSessionResponseDto), StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<FingerprintEnrollmentSessionResponseDto>> CancelEnrollmentSession(Guid sessionId)
+    {
+        try
+        {
+            var response = await fingerprintService.CancelEnrollmentSessionAsync(sessionId, User);
+            return Ok(response);
+        }
+        catch (EntityNotFoundException<Guid> ex)
+        {
+            return NotFound(new FingerprintEnrollmentSessionResponseDto
+            {
+                Success = false,
+                Message = ex.Message
+            });
+        }
+        catch (EntityUnauthorizedException ex)
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new FingerprintEnrollmentSessionResponseDto
+            {
+                Success = false,
+                Message = ex.Message
+            });
+        }
+    }
+
     #endregion
 
     #region Scan/Attendance Endpoints

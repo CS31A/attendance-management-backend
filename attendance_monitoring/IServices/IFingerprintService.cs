@@ -50,6 +50,14 @@ public interface IFingerprintService
     Task<FingerprintEnrollmentSessionResponseDto> GetEnrollmentSessionAsync(Guid sessionId, ClaimsPrincipal user);
 
     /// <summary>
+    /// Cancels an active enrollment session by its public UUID.
+    /// </summary>
+    /// <param name="sessionId">The public enrollment session UUID.</param>
+    /// <param name="user">The authenticated admin or instructor cancelling the session.</param>
+    /// <returns>The cancelled enrollment session metadata.</returns>
+    Task<FingerprintEnrollmentSessionResponseDto> CancelEnrollmentSessionAsync(Guid sessionId, ClaimsPrincipal user);
+
+    /// <summary>
     /// Completes an enrollment session after device-side enrollment succeeds or fails.
     /// </summary>
     /// <param name="request">The device completion payload.</param>

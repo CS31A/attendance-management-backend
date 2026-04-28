@@ -43,6 +43,7 @@ public class FingerprintService(
     private const string CompletedStatus = "Completed";
     private const string FailedStatus = "Failed";
     private const string ExpiredStatus = "Expired";
+    private const string CancelledStatus = "Cancelled";
     private static readonly TimeSpan EnrollmentLifetime = TimeSpan.FromMinutes(5);
     private readonly IDataProtector _templateProtector =
         dataProtectionProvider.CreateProtector("attendance-monitoring.fingerprint.template-backup.v1");
@@ -204,6 +205,36 @@ public class FingerprintService(
         return MapEnrollmentSessionDto(enrollmentSession, enrollmentSession.Device.DeviceIdentifier, student);
     }
 
+    public async Task<FingerprintEnrollmentSessionResponseDto> CancelEnrollmentSessionAsync(Guid sessionId, ClaimsPrincipal user)
+    {
+        await EnsurePrivilegedUserAsync(user, "cancel fingerprint enrollment").ConfigureAwait(false);
+
+        var enrollmentSession = await context.FingerprintEnrollmentSessions
+            .Include(session => session.Device)
+            .FirstOrDefaultAsync(session => session.Id == sessionId)
+            .ConfigureAwait(false);
+
+        if (enrollmentSession == null)
+        {
+            throw new EntityNotFoundException<Guid>("FingerprintEnrollmentSession", sessionId);
+        }
+
+        if (enrollmentSession.Status == PendingStatus || enrollmentSession.Status == InProgressStatus)
+        {
+            var now = DateTime.UtcNow;
+            enrollmentSession.Status = CancelledStatus;
+            enrollmentSession.CompletedAt = now;
+            enrollmentSession.FailureReason = "Enrollment cancelled by user";
+            enrollmentSession.UpdatedAt = now;
+            await context.SaveChangesAsync().ConfigureAwait(false);
+        }
+
+        var student = await studentRepository.GetStudentByIdAsync(enrollmentSession.StudentId).ConfigureAwait(false)
+                      ?? throw new EntityNotFoundException<Guid>("Student", enrollmentSession.StudentId);
+
+        return MapEnrollmentSessionDto(enrollmentSession, enrollmentSession.Device.DeviceIdentifier, student);
+    }
+
     public async Task<FingerprintRegistrationResponseDto> CompleteEnrollmentSessionAsync(
         CompleteFingerprintEnrollmentRequest request,
         string apiKey)
@@ -229,6 +260,11 @@ public class FingerprintService(
         if (!enrollmentSession.Device.IsActive)
         {
             throw new ValidationException("The fingerprint device is inactive");
+        }
+
+        if (enrollmentSession.Status != PendingStatus && enrollmentSession.Status != InProgressStatus)
+        {
+            throw new ValidationException("The fingerprint enrollment session is not active");
         }
 
         enrollmentSession.Device.LastSeenAt = DateTime.UtcNow;
