@@ -208,7 +208,7 @@ public class InstructorRepository(ApplicationDbContext context) : IInstructorRep
                 .ThenInclude(sec => sec.Course)
             .Include(s => s.Subject)
             .Include(s => s.Classroom)
-            .Include(s => s.Section.StudentEnrollments.Where(se => se.IsActive))
+            .Include(s => s.Section.StudentEnrollments.Where(se => se.IsActive && !se.Student.IsDeleted))
                 .ThenInclude(se => se.Student)
             .ToListAsync()
             .ConfigureAwait(false);
@@ -265,7 +265,7 @@ public class InstructorRepository(ApplicationDbContext context) : IInstructorRep
             .Include(schedule => schedule.Section)
                 .ThenInclude(section => section.Course)
             .Include(schedule => schedule.Section)
-                .ThenInclude(section => section.StudentEnrollments.Where(studentEnrollment => studentEnrollment.IsActive))
+                .ThenInclude(section => section.StudentEnrollments.Where(studentEnrollment => studentEnrollment.IsActive && !studentEnrollment.Student.IsDeleted))
                     .ThenInclude(studentEnrollment => studentEnrollment.Student)
             .OrderBy(schedule => schedule.DayOfWeek)
             .ThenBy(schedule => schedule.TimeIn)
