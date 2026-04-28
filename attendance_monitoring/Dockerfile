@@ -1,7 +1,9 @@
 ﻿FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS base
 USER $APP_UID
 WORKDIR /app
-EXPOSE 8080
+ARG PORT=8080
+ENV PORT=$PORT
+EXPOSE $PORT
 
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 ARG BUILD_CONFIGURATION=Release
@@ -26,12 +28,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf 
 
 # Environment configuration
 ENV ASPNETCORE_ENVIRONMENT=Production \
-    ASPNETCORE_URLS=http://+:8080 \
+    ASPNETCORE_URLS=http://+:$PORT \
     DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=false
 
 # Health check (requires /health/live endpoint)
 HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
-  CMD curl -f http://localhost:8080/health/live || exit 1
+  CMD curl -f http://localhost:$PORT/health/live || exit 1
 
 USER $APP_UID
 ENTRYPOINT ["dotnet", "attendance_monitoring.dll"]
