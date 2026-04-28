@@ -16,6 +16,26 @@ namespace attendance_monitoring.IRepository
         Task<Schedules?> UpdateScheduleAsync(Schedules schedule);
         Task<bool> DeleteScheduleAsync(Guid id);
         Task<bool> HasSessionsInScheduleAsync(Guid id);
+        Task<ScheduleConflictDetails?> FindClassroomOverlapAsync(
+            Guid classroomId,
+            string dayOfWeek,
+            TimeOnly timeIn,
+            TimeOnly timeOut,
+            Guid? excludedScheduleId = null);
+
+        Task<ScheduleConflictDetails?> FindInstructorOverlapAsync(
+            Guid instructorId,
+            string dayOfWeek,
+            TimeOnly timeIn,
+            TimeOnly timeOut,
+            Guid? excludedScheduleId = null);
+
+        Task<ScheduleConflictDetails?> FindSectionOverlapAsync(
+            Guid sectionId,
+            string dayOfWeek,
+            TimeOnly timeIn,
+            TimeOnly timeOut,
+            Guid? excludedScheduleId = null);
 
         // New methods for fingerprint attendance
         /// <summary>

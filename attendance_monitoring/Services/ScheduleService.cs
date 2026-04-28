@@ -219,6 +219,15 @@ namespace attendance_monitoring.Services
                 var sectionId = await ScheduleServiceSupport.ResolveSectionIdAsync(context, createSchedule.SectionId).ConfigureAwait(false);
                 var instructorId = await ScheduleServiceSupport.ResolveInstructorIdAsync(context, createSchedule.InstructorId).ConfigureAwait(false);
 
+                await ScheduleConflictValidator.ValidateScheduleDoesNotOverlapAsync(
+                    scheduleRepository,
+                    classroomId,
+                    instructorId,
+                    sectionId,
+                    createSchedule.DayOfWeek,
+                    createSchedule.TimeIn,
+                    createSchedule.TimeOut).ConfigureAwait(false);
+
                 var schedule = new Schedules
                 {
                     TimeIn = createSchedule.TimeIn,
@@ -244,6 +253,15 @@ namespace attendance_monitoring.Services
             catch (EntityNotFoundException<Guid>)
             {
                 throw;
+            }
+            catch (EntityConflictException)
+            {
+                throw;
+            }
+            catch (DbUpdateException ex) when (ScheduleConflictValidator.IsScheduleDuplicateConstraintViolation(ex))
+            {
+                logger.LogWarning(ex, "Schedule creation failed due to duplicate schedule constraint");
+                throw ScheduleConflictValidator.CreateDuplicateScheduleConflict(ex);
             }
             catch (Exception ex)
             {
@@ -307,6 +325,20 @@ namespace attendance_monitoring.Services
                     existingSchedule.InstructorId = await ScheduleServiceSupport.ResolveInstructorIdAsync(context, updateSchedule.InstructorId.Value).ConfigureAwait(false);
                 }
 
+                var effectiveDayOfWeek = string.IsNullOrEmpty(updateSchedule.DayOfWeek)
+                    ? existingSchedule.DayOfWeek
+                    : updateSchedule.DayOfWeek;
+
+                await ScheduleConflictValidator.ValidateScheduleDoesNotOverlapAsync(
+                    scheduleRepository,
+                    existingSchedule.ClassroomId,
+                    existingSchedule.InstructorId,
+                    existingSchedule.SectionId,
+                    effectiveDayOfWeek,
+                    effectiveTimeIn,
+                    effectiveTimeOut,
+                    existingSchedule.Id).ConfigureAwait(false);
+
                 // Update simple fields only if provided
                 if (updateSchedule.TimeIn.HasValue)
                 {
@@ -347,6 +379,15 @@ namespace attendance_monitoring.Services
             catch (EntityServiceException)
             {
                 throw;
+            }
+            catch (EntityConflictException)
+            {
+                throw;
+            }
+            catch (DbUpdateException ex) when (ScheduleConflictValidator.IsScheduleDuplicateConstraintViolation(ex))
+            {
+                logger.LogWarning(ex, "Schedule update failed due to duplicate schedule constraint for ID: {Id}", id);
+                throw ScheduleConflictValidator.CreateDuplicateScheduleConflict(ex);
             }
             catch (Exception ex)
             {

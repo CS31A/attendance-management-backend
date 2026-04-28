@@ -206,6 +206,81 @@ namespace attendance_monitoring.Repositories
         }
         #endregion
 
+        #region Overlap Checks
+        public Task<ScheduleConflictDetails?> FindClassroomOverlapAsync(
+            Guid classroomId,
+            string dayOfWeek,
+            TimeOnly timeIn,
+            TimeOnly timeOut,
+            Guid? excludedScheduleId = null)
+        {
+            return FindOverlapAsync(
+                dayOfWeek,
+                timeIn,
+                timeOut,
+                excludedScheduleId,
+                schedule => schedule.ClassroomId == classroomId);
+        }
+
+        public Task<ScheduleConflictDetails?> FindInstructorOverlapAsync(
+            Guid instructorId,
+            string dayOfWeek,
+            TimeOnly timeIn,
+            TimeOnly timeOut,
+            Guid? excludedScheduleId = null)
+        {
+            return FindOverlapAsync(
+                dayOfWeek,
+                timeIn,
+                timeOut,
+                excludedScheduleId,
+                schedule => schedule.InstructorId == instructorId);
+        }
+
+        public Task<ScheduleConflictDetails?> FindSectionOverlapAsync(
+            Guid sectionId,
+            string dayOfWeek,
+            TimeOnly timeIn,
+            TimeOnly timeOut,
+            Guid? excludedScheduleId = null)
+        {
+            return FindOverlapAsync(
+                dayOfWeek,
+                timeIn,
+                timeOut,
+                excludedScheduleId,
+                schedule => schedule.SectionId == sectionId);
+        }
+
+        private Task<ScheduleConflictDetails?> FindOverlapAsync(
+            string dayOfWeek,
+            TimeOnly timeIn,
+            TimeOnly timeOut,
+            Guid? excludedScheduleId,
+            System.Linq.Expressions.Expression<Func<Schedules, bool>> resourcePredicate)
+        {
+            return context.Schedules
+                .AsNoTracking()
+                .Where(resourcePredicate)
+                .Where(schedule => schedule.DayOfWeek == dayOfWeek)
+                .Where(schedule => schedule.TimeIn < timeOut && timeIn < schedule.TimeOut)
+                .Where(schedule => !excludedScheduleId.HasValue || schedule.Id != excludedScheduleId.Value)
+                .OrderBy(schedule => schedule.TimeIn)
+                .Select(schedule => new ScheduleConflictDetails
+                {
+                    ScheduleId = schedule.Id,
+                    DayOfWeek = schedule.DayOfWeek,
+                    TimeIn = schedule.TimeIn,
+                    TimeOut = schedule.TimeOut,
+                    SubjectName = schedule.Subject.Name,
+                    ClassroomName = schedule.Classroom.Name,
+                    SectionName = schedule.Section.Name,
+                    InstructorName = schedule.Instructor.Firstname + " " + schedule.Instructor.Lastname,
+                })
+                .FirstOrDefaultAsync();
+        }
+        #endregion
+
         #endregion
 
         #region Utility Operations
