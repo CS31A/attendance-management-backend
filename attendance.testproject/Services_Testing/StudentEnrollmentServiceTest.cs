@@ -834,6 +834,8 @@ public class StudentEnrollmentServiceTest
 
         _mockEnrollmentRepo.Setup(r => r.GetActiveSectionEnrollmentsAsync(sectionId))
             .ReturnsAsync(activeEnrollments);
+        _mockSectionRepo.Setup(r => r.GetActiveStudentsBySectionIdAsync(sectionId))
+            .ReturnsAsync(new List<Student>());
 
         // Act
         var result = await _service.GetActiveSectionEnrollmentsAsync(sectionId);
@@ -843,6 +845,84 @@ public class StudentEnrollmentServiceTest
         Assert.Equal(2, result.Count());
         Assert.All(result, e => Assert.True(e.IsActive));
         _mockEnrollmentRepo.Verify(r => r.GetActiveSectionEnrollmentsAsync(sectionId), Times.Once);
+        _mockSectionRepo.Verify(r => r.GetActiveStudentsBySectionIdAsync(sectionId), Times.Once);
+    }
+
+    [Fact]
+    public async Task GetActiveSectionEnrollmentsAsync_PrimarySectionStudentsWithoutEnrollments_IncludesSyntheticEnrollments()
+    {
+        // Arrange
+        var sectionId = Guid.NewGuid();
+        var studentId = Guid.NewGuid();
+        var student = new Student
+        {
+            Id = studentId,
+            Firstname = "John",
+            Lastname = "Doe",
+            SectionId = sectionId,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+
+        _mockEnrollmentRepo.Setup(r => r.GetActiveSectionEnrollmentsAsync(sectionId))
+            .ReturnsAsync(new List<StudentEnrollment>());
+        _mockSectionRepo.Setup(r => r.GetActiveStudentsBySectionIdAsync(sectionId))
+            .ReturnsAsync(new List<Student> { student });
+
+        // Act
+        var result = await _service.GetActiveSectionEnrollmentsAsync(sectionId);
+
+        // Assert
+        Assert.NotNull(result);
+        var resultList = result.ToList();
+        Assert.Single(resultList);
+        Assert.Equal(studentId, resultList[0].StudentId);
+        Assert.Equal("Regular", resultList[0].EnrollmentType);
+        Assert.True(resultList[0].IsActive);
+        Assert.Equal(Guid.Empty, resultList[0].Id);
+        _mockEnrollmentRepo.Verify(r => r.GetActiveSectionEnrollmentsAsync(sectionId), Times.Once);
+        _mockSectionRepo.Verify(r => r.GetActiveStudentsBySectionIdAsync(sectionId), Times.Once);
+    }
+
+    [Fact]
+    public async Task GetActiveSectionEnrollmentsAsync_PrimaryStudentAlsoHasEnrollment_DoesNotDuplicate()
+    {
+        // Arrange
+        var sectionId = Guid.NewGuid();
+        var studentId = Guid.NewGuid();
+        var enrollment = new StudentEnrollment
+        {
+            Id = Guid.NewGuid(),
+            StudentId = studentId,
+            SectionId = sectionId,
+            IsActive = true,
+            EnrollmentType = "Irregular",
+            Student = new Student { Id = studentId, Firstname = "John", Lastname = "Doe" }
+        };
+        var student = new Student
+        {
+            Id = studentId,
+            Firstname = "John",
+            Lastname = "Doe",
+            SectionId = sectionId
+        };
+
+        _mockEnrollmentRepo.Setup(r => r.GetActiveSectionEnrollmentsAsync(sectionId))
+            .ReturnsAsync(new List<StudentEnrollment> { enrollment });
+        _mockSectionRepo.Setup(r => r.GetActiveStudentsBySectionIdAsync(sectionId))
+            .ReturnsAsync(new List<Student> { student });
+
+        // Act
+        var result = await _service.GetActiveSectionEnrollmentsAsync(sectionId);
+
+        // Assert
+        Assert.NotNull(result);
+        var resultList = result.ToList();
+        Assert.Single(resultList);
+        Assert.Equal(enrollment.Id, resultList[0].Id);
+        Assert.Equal("Irregular", resultList[0].EnrollmentType);
+        _mockEnrollmentRepo.Verify(r => r.GetActiveSectionEnrollmentsAsync(sectionId), Times.Once);
+        _mockSectionRepo.Verify(r => r.GetActiveStudentsBySectionIdAsync(sectionId), Times.Once);
     }
 
     #endregion

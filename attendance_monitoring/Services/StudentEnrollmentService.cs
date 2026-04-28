@@ -225,7 +225,31 @@ public class StudentEnrollmentService : IStudentEnrollmentService
 
     public async Task<IEnumerable<StudentEnrollment>> GetActiveSectionEnrollmentsAsync(Guid sectionId)
     {
-        return await _enrollmentRepository.GetActiveSectionEnrollmentsAsync(sectionId);
+        var enrollments = await _enrollmentRepository.GetActiveSectionEnrollmentsAsync(sectionId);
+        var enrollmentStudentIds = new HashSet<Guid>(enrollments.Select(e => e.StudentId));
+
+        var primaryStudents = await _sectionRepository.GetActiveStudentsBySectionIdAsync(sectionId).ConfigureAwait(false);
+        var primaryStudentList = primaryStudents?.ToList() ?? new List<Student>();
+
+        var missingPrimaryStudents = primaryStudentList.Where(s => !enrollmentStudentIds.Contains(s.Id));
+
+        var syntheticEnrollments = missingPrimaryStudents.Select(s => new StudentEnrollment
+        {
+            Id = Guid.Empty,
+            StudentId = s.Id,
+            Student = s,
+            SectionId = sectionId,
+            Section = s.Section,
+            SubjectId = Guid.Empty,
+            Subject = null!,
+            IsActive = true,
+            EnrollmentType = "Regular",
+            EnrolledAt = s.CreatedAt,
+            CreatedAt = s.CreatedAt,
+            UpdatedAt = s.UpdatedAt
+        });
+
+        return enrollments.Concat(syntheticEnrollments);
     }
 
     public async Task<IEnumerable<StudentEnrollment>> GetActiveSectionEnrollmentsBySectionUuidAsync(Guid sectionUuid)
