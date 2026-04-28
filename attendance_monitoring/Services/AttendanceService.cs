@@ -55,7 +55,7 @@ public class AttendanceService(
         var currentUserId = await userContextService.GetUserIdAsync(user).ConfigureAwait(false);
 
         // Create attendance record
-        var checkInTime = request.CheckInTime ?? clock.GetLocalNow();
+        var checkInTime = request.CheckInTime ?? clock.GetUtcNow().UtcDateTime;
         var attendanceRecord = new AttendanceRecord
         {
             StudentId = studentId,
@@ -121,8 +121,32 @@ public class AttendanceService(
         }
 
         // Determine attendance status based on check-in time
-        var sessionStartTime = session.ActualStartTime ?? session.SessionDate.Date.Add(session.Schedule.TimeIn.ToTimeSpan());
-        var status = DetermineAttendanceStatus(checkInTime, sessionStartTime);
+        DateTime sessionStartTime;
+        if (session.ActualStartTime.HasValue)
+        {
+            sessionStartTime = DateTime.SpecifyKind(session.ActualStartTime.Value, DateTimeKind.Utc);
+        }
+        else
+        {
+            var localStartTime = session.SessionDate.Date.Add(session.Schedule.TimeIn.ToTimeSpan());
+            sessionStartTime = TimeZoneInfo.ConvertTimeToUtc(localStartTime, clock.TimeZone);
+        }
+
+        var lateCutoffMinutes = 15;
+        if (session.AttendanceCutOff.HasValue)
+        {
+            lateCutoffMinutes = Math.Max(
+                0,
+                (int)Math.Round(
+                    (session.AttendanceCutOff.Value - sessionStartTime).TotalMinutes,
+                    MidpointRounding.AwayFromZero));
+        }
+
+        logger.LogInformation(
+            "Attendance status calculation from QR scan: CheckInTime={CheckInTime:O}, SessionStartTime={SessionStartTime:O}, TimeDifference={TimeDifference}min, LateCutoff={LateCutoff}min",
+            checkInTime, sessionStartTime, (checkInTime - sessionStartTime).TotalMinutes, lateCutoffMinutes);
+
+        var status = DetermineAttendanceStatus(checkInTime, sessionStartTime, lateCutoffMinutes);
 
         // Create attendance record
         var attendanceRecord = new AttendanceRecord
@@ -720,9 +744,10 @@ public class AttendanceService(
     /// </summary>
     public string DetermineAttendanceStatus(DateTime checkInTime, DateTime sessionStartTime, int lateCutoffMinutes = 15)
     {
+        const int GracePeriodMinutes = 1;
         var timeDifference = checkInTime - sessionStartTime;
 
-        if (timeDifference.TotalMinutes <= 0)
+        if (timeDifference.TotalMinutes <= GracePeriodMinutes)
         {
             return "Present";
         }

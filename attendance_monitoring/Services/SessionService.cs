@@ -599,9 +599,9 @@ public class SessionService : ISessionService
                 }
             }
 
-            // Calculate attendance cutoff time (using local time)
+            // Calculate attendance cutoff time (using UTC for consistent storage)
             var attendanceCutoffMinutes = request.AttendanceCutoffMinutes ?? 15;
-            var actualStartTime = _clock.GetLocalNow();
+            var actualStartTime = _clock.GetUtcNow().UtcDateTime;
             var attendanceCutoff = actualStartTime.AddMinutes(attendanceCutoffMinutes);
 
             // Update the session
@@ -728,7 +728,7 @@ public class SessionService : ISessionService
 
             // Update the session
             session.Status = SessionStatusConstants.Ended;
-            session.ActualEndTime = _clock.GetLocalNow();
+            session.ActualEndTime = _clock.GetUtcNow().UtcDateTime;
             session.EndedBy = instructor.Id;
 
             // Update description if provided

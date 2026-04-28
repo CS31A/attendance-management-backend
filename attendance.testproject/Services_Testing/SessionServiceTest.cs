@@ -734,9 +734,9 @@ public class SessionServiceTest
             .ReturnsAsync(CreateTestEnrollments(session.Schedule.SectionId, session.Schedule.SubjectId, studentUserIds));
 
         // Act
-        var beforeStart = DateTime.Now;
+        var beforeStart = DateTime.UtcNow;
         var result = await _sessionService.StartSessionAsync(sessionId, request);
-        var afterStart = DateTime.Now;
+        var afterStart = DateTime.UtcNow;
 
         // Assert
         Assert.NotNull(result);
@@ -1086,9 +1086,9 @@ public class SessionServiceTest
             .ReturnsAsync(CreateTestEnrollments(session.Schedule.SectionId, session.Schedule.SubjectId, studentUserIds));
 
         // Act
-        var beforeEnd = DateTime.Now;
+        var beforeEnd = DateTime.UtcNow;
         var result = await _sessionService.EndSessionAsync(sessionId, request);
-        var afterEnd = DateTime.Now;
+        var afterEnd = DateTime.UtcNow;
 
         // Assert
         Assert.NotNull(result);

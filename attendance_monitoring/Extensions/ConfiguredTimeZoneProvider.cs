@@ -60,10 +60,18 @@ public sealed class ConfiguredTimeZoneProvider
     }
 
     /// <summary>
+    /// The configured timezone used for local time conversions.
+    /// </summary>
+    public TimeZoneInfo TimeZone => _timeZone;
+
+    /// <summary>
     /// Gets the current local time in the configured timezone as DateTime.
+    /// Returns Kind = DateTimeKind.Local so that EF Core/SQL Server preserves the
+    /// timezone context rather than treating the value as UTC on retrieval.
     /// </summary>
     public DateTime GetLocalNow()
     {
-        return TimeZoneInfo.ConvertTimeFromUtc(_innerProvider.GetUtcNow().UtcDateTime, _timeZone);
+        var local = TimeZoneInfo.ConvertTimeFromUtc(_innerProvider.GetUtcNow().UtcDateTime, _timeZone);
+        return DateTime.SpecifyKind(local, DateTimeKind.Local);
     }
 }

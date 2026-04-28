@@ -66,7 +66,6 @@ internal sealed class QrCodeScanService
     private async Task<QrCodeScanResponseDto> ScanQrCodeWithinTransactionAsync(ValidateQrCode validateQrCode, ClaimsPrincipal user)
     {
         var utcNow = _clock.GetUtcNow().UtcDateTime;
-        var localNow = _clock.GetLocalNow();
         Guid? resolvedStudentId = null;
 
         try
@@ -208,7 +207,7 @@ internal sealed class QrCodeScanService
                     ? Math.Max(0, qrCode.MaxUsage.Value - qrCode.UsageCount)
                     : int.MaxValue;
 
-                return CreateDuplicateScanResponse(qrCode, student, localNow, remainingScansForDuplicate);
+                return CreateDuplicateScanResponse(qrCode, student, utcNow, remainingScansForDuplicate);
             }
 
             var hasAmbientTransaction = _dbContext.Database.CurrentTransaction != null;
@@ -248,7 +247,7 @@ internal sealed class QrCodeScanService
                         studentId,
                         qrCode.SessionId,
                         qrCode.Id,
-                        localNow
+                        utcNow
                     ).ConfigureAwait(false);
 
                     await _qrCodeRepository.SaveChangesAsync().ConfigureAwait(false);
@@ -299,7 +298,7 @@ internal sealed class QrCodeScanService
                         ? Math.Max(0, qrCode.MaxUsage.Value - qrCode.UsageCount)
                         : int.MaxValue;
 
-                    return CreateDuplicateScanResponse(qrCode, student, localNow, remainingScansEdge);
+                    return CreateDuplicateScanResponse(qrCode, student, utcNow, remainingScansEdge);
                 }
             }
             finally

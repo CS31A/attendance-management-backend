@@ -815,7 +815,8 @@ public class FingerprintServiceTest
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
-        var now = DateTime.Now;
+        var nowUtc = DateTime.UtcNow;
+        var nowLocal = DateTime.Now;
         var sectionId = Guid.NewGuid();
         var subjectId = Guid.NewGuid();
         var student = new Student
@@ -840,10 +841,10 @@ public class FingerprintServiceTest
         {
             Id = Guid.NewGuid(),
             ScheduleId = schedule.Id,
-            SessionDate = now.Date,
+            SessionDate = nowLocal.Date,
             Status = SessionStatusConstants.Active,
-            ActualStartTime = now.AddMinutes(-5),
-            ActualEndTime = now.AddMinutes(55),
+            ActualStartTime = nowUtc.AddMinutes(-5),
+            ActualEndTime = nowUtc.AddMinutes(55),
             Schedule = schedule
         };
 
@@ -1135,7 +1136,7 @@ public class FingerprintServiceTest
             "device-secret");
 
         Assert.True(response.Success);
-        Assert.Equal(sessionDate.AddHours(8), capturedSessionStartTime);
+        Assert.Equal(TimeZoneInfo.ConvertTimeToUtc(sessionDate.AddHours(8), TimeZoneInfo.Local), capturedSessionStartTime);
         Assert.Equal("Late", response.AttendanceStatus);
     }
 

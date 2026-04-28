@@ -671,7 +671,7 @@ public class FingerprintService(
         {
             try
             {
-                var checkInTime = _clock.GetLocalNow();
+                var checkInTime = _clock.GetUtcNow().UtcDateTime;
                 var attendanceRecord = new AttendanceRecord
                 {
                     StudentId = student.Id,
@@ -793,8 +793,8 @@ public class FingerprintService(
 
     private async Task<Session?> FindActiveSessionForStudentAsync(Guid studentId)
     {
-        var now = _clock.GetLocalNow();
-        var today = now.Date;
+        var now = _clock.GetUtcNow().UtcDateTime;
+        var today = _clock.GetLocalNow().Date;
 
         var enrollments = await studentEnrollmentRepository
             .GetByStudentIdAsync(studentId)
@@ -865,8 +865,17 @@ public class FingerprintService(
 
     private string DetermineAttendanceStatus(DateTime checkInTime, Session session)
     {
-        var sessionStartTime = session.ActualStartTime ??
-                               session.SessionDate.Date.Add(session.Schedule.TimeIn.ToTimeSpan());
+        DateTime sessionStartTime;
+        if (session.ActualStartTime.HasValue)
+        {
+            sessionStartTime = DateTime.SpecifyKind(session.ActualStartTime.Value, DateTimeKind.Utc);
+        }
+        else
+        {
+            var localStartTime = session.SessionDate.Date.Add(session.Schedule.TimeIn.ToTimeSpan());
+            sessionStartTime = TimeZoneInfo.ConvertTimeToUtc(localStartTime, _clock.TimeZone);
+        }
+        
         var lateCutoffMinutes = 15;
 
         if (session.AttendanceCutOff.HasValue)
@@ -877,6 +886,9 @@ public class FingerprintService(
                     (session.AttendanceCutOff.Value - sessionStartTime).TotalMinutes,
                     MidpointRounding.AwayFromZero));
         }
+
+        logger.LogInformation("Attendance status calculation: CheckInTime={CheckInTime:O}, SessionStartTime={SessionStartTime:O}, TimeDifference={TimeDifference}min, LateCutoff={LateCutoff}min",
+            checkInTime, sessionStartTime, (checkInTime - sessionStartTime).TotalMinutes, lateCutoffMinutes);
 
         return _attendanceService.DetermineAttendanceStatus(checkInTime, sessionStartTime, lateCutoffMinutes);
     }
