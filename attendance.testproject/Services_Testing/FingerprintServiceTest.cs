@@ -224,6 +224,12 @@ public class FingerprintServiceTest
         Assert.Equal(enrollmentSession.Id, response.EnrollmentSessionId);
         Assert.Equal(student.Id, response.StudentId);
         Assert.Equal("InProgress", response.Status);
+
+        _mockNotificationService.Verify(
+            service => service.BroadcastDeviceStatusUpdateAsync(
+                device.Id,
+                It.IsAny<DateTime>()),
+            Times.Once);
     }
 
     [Fact]
@@ -793,6 +799,12 @@ public class FingerprintServiceTest
         Assert.True(response.AttendanceMarked);
         Assert.Equal(session.Id, response.SessionId);
         Assert.Equal("Late", response.AttendanceStatus);
+
+        _mockNotificationService.Verify(
+            service => service.BroadcastDeviceStatusUpdateAsync(
+                device.Id,
+                It.IsAny<DateTime>()),
+            Times.Once);
     }
 
     [Fact]

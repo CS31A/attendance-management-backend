@@ -83,6 +83,127 @@ public class NotificationServiceTest
         Assert.Equal("Attendance Recorded", sent.Notification.Title);
     }
 
+    [Fact]
+    public async Task BroadcastDeviceStatusUpdateAsync_SendsDeviceStatusUpdateToAdminGroup()
+    {
+        // Arrange
+        var deviceId = Guid.NewGuid();
+        var lastSeenAt = DateTime.UtcNow;
+        var hubContext = new Mock<IHubContext<NotificationHub>>();
+        var clients = new Mock<IHubClients>();
+        var groupProxy = new Mock<IClientProxy>();
+        var service = CreateBroadcastService(hubContext, clients, groupProxy);
+
+        // Act
+        await service.BroadcastDeviceStatusUpdateAsync(deviceId, lastSeenAt);
+
+        // Assert
+        clients.Verify(client => client.Group("role:Admin"), Times.Once);
+        groupProxy.Verify(
+            proxy => proxy.SendCoreAsync(
+                "DeviceStatusUpdate",
+                It.Is<object?[]>(args =>
+                    args.Length == 1 &&
+                    args[0] != null),
+                It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task BroadcastDeviceStatusUpdateAsync_IncludesDeviceIdAndLastSeenAtInPayload()
+    {
+        // Arrange
+        var deviceId = Guid.NewGuid();
+        var lastSeenAt = new DateTime(2026, 4, 28, 1, 0, 0, DateTimeKind.Utc);
+        var hubContext = new Mock<IHubContext<NotificationHub>>();
+        var clients = new Mock<IHubClients>();
+        var groupProxy = new Mock<IClientProxy>();
+
+        hubContext.SetupGet(context => context.Clients).Returns(clients.Object);
+        clients.Setup(client => client.Group("role:Admin")).Returns(groupProxy.Object);
+        groupProxy
+            .Setup(proxy => proxy.SendCoreAsync(
+                It.IsAny<string>(),
+                It.IsAny<object?[]>(),
+                It.IsAny<CancellationToken>()))
+            .Returns<string, object?[], CancellationToken>((_, args, _) =>
+            {
+                Assert.Single(args);
+                var payload = args[0];
+                Assert.NotNull(payload);
+                var payloadJson = System.Text.Json.JsonSerializer.Serialize(payload);
+                Assert.Contains(deviceId.ToString(), payloadJson);
+                Assert.Contains(lastSeenAt.ToString("O"), payloadJson);
+                return Task.CompletedTask;
+            });
+
+        var service = new NotificationService(
+            hubContext.Object,
+            Mock.Of<IUserConnectionManager>(),
+            Mock.Of<INotificationPreferenceService>(),
+            Mock.Of<IQrCodeRepository>(),
+            Mock.Of<ISessionRepository>(),
+            Mock.Of<IStudentRepository>(),
+            Mock.Of<ILogger<NotificationService>>());
+
+        // Act
+        await service.BroadcastDeviceStatusUpdateAsync(deviceId, lastSeenAt);
+    }
+
+    [Fact]
+    public async Task BroadcastDeviceStatusUpdateAsync_DoesNotThrow_WhenHubThrows()
+    {
+        // Arrange
+        var hubContext = new Mock<IHubContext<NotificationHub>>();
+        var clients = new Mock<IHubClients>();
+        var groupProxy = new Mock<IClientProxy>();
+        groupProxy
+            .Setup(proxy => proxy.SendCoreAsync(
+                It.IsAny<string>(),
+                It.IsAny<object?[]>(),
+                It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException("SignalR connection lost"));
+        var service = CreateBroadcastService(hubContext, clients, groupProxy);
+
+        // Act & Assert (should not throw)
+        await service.BroadcastDeviceStatusUpdateAsync(Guid.NewGuid(), DateTime.UtcNow);
+    }
+
+    [Fact]
+    public async Task BroadcastDeviceStatusUpdateAsync_DoesNotUseConnectionManager()
+    {
+        // Arrange
+        var hubContext = new Mock<IHubContext<NotificationHub>>();
+        var clients = new Mock<IHubClients>();
+        var groupProxy = new Mock<IClientProxy>();
+        var connectionManager = new Mock<IUserConnectionManager>(MockBehavior.Strict);
+        var service = new NotificationService(
+            hubContext.Object,
+            connectionManager.Object,
+            Mock.Of<INotificationPreferenceService>(),
+            Mock.Of<IQrCodeRepository>(),
+            Mock.Of<ISessionRepository>(),
+            Mock.Of<IStudentRepository>(),
+            Mock.Of<ILogger<NotificationService>>());
+
+        hubContext.SetupGet(context => context.Clients).Returns(clients.Object);
+        clients.Setup(client => client.Group("role:Admin")).Returns(groupProxy.Object);
+        groupProxy
+            .Setup(proxy => proxy.SendCoreAsync(
+                It.IsAny<string>(),
+                It.IsAny<object?[]>(),
+                It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        // Act
+        await service.BroadcastDeviceStatusUpdateAsync(Guid.NewGuid(), DateTime.UtcNow);
+
+        // Assert - Strict mock would throw if any connection manager method was called
+        connectionManager.Verify(
+            manager => manager.IsOnlineAsync(It.IsAny<string>()),
+            Times.Never);
+    }
+
     [Theory]
     [InlineData(null)]
     [InlineData("")]
@@ -115,6 +236,30 @@ public class NotificationServiceTest
         connectionManager.Verify(
             manager => manager.IsOnlineAsync(It.IsAny<string>()),
             Times.Never);
+    }
+
+    private static NotificationService CreateBroadcastService(
+        Mock<IHubContext<NotificationHub>> hubContext,
+        Mock<IHubClients> clients,
+        Mock<IClientProxy> groupProxy)
+    {
+        hubContext.SetupGet(context => context.Clients).Returns(clients.Object);
+        clients.Setup(client => client.Group("role:Admin")).Returns(groupProxy.Object);
+        groupProxy
+            .Setup(proxy => proxy.SendCoreAsync(
+                "DeviceStatusUpdate",
+                It.IsAny<object?[]>(),
+                It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        return new NotificationService(
+            hubContext.Object,
+            Mock.Of<IUserConnectionManager>(),
+            Mock.Of<INotificationPreferenceService>(),
+            Mock.Of<IQrCodeRepository>(),
+            Mock.Of<ISessionRepository>(),
+            Mock.Of<IStudentRepository>(),
+            Mock.Of<ILogger<NotificationService>>());
     }
 
     private static NotificationService CreateNotificationService(
