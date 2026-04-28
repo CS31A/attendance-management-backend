@@ -1,0 +1,29 @@
+using attendance_monitoring.Constants;
+using attendance_monitoring.IRepository;
+using attendance_monitoring.IServices;
+
+namespace attendance_monitoring.Services
+{
+    public class RoleInitializationService(
+        IAccountRepository accountRepository,
+        ILogger<RoleInitializationService> logger)
+        : IRoleInitializationService
+    {
+
+        #region Initialization Methods
+
+        #region InitializeRolesAsync
+        public async Task InitializeRolesAsync()
+        {
+            logger.LogInformation("Initializing roles...");
+
+            var validRoles = new[] { RoleConstants.Admin, RoleConstants.Instructor, RoleConstants.Student };
+            await accountRepository.EnsureRolesExistAsync(validRoles).ConfigureAwait(false);
+
+            logger.LogInformation("Roles initialized successfully.");
+        }
+        #endregion
+
+        #endregion
+    }
+}

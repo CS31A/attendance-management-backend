@@ -1,0 +1,1 @@
+After backend changes, run lsp diagnostics on changed files and verify build/tests as appropriate. Repository guidance says PR-ready backend work should pass make check when feasible; for focused tasks at minimum run relevant build verification. Keep todos completed and avoid unrelated file changes.

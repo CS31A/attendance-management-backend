@@ -1,0 +1,253 @@
+using attendance_monitoring.Classes;
+using attendance_monitoring.Exceptions;
+using attendance_monitoring.IServices;
+using attendance_monitoring.Models.DTO.Request;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+
+namespace attendance_monitoring.Controllers;
+
+/// <summary>
+/// Controller for managing classroom records
+/// </summary>
+[Authorize(Policy = "PrivilegedPolicy")]
+[ApiController]
+[Route("api/classrooms")]
+public class ClassroomController(IClassroomService classroomService, ILogger<ClassroomController> logger) : ControllerBase
+{
+    #region Get Operations
+
+    /// <summary>
+    /// Get a list of all classrooms
+    /// </summary>
+    /// <returns>A list of classrooms</returns>
+    /// <response code="200">Returns the list of classrooms</response>
+    /// <response code="500">Internal server error</response>
+    // GET: api/Classrooms
+    [HttpGet]
+    public async Task<ActionResult<IEnumerable<Classroom>>> GetClassrooms()
+    {
+        logger.LogInformation("Getting all classrooms");
+
+        var classrooms = await classroomService.GetAllClassroomsAsync();
+        logger.LogInformation("Successfully retrieved {Count} classrooms", classrooms.Count());
+        return Ok(classrooms);
+        // No try-catch - global handler will catch any unexpected errors
+    }
+
+    /// <summary>
+    /// Get a specific classroom by ID
+    /// </summary>
+    /// <param name="id">The ID of the classroom to retrieve</param>
+    /// <returns>The requested classroom</returns>
+    /// <response code="200">Returns the requested classroom</response>
+    /// <response code="404">Classroom not found</response>
+    /// <response code="500">Internal server error</response>
+    // GET: api/Classrooms/5
+    [HttpGet("{id:int}")]
+    [ApiExplorerSettings(IgnoreApi = true)]
+    public async Task<ActionResult<Classroom>> GetClassroom(Guid id)
+    {
+        logger.LogInformation("Getting classroom with ID: {Id}", id);
+        try
+        {
+            var classroom = await classroomService.GetClassroomByIdAsync(id);
+            logger.LogInformation("Successfully retrieved classroom with ID: {Id}", id);
+            return Ok(classroom);
+        }
+        catch (EntityNotFoundException<Guid> ex)
+        {
+            logger.LogWarning(ex, "Classroom with ID {Id} not found", id);
+            return NotFound(new { message = ex.Message });
+        }
+        // No generic catch - global handler will manage unexpected errors
+    }
+
+    [HttpGet("{id:guid}")]
+    public async Task<ActionResult<Classroom>> GetClassroomByUuid([FromRoute(Name = "id")] Guid id)
+    {
+        logger.LogInformation("Getting classroom with UUID: {Id}", id);
+        try
+        {
+            var classroom = await classroomService.GetClassroomByUuidAsync(id);
+            logger.LogInformation("Successfully retrieved classroom with UUID: {Id}", id);
+            return Ok(classroom);
+        }
+        catch (EntityNotFoundException<Guid> ex)
+        {
+            logger.LogWarning(ex, "Classroom with UUID {Id} not found", id);
+            return NotFound(new { message = ex.Message });
+        }
+    }
+
+    #endregion
+
+    #region Create Operations
+
+    /// <summary>
+    /// Create a new classroom
+    /// </summary>
+    /// <param name="createClassroom">The classroom data to create</param>
+    /// <returns>The created classroom</returns>
+    /// <response code="201">Returns the created classroom</response>
+    /// <response code="400">Invalid input data</response>
+    /// <response code="401">Not authorized to create classrooms</response>
+    /// <response code="500">Internal server error</response>
+    // POST: api/Classrooms
+    [HttpPost]
+    [Authorize(Policy = "AdminPolicy")]
+    public async Task<ActionResult<Classroom>> CreateClassroom(CreateClassroom createClassroom)
+    {
+        logger.LogInformation("Creating new classroom with name: {ClassroomName}", createClassroom.Name);
+        if (!ModelState.IsValid)
+        {
+            logger.LogWarning("Classroom creation failed due to invalid model state");
+            return BadRequest(ModelState);
+        }
+
+        var classroom = await classroomService.CreateClassroomAsync(createClassroom);
+
+        logger.LogInformation("Successfully created classroom with ID: {Id} and name: {ClassroomName}", classroom.Id,
+            classroom.Name);
+        return CreatedAtAction(nameof(GetClassroomByUuid), new { id = classroom.Id }, classroom);
+        // Exceptions are handled by global exception handler
+    }
+
+    #endregion
+
+    #region Update Operations
+
+    /// <summary>
+    /// Update a classroom record
+    /// </summary>
+    /// <param name="id">The ID of the classroom to update</param>
+    /// <param name="updateClassroom">The updated classroom data</param>
+    /// <returns>The updated classroom</returns>
+    /// <response code="200">Returns the updated classroom</response>
+    /// <response code="400">Invalid input data</response>
+    /// <response code="404">Classroom not found</response>
+    /// <response code="401">Not authorized to update this classroom</response>
+    /// <response code="500">Internal server error</response>
+    // PATCH: api/Classrooms/5
+    [HttpPatch("{id:int}")]
+    [ApiExplorerSettings(IgnoreApi = true)]
+    [Authorize(Policy = "AdminPolicy")]
+    public async Task<ActionResult<Classroom>> UpdateClassroom(Guid id, UpdateClassroom updateClassroom)
+    {
+        logger.LogInformation("Updating classroom with ID: {Id}", id);
+        if (!ModelState.IsValid)
+        {
+            logger.LogWarning("Classroom update failed due to invalid model state for classroom ID: {Id}", id);
+            return BadRequest(ModelState);
+        }
+
+        var classroom = await classroomService.UpdateClassroomAsync(id, updateClassroom);
+
+        logger.LogInformation("Successfully updated classroom with ID: {Id}", id);
+        return Ok(classroom);
+        // Exceptions are handled by global exception handler
+    }
+
+    [HttpPatch("{id:guid}")]
+    [Authorize(Policy = "AdminPolicy")]
+    public async Task<ActionResult<Classroom>> UpdateClassroomByUuid([FromRoute(Name = "id")] Guid id, UpdateClassroom updateClassroom)
+    {
+        logger.LogInformation("Updating classroom with UUID: {Id}", id);
+        if (!ModelState.IsValid)
+        {
+            logger.LogWarning("Classroom update failed due to invalid model state for classroom UUID: {Id}", id);
+            return BadRequest(ModelState);
+        }
+
+        var classroom = await classroomService.UpdateClassroomByUuidAsync(id, updateClassroom);
+
+        logger.LogInformation("Successfully updated classroom with UUID: {Id}", id);
+        return Ok(classroom);
+    }
+
+    #endregion
+
+    #region Delete Operations
+
+    /// <summary>
+    /// Delete a classroom by ID
+    /// </summary>
+    /// <param name="id">The ID of the classroom to delete</param>
+    /// <returns>No content</returns>
+    /// <response code="204">Classroom deleted successfully</response>
+    /// <response code="404">Classroom not found</response>
+    /// <response code="401">Not authorized to delete classrooms</response>
+    /// <response code="500">Internal server error</response>
+    // DELETE: api/Classrooms/5
+    [HttpDelete("{id:int}")]
+    [ApiExplorerSettings(IgnoreApi = true)]
+    [Authorize(Policy = "AdminPolicy")]
+    public async Task<ActionResult> DeleteClassroom(Guid id)
+    {
+        logger.LogInformation("Deleting classroom with ID: {Id}", id);
+
+        await classroomService.DeleteClassroomAsync(id);
+
+        logger.LogInformation("Successfully deleted classroom with ID: {Id}", id);
+        return NoContent();
+        // Exceptions are handled by global exception handler
+    }
+
+    [HttpDelete("{id:guid}")]
+    [Authorize(Policy = "AdminPolicy")]
+    public async Task<ActionResult> DeleteClassroomByUuid([FromRoute(Name = "id")] Guid id)
+    {
+        logger.LogInformation("Deleting classroom with UUID: {Id}", id);
+
+        await classroomService.DeleteClassroomByUuidAsync(id);
+
+        logger.LogInformation("Successfully deleted classroom with UUID: {Id}", id);
+        return NoContent();
+    }
+
+    [Authorize(Policy = "PrivilegedPolicy")]
+    [HttpGet("{id:guid}/has-schedules")]
+    public async Task<ActionResult<bool>> HasSchedulesInClassroom(Guid id)
+    {
+        try
+        {
+            if (id == Guid.Empty)
+            {
+                logger.LogWarning("Invalid classroom ID {ClassroomId} provided for dependency check.", id);
+                return BadRequest("Classroom ID must be greater than 0.");
+            }
+
+            var hasSchedules = await classroomService.HasSchedulesInClassroomAsync(id);
+            return Ok(hasSchedules);
+        }
+        catch (EntityServiceException ex)
+        {
+            logger.LogError(ex, "Service error occurred while checking schedules for classroom with ID {ClassroomId}", id);
+            return StatusCode(500, "An error occurred while checking classroom dependencies");
+        }
+    }
+
+    [Authorize(Policy = "PrivilegedPolicy")]
+    [HttpGet("{id:guid}/has-sessions")]
+    public async Task<ActionResult<bool>> HasSessionsInClassroom(Guid id)
+    {
+        try
+        {
+            if (id == Guid.Empty)
+            {
+                logger.LogWarning("Invalid classroom ID {ClassroomId} provided for dependency check.", id);
+                return BadRequest("Classroom ID must be greater than 0.");
+            }
+
+            var hasSessions = await classroomService.HasSessionsInClassroomAsync(id);
+            return Ok(hasSessions);
+        }
+        catch (EntityServiceException ex)
+        {
+            logger.LogError(ex, "Service error occurred while checking sessions for classroom with ID {ClassroomId}", id);
+            return StatusCode(500, "An error occurred while checking classroom dependencies");
+        }
+    }
+
+    #endregion
+}

@@ -1,0 +1,255 @@
+@baseUrl = http://localhost:8080
+
+# Authentication tokens (replace with actual tokens after login)
+@adminToken = {{loginAdmin.response.body.accessToken}}
+@instructorToken = {{loginInstructor.response.body.accessToken}}
+@studentToken = {{loginStudent.response.body.accessToken}}
+
+### Health Check
+GET {{baseUrl}}/api/health
+
+###
+
+# ===== LOGIN OPERATIONS =====
+# NOTE: Run the data seeder first to create these users.
+# Default passwords: Admin@123! for admin, DefaultPassword123! for instructor/student
+
+### Admin Login
+# @name loginAdmin
+POST {{baseUrl}}/api/account/login
+Content-Type: application/json
+
+{
+  "username": "admin@attendance.com",
+  "password": "Admin@123!"
+}
+# > {% client.global.set("adminToken", response.body.accessToken); %}
+
+###
+
+### Instructor Login
+# @name loginInstructor
+POST {{baseUrl}}/api/account/login
+Content-Type: application/json
+
+{
+  "username": "annalyn.gelicame@instructor.com",
+  "password": "DefaultPassword123!"
+}
+# > {% client.global.set("instructorToken", response.body.accessToken); %}
+
+###
+
+### Student Login
+# @name loginStudent
+POST {{baseUrl}}/api/account/login
+Content-Type: application/json
+
+{
+  "username": "christian.dave.alicaba@student.com",
+  "password": "DefaultPassword123!"
+}
+# > {% client.global.set("studentToken", response.body.accessToken); %}
+
+###
+
+# ===== EXCEPTION HANDLING TESTS =====
+
+### Test 1: Validation Error - Invalid Schedule (TimeOut before TimeIn)
+# Note: Only Admins can create schedules (AdminPolicy)
+POST {{baseUrl}}/api/schedules
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "dayOfWeek": "Monday",
+  "timeIn": "09:00",
+  "timeOut": "08:00",
+  "instructorId": 1,
+  "classroomId": 1,
+  "subjectId": 1,
+  "sectionId": 1
+}
+
+###
+
+### Test 2: Validation Error - Invalid Day of Week
+# Note: Only Admins can create schedules (AdminPolicy)
+POST {{baseUrl}}/api/schedules
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "dayOfWeek": "InvalidDay",
+  "timeIn": "09:00",
+  "timeOut": "10:00",
+  "instructorId": 1,
+  "classroomId": 1,
+  "subjectId": 1,
+  "sectionId": 1
+}
+
+###
+
+### Test 3: Not Found - Get Non-existent Schedule (expects 404 Not Found)
+# Note: Only Admin/Teacher can access schedules (PrivilegedPolicy)
+GET {{baseUrl}}/api/schedules/999999
+Authorization: Bearer {{instructorToken}}
+
+###
+
+### Test 4: Not Found - Update Non-existent Schedule
+# Note: Only Admins can update schedules (AdminPolicy), uses PATCH not PUT
+PATCH {{baseUrl}}/api/schedules/999999
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "dayOfWeek": "Monday",
+  "timeIn": "09:00",
+  "timeOut": "10:00",
+  "classroomId": 1,
+  "subjectId": 1
+}
+
+###
+
+### Test 5: Not Found - Delete Non-existent Schedule
+# Note: Only Admins can delete schedules (AdminPolicy)
+DELETE {{baseUrl}}/api/schedules/999999
+Authorization: Bearer {{adminToken}}
+
+###
+
+### Test 6: Forbidden - Student Creating Schedule (expects 403 Forbidden)
+POST {{baseUrl}}/api/schedules
+Authorization: Bearer {{studentToken}}
+Content-Type: application/json
+
+{
+  "dayOfWeek": "Monday",
+  "timeIn": "09:00",
+  "timeOut": "10:00",
+  "instructorId": 1,
+  "classroomId": 1,
+  "subjectId": 1,
+  "sectionId": 1
+}
+
+###
+
+### Test 7: Forbidden - Student Deleting Schedule (expects 403 Forbidden)
+DELETE {{baseUrl}}/api/schedules/1
+Authorization: Bearer {{studentToken}}
+
+###
+
+### Test 8: Conflict - Duplicate Subject Creation
+# Note: This test expects a 409 Conflict if a subject with name "Mathematics" or code "MATH101" already exists.
+# If you get 201 Created, the subject doesn't exist yet - run the test again.
+POST {{baseUrl}}/api/subjects
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "name": "Mathematics",
+  "code": "MATH101"
+}
+
+###
+
+### Test 9: Create Test Subject for further testing
+# This creates a subject and manually note the ID from the response for Test 10
+POST {{baseUrl}}/api/subjects
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "name": "Test Subject for Exception Handling",
+  "code": "TESTEXC01"
+}
+
+###
+
+### Test 10: Get Subject by ID
+# Note: Replace {subjectId} with an actual subject ID from your database, or use the ID from Test 9
+# Only Admin/Teacher can access subjects (PrivilegedPolicy)
+GET {{baseUrl}}/api/subjects/1
+Authorization: Bearer {{instructorToken}}
+
+###
+
+# ===== SUCCESS OPERATIONS (TO VERIFY NORMAL FUNCTIONALITY) =====
+
+### Get All Schedules (Success)
+# Note: Requires PrivilegedPolicy (Admin or Teacher)
+GET {{baseUrl}}/api/schedules
+Authorization: Bearer {{instructorToken}}
+
+###
+
+### Get All Subjects (Success)
+# Note: Requires PrivilegedPolicy (Admin or Teacher)
+GET {{baseUrl}}/api/subjects
+Authorization: Bearer {{instructorToken}}
+
+###
+
+### Get All Classrooms (Success)
+# Note: Requires PrivilegedPolicy (Admin or Teacher)
+GET {{baseUrl}}/api/classrooms
+Authorization: Bearer {{instructorToken}}
+
+###
+
+### Get User Profile (Success)
+# Note: Uses api/account/me endpoint - any authenticated user can access their own profile
+GET {{baseUrl}}/api/account/me
+Authorization: Bearer {{studentToken}}
+
+###
+
+# ===== DATABASE EXCEPTION TESTS =====
+
+### Test 11: Not Found - Admin tries to access non-existent user profile
+# Note: Uses AdminPolicy - only Admins can use this endpoint. UserId is a string (GUID).
+# The userId in the body is required by DTO validation, but will be overridden by the route parameter.
+PATCH {{baseUrl}}/api/account/admin/users/00000000-0000-0000-0000-000000000000
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "userId": "00000000-0000-0000-0000-000000000000",
+  "firstname": "Test",
+  "lastname": "User"
+}
+
+###
+
+### Test 12: Validation Error - Admin Update User with Empty Names
+# Note: Uses PATCH method. Empty names may or may not trigger validation error depending on DTO configuration.
+# Testing with a non-existent user to trigger 404 Not Found.
+PATCH {{baseUrl}}/api/account/admin/users/00000000-0000-0000-0000-000000000001
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "userId": "00000000-0000-0000-0000-000000000001",
+  "firstname": "",
+  "lastname": ""
+}
+
+###
+
+# ===== TEST UNAUTHORIZED ACCESS =====
+
+### Test 13: Forbidden - Access Admin Endpoint without Admin Role (expects 403 Forbidden)
+# Note: Uses /api/users endpoint which requires AdminPolicy
+GET {{baseUrl}}/api/users
+Authorization: Bearer {{studentToken}}
+
+###
+
+### Test 14: Unauthorized - Access Admin Endpoint without Token (expects 401 Unauthorized)
+# Note: Uses /api/users endpoint which requires authentication
+GET {{baseUrl}}/api/users

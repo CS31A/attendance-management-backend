@@ -1,0 +1,156 @@
+using attendance_monitoring.Exceptions;
+using attendance_monitoring.Extensions.WebApplicationExtensions;
+using attendance_monitoring.Models.DTO.Response;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.TestHost;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using System.Net;
+using System.Net.Http.Json;
+
+namespace attendance.testproject.Integration_Testing;
+
+public sealed class GlobalExceptionHandlerIntegrationTests
+{
+    [Fact]
+    public async Task UseGlobalExceptionHandler_ReturnsBadRequest_ForValidationException()
+    {
+        await using var testHost = await CreateTestHostAsync(
+            () => throw new ValidationException("Validation failed for test request"));
+
+        var response = await testHost.Client.GetAsync("/throw");
+        var error = await response.Content.ReadFromJsonAsync<ErrorResponseDto>();
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.NotNull(error);
+        Assert.False(error.Success);
+        Assert.Equal(StatusCodes.Status400BadRequest, error.StatusCode);
+        Assert.Equal("Validation failed for test request", error.Message);
+        Assert.Equal("/throw", error.Path);
+        Assert.Null(error.Details);
+    }
+
+    [Fact]
+    public async Task UseGlobalExceptionHandler_ReturnsNotFound_ForEntityNotFoundException()
+    {
+        await using var testHost = await CreateTestHostAsync(
+            () => throw new EntityNotFoundException<Guid>("Subject", Guid.Parse("12345678-1234-1234-1234-123456789abc")));
+
+        var response = await testHost.Client.GetAsync("/throw");
+        var error = await response.Content.ReadFromJsonAsync<ErrorResponseDto>();
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        Assert.NotNull(error);
+        Assert.False(error.Success);
+        Assert.Equal(StatusCodes.Status404NotFound, error.StatusCode);
+        Assert.Equal("Subject with ID 12345678-1234-1234-1234-123456789abc was not found.", error.Message);
+        Assert.Equal("/throw", error.Path);
+    }
+
+    [Fact]
+    public async Task UseGlobalExceptionHandler_ReturnsForbidden_ForEntityUnauthorizedException()
+    {
+        await using var testHost = await CreateTestHostAsync(
+            () => throw new EntityUnauthorizedException("RefreshToken", "Revoke", "user-42", "Refresh token does not belong to the current user"));
+
+        var response = await testHost.Client.GetAsync("/throw");
+        var error = await response.Content.ReadFromJsonAsync<ErrorResponseDto>();
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+        Assert.NotNull(error);
+        Assert.False(error.Success);
+        Assert.Equal(StatusCodes.Status403Forbidden, error.StatusCode);
+        Assert.Equal("Refresh token does not belong to the current user", error.Message);
+        Assert.Equal("/throw", error.Path);
+    }
+
+    [Fact]
+    public async Task UseGlobalExceptionHandler_ReturnsConflict_ForEntityConflictException()
+    {
+        await using var testHost = await CreateTestHostAsync(
+            () => new EntityConflictException("Schedule", "sessions", "Cannot delete: Schedule has sessions assigned. Remove sessions first."));
+
+        var response = await testHost.Client.GetAsync("/throw");
+        var error = await response.Content.ReadFromJsonAsync<ErrorResponseDto>();
+
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+        Assert.NotNull(error);
+        Assert.False(error.Success);
+        Assert.Equal(StatusCodes.Status409Conflict, error.StatusCode);
+        Assert.Equal("Cannot delete: Schedule has sessions assigned. Remove sessions first.", error.Message);
+        Assert.Equal("/throw", error.Path);
+    }
+
+    [Fact]
+    public async Task UseGlobalExceptionHandler_ReturnsInternalServerError_ForUnexpectedException()
+    {
+        await using var testHost = await CreateTestHostAsync(
+            () => throw new InvalidOperationException("Unexpected failure"));
+
+        var response = await testHost.Client.GetAsync("/throw");
+        var error = await response.Content.ReadFromJsonAsync<ErrorResponseDto>();
+
+        Assert.Equal(HttpStatusCode.InternalServerError, response.StatusCode);
+        Assert.NotNull(error);
+        Assert.False(error.Success);
+        Assert.Equal(StatusCodes.Status500InternalServerError, error.StatusCode);
+        Assert.Equal(
+            "An unexpected error occurred. Please contact support if this persists.",
+            error.Message);
+        Assert.Equal("/throw", error.Path);
+        Assert.Null(error.Details);
+    }
+
+    [Fact]
+    public async Task UseGlobalExceptionHandler_ReturnsServiceUnavailable_ForDbUpdateException()
+    {
+        await using var testHost = await CreateTestHostAsync(
+            () => new DbUpdateException("Database write failed"));
+
+        var response = await testHost.Client.GetAsync("/throw");
+        var error = await response.Content.ReadFromJsonAsync<ErrorResponseDto>();
+
+        Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
+        Assert.NotNull(error);
+        Assert.False(error.Success);
+        Assert.Equal(StatusCodes.Status503ServiceUnavailable, error.StatusCode);
+        Assert.Equal("Database is temporarily unavailable. Please try again later.", error.Message);
+        Assert.Equal("/throw", error.Path);
+        Assert.Null(error.Details);
+    }
+
+    private static async Task<TestHostHandle> CreateTestHostAsync(Func<Exception> exceptionFactory)
+    {
+        var builder = WebApplication.CreateBuilder(new WebApplicationOptions
+        {
+            EnvironmentName = Environments.Production
+        });
+
+        builder.WebHost.UseTestServer();
+        builder.Services.AddLogging();
+
+        var app = builder.Build();
+
+        app.UseGlobalExceptionHandler();
+        app.MapGet("/throw", (HttpContext _) => throw exceptionFactory());
+
+        await app.StartAsync();
+
+        return new TestHostHandle(app, app.GetTestClient());
+    }
+
+    private sealed class TestHostHandle(WebApplication app, HttpClient client) : IAsyncDisposable
+    {
+        public HttpClient Client { get; } = client;
+
+        public async ValueTask DisposeAsync()
+        {
+            await app.StopAsync();
+            Client.Dispose();
+            await app.DisposeAsync();
+        }
+    }
+}

@@ -1,129 +1,78 @@
-using attendance_monitoring.Data;
-using attendance_monitoring.Repositories;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.AspNetCore.Identity;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
+using attendance_monitoring.Extensions;
+using attendance_monitoring.Extensions.ServiceCollectionExtensions;
+using attendance_monitoring.Extensions.WebApplicationExtensions;
+using attendance_monitoring.Options;
 
-using Microsoft.IdentityModel.Tokens;
-
-using Microsoft.OpenApi.Models;
-using Scalar.AspNetCore;
+// Load environment variables from .env file
+DotNetEnv.Env.Load();
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
-// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
-builder.Services.AddOpenApi();
+// ===== SERVICE REGISTRATION =====
 
-builder.Services.AddSwaggerGen(c =>
-{
-    c.SwaggerDoc("v1", new OpenApiInfo { Title = "Attendance Monitoring API", Version = "v1" });
-    var securityScheme = new OpenApiSecurityScheme
-    {
-        Name = "Authorization",
-        Description = "Enter JWT Bearer token",
-        In = ParameterLocation.Header,
-        Type = SecuritySchemeType.Http,
-        Scheme = "bearer",
-        BearerFormat = "JWT",
-        Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "Bearer" }
-    };
-    c.AddSecurityDefinition("Bearer", securityScheme);
-    c.AddSecurityRequirement(new OpenApiSecurityRequirement
-    {
-        {
-            new OpenApiSecurityScheme
-            {
-                Reference = new OpenApiReference
-                {
-                    Type = ReferenceType.SecurityScheme,
-                    Id = "Bearer"
-                }
-            }, new List<string>()
-        }
-    });
-});
-builder.Services.AddControllers();
+// Database & Identity
+builder.Services.AddDatabaseServices(builder.Configuration);
 
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection"); // fallback to in-memory if null
-if (string.IsNullOrWhiteSpace(connectionString))
-{
-    builder.Services.AddDbContext<ApplicationDbContext>(options => options.UseInMemoryDatabase("AttendanceDb"));
-}
-else
-{
-    builder.Services.AddDbContext<ApplicationDbContext>(options => options.UseSqlServer(connectionString));
-}
+// Authentication & Authorization
+builder.Services.AddAuthenticationServices(builder.Configuration);
+builder.Services.AddAuthorizationPolicies();
 
-builder.Services.AddIdentity<IdentityUser, IdentityRole>()
-    .AddEntityFrameworkStores<ApplicationDbContext>()
-    .AddDefaultTokenProviders();
+// Bulk data
+builder.Services.Configure<BulkDataOptions>(builder.Configuration.GetSection(BulkDataOptions.SectionName));
+builder.Services.Configure<SessionAutoEndOptions>(builder.Configuration.GetSection(SessionAutoEndOptions.SectionName));
 
-builder.Services.AddAuthentication(options =>
-{
-    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-}).AddJwtBearer(options =>
-{
-    options.TokenValidationParameters = new TokenValidationParameters
-    {
-        ValidateIssuer = true,
-        ValidateAudience = true,
-        ValidateLifetime = true,
-        ValidateIssuerSigningKey = true,
-        ValidIssuer = builder.Configuration["AppSettings:Issuer"],
-        ValidAudience = builder.Configuration["AppSettings:Audience"],
-        IssuerSigningKey = new SymmetricSecurityKey(System.Text.Encoding.UTF8.GetBytes(builder.Configuration["AppSettings:Token"]!))
-    };
-});
+// API Documentation
+builder.Services.AddApiDocumentation();
 
-// Register repositories
-builder.Services.AddScoped<IStudentRepository, StudentRepository>();
+// Response Handling & CORS
+builder.Services.AddResponseHandling();
+builder.Services.AddCorsPolicy(builder.Configuration);
+builder.Services.AddDataProtection();
 
-builder.Services.AddEndpointsApiExplorer();
+// SignalR
+builder.Services.AddSignalRServices();
+
+// Dependency Injection
+builder.Services.AddRepositories();
+builder.Services.AddApplicationServices();
+builder.Services.AddBackgroundServices();
+
+// Health Checks
+builder.Services.AddHealthCheckServices();
+
+// Logging
+builder.Logging.AddApplicationLogging();
+
+// ===== BUILD APPLICATION =====
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI(c =>
-    {
-        c.SwaggerEndpoint("/swagger/v1/swagger.json", "Attendance Monitoring API");
-    });
-    app.MapOpenApi();
-    app.MapScalarApiReference();
-}
+// ===== MIDDLEWARE PIPELINE =====
 
-app.UseHttpsRedirection();
-app.UseAuthentication();
-app.UseAuthorization();
-app.MapControllers();
+// Selective compression (must be first)
+app.UseSelectiveResponseCompression();
 
-var summaries = new[]
-{
-    "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
-};
+// Performance monitoring
+app.UsePerformanceMonitoring();
 
-app.MapGet("/weatherforecast", () =>
-    {
-        var forecast = Enumerable.Range(1, 5).Select(index =>
-                new WeatherForecast
-                (
-                    DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-                    Random.Shared.Next(-20, 55),
-                    summaries[Random.Shared.Next(summaries.Length)]
-                ))
-            .ToArray();
-        return forecast;
-    })
-    .WithName("GetWeatherForecast");
+// Development tools (Swagger, Scalar)
+app.UseDevelopmentTools();
 
-app.Run();
+// Static files for test client
+app.UseStaticFiles();
 
-record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
-{
-    public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
-}
+// Core pipeline (HTTPS, CORS, Auth)
+app.UseCorePipeline();
+
+// Health check endpoints
+app.MapHealthCheckEndpoints();
+
+// Global exception handler
+app.UseGlobalExceptionHandler();
+
+// ===== STARTUP INITIALIZATION =====
+await app.InitializeApplicationAsync();
+
+// ===== RUN APPLICATION =====
+
+await app.RunAsync();

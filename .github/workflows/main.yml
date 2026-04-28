@@ -1,0 +1,41 @@
+name: .NET Core CI
+
+on:
+  push:
+    branches: [ "**" ]
+  pull_request:
+    branches: [ "**" ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      TEST_PROJECT: attendance.testproject/attendance.testproject.csproj
+      ARCHITECTURE_GUARDRAIL_FILTER: FullyQualifiedName~Architecture_Testing|FullyQualifiedName~RoleAuthorizationGuardrailTests|FullyQualifiedName~SessionStatusGuardrailTests
+      CRITICAL_VERIFICATION_FILTER: FullyQualifiedName~Integration_Testing|FullyQualifiedName~AccountControllerTest|FullyQualifiedName~AttendanceConcurrencyTests|FullyQualifiedName~QrCodeControllerTest
+
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v5
+      with:
+        dotnet-version: '10.0.x'
+    
+    - name: Restore dependencies
+      run: dotnet restore
+    
+    - name: Build
+      run: dotnet build --configuration Release --no-restore
+
+    - name: Run architecture guardrail suites
+      run: dotnet test $TEST_PROJECT --configuration Release --no-restore --no-build --filter "$ARCHITECTURE_GUARDRAIL_FILTER" --verbosity normal
+
+    - name: Run critical verification suites
+      run: dotnet test $TEST_PROJECT --configuration Release --no-restore --no-build --filter "$CRITICAL_VERIFICATION_FILTER" --verbosity normal
+    
+    - name: Run full test suite
+      run: dotnet test --configuration Release --no-restore --verbosity normal
+
+    - name: Check
+      run: make check

@@ -1,5 +1,10 @@
-bin/
-obj/
-/packages/
-riderModule.iml
-/_ReSharper.Caches/
+final/
+final/
+final
+.env.local
+.env.*.local
+.env
+
+obj
+bin
+.idea

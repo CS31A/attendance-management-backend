@@ -1,0 +1,81 @@
+  Determining projects to restore...
+  All projects are up-to-date for restore.
+  attendance_monitoring -> /home/imisenak/Documents/school/softeng/attendance-management-backend/attendance_monitoring/bin/Debug/net10.0/attendance_monitoring.dll
+  attendance.testproject -> /home/imisenak/Documents/school/softeng/attendance-management-backend/attendance.testproject/bin/Debug/net10.0/attendance.testproject.dll
+Test run for /home/imisenak/Documents/school/softeng/attendance-management-backend/attendance.testproject/bin/Debug/net10.0/attendance.testproject.dll (.NETCoreApp,Version=v10.0)
+VSTest version 18.0.1 (x64)
+
+Starting test execution, please wait...
+A total of 1 test files matched the specified pattern.
+[xUnit.net 00:00:00.76]     attendance.testproject.Integration_Testing.UuidProfileMigrationIntegrationTests.NewWave1Profiles_GetDatabaseGeneratedUuids_AndUpdatesPreserveThem [SKIP]
+[xUnit.net 00:00:00.80]     attendance.testproject.Integration_Testing.UuidProfileMigrationIntegrationTests.ExpandedPhase8UuidTables_HaveMigrationCoverage_ForSliceAAndSliceBAndFingerprintSupport [SKIP]
+[xUnit.net 00:00:00.80]     attendance.testproject.Integration_Testing.UuidProfileMigrationIntegrationTests.ExistingSeededWave1Profiles_HaveBackfilledUniqueNonZeroUuidValues [SKIP]
+[xUnit.net 00:00:00.80]     attendance.testproject.Integration_Testing.UuidProfileMigrationIntegrationTests.StudentEnrollment_IntForeignKeyPathsRemainCoherent_AfterUuidMigration [SKIP]
+  Skipped attendance.testproject.Integration_Testing.UuidProfileMigrationIntegrationTests.NewWave1Profiles_GetDatabaseGeneratedUuids_AndUpdatesPreserveThem [1 ms]
+  Skipped attendance.testproject.Integration_Testing.UuidProfileMigrationIntegrationTests.ExpandedPhase8UuidTables_HaveMigrationCoverage_ForSliceAAndSliceBAndFingerprintSupport [1 ms]
+  Skipped attendance.testproject.Integration_Testing.UuidProfileMigrationIntegrationTests.ExistingSeededWave1Profiles_HaveBackfilledUniqueNonZeroUuidValues [1 ms]
+  Skipped attendance.testproject.Integration_Testing.UuidProfileMigrationIntegrationTests.StudentEnrollment_IntForeignKeyPathsRemainCoherent_AfterUuidMigration [1 ms]
+[xUnit.net 00:00:01.68]     attendance.testproject.Integration_Testing.InstructorSectionsIntegrationTests.GetMySectionsWithStudents_UnauthenticatedRequest_Returns401Unauthorized [SKIP]
+[xUnit.net 00:00:01.69]     attendance.testproject.Integration_Testing.InstructorSectionsIntegrationTests.GetMySectionsWithStudents_NonInstructorUser_Returns404NotFound [SKIP]
+[xUnit.net 00:00:01.69]     attendance.testproject.Integration_Testing.InstructorSectionsIntegrationTests.GetMySectionsWithStudents_AuthenticatedInstructor_Returns200WithCorrectDataStructure [SKIP]
+[xUnit.net 00:00:01.69]     attendance.testproject.Integration_Testing.InstructorSectionsIntegrationTests.GetMySectionsWithStudents_InstructorWithNoSchedules_Returns200WithEmptySections [SKIP]
+  Skipped attendance.testproject.Integration_Testing.InstructorSectionsIntegrationTests.GetMySectionsWithStudents_UnauthenticatedRequest_Returns401Unauthorized [1 ms]
+  Skipped attendance.testproject.Integration_Testing.InstructorSectionsIntegrationTests.GetMySectionsWithStudents_NonInstructorUser_Returns404NotFound [1 ms]
+  Skipped attendance.testproject.Integration_Testing.InstructorSectionsIntegrationTests.GetMySectionsWithStudents_AuthenticatedInstructor_Returns200WithCorrectDataStructure [1 ms]
+  Skipped attendance.testproject.Integration_Testing.InstructorSectionsIntegrationTests.GetMySectionsWithStudents_InstructorWithNoSchedules_Returns200WithEmptySections [1 ms]
+[xUnit.net 00:00:04.73]     attendance.testproject.Integration_Testing.AdminUserManagementIntegrationTests.DeleteApiUsers_ReturnsBadRequest_WhenAdminDeletesSelf [SKIP]
+  Skipped attendance.testproject.Integration_Testing.AdminUserManagementIntegrationTests.DeleteApiUsers_ReturnsBadRequest_WhenAdminDeletesSelf [1 ms]
+[xUnit.net 00:00:04.75]     attendance.testproject.Integration_Testing.AdminUserManagementIntegrationTests.GetApiUsers_WithAllStatus_ReturnsActiveAndArchivedUsers [SKIP]
+[xUnit.net 00:00:04.75]     attendance.testproject.Integration_Testing.AdminUserManagementIntegrationTests.PatchApiUsersRestore_ReturnsBadRequest_WhenUserIsAlreadyActive [SKIP]
+[xUnit.net 00:00:04.75]     attendance.testproject.Integration_Testing.AdminUserManagementIntegrationTests.PatchApiAccountAdminUsersTarget_ReturnsConflict_ForDuplicateEmail [SKIP]
+[xUnit.net 00:00:04.76]     attendance.testproject.Integration_Testing.AdminUserManagementIntegrationTests.GetApiUsers_WithAllStatus_PreservesOrphanedUser_WithNullProfile [SKIP]
+[xUnit.net 00:00:04.76]     attendance.testproject.Integration_Testing.AdminUserManagementIntegrationTests.PatchApiAccountAdminUsersTarget_UpdatesStudentProfile_AndRouteIdWins [SKIP]
+[xUnit.net 00:00:04.76]     attendance.testproject.Integration_Testing.AdminUserManagementIntegrationTests.DeleteApiUsers_RemovesUserAndProfile [SKIP]
+[xUnit.net 00:00:04.77]     attendance.testproject.Integration_Testing.AdminUserManagementIntegrationTests.PatchApiAccountAdminUsersTarget_ReturnsBadRequest_ForInvalidModel [SKIP]
+[xUnit.net 00:00:04.77]     attendance.testproject.Integration_Testing.AdminUserManagementIntegrationTests.GetApiUsers_WithArchivedStatus_ReturnsArchivedUsers [SKIP]
+[xUnit.net 00:00:04.77]     attendance.testproject.Integration_Testing.AdminUserManagementIntegrationTests.GetApiUsers_WithActiveStatus_ReturnsOnlyActiveUsers [SKIP]
+  Skipped attendance.testproject.Integration_Testing.AdminUserManagementIntegrationTests.GetApiUsers_WithAllStatus_ReturnsActiveAndArchivedUsers [1 ms]
+  Skipped attendance.testproject.Integration_Testing.AdminUserManagementIntegrationTests.PatchApiUsersRestore_ReturnsBadRequest_WhenUserIsAlreadyActive [1 ms]
+  Skipped attendance.testproject.Integration_Testing.AdminUserManagementIntegrationTests.PatchApiAccountAdminUsersTarget_ReturnsConflict_ForDuplicateEmail [1 ms]
+  Skipped attendance.testproject.Integration_Testing.AdminUserManagementIntegrationTests.GetApiUsers_WithAllStatus_PreservesOrphanedUser_WithNullProfile [1 ms]
+  Skipped attendance.testproject.Integration_Testing.AdminUserManagementIntegrationTests.PatchApiAccountAdminUsersTarget_UpdatesStudentProfile_AndRouteIdWins [1 ms]
+  Skipped attendance.testproject.Integration_Testing.AdminUserManagementIntegrationTests.DeleteApiUsers_RemovesUserAndProfile [1 ms]
+  Skipped attendance.testproject.Integration_Testing.AdminUserManagementIntegrationTests.PatchApiAccountAdminUsersTarget_ReturnsBadRequest_ForInvalidModel [1 ms]
+  Skipped attendance.testproject.Integration_Testing.AdminUserManagementIntegrationTests.GetApiUsers_WithArchivedStatus_ReturnsArchivedUsers [1 ms]
+  Skipped attendance.testproject.Integration_Testing.AdminUserManagementIntegrationTests.GetApiUsers_WithActiveStatus_ReturnsOnlyActiveUsers [1 ms]
+[xUnit.net 00:00:04.77]     attendance.testproject.Integration_Testing.AdminUserManagementIntegrationTests.PatchApiUsersSoftDelete_ReturnsBadRequest_WhenAdminDeletesSelf [SKIP]
+[xUnit.net 00:00:04.78]     attendance.testproject.Integration_Testing.AdminUserManagementIntegrationTests.PatchApiUsersRestore_ReactivatesArchivedUser [SKIP]
+[xUnit.net 00:00:04.78]     attendance.testproject.Integration_Testing.AdminUserManagementIntegrationTests.GetApiUsers_ReturnsOnlyActiveUsers_ByDefault [SKIP]
+[xUnit.net 00:00:04.78]     attendance.testproject.Integration_Testing.AdminUserManagementIntegrationTests.PatchApiUsersSoftDelete_ArchivesUser_AndRevokesOnlyTargetRefreshTokens [SKIP]
+[xUnit.net 00:00:04.78]     attendance.testproject.Integration_Testing.AdminUserManagementIntegrationTests.GetApiUsers_ReturnsUnauthorized_WhenUnauthenticated [SKIP]
+[xUnit.net 00:00:04.78]     attendance.testproject.Integration_Testing.AdminUserManagementIntegrationTests.PatchApiAccountAdminUsersTarget_ResetsPasswordWithoutCurrentPassword [SKIP]
+[xUnit.net 00:00:04.78]     attendance.testproject.Integration_Testing.AdminUserManagementIntegrationTests.GetApiUsers_ReturnsForbidden_ForNonAdmin [SKIP]
+[xUnit.net 00:00:04.78]     attendance.testproject.Integration_Testing.AdminUserManagementIntegrationTests.PatchApiAccountAdminUsersTarget_ReturnsNotFound_ForUnknownSection [SKIP]
+  Skipped attendance.testproject.Integration_Testing.AdminUserManagementIntegrationTests.PatchApiUsersSoftDelete_ReturnsBadRequest_WhenAdminDeletesSelf [1 ms]
+  Skipped attendance.testproject.Integration_Testing.AdminUserManagementIntegrationTests.PatchApiUsersRestore_ReactivatesArchivedUser [1 ms]
+  Skipped attendance.testproject.Integration_Testing.AdminUserManagementIntegrationTests.GetApiUsers_ReturnsOnlyActiveUsers_ByDefault [1 ms]
+  Skipped attendance.testproject.Integration_Testing.AdminUserManagementIntegrationTests.PatchApiUsersSoftDelete_ArchivesUser_AndRevokesOnlyTargetRefreshTokens [1 ms]
+  Skipped attendance.testproject.Integration_Testing.AdminUserManagementIntegrationTests.GetApiUsers_ReturnsUnauthorized_WhenUnauthenticated [1 ms]
+  Skipped attendance.testproject.Integration_Testing.AdminUserManagementIntegrationTests.PatchApiAccountAdminUsersTarget_ResetsPasswordWithoutCurrentPassword [1 ms]
+  Skipped attendance.testproject.Integration_Testing.AdminUserManagementIntegrationTests.GetApiUsers_ReturnsForbidden_ForNonAdmin [1 ms]
+  Skipped attendance.testproject.Integration_Testing.AdminUserManagementIntegrationTests.PatchApiAccountAdminUsersTarget_ReturnsNotFound_ForUnknownSection [1 ms]
+  Failed attendance.testproject.Controllers_Testing.ClassroomControllerTest.CreateClassroom_ReturnsCreatedResult_WhenValidInput [60 ms]
+  Error Message:
+   Assert.Equal() Failure: Strings differ
+Expected: "GetClassroom"
+Actual:   "GetClassroomByUuid"
+                       ↑ (pos 12)
+  Stack Trace:
+     at attendance.testproject.Controllers_Testing.ClassroomControllerTest.CreateClassroom_ReturnsCreatedResult_WhenValidInput() in /home/imisenak/Documents/school/softeng/attendance-management-backend/attendance.testproject/Controllers_Testing/ClassroomControllerTest.cs:line 163
+--- End of stack trace from previous location ---
+  Failed attendance.testproject.Controllers_Testing.CourseControllerTest.CreateCourse_ReturnsCreatedResult_WhenValidInput [5 ms]
+  Error Message:
+   Assert.Equal() Failure: Strings differ
+Expected: "GetCourse"
+Actual:   "GetCourseByUuid"
+                    ↑ (pos 9)
+  Stack Trace:
+     at attendance.testproject.Controllers_Testing.CourseControllerTest.CreateCourse_ReturnsCreatedResult_WhenValidInput() in /home/imisenak/Documents/school/softeng/attendance-management-backend/attendance.testproject/Controllers_Testing/CourseControllerTest.cs:line 216
+--- End of stack trace from previous location ---
+
+Failed!  - Failed:     2, Passed:  1193, Skipped:    26, Total:  1221, Duration: 20 s - attendance.testproject.dll (net10.0)
