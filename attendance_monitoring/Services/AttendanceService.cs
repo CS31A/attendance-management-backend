@@ -21,6 +21,7 @@ public class AttendanceService(
     IInstructorRepository instructorRepository,
     ISessionRepository sessionRepository,
     IStudentEnrollmentRepository studentEnrollmentRepository,
+    ISectionRepository sectionRepository,
     IUserContextService userContextService,
     ILogger<AttendanceService> logger,
     ConfiguredTimeZoneProvider clock,
@@ -378,23 +379,44 @@ public class AttendanceService(
             }
         }
 
-        // Get all students enrolled in the section
+        // Get all students in the section: regular students (via Student.SectionId) + enrolled students (via StudentEnrollment)
+        var regularStudents = await sectionRepository.GetActiveStudentsBySectionIdAsync(session.Schedule.SectionId)
+            .ConfigureAwait(false);
+
         var enrolledStudents = await studentEnrollmentRepository.GetSectionEnrollmentsAsync(session.Schedule.SectionId)
             .ConfigureAwait(false);
+
+        // Merge both sources, avoiding duplicates (prefer StudentEnrollment data when available)
+        var allStudentsDict = new Dictionary<Guid, Student>();
+
+        foreach (var student in regularStudents)
+        {
+            allStudentsDict[student.Id] = student;
+        }
+
+        foreach (var enrollment in enrolledStudents)
+        {
+            if (enrollment.Student != null)
+            {
+                allStudentsDict[enrollment.Student.Id] = enrollment.Student;
+            }
+        }
+
+        var allStudents = allStudentsDict.Values.ToList();
 
         // Get attendance records for the session
         var attendanceRecords = await attendanceRepository.GetBySessionIdAsync(sessionId).ConfigureAwait(false);
 
         // Create student attendance record DTOs
         var studentAttendanceRecords = new List<StudentAttendanceRecordDto>();
-        foreach (var enrollment in enrolledStudents)
+        foreach (var student in allStudents)
         {
-            var attendanceRecord = attendanceRecords.FirstOrDefault(a => a.StudentId == enrollment.StudentId);
+            var attendanceRecord = attendanceRecords.FirstOrDefault(a => a.StudentId == student.Id);
             studentAttendanceRecords.Add(new StudentAttendanceRecordDto
             {
-                StudentId = enrollment.Student.Id,
-                StudentName = $"{enrollment.Student.Firstname} {enrollment.Student.Lastname}",
-                StudentNumber = enrollment.Student.Usn ?? string.Empty,
+                StudentId = student.Id,
+                StudentName = $"{student.Firstname} {student.Lastname}",
+                StudentNumber = student.Usn ?? string.Empty,
                 AttendanceRecordId = attendanceRecord?.Id,
                 Status = attendanceRecord?.Status ?? "Absent",
                 CheckInTime = attendanceRecord?.CheckInTime,
@@ -405,10 +427,10 @@ public class AttendanceService(
         // Calculate statistics
         var presentCount = attendanceRecords.Count(r => r.Status == "Present");
         var lateCount = attendanceRecords.Count(r => r.Status == "Late");
-        var absentCount = enrolledStudents.Count() - attendanceRecords.Count;
+        var absentCount = allStudents.Count - attendanceRecords.Count;
 
-        var attendanceRate = enrolledStudents.Any()
-            ? Math.Round((decimal)(presentCount + lateCount) / enrolledStudents.Count() * 100, 2)
+        var attendanceRate = allStudents.Any()
+            ? Math.Round((decimal)(presentCount + lateCount) / allStudents.Count * 100, 2)
             : 0;
 
         return new SessionAttendanceDto
@@ -419,7 +441,7 @@ public class AttendanceService(
             ScheduleTitle = $"{session.Schedule.Subject.Name} - {session.Schedule.Section.Name}",
             SubjectName = session.Schedule.Subject.Name,
             SectionName = session.Schedule.Section.Name,
-            TotalEnrolled = enrolledStudents.Count(),
+            TotalEnrolled = allStudents.Count,
             PresentCount = presentCount,
             LateCount = lateCount,
             AbsentCount = absentCount,

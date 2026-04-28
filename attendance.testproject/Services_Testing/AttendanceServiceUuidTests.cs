@@ -23,6 +23,7 @@ public class AttendanceServiceUuidTests
     private readonly Mock<IInstructorRepository> _mockInstructorRepository;
     private readonly Mock<ISessionRepository> _mockSessionRepository;
     private readonly Mock<IStudentEnrollmentRepository> _mockStudentEnrollmentRepository;
+    private readonly Mock<ISectionRepository> _mockSectionRepository;
     private readonly Mock<IAutomaticSessionEndService> _mockAutomaticSessionEndService;
     private readonly Mock<ILogger<AttendanceService>> _mockLogger;
     private readonly Mock<UserManager<IdentityUser>> _mockUserManager;
@@ -35,6 +36,7 @@ public class AttendanceServiceUuidTests
         _mockInstructorRepository = new Mock<IInstructorRepository>();
         _mockSessionRepository = new Mock<ISessionRepository>();
         _mockStudentEnrollmentRepository = new Mock<IStudentEnrollmentRepository>();
+        _mockSectionRepository = new Mock<ISectionRepository>();
         _mockAutomaticSessionEndService = new Mock<IAutomaticSessionEndService>();
         _mockLogger = new Mock<ILogger<AttendanceService>>();
 
@@ -66,6 +68,7 @@ public class AttendanceServiceUuidTests
             _mockInstructorRepository.Object,
             _mockSessionRepository.Object,
             _mockStudentEnrollmentRepository.Object,
+            _mockSectionRepository.Object,
             userContextService,
             _mockLogger.Object,
             timeZoneProvider,
