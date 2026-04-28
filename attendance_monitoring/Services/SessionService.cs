@@ -974,6 +974,8 @@ public class SessionService : ISessionService
             UpdatedAt = session.UpdatedAt,
             RowVersion = session.RowVersion,
             // Schedule information
+            ScheduledStartTime = session.Schedule?.TimeIn,
+            ScheduledEndTime = session.Schedule?.TimeOut,
             SubjectCode = session.Schedule?.Subject?.Code,
             SubjectName = session.Schedule?.Subject?.Name,
             SectionName = session.Schedule?.Section?.Name,

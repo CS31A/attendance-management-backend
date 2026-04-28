@@ -24,6 +24,8 @@ public class SessionResponseDto
     public byte[] RowVersion { get; set; } = [];
 
     // Schedule information
+    public TimeOnly? ScheduledStartTime { get; set; }
+    public TimeOnly? ScheduledEndTime { get; set; }
     public string? SubjectCode { get; set; }
     public string? SubjectName { get; set; }
     public string? SectionName { get; set; }
