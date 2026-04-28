@@ -38,6 +38,15 @@ public class ScheduleServiceTest : IDisposable
         _mockUserContextService = new Mock<IUserContextService>();
         _mockHttpContextAccessor = new Mock<IHttpContextAccessor>();
         _mockLogger = new Mock<ILogger<ScheduleService>>();
+        _mockScheduleRepository
+            .Setup(r => r.FindClassroomOverlapAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<TimeOnly>(), It.IsAny<TimeOnly>(), It.IsAny<Guid?>()))
+            .ReturnsAsync((ScheduleConflictDetails?)null);
+        _mockScheduleRepository
+            .Setup(r => r.FindInstructorOverlapAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<TimeOnly>(), It.IsAny<TimeOnly>(), It.IsAny<Guid?>()))
+            .ReturnsAsync((ScheduleConflictDetails?)null);
+        _mockScheduleRepository
+            .Setup(r => r.FindSectionOverlapAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<TimeOnly>(), It.IsAny<TimeOnly>(), It.IsAny<Guid?>()))
+            .ReturnsAsync((ScheduleConflictDetails?)null);
 
         _service = new ScheduleService(
             _mockScheduleRepository.Object,
@@ -335,6 +344,75 @@ public class ScheduleServiceTest : IDisposable
         Assert.NotEqual(Guid.Empty, result.ClassroomId);
         Assert.NotEqual(Guid.Empty, result.SectionId);
         Assert.NotEqual(Guid.Empty, result.InstructorId);
+    }
+
+    [Theory]
+    [InlineData("classroom")]
+    [InlineData("instructor")]
+    [InlineData("section")]
+    public async Task CreateScheduleAsync_OverlappingResource_ThrowsEntityConflictException(string resourceType)
+    {
+        var createSchedule = CreateValidScheduleRequest();
+        SetupCreateConflict(resourceType, CreateConflictDetails(resourceType));
+
+        var exception = await Assert.ThrowsAsync<EntityConflictException>(() => _service.CreateScheduleAsync(createSchedule));
+
+        Assert.Equal("Schedule", exception.EntityName);
+        Assert.Equal(resourceType, exception.ConflictType);
+        Assert.Contains(resourceType, exception.Message);
+        Assert.Contains("Monday", exception.Message);
+        Assert.Contains("08:00", exception.Message);
+        Assert.Contains("10:00", exception.Message);
+        _mockScheduleRepository.Verify(r => r.AddScheduleAsync(It.IsAny<Schedules>()), Times.Never);
+    }
+
+    [Theory]
+    [InlineData("classroom")]
+    [InlineData("instructor")]
+    [InlineData("section")]
+    public async Task CreateScheduleAsync_BackToBackResourceSchedule_AddsSchedule(string resourceType)
+    {
+        var createSchedule = CreateValidScheduleRequest();
+        _mockScheduleRepository
+            .Setup(r => r.AddScheduleAsync(It.IsAny<Schedules>()))
+            .ReturnsAsync((Schedules schedule) => schedule);
+
+        var result = await _service.CreateScheduleAsync(createSchedule);
+
+        Assert.Equal(createSchedule.TimeIn, result.TimeIn);
+        Assert.Equal(createSchedule.TimeOut, result.TimeOut);
+        VerifyCreateLookup(resourceType, createSchedule.TimeIn, createSchedule.TimeOut);
+        _mockScheduleRepository.Verify(r => r.AddScheduleAsync(It.IsAny<Schedules>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task CreateScheduleAsync_ExactDuplicateConstraint_ThrowsEntityConflictException()
+    {
+        var createSchedule = CreateValidScheduleRequest();
+        _mockScheduleRepository
+            .Setup(r => r.AddScheduleAsync(It.IsAny<Schedules>()))
+            .ThrowsAsync(CreateScheduleUniqueConstraintException());
+
+        var exception = await Assert.ThrowsAsync<EntityConflictException>(() => _service.CreateScheduleAsync(createSchedule));
+
+        Assert.Equal("Schedule", exception.EntityName);
+        Assert.Equal("duplicate", exception.ConflictType);
+        Assert.Contains("Schedule conflict", exception.Message);
+    }
+
+    [Fact]
+    public async Task CreateScheduleAsync_TransientConcurrencyDbUpdateException_ThrowsEntityConflictException()
+    {
+        var createSchedule = CreateValidScheduleRequest();
+        _mockScheduleRepository
+            .Setup(r => r.AddScheduleAsync(It.IsAny<Schedules>()))
+            .ThrowsAsync(CreateTransientScheduleConcurrencyException());
+
+        var exception = await Assert.ThrowsAsync<EntityConflictException>(() => _service.CreateScheduleAsync(createSchedule));
+
+        Assert.Equal("Schedule", exception.EntityName);
+        Assert.Equal("concurrency", exception.ConflictType);
+        Assert.Contains("Please retry", exception.Message);
     }
 
     [Fact]
@@ -656,5 +734,314 @@ public class ScheduleServiceTest : IDisposable
         Assert.Contains("UpdateSchedule", exception.Operation);
     }
 
+    [Theory]
+    [InlineData("classroom")]
+    [InlineData("instructor")]
+    [InlineData("section")]
+    public async Task UpdateScheduleAsync_OverlappingResource_ThrowsEntityConflictException_AndExcludesUpdatedSchedule(string resourceType)
+    {
+        var scheduleId = Guid.NewGuid();
+        var existingSchedule = CreateExistingSchedule(scheduleId);
+        var updateSchedule = new UpdateSchedule
+        {
+            TimeIn = TimeOnly.FromTimeSpan(TimeSpan.FromHours(9)),
+            TimeOut = TimeOnly.FromTimeSpan(TimeSpan.FromHours(11)),
+        };
+        _mockScheduleRepository.Setup(r => r.GetScheduleByIdAsync(scheduleId)).ReturnsAsync(existingSchedule);
+        SetupUpdateConflict(resourceType, existingSchedule, updateSchedule, CreateConflictDetails(resourceType));
+
+        var exception = await Assert.ThrowsAsync<EntityConflictException>(() => _service.UpdateScheduleAsync(scheduleId, updateSchedule));
+
+        Assert.Equal("Schedule", exception.EntityName);
+        Assert.Equal(resourceType, exception.ConflictType);
+        Assert.Contains(resourceType, exception.Message);
+        VerifyUpdateLookup(resourceType, scheduleId, updateSchedule.TimeIn.Value, updateSchedule.TimeOut.Value);
+        _mockScheduleRepository.Verify(r => r.UpdateScheduleAsync(It.IsAny<Schedules>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task UpdateScheduleAsync_UnchangedSchedule_DoesNotConflictWithItself()
+    {
+        var scheduleId = Guid.NewGuid();
+        var existingSchedule = CreateExistingSchedule(scheduleId);
+        _mockScheduleRepository.Setup(r => r.GetScheduleByIdAsync(scheduleId)).ReturnsAsync(existingSchedule);
+        _mockScheduleRepository.Setup(r => r.UpdateScheduleAsync(It.IsAny<Schedules>())).ReturnsAsync((Schedules schedule) => schedule);
+
+        var result = await _service.UpdateScheduleAsync(scheduleId, new UpdateSchedule { DayOfWeek = "Monday" });
+
+        Assert.Equal(scheduleId, result.Id);
+        VerifyUpdateLookup("classroom", scheduleId, existingSchedule.TimeIn, existingSchedule.TimeOut);
+        VerifyUpdateLookup("instructor", scheduleId, existingSchedule.TimeIn, existingSchedule.TimeOut);
+        VerifyUpdateLookup("section", scheduleId, existingSchedule.TimeIn, existingSchedule.TimeOut);
+    }
+
+    [Fact]
+    public async Task UpdateScheduleAsync_OnlyInstructorChanged_ValidatesNewInstructorWithExistingDayAndTimeRange()
+    {
+        var scheduleId = Guid.NewGuid();
+        var existingSchedule = CreateExistingSchedule(scheduleId);
+        var newInstructorId = AddInstructor("Grace", "Hopper");
+        var updateSchedule = new UpdateSchedule { InstructorId = newInstructorId };
+        _mockScheduleRepository.Setup(r => r.GetScheduleByIdAsync(scheduleId)).ReturnsAsync(existingSchedule);
+        _mockScheduleRepository.Setup(r => r.UpdateScheduleAsync(It.IsAny<Schedules>())).ReturnsAsync((Schedules schedule) => schedule);
+
+        var result = await _service.UpdateScheduleAsync(scheduleId, updateSchedule);
+
+        Assert.Equal(newInstructorId, result.InstructorId);
+        _mockScheduleRepository.Verify(r => r.FindInstructorOverlapAsync(
+            newInstructorId,
+            existingSchedule.DayOfWeek,
+            existingSchedule.TimeIn,
+            existingSchedule.TimeOut,
+            scheduleId), Times.Once);
+    }
+
+    [Fact]
+    public async Task UpdateScheduleAsync_OnlySectionChanged_ValidatesNewSectionWithExistingDayAndTimeRange()
+    {
+        var scheduleId = Guid.NewGuid();
+        var existingSchedule = CreateExistingSchedule(scheduleId);
+        var newSectionId = AddSection("CS-3B");
+        var updateSchedule = new UpdateSchedule { SectionId = newSectionId };
+        _mockScheduleRepository.Setup(r => r.GetScheduleByIdAsync(scheduleId)).ReturnsAsync(existingSchedule);
+        _mockScheduleRepository.Setup(r => r.UpdateScheduleAsync(It.IsAny<Schedules>())).ReturnsAsync((Schedules schedule) => schedule);
+
+        var result = await _service.UpdateScheduleAsync(scheduleId, updateSchedule);
+
+        Assert.Equal(newSectionId, result.SectionId);
+        _mockScheduleRepository.Verify(r => r.FindSectionOverlapAsync(
+            newSectionId,
+            existingSchedule.DayOfWeek,
+            existingSchedule.TimeIn,
+            existingSchedule.TimeOut,
+            scheduleId), Times.Once);
+    }
+
+    [Theory]
+    [InlineData("classroom")]
+    [InlineData("instructor")]
+    [InlineData("section")]
+    public async Task UpdateScheduleAsync_BackToBackResourceSchedule_UpdatesSchedule(string resourceType)
+    {
+        var scheduleId = Guid.NewGuid();
+        var existingSchedule = CreateExistingSchedule(scheduleId);
+        var updateSchedule = new UpdateSchedule
+        {
+            TimeIn = TimeOnly.FromTimeSpan(TimeSpan.FromHours(10)),
+            TimeOut = TimeOnly.FromTimeSpan(TimeSpan.FromHours(12)),
+        };
+        _mockScheduleRepository.Setup(r => r.GetScheduleByIdAsync(scheduleId)).ReturnsAsync(existingSchedule);
+        _mockScheduleRepository.Setup(r => r.UpdateScheduleAsync(It.IsAny<Schedules>())).ReturnsAsync((Schedules schedule) => schedule);
+
+        var result = await _service.UpdateScheduleAsync(scheduleId, updateSchedule);
+
+        Assert.Equal(updateSchedule.TimeIn, result.TimeIn);
+        Assert.Equal(updateSchedule.TimeOut, result.TimeOut);
+        VerifyUpdateLookup(resourceType, scheduleId, updateSchedule.TimeIn.Value, updateSchedule.TimeOut.Value);
+        _mockScheduleRepository.Verify(r => r.UpdateScheduleAsync(It.IsAny<Schedules>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task UpdateScheduleAsync_ExactDuplicateConstraint_ThrowsEntityConflictException()
+    {
+        var scheduleId = Guid.NewGuid();
+        var existingSchedule = CreateExistingSchedule(scheduleId);
+        _mockScheduleRepository.Setup(r => r.GetScheduleByIdAsync(scheduleId)).ReturnsAsync(existingSchedule);
+        _mockScheduleRepository
+            .Setup(r => r.UpdateScheduleAsync(It.IsAny<Schedules>()))
+            .ThrowsAsync(CreateScheduleUniqueConstraintException());
+
+        var exception = await Assert.ThrowsAsync<EntityConflictException>(() => _service.UpdateScheduleAsync(scheduleId, new UpdateSchedule { DayOfWeek = "Tuesday" }));
+
+        Assert.Equal("Schedule", exception.EntityName);
+        Assert.Equal("duplicate", exception.ConflictType);
+        Assert.Contains("Schedule conflict", exception.Message);
+    }
+
+    [Fact]
+    public async Task UpdateScheduleAsync_TransientConcurrencyDbUpdateException_ThrowsEntityConflictException()
+    {
+        var scheduleId = Guid.NewGuid();
+        var existingSchedule = CreateExistingSchedule(scheduleId);
+        _mockScheduleRepository.Setup(r => r.GetScheduleByIdAsync(scheduleId)).ReturnsAsync(existingSchedule);
+        _mockScheduleRepository
+            .Setup(r => r.UpdateScheduleAsync(It.IsAny<Schedules>()))
+            .ThrowsAsync(CreateTransientScheduleConcurrencyException());
+
+        var exception = await Assert.ThrowsAsync<EntityConflictException>(() => _service.UpdateScheduleAsync(scheduleId, new UpdateSchedule { DayOfWeek = "Tuesday" }));
+
+        Assert.Equal("Schedule", exception.EntityName);
+        Assert.Equal("concurrency", exception.ConflictType);
+        Assert.Contains("Please retry", exception.Message);
+    }
+
     #endregion
+
+    private CreateSchedule CreateValidScheduleRequest()
+    {
+        return new CreateSchedule
+        {
+            TimeIn = TimeOnly.FromTimeSpan(TimeSpan.FromHours(8)),
+            TimeOut = TimeOnly.FromTimeSpan(TimeSpan.FromHours(10)),
+            DayOfWeek = "Monday",
+            SubjectId = SubjectUuid,
+            ClassroomId = ClassroomUuid,
+            SectionId = SectionUuid,
+            InstructorId = InstructorUuid,
+        };
+    }
+
+    private Schedules CreateExistingSchedule(Guid scheduleId)
+    {
+        return new Schedules
+        {
+            Id = scheduleId,
+            TimeIn = TimeOnly.FromTimeSpan(TimeSpan.FromHours(8)),
+            TimeOut = TimeOnly.FromTimeSpan(TimeSpan.FromHours(10)),
+            DayOfWeek = "Monday",
+            SubjectId = SubjectUuid,
+            ClassroomId = ClassroomUuid,
+            SectionId = SectionUuid,
+            InstructorId = InstructorUuid,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow,
+        };
+    }
+
+    private ScheduleConflictDetails CreateConflictDetails(string resourceType)
+    {
+        return new ScheduleConflictDetails
+        {
+            ScheduleId = Guid.NewGuid(),
+            DayOfWeek = "Monday",
+            TimeIn = TimeOnly.FromTimeSpan(TimeSpan.FromHours(8)),
+            TimeOut = TimeOnly.FromTimeSpan(TimeSpan.FromHours(10)),
+            ClassroomName = resourceType == "classroom" ? "Room 101" : null,
+            InstructorName = resourceType == "instructor" ? "John Doe" : null,
+            SectionName = resourceType == "section" ? "CS-3A" : null,
+        };
+    }
+
+    private void SetupCreateConflict(string resourceType, ScheduleConflictDetails conflict)
+    {
+        switch (resourceType)
+        {
+            case "classroom":
+                _mockScheduleRepository
+                    .Setup(r => r.FindClassroomOverlapAsync(ClassroomUuid, "Monday", It.IsAny<TimeOnly>(), It.IsAny<TimeOnly>(), null))
+                    .ReturnsAsync(conflict);
+                break;
+            case "instructor":
+                _mockScheduleRepository
+                    .Setup(r => r.FindInstructorOverlapAsync(InstructorUuid, "Monday", It.IsAny<TimeOnly>(), It.IsAny<TimeOnly>(), null))
+                    .ReturnsAsync(conflict);
+                break;
+            case "section":
+                _mockScheduleRepository
+                    .Setup(r => r.FindSectionOverlapAsync(SectionUuid, "Monday", It.IsAny<TimeOnly>(), It.IsAny<TimeOnly>(), null))
+                    .ReturnsAsync(conflict);
+                break;
+        }
+    }
+
+    private void SetupUpdateConflict(string resourceType, Schedules existingSchedule, UpdateSchedule updateSchedule, ScheduleConflictDetails conflict)
+    {
+        var timeIn = updateSchedule.TimeIn ?? existingSchedule.TimeIn;
+        var timeOut = updateSchedule.TimeOut ?? existingSchedule.TimeOut;
+        switch (resourceType)
+        {
+            case "classroom":
+                _mockScheduleRepository
+                    .Setup(r => r.FindClassroomOverlapAsync(existingSchedule.ClassroomId, existingSchedule.DayOfWeek, timeIn, timeOut, existingSchedule.Id))
+                    .ReturnsAsync(conflict);
+                break;
+            case "instructor":
+                _mockScheduleRepository
+                    .Setup(r => r.FindInstructorOverlapAsync(existingSchedule.InstructorId, existingSchedule.DayOfWeek, timeIn, timeOut, existingSchedule.Id))
+                    .ReturnsAsync(conflict);
+                break;
+            case "section":
+                _mockScheduleRepository
+                    .Setup(r => r.FindSectionOverlapAsync(existingSchedule.SectionId, existingSchedule.DayOfWeek, timeIn, timeOut, existingSchedule.Id))
+                    .ReturnsAsync(conflict);
+                break;
+        }
+    }
+
+    private void VerifyCreateLookup(string resourceType, TimeOnly timeIn, TimeOnly timeOut)
+    {
+        switch (resourceType)
+        {
+            case "classroom":
+                _mockScheduleRepository.Verify(r => r.FindClassroomOverlapAsync(ClassroomUuid, "Monday", timeIn, timeOut, null), Times.Once);
+                break;
+            case "instructor":
+                _mockScheduleRepository.Verify(r => r.FindInstructorOverlapAsync(InstructorUuid, "Monday", timeIn, timeOut, null), Times.Once);
+                break;
+            case "section":
+                _mockScheduleRepository.Verify(r => r.FindSectionOverlapAsync(SectionUuid, "Monday", timeIn, timeOut, null), Times.Once);
+                break;
+        }
+    }
+
+    private void VerifyUpdateLookup(string resourceType, Guid scheduleId, TimeOnly timeIn, TimeOnly timeOut)
+    {
+        switch (resourceType)
+        {
+            case "classroom":
+                _mockScheduleRepository.Verify(r => r.FindClassroomOverlapAsync(ClassroomUuid, "Monday", timeIn, timeOut, scheduleId), Times.Once);
+                break;
+            case "instructor":
+                _mockScheduleRepository.Verify(r => r.FindInstructorOverlapAsync(InstructorUuid, "Monday", timeIn, timeOut, scheduleId), Times.Once);
+                break;
+            case "section":
+                _mockScheduleRepository.Verify(r => r.FindSectionOverlapAsync(SectionUuid, "Monday", timeIn, timeOut, scheduleId), Times.Once);
+                break;
+        }
+    }
+
+    private Guid AddInstructor(string firstName, string lastName)
+    {
+        var instructor = new Instructor
+        {
+            Id = Guid.NewGuid(),
+            Firstname = firstName,
+            Lastname = lastName,
+            UserId = Guid.NewGuid().ToString(),
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow,
+        };
+        _context.Instructors.Add(instructor);
+        _context.SaveChanges();
+        return instructor.Id;
+    }
+
+    private Guid AddSection(string name)
+    {
+        var section = new Section
+        {
+            Id = Guid.NewGuid(),
+            Name = name,
+            CourseId = _context.Courses.Single().Id,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow,
+        };
+        _context.Sections.Add(section);
+        _context.SaveChanges();
+        return section.Id;
+    }
+
+    private static DbUpdateException CreateScheduleUniqueConstraintException()
+    {
+        return new DbUpdateException(
+            "Could not save schedule",
+            new InvalidOperationException("Cannot insert duplicate key row in object 'dbo.Schedules' with unique index 'IX_Schedules_ClassroomId_DayOfWeek_TimeIn_TimeOut'."));
+    }
+
+    private static DbUpdateException CreateTransientScheduleConcurrencyException()
+    {
+        return new DbUpdateException(
+            "Could not save schedule",
+            new InvalidOperationException("Transaction (Process ID 54) was deadlocked on lock resources with another process and has been chosen as the deadlock victim. Rerun the transaction."));
+    }
 }

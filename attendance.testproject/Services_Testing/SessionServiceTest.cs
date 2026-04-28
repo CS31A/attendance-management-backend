@@ -178,10 +178,14 @@ public class SessionServiceTest
         // Arrange
         var session = CreateTestSession();
         session.Id = Guid.NewGuid();
+        var instructor = CreateTestInstructor(session.Schedule!.InstructorId, "user-123");
 
         _mockSessionRepository
             .Setup(r => r.GetSessionByUuidAsync(session.Id))
             .ReturnsAsync(session);
+        _mockInstructorRepository
+            .Setup(r => r.GetInstructorByUserIdAsync("user-123"))
+            .ReturnsAsync(instructor);
 
         // Act
         var result = await _sessionService.GetSessionByUuidAsync(session.Id);
@@ -190,6 +194,23 @@ public class SessionServiceTest
         Assert.NotNull(result);
         Assert.Equal(session.Id, result.Id);
         _mockSessionRepository.Verify(r => r.GetSessionByUuidAsync(session.Id), Times.Once);
+    }
+
+    [Fact]
+    public async Task GetSessionByUuidAsync_ThrowsUnauthorized_WhenInstructorDoesNotOwnSession()
+    {
+        var session = CreateTestSession();
+        var instructor = CreateTestInstructor(Guid.NewGuid(), "user-123");
+
+        _mockSessionRepository
+            .Setup(r => r.GetSessionByUuidAsync(session.Id))
+            .ReturnsAsync(session);
+        _mockInstructorRepository
+            .Setup(r => r.GetInstructorByUserIdAsync("user-123"))
+            .ReturnsAsync(instructor);
+
+        await Assert.ThrowsAsync<EntityUnauthorizedException>(
+            () => _sessionService.GetSessionByUuidAsync(session.Id));
     }
 
     [Fact]

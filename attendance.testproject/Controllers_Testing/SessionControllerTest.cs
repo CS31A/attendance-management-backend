@@ -148,6 +148,22 @@ public class SessionControllerTest
         Assert.NotNull(notFoundResult.Value);
     }
 
+    [Fact]
+    public async Task GetSessionByUuid_ReturnsForbidden_WhenServiceRejectsAccess()
+    {
+        var sessionUuid = Guid.NewGuid();
+
+        _mockSessionService
+            .Setup(s => s.GetSessionByUuidAsync(sessionUuid))
+            .ThrowsAsync(new EntityUnauthorizedException("Session", "GetSessionByUuid", sessionUuid.ToString(), "Forbidden"));
+
+        var result = await _sessionController.GetSessionByUuid(sessionUuid);
+
+        var forbiddenResult = Assert.IsType<ObjectResult>(result.Result);
+        Assert.Equal(403, forbiddenResult.StatusCode);
+        Assert.NotNull(forbiddenResult.Value);
+    }
+
     #endregion
 
     #region GetSessionsBySchedule Tests

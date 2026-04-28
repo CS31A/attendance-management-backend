@@ -28,6 +28,7 @@ public class AttendanceAuthorizationTests
     private readonly Mock<IInstructorRepository> _mockInstructorRepository;
     private readonly Mock<ISessionRepository> _mockSessionRepository;
     private readonly Mock<IStudentEnrollmentRepository> _mockStudentEnrollmentRepository;
+    private readonly Mock<ISectionRepository> _mockSectionRepository;
     private readonly Mock<ILogger<AttendanceService>> _mockLogger;
     private readonly Mock<UserManager<IdentityUser>> _mockUserManager;
     private readonly UserContextService _userContextService;
@@ -41,6 +42,7 @@ public class AttendanceAuthorizationTests
         _mockInstructorRepository = new Mock<IInstructorRepository>();
         _mockSessionRepository = new Mock<ISessionRepository>();
         _mockStudentEnrollmentRepository = new Mock<IStudentEnrollmentRepository>();
+        _mockSectionRepository = new Mock<ISectionRepository>();
         _mockLogger = new Mock<ILogger<AttendanceService>>();
 
         // Mock UserManager for UserContextService
@@ -75,6 +77,7 @@ public class AttendanceAuthorizationTests
             _mockInstructorRepository.Object,
             _mockSessionRepository.Object,
             _mockStudentEnrollmentRepository.Object,
+            _mockSectionRepository.Object,
             _userContextService,
             _mockLogger.Object,
             _timeZoneProvider
@@ -363,6 +366,60 @@ public class AttendanceAuthorizationTests
 
     #endregion
 
+    #region GetSessionAttendanceAsync Roster Tests
+
+    [Fact]
+    public async Task GetSessionAttendanceAsync_IncludesPrimarySectionStudentsAndExplicitEnrollments()
+    {
+        var sessionId = Guid.NewGuid();
+        var sectionId = Guid.NewGuid();
+        var subjectId = Guid.NewGuid();
+        var primaryStudent = CreateTestStudent(Guid.NewGuid(), "primary-user", "PRIMARY-001");
+        var enrolledStudent = CreateTestStudent(Guid.NewGuid(), "enrolled-user", "ENROLLED-001");
+        var session = CreateTestSession(sessionId, sectionId, subjectId);
+        var attendanceRecordId = Guid.NewGuid();
+
+        _mockSessionRepository
+            .Setup(repository => repository.GetSessionByIdAsync(sessionId))
+            .ReturnsAsync(session);
+        _mockSectionRepository
+            .Setup(repository => repository.GetActiveStudentsBySectionIdAsync(sectionId))
+            .ReturnsAsync(new List<Student> { primaryStudent });
+        _mockStudentEnrollmentRepository
+            .Setup(repository => repository.GetSectionEnrollmentsAsync(sectionId))
+            .ReturnsAsync(new List<StudentEnrollment>
+            {
+                CreateTestEnrollment(primaryStudent, sectionId, subjectId),
+                CreateTestEnrollment(enrolledStudent, sectionId, subjectId)
+            });
+        _mockAttendanceRepository
+            .Setup(repository => repository.GetBySessionIdAsync(sessionId))
+            .ReturnsAsync(new List<AttendanceRecord>
+            {
+                CreateTestAttendanceRecord(attendanceRecordId, enrolledStudent.Id, sessionId, "Late")
+            });
+
+        var result = await _attendanceService.GetSessionAttendanceAsync(sessionId, CreateAdminUser());
+
+        Assert.Equal(2, result.TotalEnrolled);
+        Assert.Equal(1, result.LateCount);
+        Assert.Equal(1, result.AbsentCount);
+        Assert.Equal(50m, result.AttendanceRate);
+        Assert.Equal(2, result.AttendanceRecords.Count);
+
+        var primaryRecord = Assert.Single(result.AttendanceRecords, record => record.StudentId == primaryStudent.Id);
+        Assert.Equal("Absent", primaryRecord.Status);
+        Assert.Null(primaryRecord.AttendanceRecordId);
+        Assert.Equal("PRIMARY-001", primaryRecord.StudentNumber);
+
+        var enrolledRecord = Assert.Single(result.AttendanceRecords, record => record.StudentId == enrolledStudent.Id);
+        Assert.Equal("Late", enrolledRecord.Status);
+        Assert.Equal(attendanceRecordId, enrolledRecord.AttendanceRecordId);
+        Assert.Equal("ENROLLED-001", enrolledRecord.StudentNumber);
+    }
+
+    #endregion
+
     #region GetAttendanceByIdAsync Authorization Tests
 
     [Fact]
@@ -446,7 +503,20 @@ public class AttendanceAuthorizationTests
         }, "TestAuthentication"));
     }
 
+    private static ClaimsPrincipal CreateAdminUser()
+    {
+        return new ClaimsPrincipal(new ClaimsIdentity(new[]
+        {
+            new Claim(ClaimTypes.NameIdentifier, "admin-user"),
+            new Claim(ClaimTypes.Role, RoleConstants.Admin),
+            new Claim(ClaimTypes.Name, "admin@test.com")
+        }, "TestAuthentication"));
+    }
+
     private static Student CreateTestStudent(Guid id, string userId)
+        => CreateTestStudent(id, userId, "USN-001");
+
+    private static Student CreateTestStudent(Guid id, string userId, string usn)
     {
         return new Student
         {
@@ -456,6 +526,7 @@ public class AttendanceAuthorizationTests
             Lastname = "Doe",
             IsRegular = true,
             IsDeleted = false,
+            Usn = usn,
             Section = CreateTestSection()
         };
     }
@@ -470,6 +541,9 @@ public class AttendanceAuthorizationTests
     }
 
     private static AttendanceRecord CreateTestAttendanceRecord(Guid id, Guid studentId, Guid sessionId)
+        => CreateTestAttendanceRecord(id, studentId, sessionId, "Present");
+
+    private static AttendanceRecord CreateTestAttendanceRecord(Guid id, Guid studentId, Guid sessionId, string status)
     {
         return new AttendanceRecord
         {
@@ -477,7 +551,7 @@ public class AttendanceAuthorizationTests
             StudentId = studentId,
             SessionId = sessionId,
             CheckInTime = DateTime.UtcNow,
-            Status = "Present",
+            Status = status,
             IsManualEntry = false,
             Student = CreateTestStudent(studentId, "user-123"),
             Session = CreateTestSession(sessionId)
@@ -485,6 +559,9 @@ public class AttendanceAuthorizationTests
     }
 
     private static Session CreateTestSession(Guid id)
+        => CreateTestSession(id, Guid.NewGuid(), Guid.NewGuid());
+
+    private static Session CreateTestSession(Guid id, Guid sectionId, Guid subjectId)
     {
         var instructor = new Instructor
         {
@@ -503,18 +580,19 @@ public class AttendanceAuthorizationTests
 
         var subject = new Subject
         {
-            Id = Guid.NewGuid(),
+            Id = subjectId,
             Name = "Computer Science",
             Code = "CS101"
         };
 
         var section = CreateTestSection();
+        section.Id = sectionId;
 
         var schedule = new Schedules
         {
             Id = Guid.NewGuid(),
-            SubjectId = Guid.NewGuid(),
-            SectionId = Guid.NewGuid(),
+            SubjectId = subjectId,
+            SectionId = sectionId,
             InstructorId = Guid.NewGuid(),
             ClassroomId = Guid.NewGuid(),
             TimeIn = TimeOnly.Parse("08:00"),
@@ -533,6 +611,21 @@ public class AttendanceAuthorizationTests
             Status = SessionStatusConstants.Active,
             Schedule = schedule,
             ActualRoom = classroom
+        };
+    }
+
+    private static StudentEnrollment CreateTestEnrollment(Student student, Guid sectionId, Guid subjectId)
+    {
+        return new StudentEnrollment
+        {
+            Id = Guid.NewGuid(),
+            StudentId = student.Id,
+            Student = student,
+            SectionId = sectionId,
+            SubjectId = subjectId,
+            IsActive = true,
+            EnrollmentType = EnrollmentTypeConstants.Regular,
+            EnrolledAt = DateTime.UtcNow
         };
     }
 

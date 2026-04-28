@@ -28,6 +28,7 @@ public class AttendanceConcurrencyTests
     private readonly Mock<IInstructorRepository> _mockInstructorRepository;
     private readonly Mock<ISessionRepository> _mockSessionRepository;
     private readonly Mock<IStudentEnrollmentRepository> _mockStudentEnrollmentRepository;
+    private readonly Mock<ISectionRepository> _mockSectionRepository;
     private readonly Mock<ILogger<AttendanceService>> _mockLogger;
     private readonly Mock<UserManager<IdentityUser>> _mockUserManager;
     private readonly UserContextService _userContextService;
@@ -41,6 +42,7 @@ public class AttendanceConcurrencyTests
         _mockInstructorRepository = new Mock<IInstructorRepository>();
         _mockSessionRepository = new Mock<ISessionRepository>();
         _mockStudentEnrollmentRepository = new Mock<IStudentEnrollmentRepository>();
+        _mockSectionRepository = new Mock<ISectionRepository>();
         _mockLogger = new Mock<ILogger<AttendanceService>>();
 
         // Mock UserManager for UserContextService
@@ -75,6 +77,7 @@ public class AttendanceConcurrencyTests
             _mockInstructorRepository.Object,
             _mockSessionRepository.Object,
             _mockStudentEnrollmentRepository.Object,
+            _mockSectionRepository.Object,
             _userContextService,
             _mockLogger.Object,
             _timeZoneProvider

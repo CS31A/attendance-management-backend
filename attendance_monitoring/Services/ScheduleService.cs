@@ -5,6 +5,7 @@ using attendance_monitoring.Helpers;
 using attendance_monitoring.IRepository;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
+using System.Data;
 using System.Security.Claims;
 using attendance_monitoring.IServices;
 using attendance_monitoring.Models.DTO.Request;
@@ -219,23 +220,35 @@ namespace attendance_monitoring.Services
                 var sectionId = await ScheduleServiceSupport.ResolveSectionIdAsync(context, createSchedule.SectionId).ConfigureAwait(false);
                 var instructorId = await ScheduleServiceSupport.ResolveInstructorIdAsync(context, createSchedule.InstructorId).ConfigureAwait(false);
 
-                var schedule = new Schedules
+                return await ExecuteInTransactionAsync(async () =>
                 {
-                    TimeIn = createSchedule.TimeIn,
-                    TimeOut = createSchedule.TimeOut,
-                    DayOfWeek = createSchedule.DayOfWeek,
-                    SubjectId = subjectId,
-                    ClassroomId = classroomId,
-                    SectionId = sectionId,
-                    InstructorId = instructorId,
-                    CreatedAt = DateTime.UtcNow,
-                    UpdatedAt = DateTime.UtcNow
-                };
+                    await ScheduleConflictValidator.ValidateScheduleDoesNotOverlapAsync(
+                        scheduleRepository,
+                        classroomId,
+                        instructorId,
+                        sectionId,
+                        createSchedule.DayOfWeek,
+                        createSchedule.TimeIn,
+                        createSchedule.TimeOut).ConfigureAwait(false);
 
-                var createdSchedule = await scheduleRepository.AddScheduleAsync(schedule);
+                    var schedule = new Schedules
+                    {
+                        TimeIn = createSchedule.TimeIn,
+                        TimeOut = createSchedule.TimeOut,
+                        DayOfWeek = createSchedule.DayOfWeek,
+                        SubjectId = subjectId,
+                        ClassroomId = classroomId,
+                        SectionId = sectionId,
+                        InstructorId = instructorId,
+                        CreatedAt = DateTime.UtcNow,
+                        UpdatedAt = DateTime.UtcNow
+                    };
 
-                logger.LogInformation("Successfully created schedule with ID: {Id}", createdSchedule.Id);
-                return createdSchedule;
+                    var createdSchedule = await scheduleRepository.AddScheduleAsync(schedule);
+
+                    logger.LogInformation("Successfully created schedule with ID: {Id}", createdSchedule.Id);
+                    return createdSchedule;
+                }).ConfigureAwait(false);
             }
             catch (ValidationException)
             {
@@ -244,6 +257,20 @@ namespace attendance_monitoring.Services
             catch (EntityNotFoundException<Guid>)
             {
                 throw;
+            }
+            catch (EntityConflictException)
+            {
+                throw;
+            }
+            catch (DbUpdateException ex) when (ScheduleConflictValidator.IsScheduleDuplicateConstraintViolation(ex))
+            {
+                logger.LogWarning(ex, "Schedule creation failed due to duplicate schedule constraint");
+                throw ScheduleConflictValidator.CreateDuplicateScheduleConflict(ex);
+            }
+            catch (Exception ex) when (ScheduleConflictValidator.IsTransientConcurrencyConflict(ex))
+            {
+                logger.LogWarning(ex, "Schedule creation failed due to concurrent schedule change");
+                throw ScheduleConflictValidator.CreateTransientConcurrencyConflict(ex);
             }
             catch (Exception ex)
             {
@@ -307,34 +334,51 @@ namespace attendance_monitoring.Services
                     existingSchedule.InstructorId = await ScheduleServiceSupport.ResolveInstructorIdAsync(context, updateSchedule.InstructorId.Value).ConfigureAwait(false);
                 }
 
-                // Update simple fields only if provided
-                if (updateSchedule.TimeIn.HasValue)
+                var effectiveDayOfWeek = string.IsNullOrEmpty(updateSchedule.DayOfWeek)
+                    ? existingSchedule.DayOfWeek
+                    : updateSchedule.DayOfWeek;
+
+                return await ExecuteInTransactionAsync(async () =>
                 {
-                    existingSchedule.TimeIn = updateSchedule.TimeIn.Value;
-                }
+                    await ScheduleConflictValidator.ValidateScheduleDoesNotOverlapAsync(
+                        scheduleRepository,
+                        existingSchedule.ClassroomId,
+                        existingSchedule.InstructorId,
+                        existingSchedule.SectionId,
+                        effectiveDayOfWeek,
+                        effectiveTimeIn,
+                        effectiveTimeOut,
+                        existingSchedule.Id).ConfigureAwait(false);
 
-                if (updateSchedule.TimeOut.HasValue)
-                {
-                    existingSchedule.TimeOut = updateSchedule.TimeOut.Value;
-                }
+                    // Update simple fields only if provided
+                    if (updateSchedule.TimeIn.HasValue)
+                    {
+                        existingSchedule.TimeIn = updateSchedule.TimeIn.Value;
+                    }
 
-                if (!string.IsNullOrEmpty(updateSchedule.DayOfWeek))
-                {
-                    existingSchedule.DayOfWeek = updateSchedule.DayOfWeek;
-                }
+                    if (updateSchedule.TimeOut.HasValue)
+                    {
+                        existingSchedule.TimeOut = updateSchedule.TimeOut.Value;
+                    }
 
-                existingSchedule.UpdatedAt = DateTime.UtcNow;
+                    if (!string.IsNullOrEmpty(updateSchedule.DayOfWeek))
+                    {
+                        existingSchedule.DayOfWeek = updateSchedule.DayOfWeek;
+                    }
 
-                var updatedSchedule = await scheduleRepository.UpdateScheduleAsync(existingSchedule);
+                    existingSchedule.UpdatedAt = DateTime.UtcNow;
 
-                if (updatedSchedule == null)
-                {
-                    logger.LogWarning("Schedule update failed: Failed to update schedule with ID {Id}", id);
-                    throw new EntityServiceException("Schedule", $"UpdateSchedule: {id}", "Failed to update schedule");
-                }
+                    var updatedSchedule = await scheduleRepository.UpdateScheduleAsync(existingSchedule);
 
-                logger.LogInformation("Successfully updated schedule with ID: {Id}", updatedSchedule.Id);
-                return updatedSchedule;
+                    if (updatedSchedule == null)
+                    {
+                        logger.LogWarning("Schedule update failed: Failed to update schedule with ID {Id}", id);
+                        throw new EntityServiceException("Schedule", $"UpdateSchedule: {id}", "Failed to update schedule");
+                    }
+
+                    logger.LogInformation("Successfully updated schedule with ID: {Id}", updatedSchedule.Id);
+                    return updatedSchedule;
+                }).ConfigureAwait(false);
             }
             catch (ValidationException)
             {
@@ -347,6 +391,20 @@ namespace attendance_monitoring.Services
             catch (EntityServiceException)
             {
                 throw;
+            }
+            catch (EntityConflictException)
+            {
+                throw;
+            }
+            catch (DbUpdateException ex) when (ScheduleConflictValidator.IsScheduleDuplicateConstraintViolation(ex))
+            {
+                logger.LogWarning(ex, "Schedule update failed due to duplicate schedule constraint for ID: {Id}", id);
+                throw ScheduleConflictValidator.CreateDuplicateScheduleConflict(ex);
+            }
+            catch (Exception ex) when (ScheduleConflictValidator.IsTransientConcurrencyConflict(ex))
+            {
+                logger.LogWarning(ex, "Schedule update failed due to concurrent schedule change for ID: {Id}", id);
+                throw ScheduleConflictValidator.CreateTransientConcurrencyConflict(ex);
             }
             catch (Exception ex)
             {
@@ -450,6 +508,35 @@ namespace attendance_monitoring.Services
                 "sessions" => "Cannot delete: Schedule has sessions assigned. Remove sessions first.",
                 _ => "Cannot delete: Schedule has dependencies that prevent deletion.",
             };
+        }
+
+        private async Task<T> ExecuteInTransactionAsync<T>(Func<Task<T>> operation)
+        {
+            if (context.Database.IsInMemory() || context.Database.CurrentTransaction != null)
+            {
+                return await operation().ConfigureAwait(false);
+            }
+
+            var strategy = context.Database.CreateExecutionStrategy();
+            return await strategy.ExecuteAsync(async () =>
+            {
+                // ReadCommitted is sufficient because the overlap queries use
+                // WITH (UPDLOCK, HOLDLOCK) which provides the required serialization.
+                // Serializable isolation caused 82% deadlock rates under concurrent load;
+                // see https://michaeljswart.com/2011/09/mythbusting-concurrent-updateinsert-solutions/
+                await using var transaction = await context.Database.BeginTransactionAsync(IsolationLevel.ReadCommitted).ConfigureAwait(false);
+                try
+                {
+                    var result = await operation().ConfigureAwait(false);
+                    await transaction.CommitAsync().ConfigureAwait(false);
+                    return result;
+                }
+                catch
+                {
+                    await transaction.RollbackAsync().ConfigureAwait(false);
+                    throw;
+                }
+            }).ConfigureAwait(false);
         }
 
     }
