@@ -1019,7 +1019,46 @@ public class SessionService : ISessionService
             throw new EntityNotFoundException<Guid>("Session", id);
         }
         var normalizedSession = await NormalizeExpiredSessionAsync(session).ConfigureAwait(false);
+        await EnsureCurrentUserCanViewSessionAsync(normalizedSession, "GetSessionByUuid", id).ConfigureAwait(false);
         return MapToResponseDto(normalizedSession);
+    }
+
+    private async Task EnsureCurrentUserCanViewSessionAsync(Session session, string operation, Guid sessionId)
+    {
+        var httpContext = _httpContextAccessor.HttpContext;
+        var user = httpContext?.User;
+        if (user == null)
+        {
+            throw new EntityUnauthorizedException("Session", operation, sessionId.ToString(), "User context not found.");
+        }
+
+        var role = RoleConstants.NormalizeRole(user.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value);
+        if (string.Equals(role, RoleConstants.Admin, StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        if (!RoleConstants.IsInstructorRole(role))
+        {
+            throw new EntityUnauthorizedException("Session", operation, sessionId.ToString(), "Only instructors can view session details.");
+        }
+
+        if (session.Schedule == null)
+        {
+            throw new EntityUnauthorizedException("Session", operation, sessionId.ToString(), "Session schedule context is required to verify access.");
+        }
+
+        var userId = await _userContextService.GetUserIdAsync(user).ConfigureAwait(false);
+        if (string.IsNullOrEmpty(userId))
+        {
+            throw new EntityUnauthorizedException("Session", operation, sessionId.ToString(), "User ID not found in context.");
+        }
+
+        var instructor = await _instructorRepository.GetInstructorByUserIdAsync(userId).ConfigureAwait(false);
+        if (instructor == null || session.Schedule.InstructorId != instructor.Id)
+        {
+            throw new EntityUnauthorizedException("Session", operation, sessionId.ToString(), "You do not have permission to view this session.");
+        }
     }
 
     public async Task<SessionResponseDto> StartSessionByUuidAsync(Guid sessionUuid, StartSession request)

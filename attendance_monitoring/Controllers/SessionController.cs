@@ -99,6 +99,11 @@ public class SessionController(ISessionService sessionService, ILogger<SessionCo
             logger.LogWarning(ex, "Session with UUID {Id} not found", id);
             return NotFound(new { message = ex.Message });
         }
+        catch (EntityUnauthorizedException ex)
+        {
+            logger.LogWarning(ex, "Unauthorized session UUID access attempt for {Id}", id);
+            return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message, errorCode = "FORBIDDEN" });
+        }
     }
 
     /// <summary>
