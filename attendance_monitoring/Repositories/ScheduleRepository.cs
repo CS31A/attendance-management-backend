@@ -304,7 +304,7 @@ namespace attendance_monitoring.Repositories
                   AND ({{4}} IS NULL OR s.Id != {{4}})
                 ORDER BY s.TimeIn";
             var conflictingId = await context.Database
-                .SqlQueryRaw<Guid>(
+                .SqlQueryRaw<Guid?>(
                     overlapSql,
                     resourceId,
                     dayOfWeek,
@@ -313,7 +313,7 @@ namespace attendance_monitoring.Repositories
                     excludedScheduleParameter)
                 .FirstOrDefaultAsync();
 
-            if (conflictingId == Guid.Empty)
+            if (conflictingId is null)
             {
                 return null;
             }
@@ -321,7 +321,7 @@ namespace attendance_monitoring.Repositories
             // Step 2: Retrieve full conflict details with navigation properties.
             // This is a fast PK lookup; the range lock from Step 1 is still held
             // because both queries execute within the same transaction.
-            return await GetScheduleConflictDetailsAsync(conflictingId);
+            return await GetScheduleConflictDetailsAsync(conflictingId.Value);
         }
 
         private Task<ScheduleConflictDetails?> FindOverlapAsync(
