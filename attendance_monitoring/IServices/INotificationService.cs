@@ -13,4 +13,7 @@ public interface INotificationService
     Task NotifyStudentCheckedInAsync(string studentId, string instructorId, Guid sessionId, string status);
     Task NotifySessionStartedAsync(Guid sessionId, IEnumerable<string> studentIds, string instructorId);
     Task NotifySessionEndedAsync(Guid sessionId, IEnumerable<string> studentIds, string instructorId);
+    
+    // Device status updates
+    Task BroadcastDeviceStatusUpdateAsync(Guid deviceId, DateTime lastSeenAt);
 }

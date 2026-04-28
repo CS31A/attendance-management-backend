@@ -233,6 +233,12 @@ public class FingerprintService(
 
         enrollmentSession.Device.LastSeenAt = DateTime.UtcNow;
         enrollmentSession.Device.UpdatedAt = DateTime.UtcNow;
+        
+        // Broadcast device status update to admins
+        await notificationService.BroadcastDeviceStatusUpdateAsync(
+            enrollmentSession.Device.Id, 
+            enrollmentSession.Device.LastSeenAt.Value
+        ).ConfigureAwait(false);
 
         if (enrollmentSession.ExpiresAt <= DateTime.UtcNow)
         {
@@ -1066,6 +1072,13 @@ public class FingerprintService(
         device.LastSeenAt = DateTime.UtcNow;
         device.UpdatedAt = DateTime.UtcNow;
         await context.SaveChangesAsync().ConfigureAwait(false);
+        
+        // Broadcast device status update to admins
+        await notificationService.BroadcastDeviceStatusUpdateAsync(
+            device.Id, 
+            device.LastSeenAt.Value
+        ).ConfigureAwait(false);
+        
         return device;
     }
 
@@ -1105,6 +1118,13 @@ public class FingerprintService(
         device.LastSeenAt = DateTime.UtcNow;
         device.UpdatedAt = DateTime.UtcNow;
         await context.SaveChangesAsync().ConfigureAwait(false);
+        
+        // Broadcast device status update to admins
+        await notificationService.BroadcastDeviceStatusUpdateAsync(
+            device.Id, 
+            device.LastSeenAt.Value
+        ).ConfigureAwait(false);
+        
         return device;
     }
 

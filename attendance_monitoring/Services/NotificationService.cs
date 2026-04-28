@@ -229,4 +229,26 @@ public class NotificationService : INotificationService
             _logger.LogError(ex, "Error notifying session ended for {SessionId}", sessionId);
         }
     }
+
+    public async Task BroadcastDeviceStatusUpdateAsync(Guid deviceId, DateTime lastSeenAt)
+    {
+        try
+        {
+            var deviceUpdate = new
+            {
+                id = deviceId,
+                lastSeenAt = lastSeenAt
+            };
+
+            // Broadcast to all admins (they're in role:Admin group)
+            await _hubContext.Clients.Group("role:Admin")
+                .SendAsync("DeviceStatusUpdate", deviceUpdate);
+
+            _logger.LogInformation("Device status update broadcast for device {DeviceId}", deviceId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error broadcasting device status update for {DeviceId}", deviceId);
+        }
+    }
 }
