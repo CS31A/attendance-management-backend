@@ -11,6 +11,7 @@ public class ServiceArchitectureGuardrailTests
         nameof(DataSeederService),
         nameof(FingerprintService),
         nameof(InstructorService),
+        nameof(ScheduleService),
         nameof(SessionService),
         nameof(StudentService)
     ];

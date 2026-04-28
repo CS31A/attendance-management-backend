@@ -17,7 +17,7 @@ namespace attendance.testproject.Integration_Testing;
 public sealed class StartupInitializationIntegrationTests
 {
     [Fact]
-    public async Task InitializeApplicationAsync_WithInMemoryDatabase_SeedsWithoutMigrationGuard()
+    public async Task InitializeApplicationAsync_WithInMemoryDatabase_DoesNotSeed()
     {
         var builder = WebApplication.CreateBuilder(new WebApplicationOptions
         {
@@ -36,7 +36,10 @@ public sealed class StartupInitializationIntegrationTests
 
         await app.InitializeApplicationAsync();
 
-        Assert.Equal(1, seeder.CallCount);
+        // Seeder is intentionally disabled in InitializeApplicationAsync
+        // to prevent automatic seeding in production environments.
+        // Development databases are seeded via migration scripts with survey data.
+        Assert.Equal(0, seeder.CallCount);
     }
 
     [Fact]
@@ -393,6 +396,142 @@ public sealed class StartupInitializationIntegrationTests
         Assert.Equal(device.Id, persistedEnrollmentSession.DeviceId);
         Assert.Equal(attendance.Id, persistedScanEvent.AttendanceRecordId);
         Assert.Equal(session.Id, persistedScanEvent.SessionId);
+    }
+
+    [Fact]
+    public async Task ApplicationDbContext_WithSqlite_AllowsSameScheduleTimeInDifferentClassrooms()
+    {
+        await using var connection = new SqliteConnection($"Data Source=file:schedule-unique-{Guid.NewGuid():N}?mode=memory&cache=shared");
+        await connection.OpenAsync();
+
+        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
+            .UseSqlite(connection)
+            .Options;
+
+        await using var context = new ApplicationDbContext(options);
+        await context.Database.EnsureCreatedAsync();
+
+        var now = DateTime.UtcNow;
+        var course = new Course
+        {
+            Name = $"Course-{Guid.NewGuid():N}",
+            CreatedAt = now,
+            UpdatedAt = now
+        };
+        var subject = new Subject
+        {
+            Name = $"Subject-{Guid.NewGuid():N}",
+            Code = $"SUBJ-{Guid.NewGuid():N}"[..10],
+            CreatedAt = now,
+            UpdatedAt = now
+        };
+        var firstClassroom = new Classroom
+        {
+            Name = $"Room-A-{Guid.NewGuid():N}",
+            CreatedAt = now,
+            UpdatedAt = now
+        };
+        var secondClassroom = new Classroom
+        {
+            Name = $"Room-B-{Guid.NewGuid():N}",
+            CreatedAt = now,
+            UpdatedAt = now
+        };
+
+        context.Courses.Add(course);
+        context.Subjects.Add(subject);
+        context.Classrooms.AddRange(firstClassroom, secondClassroom);
+        await context.SaveChangesAsync();
+
+        var firstSection = new Section
+        {
+            Name = $"Section-A-{Guid.NewGuid():N}",
+            CourseId = course.Id,
+            CreatedAt = now,
+            UpdatedAt = now
+        };
+        var secondSection = new Section
+        {
+            Name = $"Section-B-{Guid.NewGuid():N}",
+            CourseId = course.Id,
+            CreatedAt = now,
+            UpdatedAt = now
+        };
+        var firstInstructorUser = new IdentityUser
+        {
+            Id = $"instructor-a-{Guid.NewGuid():N}",
+            UserName = "instructor-a@test.local",
+            NormalizedUserName = "INSTRUCTOR-A@TEST.LOCAL",
+            Email = "instructor-a@test.local",
+            NormalizedEmail = "INSTRUCTOR-A@TEST.LOCAL"
+        };
+        var secondInstructorUser = new IdentityUser
+        {
+            Id = $"instructor-b-{Guid.NewGuid():N}",
+            UserName = "instructor-b@test.local",
+            NormalizedUserName = "INSTRUCTOR-B@TEST.LOCAL",
+            Email = "instructor-b@test.local",
+            NormalizedEmail = "INSTRUCTOR-B@TEST.LOCAL"
+        };
+
+        context.Sections.AddRange(firstSection, secondSection);
+        context.Users.AddRange(firstInstructorUser, secondInstructorUser);
+        await context.SaveChangesAsync();
+
+        var firstInstructor = new Instructor
+        {
+            UserId = firstInstructorUser.Id,
+            Firstname = "First",
+            Lastname = "Instructor",
+            CreatedAt = now,
+            UpdatedAt = now
+        };
+        var secondInstructor = new Instructor
+        {
+            UserId = secondInstructorUser.Id,
+            Firstname = "Second",
+            Lastname = "Instructor",
+            CreatedAt = now,
+            UpdatedAt = now
+        };
+
+        context.Instructors.AddRange(firstInstructor, secondInstructor);
+        await context.SaveChangesAsync();
+
+        var timeIn = new TimeOnly(7, 30);
+        var timeOut = new TimeOnly(9, 30);
+        context.Schedules.AddRange(
+            new Schedules
+            {
+                SubjectId = subject.Id,
+                ClassroomId = firstClassroom.Id,
+                SectionId = firstSection.Id,
+                InstructorId = firstInstructor.Id,
+                DayOfWeek = "Monday",
+                TimeIn = timeIn,
+                TimeOut = timeOut,
+                CreatedAt = now,
+                UpdatedAt = now
+            },
+            new Schedules
+            {
+                SubjectId = subject.Id,
+                ClassroomId = secondClassroom.Id,
+                SectionId = secondSection.Id,
+                InstructorId = secondInstructor.Id,
+                DayOfWeek = "Monday",
+                TimeIn = timeIn,
+                TimeOut = timeOut,
+                CreatedAt = now,
+                UpdatedAt = now
+            });
+
+        await context.SaveChangesAsync();
+
+        var matchingScheduleCount = await context.Schedules
+            .CountAsync(schedule => schedule.DayOfWeek == "Monday" && schedule.TimeIn == timeIn && schedule.TimeOut == timeOut);
+
+        Assert.Equal(2, matchingScheduleCount);
     }
 
     private sealed class CountingSeederService : IDataSeederService
