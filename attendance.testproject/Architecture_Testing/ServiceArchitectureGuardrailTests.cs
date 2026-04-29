@@ -101,6 +101,16 @@ public class ServiceArchitectureGuardrailTests
             $"Top-level services exceeded the {maxConstructorDependencies}-dependency constructor budget: {string.Join(", ", offenders)}");
     }
 
+    [Fact]
+    public void FingerprintAttendanceTransaction_ShouldUseExecutionStrategy()
+    {
+        var repositoryRoot = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../"));
+        var source = File.ReadAllText(Path.Combine(repositoryRoot, "attendance_monitoring", "Services", "FingerprintService.cs"));
+
+        Assert.Contains("ScanFingerprintBySensorAsync", source);
+        Assert.Contains("CreateExecutionStrategy", source);
+    }
+
     private static string FormatFailure(IEnumerable<string> failingTypes)
     {
         var failures = failingTypes.ToList();

@@ -388,6 +388,17 @@ public class FingerprintService(
 
         ValidateDeviceApiKey(request.DeviceId, apiKey);
 
+        if (context.Database.IsInMemory() || context.Database.CurrentTransaction != null)
+        {
+            return await ScanFingerprintBySensorCoreAsync(request).ConfigureAwait(false);
+        }
+
+        var strategy = context.Database.CreateExecutionStrategy();
+        return await strategy.ExecuteAsync(() => ScanFingerprintBySensorCoreAsync(request)).ConfigureAwait(false);
+    }
+
+    private async Task<FingerprintScanResponseDto> ScanFingerprintBySensorCoreAsync(ScanFingerprintBySensorRequest request)
+    {
         var device = await GetOrCreateManagedDeviceAsync(request.DeviceId).ConfigureAwait(false);
         var scanEvent = new FingerprintScanEvent
         {
