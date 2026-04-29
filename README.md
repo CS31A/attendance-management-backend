@@ -101,6 +101,9 @@ dotnet run
 - API: `https://localhost:8081`
 - Swagger UI: `https://localhost:8081/swagger`
 - Scalar Docs: `https://localhost:8081/scalar/v1`
+- Health Live: `http://localhost:8080/health/live`
+- Health Ready: `http://localhost:8080/health/ready`
+- Health Detailed: `http://localhost:8080/health`
 
 ## 🧪 Running Tests
 
@@ -228,6 +231,34 @@ The application uses structured logging with different levels:
 - **Warning**: Unusual but expected events
 - **Error**: Error events that allow the application to continue
 
+## 🏥 Health Check Endpoints
+
+The API exposes three standard health check endpoints for monitoring and container orchestration:
+
+### Liveness Probe
+```http
+GET /health/live
+```
+- Returns `200 OK` with `{"status":"Healthy"}` if the application process is running
+- Used by Docker and Kubernetes liveness probes to determine if the container should be restarted
+- Performs no external dependency checks
+
+### Readiness Probe
+```http
+GET /health/ready
+```
+- Returns `200 OK` when all tagged readiness checks pass (database connectivity, data integrity)
+- Returns `503 Service Unavailable` with per-check failure details when any readiness check fails
+- Used by Kubernetes readiness probes and load balancers to route traffic only to healthy instances
+
+### Detailed Health
+```http
+GET /health
+```
+- Runs all registered health checks with full diagnostic output
+- Returns check names, statuses, durations, and exception details
+- Suitable for monitoring dashboards and manual diagnostics
+
 ## 🚀 Deployment
 
 ### Production Considerations
@@ -237,6 +268,7 @@ The application uses structured logging with different levels:
 3. **HTTPS**: Ensure HTTPS is properly configured
 4. **Logging**: Configure appropriate logging providers
 5. **CORS**: Update `CorsSettings__AllowedOrigins` environment variable for production domains
+6. **Health Checks**: The Docker image includes a `HEALTHCHECK` instruction targeting `/health/live`; configure Kubernetes liveness and readiness probes using the endpoints above
 
 ## 🤝 Contributing
 
