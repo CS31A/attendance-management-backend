@@ -796,6 +796,20 @@ public class FingerprintService(
         var now = _clock.GetUtcNow().UtcDateTime;
         var today = _clock.GetLocalNow().Date;
 
+        var student = await studentRepository.GetStudentByIdAsync(studentId).ConfigureAwait(false);
+        if (student == null)
+        {
+            return null;
+        }
+
+        var schedules = new List<Schedules>();
+        if (student.SectionId != Guid.Empty)
+        {
+            schedules.AddRange(await scheduleRepository
+                .GetSchedulesBySectionIdAsync(student.SectionId)
+                .ConfigureAwait(false));
+        }
+
         var enrollments = await studentEnrollmentRepository
             .GetByStudentIdAsync(studentId)
             .ConfigureAwait(false);
@@ -804,19 +818,17 @@ public class FingerprintService(
             .Where(enrollment => enrollment.IsActive)
             .ToList();
 
-        if (activeEnrollments.Count == 0)
+        if (activeEnrollments.Count > 0)
         {
-            return null;
+            var sectionIds = activeEnrollments.Select(enrollment => enrollment.SectionId).Distinct().ToList();
+            var subjectIds = activeEnrollments.Select(enrollment => enrollment.SubjectId).Distinct().ToList();
+
+            schedules.AddRange(await scheduleRepository
+                .GetSchedulesBySectionsAndSubjectsAsync(sectionIds, subjectIds)
+                .ConfigureAwait(false));
         }
 
-        var sectionIds = activeEnrollments.Select(enrollment => enrollment.SectionId).Distinct().ToList();
-        var subjectIds = activeEnrollments.Select(enrollment => enrollment.SubjectId).Distinct().ToList();
-
-        var schedules = await scheduleRepository
-            .GetSchedulesBySectionsAndSubjectsAsync(sectionIds, subjectIds)
-            .ConfigureAwait(false);
-
-        foreach (var schedule in schedules)
+        foreach (var schedule in schedules.DistinctBy(schedule => schedule.Id))
         {
             var sessions = await sessionRepository
                 .GetSessionsByScheduleIdAsync(schedule.Id)

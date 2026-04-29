@@ -923,6 +923,109 @@ public class FingerprintServiceTest
     }
 
     [Fact]
+    public async Task ScanFingerprintBySensorAsync_WithoutRequestedSession_FindsActiveSessionForPrimarySectionStudent()
+    {
+        var service = CreateService();
+        var device = new FingerprintDevice
+        {
+            Id = Guid.NewGuid(),
+            DeviceIdentifier = "esp32-attendance-01",
+            IsActive = true,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+        var nowUtc = DateTime.UtcNow;
+        var nowLocal = DateTime.Now;
+        var sectionId = Guid.NewGuid();
+        var subjectId = Guid.NewGuid();
+        var student = new Student
+        {
+            Id = Guid.NewGuid(),
+            UserId = "user-primary-section",
+            Firstname = "Jane",
+            Lastname = "Doe",
+            SectionId = sectionId,
+            IsDeleted = false
+        };
+        var schedule = new Schedules
+        {
+            Id = Guid.NewGuid(),
+            SectionId = sectionId,
+            SubjectId = subjectId,
+            Section = new Section { Id = sectionId, Name = "BSCS 3A" },
+            Subject = new Subject { Id = subjectId, Name = "Software Engineering" },
+            Instructor = new Instructor { Id = Guid.NewGuid(), Firstname = "Ada", Lastname = "Lovelace", UserId = "inst-1" }
+        };
+        var session = new Session
+        {
+            Id = Guid.NewGuid(),
+            ScheduleId = schedule.Id,
+            SessionDate = nowLocal.Date,
+            Status = SessionStatusConstants.Active,
+            ActualStartTime = nowUtc.AddMinutes(-5),
+            ActualEndTime = nowUtc.AddMinutes(55),
+            Schedule = schedule
+        };
+
+        _context.FingerprintDevices.Add(device);
+        await _context.SaveChangesAsync();
+
+        _mockFingerprintRepository
+            .Setup(repository => repository.FindFingerprintByDeviceAndSensorIdAsync(device.DeviceIdentifier, 5))
+            .ReturnsAsync(new Fingerprint
+            {
+                Id = Guid.NewGuid(),
+                UserId = student.UserId,
+                DeviceId = device.DeviceIdentifier,
+                SensorFingerprintId = 5,
+                TemplateData = "ciphertext"
+            });
+
+        _mockStudentRepository
+            .Setup(repository => repository.GetStudentByUserIdAsync(student.UserId))
+            .ReturnsAsync(student);
+        _mockStudentRepository
+            .Setup(repository => repository.GetStudentByIdAsync(student.Id))
+            .ReturnsAsync(student);
+        _mockStudentEnrollmentRepository
+            .Setup(repository => repository.GetByStudentIdAsync(student.Id))
+            .ReturnsAsync([]);
+        _mockScheduleRepository
+            .Setup(repository => repository.GetSchedulesBySectionIdAsync(sectionId))
+            .ReturnsAsync([schedule]);
+        _mockSessionRepository
+            .Setup(repository => repository.GetSessionsByScheduleIdAsync(schedule.Id))
+            .ReturnsAsync([session]);
+        _mockAttendanceRepository
+            .Setup(repository => repository.GetAttendanceByStudentAndSessionAsync(student.Id, session.Id))
+            .ReturnsAsync((AttendanceRecord?)null);
+        _mockAttendanceRepository
+            .Setup(repository => repository.CreateAsync(It.IsAny<AttendanceRecord>()))
+            .ReturnsAsync((AttendanceRecord attendanceRecord) =>
+            {
+                attendanceRecord.Id = Guid.NewGuid();
+                return attendanceRecord;
+            });
+
+        var response = await service.ScanFingerprintBySensorAsync(
+            new ScanFingerprintBySensorRequest
+            {
+                DeviceId = device.DeviceIdentifier,
+                SensorFingerprintId = 5,
+                Confidence = 90
+            },
+            "device-secret");
+
+        Assert.True(response.Success, response.Message);
+        Assert.True(response.AttendanceMarked);
+        Assert.Equal(session.Id, response.SessionId);
+
+        _mockScheduleRepository.Verify(
+            repository => repository.GetSchedulesBySectionIdAsync(sectionId),
+            Times.Once);
+    }
+
+    [Fact]
     public async Task ScanFingerprintBySensorAsync_WhenDuplicateRaceHitsUniqueConstraint_ReturnsDuplicateResponse()
     {
         var service = CreateService();

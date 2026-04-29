@@ -181,6 +181,81 @@ public class AttendanceServiceUuidTests
     }
 
     [Fact]
+    public async Task CreateAttendanceAsync_PrimarySectionStudentWithoutEnrollment_CreatesAttendance()
+    {
+        var studentUuid = Guid.NewGuid();
+        var sessionUuid = Guid.NewGuid();
+        var sectionId = Guid.NewGuid();
+        var subjectId = Guid.NewGuid();
+        var request = new CreateAttendanceRequest
+        {
+            StudentId = studentUuid,
+            SessionId = sessionUuid,
+            Status = "Present"
+        };
+
+        AttendanceRecord? capturedRecord = null;
+
+        _mockUserManager
+            .Setup(manager => manager.FindByIdAsync("instructor-user"))
+            .ReturnsAsync(new IdentityUser { Id = "instructor-user" });
+        _mockStudentRepository
+            .Setup(repository => repository.GetStudentByUuidAsync(studentUuid))
+            .ReturnsAsync(new Student
+            {
+                Id = studentUuid,
+                SectionId = sectionId,
+                IsRegular = true
+            });
+        _mockSessionRepository
+            .Setup(repository => repository.GetSessionByUuidAsync(sessionUuid))
+            .ReturnsAsync(new Session
+            {
+                Id = sessionUuid,
+                Status = SessionStatusConstants.Active,
+                Schedule = new Schedules
+                {
+                    InstructorId = Guid.NewGuid(),
+                    SectionId = sectionId,
+                    SubjectId = subjectId
+                }
+            });
+        _mockStudentEnrollmentRepository
+            .Setup(repository => repository.GetStudentEnrollmentsAsync(studentUuid))
+            .ReturnsAsync([]);
+        _mockAttendanceRepository
+            .Setup(repository => repository.CreateAsync(It.IsAny<AttendanceRecord>()))
+            .Callback<AttendanceRecord>(record =>
+            {
+                capturedRecord = record;
+                record.Id = Guid.NewGuid();
+            })
+            .ReturnsAsync((AttendanceRecord record) => new AttendanceRecord { Id = record.Id });
+        _mockAttendanceRepository
+            .Setup(repository => repository.SaveChangesAsync())
+            .ReturnsAsync(1);
+        _mockAttendanceRepository
+            .Setup(repository => repository.GetByIdAsync(It.IsAny<Guid>()))
+            .ReturnsAsync(() =>
+            {
+                var created = CreateAttendanceRecord(capturedRecord!.Id, studentUuid, sessionUuid);
+                created.Status = request.Status;
+                created.CheckInTime = capturedRecord.CheckInTime;
+                created.IsManualEntry = true;
+                created.EnteredBy = "instructor-user";
+                return created;
+            });
+
+        var result = await _attendanceService.CreateAttendanceAsync(request, CreateInstructorUser("instructor-user"));
+
+        Assert.NotNull(capturedRecord);
+        Assert.Equal(studentUuid, capturedRecord.StudentId);
+        Assert.Equal(sessionUuid, capturedRecord.SessionId);
+        Assert.Equal(result.Id, capturedRecord.Id);
+        _mockAttendanceRepository.Verify(repository => repository.CreateAsync(It.IsAny<AttendanceRecord>()), Times.Once);
+    }
+
+    [Fact]
     public async Task CreateAttendanceAsync_RejectsSessionAutoEndedDuringRequest()
     {
         var studentUuid = Guid.NewGuid();

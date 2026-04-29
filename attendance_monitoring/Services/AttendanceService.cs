@@ -43,7 +43,7 @@ public class AttendanceService(
             studentId, sessionId);
 
         // Verify student is enrolled in the session's section/subject
-        var isEnrolled = await VerifyStudentEnrollmentAsync(studentId, session).ConfigureAwait(false);
+        var isEnrolled = await VerifyStudentEnrollmentAsync(student, session).ConfigureAwait(false);
         if (!isEnrolled)
         {
             logger.LogWarning("Student {StudentId} is not enrolled in session {SessionId}",
@@ -737,7 +737,8 @@ public class AttendanceService(
         }
 
         // Verify student enrollment
-        return await VerifyStudentEnrollmentAsync(studentId, session).ConfigureAwait(false);
+        var student = await studentRepository.GetStudentByUuidAsync(studentId).ConfigureAwait(false);
+        return student != null && await VerifyStudentEnrollmentAsync(student, session).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -765,14 +766,19 @@ public class AttendanceService(
 
     #region Private Helper Methods
 
-    private async Task<bool> VerifyStudentEnrollmentAsync(Guid studentId, Session session)
+    private async Task<bool> VerifyStudentEnrollmentAsync(Student student, Session session)
     {
         if (session.Schedule == null)
         {
             throw new InvalidOperationException("Session schedule information is not available");
         }
 
-        var enrollments = await studentEnrollmentRepository.GetStudentEnrollmentsAsync(studentId).ConfigureAwait(false);
+        if (student.SectionId == session.Schedule.SectionId)
+        {
+            return true;
+        }
+
+        var enrollments = await studentEnrollmentRepository.GetStudentEnrollmentsAsync(student.Id).ConfigureAwait(false);
         return enrollments.Any(e => e.SectionId == session.Schedule.SectionId);
     }
 
