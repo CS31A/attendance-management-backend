@@ -88,9 +88,9 @@ public static class ExceptionHandlingExtensions
                          ex.Message,
                          false),
 
-                    // Service layer exceptions
+                    // Service layer exceptions (unexpected server errors wrapped by services)
                     EntityServiceException ex =>
-                        (StatusCodes.Status400BadRequest, ex.Message, true),
+                        (StatusCodes.Status500InternalServerError, "An internal error occurred. Please try again later.", true),
 
                     // Unexpected exceptions
                     _ => (StatusCodes.Status500InternalServerError,

@@ -282,10 +282,10 @@ internal sealed class QrCodeQueryService
             {
                 TotalScans = statistics.totalScans,
                 UniqueStudents = statistics.uniqueStudents,
-                PresentCount = statistics.statusBreakdown.GetValueOrDefault("Present", 0),
-                SuccessfulScans = statistics.statusBreakdown.GetValueOrDefault("Present", 0),
-                LateCount = statistics.statusBreakdown.GetValueOrDefault("Late", 0),
-                ExcusedCount = statistics.statusBreakdown.GetValueOrDefault("Excused", 0),
+                PresentCount = statistics.statusBreakdown.GetValueOrDefault(AttendanceStatusConstants.Present, 0),
+                SuccessfulScans = statistics.statusBreakdown.GetValueOrDefault(AttendanceStatusConstants.Present, 0),
+                LateCount = statistics.statusBreakdown.GetValueOrDefault(AttendanceStatusConstants.Late, 0),
+                ExcusedCount = statistics.statusBreakdown.GetValueOrDefault(AttendanceStatusConstants.Excused, 0),
                 FirstScanAt = statistics.firstScan,
                 LastScanAt = statistics.lastScan,
                 AverageScanTime = averageScanTime

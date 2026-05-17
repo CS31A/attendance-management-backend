@@ -569,10 +569,10 @@ public class AttendanceRepository(ApplicationDbContext context) : IAttendanceRep
             .Select(g => new
             {
                 Total = g.Count(),
-                Present = g.Count(a => a.Status == "Present"),
-                Late = g.Count(a => a.Status == "Late"),
-                Absent = g.Count(a => a.Status == "Absent"),
-                Excused = g.Count(a => a.Status == "Excused"),
+                Present = g.Count(a => a.Status == AttendanceStatusConstants.Present),
+                Late = g.Count(a => a.Status == AttendanceStatusConstants.Late),
+                Absent = g.Count(a => a.Status == AttendanceStatusConstants.Absent),
+                Excused = g.Count(a => a.Status == AttendanceStatusConstants.Excused),
             })
             .FirstOrDefaultAsync()
             .ConfigureAwait(false);

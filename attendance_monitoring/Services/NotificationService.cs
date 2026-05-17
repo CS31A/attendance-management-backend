@@ -1,3 +1,4 @@
+using attendance_monitoring.Constants;
 using attendance_monitoring.Hubs;
 using attendance_monitoring.IRepository;
 using attendance_monitoring.IServices;
@@ -133,7 +134,7 @@ public class NotificationService : INotificationService
             {
                 Title = "Attendance Recorded",
                 Message = $"You checked in successfully. Status: {status}",
-                Type = status == "Present" ? "Success" : "Warning",
+                Type = status == AttendanceStatusConstants.Present ? "Success" : "Warning",
                 Category = "Attendance",
                 Metadata = new { SessionId = sessionId, Status = status }
             };

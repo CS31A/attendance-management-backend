@@ -1,3 +1,5 @@
+using attendance_monitoring.Constants;
+
 namespace attendance_monitoring.Models.DTO.Response;
 
 /// <summary>
@@ -9,7 +11,7 @@ public class StudentAttendanceRecordDto
     public string StudentName { get; set; } = string.Empty;
     public string StudentNumber { get; set; } = string.Empty;
     public Guid? AttendanceRecordId { get; set; }
-    public string Status { get; set; } = "Absent";
+    public string Status { get; set; } = AttendanceStatusConstants.Absent;
     public DateTime? CheckInTime { get; set; }
     public bool IsManualEntry { get; set; }
 }

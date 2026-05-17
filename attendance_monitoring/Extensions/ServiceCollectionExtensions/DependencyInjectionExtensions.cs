@@ -10,6 +10,7 @@ using attendance_monitoring.Services.HealthChecks;
 using attendance_monitoring.Services.Account;
 using attendance_monitoring.Services.AdminData;
 using attendance_monitoring.Services.QrCode;
+using attendance_monitoring.Services.InstructorServices;
 
 namespace attendance_monitoring.Extensions.ServiceCollectionExtensions;
 
@@ -74,7 +75,13 @@ public static class DependencyInjectionExtensions
 
         services.AddSingleton<RequestReliabilityTelemetry>();
         services.AddScoped<IStudentService, StudentService>();
-        services.AddScoped<IInstructorService, InstructorService>();
+        services.AddScoped<IInstructorCrudService, InstructorCrudService>();
+        services.AddScoped<IInstructorQueryService, InstructorQueryService>();
+        services.AddScoped<IInstructorDetailService, InstructorDetailService>();
+        services.AddScoped<IInstructorService>(sp => new InstructorService(
+            sp.GetRequiredService<IInstructorCrudService>(),
+            sp.GetRequiredService<IInstructorQueryService>(),
+            sp.GetRequiredService<IInstructorDetailService>()));
         services.AddScoped<IRefreshTokenService, RefreshTokenService>();
         services.AddScoped<IAccountService>(sp => new AccountService(
             sp.GetRequiredService<IRegistrationService>(),
