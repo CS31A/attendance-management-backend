@@ -125,37 +125,30 @@ public class InstructorControllerTest
     }
 
     [Fact]
-    public async Task GetMySchedules_ReturnsNotFound_WhenInstructorNotFound()
+    public async Task GetMySchedules_ThrowsEntityNotFoundException_WhenInstructorNotFound()
     {
         // Arrange
         _mockInstructorService
             .Setup(s => s.GetSchedulesByInstructorAsync(It.IsAny<ClaimsPrincipal>()))
             .ThrowsAsync(new attendance_monitoring.Exceptions.EntityNotFoundException<string>("Instructor", "UserId: 1"));
 
-        // Act
-        var result = await _instructorController.GetMySchedules();
-
-        // Assert
-        var notFoundResult = Assert.IsType<NotFoundObjectResult>(result.Result);
-        Assert.Equal("No instructor record found for the current user", notFoundResult.Value);
+        // Act & Assert
+        await Assert.ThrowsAsync<attendance_monitoring.Exceptions.EntityNotFoundException<string>>(
+            () => _instructorController.GetMySchedules());
         _mockInstructorService.Verify(s => s.GetSchedulesByInstructorAsync(It.IsAny<ClaimsPrincipal>()), Times.Once);
     }
 
     [Fact]
-    public async Task GetMySchedules_ReturnsInternalServerError_WhenServiceExceptionOccurs()
+    public async Task GetMySchedules_ThrowsEntityServiceException_WhenServiceExceptionOccurs()
     {
         // Arrange
         _mockInstructorService
             .Setup(s => s.GetSchedulesByInstructorAsync(It.IsAny<ClaimsPrincipal>()))
             .ThrowsAsync(new attendance_monitoring.Exceptions.EntityServiceException("Instructor", "GetSchedulesByInstructor", "Service error"));
 
-        // Act
-        var result = await _instructorController.GetMySchedules();
-
-        // Assert
-        var statusCodeResult = Assert.IsType<ObjectResult>(result.Result);
-        Assert.Equal(500, statusCodeResult.StatusCode);
-        Assert.Equal("An error occurred while retrieving the schedules", statusCodeResult.Value);
+        // Act & Assert
+        await Assert.ThrowsAsync<attendance_monitoring.Exceptions.EntityServiceException>(
+            () => _instructorController.GetMySchedules());
         _mockInstructorService.Verify(s => s.GetSchedulesByInstructorAsync(It.IsAny<ClaimsPrincipal>()), Times.Once);
     }
 
@@ -227,37 +220,30 @@ public class InstructorControllerTest
     }
 
     [Fact]
-    public async Task GetMySectionsWithStudents_ReturnsNotFound_WhenInstructorNotFound()
+    public async Task GetMySectionsWithStudents_ThrowsEntityNotFoundException_WhenInstructorNotFound()
     {
         // Arrange
         _mockInstructorService
             .Setup(s => s.GetSectionsWithStudentsByInstructorAsync(It.IsAny<ClaimsPrincipal>()))
             .ThrowsAsync(new attendance_monitoring.Exceptions.EntityNotFoundException<string>("Instructor", "UserId: 1"));
 
-        // Act
-        var result = await _instructorController.GetMySectionsWithStudents();
-
-        // Assert
-        var notFoundResult = Assert.IsType<NotFoundObjectResult>(result.Result);
-        Assert.Equal("No instructor record found for the current user", notFoundResult.Value);
+        // Act & Assert
+        await Assert.ThrowsAsync<attendance_monitoring.Exceptions.EntityNotFoundException<string>>(
+            () => _instructorController.GetMySectionsWithStudents());
         _mockInstructorService.Verify(s => s.GetSectionsWithStudentsByInstructorAsync(It.IsAny<ClaimsPrincipal>()), Times.Once);
     }
 
     [Fact]
-    public async Task GetMySectionsWithStudents_ReturnsInternalServerError_WhenServiceExceptionOccurs()
+    public async Task GetMySectionsWithStudents_ThrowsEntityServiceException_WhenServiceExceptionOccurs()
     {
         // Arrange
         _mockInstructorService
             .Setup(s => s.GetSectionsWithStudentsByInstructorAsync(It.IsAny<ClaimsPrincipal>()))
             .ThrowsAsync(new attendance_monitoring.Exceptions.EntityServiceException("Instructor", "GetSectionsWithStudentsByInstructor", "Service error"));
 
-        // Act
-        var result = await _instructorController.GetMySectionsWithStudents();
-
-        // Assert
-        var statusCodeResult = Assert.IsType<ObjectResult>(result.Result);
-        Assert.Equal(500, statusCodeResult.StatusCode);
-        Assert.Equal("An error occurred while retrieving sections", statusCodeResult.Value);
+        // Act & Assert
+        await Assert.ThrowsAsync<attendance_monitoring.Exceptions.EntityServiceException>(
+            () => _instructorController.GetMySectionsWithStudents());
         _mockInstructorService.Verify(s => s.GetSectionsWithStudentsByInstructorAsync(It.IsAny<ClaimsPrincipal>()), Times.Once);
     }
 
@@ -324,37 +310,30 @@ public class InstructorControllerTest
     }
 
     [Fact]
-    public async Task GetMySectionsOverview_ReturnsNotFound_WhenInstructorNotFound()
+    public async Task GetMySectionsOverview_ThrowsEntityNotFoundException_WhenInstructorNotFound()
     {
         // Arrange
         _mockInstructorService
             .Setup(s => s.GetInstructorSectionsOverviewAsync(It.IsAny<ClaimsPrincipal>()))
             .ThrowsAsync(new attendance_monitoring.Exceptions.EntityNotFoundException<string>("Instructor", "UserId: 1"));
 
-        // Act
-        var result = await _instructorController.GetMySectionsOverview();
-
-        // Assert
-        var notFoundResult = Assert.IsType<NotFoundObjectResult>(result.Result);
-        Assert.Equal("No instructor record found for the current user", notFoundResult.Value);
+        // Act & Assert
+        await Assert.ThrowsAsync<attendance_monitoring.Exceptions.EntityNotFoundException<string>>(
+            () => _instructorController.GetMySectionsOverview());
         _mockInstructorService.Verify(s => s.GetInstructorSectionsOverviewAsync(It.IsAny<ClaimsPrincipal>()), Times.Once);
     }
 
     [Fact]
-    public async Task GetMySectionsOverview_ReturnsInternalServerError_WhenServiceExceptionOccurs()
+    public async Task GetMySectionsOverview_ThrowsEntityServiceException_WhenServiceExceptionOccurs()
     {
         // Arrange
         _mockInstructorService
             .Setup(s => s.GetInstructorSectionsOverviewAsync(It.IsAny<ClaimsPrincipal>()))
             .ThrowsAsync(new attendance_monitoring.Exceptions.EntityServiceException("Instructor", "GetInstructorSectionsOverview", "Service error"));
 
-        // Act
-        var result = await _instructorController.GetMySectionsOverview();
-
-        // Assert
-        var statusCodeResult = Assert.IsType<ObjectResult>(result.Result);
-        Assert.Equal(500, statusCodeResult.StatusCode);
-        Assert.Equal("An error occurred while retrieving sections overview", statusCodeResult.Value);
+        // Act & Assert
+        await Assert.ThrowsAsync<attendance_monitoring.Exceptions.EntityServiceException>(
+            () => _instructorController.GetMySectionsOverview());
         _mockInstructorService.Verify(s => s.GetInstructorSectionsOverviewAsync(It.IsAny<ClaimsPrincipal>()), Times.Once);
     }
 
@@ -410,7 +389,7 @@ public class InstructorControllerTest
     }
 
     [Fact]
-    public async Task GetMySectionDetail_ReturnsNotFound_WhenInstructorNotFound()
+    public async Task GetMySectionDetail_ThrowsEntityNotFoundException_WhenInstructorNotFound()
     {
         // Arrange
         var sectionId = Guid.NewGuid();
@@ -418,16 +397,13 @@ public class InstructorControllerTest
             .Setup(s => s.GetInstructorSectionDetailByUuidAsync(It.IsAny<ClaimsPrincipal>(), sectionId))
             .ThrowsAsync(new attendance_monitoring.Exceptions.EntityNotFoundException<string>("Instructor", "UserId: 1"));
 
-        // Act
-        var result = await _instructorController.GetMySectionDetail(sectionId);
-
-        // Assert
-        var notFoundResult = Assert.IsType<NotFoundObjectResult>(result.Result);
-        Assert.Equal("No instructor record found for the current user", notFoundResult.Value);
+        // Act & Assert
+        await Assert.ThrowsAsync<attendance_monitoring.Exceptions.EntityNotFoundException<string>>(
+            () => _instructorController.GetMySectionDetail(sectionId));
     }
 
     [Fact]
-    public async Task GetMySectionDetail_ReturnsNotFound_WhenSectionNotFound()
+    public async Task GetMySectionDetail_ThrowsEntityNotFoundException_WhenSectionNotFound()
     {
         // Arrange
         var sectionId = Guid.NewGuid();
@@ -435,16 +411,13 @@ public class InstructorControllerTest
             .Setup(s => s.GetInstructorSectionDetailByUuidAsync(It.IsAny<ClaimsPrincipal>(), sectionId))
             .ThrowsAsync(new attendance_monitoring.Exceptions.EntityNotFoundException<Guid>("Section", sectionId));
 
-        // Act
-        var result = await _instructorController.GetMySectionDetail(sectionId);
-
-        // Assert
-        var notFoundResult = Assert.IsType<NotFoundObjectResult>(result.Result);
-        Assert.Equal($"Section with ID {sectionId} not found", notFoundResult.Value);
+        // Act & Assert
+        await Assert.ThrowsAsync<attendance_monitoring.Exceptions.EntityNotFoundException<Guid>>(
+            () => _instructorController.GetMySectionDetail(sectionId));
     }
 
     [Fact]
-    public async Task GetMySectionDetail_ReturnsForbidden_WhenNotAuthorized()
+    public async Task GetMySectionDetail_ThrowsEntityUnauthorizedException_WhenNotAuthorized()
     {
         // Arrange
         var sectionId = Guid.NewGuid();
@@ -452,17 +425,13 @@ public class InstructorControllerTest
             .Setup(s => s.GetInstructorSectionDetailByUuidAsync(It.IsAny<ClaimsPrincipal>(), sectionId))
             .ThrowsAsync(new attendance_monitoring.Exceptions.EntityUnauthorizedException("Section", "View section", "1", "You are not authorized to view this section"));
 
-        // Act
-        var result = await _instructorController.GetMySectionDetail(sectionId);
-
-        // Assert
-        var forbiddenResult = Assert.IsType<ObjectResult>(result.Result);
-        Assert.Equal(403, forbiddenResult.StatusCode);
-        Assert.Equal("You are not authorized to view this section", forbiddenResult.Value);
+        // Act & Assert
+        await Assert.ThrowsAsync<attendance_monitoring.Exceptions.EntityUnauthorizedException>(
+            () => _instructorController.GetMySectionDetail(sectionId));
     }
 
     [Fact]
-    public async Task GetMySectionDetail_ReturnsInternalServerError_WhenServiceExceptionOccurs()
+    public async Task GetMySectionDetail_ThrowsEntityServiceException_WhenServiceExceptionOccurs()
     {
         // Arrange
         var sectionId = Guid.NewGuid();
@@ -470,13 +439,9 @@ public class InstructorControllerTest
             .Setup(s => s.GetInstructorSectionDetailByUuidAsync(It.IsAny<ClaimsPrincipal>(), sectionId))
             .ThrowsAsync(new attendance_monitoring.Exceptions.EntityServiceException("Instructor", "GetInstructorSectionDetail", "Service error"));
 
-        // Act
-        var result = await _instructorController.GetMySectionDetail(sectionId);
-
-        // Assert
-        var statusCodeResult = Assert.IsType<ObjectResult>(result.Result);
-        Assert.Equal(500, statusCodeResult.StatusCode);
-        Assert.Equal("An error occurred while retrieving section detail", statusCodeResult.Value);
+        // Act & Assert
+        await Assert.ThrowsAsync<attendance_monitoring.Exceptions.EntityServiceException>(
+            () => _instructorController.GetMySectionDetail(sectionId));
     }
 
     #endregion
@@ -537,7 +502,7 @@ public class InstructorControllerTest
     }
 
     [Fact]
-    public async Task GetMyStudentDetail_ReturnsNotFound_WhenInstructorNotFound()
+    public async Task GetMyStudentDetail_ThrowsEntityNotFoundException_WhenInstructorNotFound()
     {
         // Arrange
         var studentId = Guid.NewGuid();
@@ -545,16 +510,13 @@ public class InstructorControllerTest
             .Setup(s => s.GetInstructorStudentDetailByUuidAsync(It.IsAny<ClaimsPrincipal>(), studentId))
             .ThrowsAsync(new attendance_monitoring.Exceptions.EntityNotFoundException<string>("Instructor", "UserId: 1"));
 
-        // Act
-        var result = await _instructorController.GetMyStudentDetail(studentId);
-
-        // Assert
-        var notFoundResult = Assert.IsType<NotFoundObjectResult>(result.Result);
-        Assert.Equal("No instructor record found for the current user", notFoundResult.Value);
+        // Act & Assert
+        await Assert.ThrowsAsync<attendance_monitoring.Exceptions.EntityNotFoundException<string>>(
+            () => _instructorController.GetMyStudentDetail(studentId));
     }
 
     [Fact]
-    public async Task GetMyStudentDetail_ReturnsNotFound_WhenStudentNotFound()
+    public async Task GetMyStudentDetail_ThrowsEntityNotFoundException_WhenStudentNotFound()
     {
         // Arrange
         var studentId = Guid.NewGuid();
@@ -562,16 +524,13 @@ public class InstructorControllerTest
             .Setup(s => s.GetInstructorStudentDetailByUuidAsync(It.IsAny<ClaimsPrincipal>(), studentId))
             .ThrowsAsync(new attendance_monitoring.Exceptions.EntityNotFoundException<Guid>("Student", studentId));
 
-        // Act
-        var result = await _instructorController.GetMyStudentDetail(studentId);
-
-        // Assert
-        var notFoundResult = Assert.IsType<NotFoundObjectResult>(result.Result);
-        Assert.Equal($"Student with ID {studentId} not found", notFoundResult.Value);
+        // Act & Assert
+        await Assert.ThrowsAsync<attendance_monitoring.Exceptions.EntityNotFoundException<Guid>>(
+            () => _instructorController.GetMyStudentDetail(studentId));
     }
 
     [Fact]
-    public async Task GetMyStudentDetail_ReturnsForbidden_WhenNotAuthorized()
+    public async Task GetMyStudentDetail_ThrowsEntityUnauthorizedException_WhenNotAuthorized()
     {
         // Arrange
         var studentId = Guid.NewGuid();
@@ -579,17 +538,13 @@ public class InstructorControllerTest
             .Setup(s => s.GetInstructorStudentDetailByUuidAsync(It.IsAny<ClaimsPrincipal>(), studentId))
             .ThrowsAsync(new attendance_monitoring.Exceptions.EntityUnauthorizedException("Student", "View student", "1", "You are not authorized to view this student"));
 
-        // Act
-        var result = await _instructorController.GetMyStudentDetail(studentId);
-
-        // Assert
-        var forbiddenResult = Assert.IsType<ObjectResult>(result.Result);
-        Assert.Equal(403, forbiddenResult.StatusCode);
-        Assert.Equal("You are not authorized to view this student", forbiddenResult.Value);
+        // Act & Assert
+        await Assert.ThrowsAsync<attendance_monitoring.Exceptions.EntityUnauthorizedException>(
+            () => _instructorController.GetMyStudentDetail(studentId));
     }
 
     [Fact]
-    public async Task GetMyStudentDetail_ReturnsInternalServerError_WhenServiceExceptionOccurs()
+    public async Task GetMyStudentDetail_ThrowsEntityServiceException_WhenServiceExceptionOccurs()
     {
         // Arrange
         var studentId = Guid.NewGuid();
@@ -597,13 +552,9 @@ public class InstructorControllerTest
             .Setup(s => s.GetInstructorStudentDetailByUuidAsync(It.IsAny<ClaimsPrincipal>(), studentId))
             .ThrowsAsync(new attendance_monitoring.Exceptions.EntityServiceException("Instructor", "GetInstructorStudentDetail", "Service error"));
 
-        // Act
-        var result = await _instructorController.GetMyStudentDetail(studentId);
-
-        // Assert
-        var statusCodeResult = Assert.IsType<ObjectResult>(result.Result);
-        Assert.Equal(500, statusCodeResult.StatusCode);
-        Assert.Equal("An error occurred while retrieving student detail", statusCodeResult.Value);
+        // Act & Assert
+        await Assert.ThrowsAsync<attendance_monitoring.Exceptions.EntityServiceException>(
+            () => _instructorController.GetMyStudentDetail(studentId));
     }
 
     #endregion
