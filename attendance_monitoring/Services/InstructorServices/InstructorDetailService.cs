@@ -58,14 +58,14 @@ public class InstructorDetailService : IInstructorDetailService
             if (string.IsNullOrEmpty(userId))
             {
                 _logger.LogWarning("User ID not found in JWT claims");
-                throw new EntityNotFoundException<string>("User", userId ?? "null");
+                throw new EntityNotFoundException<string>("User", userId ?? "null", "User identity not found in request");
             }
 
             var instructor = await _instructorRepository.GetInstructorByUserIdAsync(userId).ConfigureAwait(false);
             if (instructor == null)
             {
                 _logger.LogWarning("No instructor record found for user ID: {UserId}", userId);
-                throw new EntityNotFoundException<string>("Instructor", $"UserId: {userId}");
+                throw new EntityNotFoundException<string>("Instructor", $"UserId: {userId}", "Instructor not found for the current user");
             }
 
             _logger.LogInformation("Getting handled sections for instructor ID: {InstructorId}", instructor.Id);
@@ -153,14 +153,14 @@ public class InstructorDetailService : IInstructorDetailService
             if (string.IsNullOrEmpty(userId))
             {
                 _logger.LogWarning("User ID not found in JWT claims");
-                throw new EntityNotFoundException<string>("User", userId ?? "null");
+                throw new EntityNotFoundException<string>("User", userId ?? "null", "User identity not found in request");
             }
 
             var instructor = await _instructorRepository.GetInstructorByUserIdAsync(userId).ConfigureAwait(false);
             if (instructor == null)
             {
                 _logger.LogWarning("No instructor record found for user ID: {UserId}", userId);
-                throw new EntityNotFoundException<string>("Instructor", $"UserId: {userId}");
+                throw new EntityNotFoundException<string>("Instructor", $"UserId: {userId}", "Instructor not found for the current user");
             }
 
             var sectionExists = await _sectionRepository.GetSectionByIdAsync(sectionId).ConfigureAwait(false);
@@ -331,14 +331,14 @@ public class InstructorDetailService : IInstructorDetailService
             if (string.IsNullOrEmpty(userId))
             {
                 _logger.LogWarning("User ID not found in JWT claims");
-                throw new EntityNotFoundException<string>("User", userId ?? "null");
+                throw new EntityNotFoundException<string>("User", userId ?? "null", "User identity not found in request");
             }
 
             var instructor = await _instructorRepository.GetInstructorByUserIdAsync(userId).ConfigureAwait(false);
             if (instructor == null)
             {
                 _logger.LogWarning("No instructor record found for user ID: {UserId}", userId);
-                throw new EntityNotFoundException<string>("Instructor", $"UserId: {userId}");
+                throw new EntityNotFoundException<string>("Instructor", $"UserId: {userId}", "Instructor not found for the current user");
             }
 
             var student = await _instructorRepository.GetStudentWithDetailsAsync(studentId).ConfigureAwait(false);

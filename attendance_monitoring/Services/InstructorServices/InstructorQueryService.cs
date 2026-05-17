@@ -101,7 +101,7 @@ public class InstructorQueryService : IInstructorQueryService
             if (string.IsNullOrEmpty(userId))
             {
                 _logger.LogWarning("User ID not found in JWT claims");
-                throw new EntityNotFoundException<string>("User", userId ?? "null");
+                throw new EntityNotFoundException<string>("User", userId ?? "null", "User identity not found in request");
             }
 
             // Get instructor by user ID
@@ -109,7 +109,7 @@ public class InstructorQueryService : IInstructorQueryService
             if (instructor == null)
             {
                 _logger.LogWarning("No instructor record found for user ID: {UserId}", userId);
-                throw new EntityNotFoundException<string>("Instructor", $"UserId: {userId}");
+                throw new EntityNotFoundException<string>("Instructor", $"UserId: {userId}", "Instructor not found for the current user");
             }
 
             // Get schedules for instructor
@@ -207,7 +207,7 @@ public class InstructorQueryService : IInstructorQueryService
             if (string.IsNullOrEmpty(userId))
             {
                 _logger.LogWarning("User ID not found in JWT claims");
-                throw new EntityNotFoundException<string>("User", userId ?? "null");
+                throw new EntityNotFoundException<string>("User", userId ?? "null", "User identity not found in request");
             }
 
             // Get instructor by user ID
@@ -215,7 +215,7 @@ public class InstructorQueryService : IInstructorQueryService
             if (instructor == null)
             {
                 _logger.LogWarning("No instructor record found for user ID: {UserId}", userId);
-                throw new EntityNotFoundException<string>("Instructor", $"UserId: {userId}");
+                throw new EntityNotFoundException<string>("Instructor", $"UserId: {userId}", "Instructor not found for the current user");
             }
 
             _logger.LogInformation("Getting sections with students for instructor ID: {InstructorId}", instructor.Id);
