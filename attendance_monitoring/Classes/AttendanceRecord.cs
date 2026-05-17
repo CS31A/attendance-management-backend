@@ -1,6 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Text.Json.Serialization;
+using attendance_monitoring.Constants;
 using Microsoft.EntityFrameworkCore;
 
 namespace attendance_monitoring.Classes;
@@ -47,7 +48,7 @@ public class AttendanceRecord
     /// </summary>
     [Required]
     [StringLength(20)]
-    public string Status { get; set; } = "Present";
+    public string Status { get; set; } = AttendanceStatusConstants.Present;
 
     /// <summary>
     /// Optional notes about this attendance record

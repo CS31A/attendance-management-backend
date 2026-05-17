@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using attendance_monitoring.Constants;
 
 namespace attendance_monitoring.Models.DTO.Request;
 
@@ -23,7 +24,7 @@ public class CreateAttendanceRequest : IValidatableObject
     [Required(ErrorMessage = "Status is required")]
     [StringLength(20, ErrorMessage = "Status cannot exceed 20 characters")]
     [RegularExpression("^(Present|Late|Excused|Absent)$", ErrorMessage = "Status must be Present, Late, Excused, or Absent")]
-    public string Status { get; set; } = "Present";
+    public string Status { get; set; } = AttendanceStatusConstants.Present;
 
     /// <summary>
     /// Optional notes about this attendance record.

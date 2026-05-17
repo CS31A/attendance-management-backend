@@ -323,10 +323,10 @@ public class AttendanceService(
         var records = await attendanceRepository.GetByStudentIdAsync(studentId).ConfigureAwait(false);
 
         // Calculate statistics
-        var presentCount = records.Count(r => r.Status == "Present");
-        var lateCount = records.Count(r => r.Status == "Late");
-        var absentCount = records.Count(r => r.Status == "Absent");
-        var excusedCount = records.Count(r => r.Status == "Excused");
+        var presentCount = records.Count(r => r.Status == AttendanceStatusConstants.Present);
+        var lateCount = records.Count(r => r.Status == AttendanceStatusConstants.Late);
+        var absentCount = records.Count(r => r.Status == AttendanceStatusConstants.Absent);
+        var excusedCount = records.Count(r => r.Status == AttendanceStatusConstants.Excused);
         var totalSessions = records.Count;
 
         var attendancePercentage = totalSessions > 0
@@ -443,15 +443,15 @@ public class AttendanceService(
                 StudentName = $"{student.Firstname} {student.Lastname}",
                 StudentNumber = student.Usn ?? string.Empty,
                 AttendanceRecordId = attendanceRecord?.Id,
-                Status = attendanceRecord?.Status ?? "Absent",
+                Status = attendanceRecord?.Status ?? AttendanceStatusConstants.Absent,
                 CheckInTime = attendanceRecord?.CheckInTime,
                 IsManualEntry = attendanceRecord?.IsManualEntry ?? false
             });
         }
 
         // Calculate statistics
-        var presentCount = attendanceRecords.Count(r => r.Status == "Present");
-        var lateCount = attendanceRecords.Count(r => r.Status == "Late");
+        var presentCount = attendanceRecords.Count(r => r.Status == AttendanceStatusConstants.Present);
+        var lateCount = attendanceRecords.Count(r => r.Status == AttendanceStatusConstants.Late);
         var absentCount = allStudents.Count - attendanceRecords.Count;
 
         var attendanceRate = allStudents.Any()
@@ -545,16 +545,16 @@ public class AttendanceService(
         // Determine most frequent status from counts
         var statusCounts = new Dictionary<string, int>
         {
-            { "Present", totalPresent },
-            { "Late", totalLate },
-            { "Absent", totalAbsent },
-            { "Excused", totalExcused }
+            { AttendanceStatusConstants.Present, totalPresent },
+            { AttendanceStatusConstants.Late, totalLate },
+            { AttendanceStatusConstants.Absent, totalAbsent },
+            { AttendanceStatusConstants.Excused, totalExcused }
         };
 
         // Mashinay but better
         var mostFrequentStatus = statusCounts.Any(kvp => kvp.Value > 0)
             ? statusCounts.OrderByDescending(kvp => kvp.Value).First().Key
-            : "Present"; // Safe default value
+            : AttendanceStatusConstants.Present; // Safe default value
 
         return new AttendanceSummaryDto
         {
@@ -751,15 +751,15 @@ public class AttendanceService(
 
         if (timeDifference.TotalMinutes <= GracePeriodMinutes)
         {
-            return "Present";
+            return AttendanceStatusConstants.Present;
         }
 
         if (timeDifference.TotalMinutes <= lateCutoffMinutes)
         {
-            return "Late";
+            return AttendanceStatusConstants.Late;
         }
 
-        return "Late"; // Still mark as Late even if very late, instructor can manually change to Absent
+        return AttendanceStatusConstants.Late; // Still mark as Late even if very late, instructor can manually change to Absent
     }
 
     #endregion

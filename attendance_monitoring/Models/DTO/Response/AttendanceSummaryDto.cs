@@ -1,3 +1,5 @@
+using attendance_monitoring.Constants;
+
 namespace attendance_monitoring.Models.DTO.Response;
 
 /// <summary>
@@ -12,5 +14,5 @@ public class AttendanceSummaryDto
     public int TotalExcused { get; set; }
     public decimal AttendanceRate { get; set; }
     public string? AverageCheckInTime { get; set; }
-    public string MostFrequentStatus { get; set; } = "Present";
+    public string MostFrequentStatus { get; set; } = AttendanceStatusConstants.Present;
 }
