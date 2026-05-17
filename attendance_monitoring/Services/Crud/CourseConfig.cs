@@ -1,4 +1,5 @@
 using attendance_monitoring.Classes;
+using attendance_monitoring.IRepository;
 using attendance_monitoring.Models.DTO.Request;
 
 namespace attendance_monitoring.Services.Crud;
@@ -8,15 +9,35 @@ namespace attendance_monitoring.Services.Crud;
 /// </summary>
 public static class CourseConfig
 {
-    public static CrudServiceConfig<Course, CreateCourse, UpdateCourse> Create()
+    public static CrudServiceConfig<Course, CreateCourse, UpdateCourse> Create(
+        ICourseRepository courseRepository)
     {
         return new CrudServiceConfig<Course, CreateCourse, UpdateCourse>
         {
             EntityName = "Course",
 
-            CreateUniquenessChecks = [],
+            CreateUniquenessChecks =
+            [
+                new UniquenessCheck<CreateCourse>
+                {
+                    FieldName = "Name",
+                    ValueSelector = dto => dto.Name,
+                    ExistsAsync = async name =>
+                        await courseRepository.GetCourseByNameAsync(name).ConfigureAwait(false) != null
+                }
+            ],
 
-            UpdateUniquenessChecks = [],
+            UpdateUniquenessChecks =
+            [
+                new UpdateUniquenessCheck<Course, UpdateCourse>
+                {
+                    FieldName = "Name",
+                    ValueSelector = dto => dto.Name,
+                    CurrentValueSelector = entity => entity.Name,
+                    FindByUniqueFieldAsync = async name =>
+                        await courseRepository.GetCourseByNameAsync(name).ConfigureAwait(false)
+                }
+            ],
 
             MapToEntity = dto => new Course
             {
@@ -33,7 +54,7 @@ public static class CourseConfig
                 entity.UpdatedAt = DateTime.UtcNow;
             },
 
-            ResolveUniqueConstraintViolation = null,
+            ResolveUniqueConstraintViolation = _ => ("Name", ""),
 
             ResolveForeignKeyViolation = ex =>
             {

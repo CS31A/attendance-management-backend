@@ -78,6 +78,13 @@ public class CourseRepository(ApplicationDbContext context) : ICourseRepository
     }
     #endregion
 
+    #region GetCourseByNameAsync
+    public async Task<Course?> GetCourseByNameAsync(string name)
+    {
+        return await context.Courses.AsNoTracking().FirstOrDefaultAsync(c => c.Name == name).ConfigureAwait(false);
+    }
+    #endregion
+
     #endregion
 
     #region Utility Operations

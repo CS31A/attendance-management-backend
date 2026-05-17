@@ -93,8 +93,8 @@ public static class DependencyInjectionExtensions
             CrudService<Section, Section, Section>>();
         services.AddScoped<ISectionService, SectionService>();
         // Course CRUD via generic module
-        services.AddScoped<CrudServiceConfig<Course, CreateCourse, UpdateCourse>>(_ =>
-            CourseConfig.Create());
+        services.AddScoped<CrudServiceConfig<Course, CreateCourse, UpdateCourse>>(sp =>
+            CourseConfig.Create(sp.GetRequiredService<ICourseRepository>()));
         services.AddScoped<ICrudService<Course, CreateCourse, UpdateCourse>,
             CrudService<Course, CreateCourse, UpdateCourse>>();
         services.AddScoped<ICourseService, CourseService>();
