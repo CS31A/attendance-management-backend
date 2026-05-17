@@ -62,4 +62,11 @@ public interface ICourseRepository : ISaveableRepository
     /// <returns>True if sections exist for the course; otherwise, false.</returns>
     Task<bool> HasSectionsInCourseAsync(Guid id);
 
+    /// <summary>
+    /// Retrieves a course by its name.
+    /// </summary>
+    /// <param name="name">The course name.</param>
+    /// <returns>The course if found; otherwise, null.</returns>
+    Task<Course?> GetCourseByNameAsync(string name);
+
 }

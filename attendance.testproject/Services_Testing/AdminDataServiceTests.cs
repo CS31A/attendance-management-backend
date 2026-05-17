@@ -9,6 +9,7 @@ using attendance_monitoring.Options;
 using attendance_monitoring.Repositories;
 using attendance_monitoring.Services;
 using attendance_monitoring.Services.AdminData;
+using attendance_monitoring.Services.Crud;
 using ClosedXML.Excel;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
@@ -765,7 +766,11 @@ public class AdminDataServiceTests
             .ReturnsAsync(Array.Empty<GetAllUsersDto>());
 
         var classroomRepository = new ClassroomRepository(context);
-        var classroomService = new ClassroomService(classroomRepository, Mock.Of<ILogger<ClassroomService>>());
+        var classroomCrudService = new CrudService<Classroom, CreateClassroom, UpdateClassroom>(
+            new GenericCrudRepository<Classroom>(context),
+            ClassroomConfig.Create(classroomRepository),
+            Mock.Of<ILogger<CrudService<Classroom, CreateClassroom, UpdateClassroom>>>());
+        var classroomService = new ClassroomService(classroomCrudService, classroomRepository, Mock.Of<ILogger<ClassroomService>>());
         var service = new AdminDataService(
             context,
             accountService.Object,
@@ -1355,7 +1360,11 @@ public class AdminDataServiceTests
             .ReturnsAsync(Array.Empty<GetAllUsersDto>());
 
         var classroomRepository = new ClassroomRepository(context);
-        var classroomService = new ClassroomService(classroomRepository, Mock.Of<ILogger<ClassroomService>>());
+        var classroomCrudService = new CrudService<Classroom, CreateClassroom, UpdateClassroom>(
+            new GenericCrudRepository<Classroom>(context),
+            ClassroomConfig.Create(classroomRepository),
+            Mock.Of<ILogger<CrudService<Classroom, CreateClassroom, UpdateClassroom>>>());
+        var classroomService = new ClassroomService(classroomCrudService, classroomRepository, Mock.Of<ILogger<ClassroomService>>());
         var service = new AdminDataService(
             context,
             accountService.Object,
