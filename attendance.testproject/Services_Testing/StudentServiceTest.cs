@@ -50,7 +50,7 @@ public class StudentServiceTest
     #region CreateStudentAsync Tests
 
     [Fact]
-    public async Task CreateStudentAsync_InvalidSectionId_ThrowsEntityServiceException()
+    public async Task CreateStudentAsync_InvalidSectionId_ThrowsValidationException()
     {
         // Arrange
         var createStudent = new CreateStudent
@@ -58,17 +58,16 @@ public class StudentServiceTest
             Firstname = "John",
             Lastname = "Doe",
             IsRegular = true,
-            SectionId = Guid.NewGuid()
+            SectionId = Guid.Empty
         };
 
         // Act & Assert
-        var exception = await Assert.ThrowsAsync<EntityServiceException>(() => _service.CreateStudentAsync(createStudent, _testUserPrincipal));
-        Assert.Equal("Student", exception.EntityName);
-        Assert.Contains("specified section does not exist", exception.Message);
+        var exception = await Assert.ThrowsAsync<ValidationException>(() => _service.CreateStudentAsync(createStudent, _testUserPrincipal));
+        Assert.Contains("Invalid section ID", exception.Message);
     }
 
     [Fact]
-    public async Task CreateStudentAsync_SectionNotFound_ThrowsEntityServiceException()
+    public async Task CreateStudentAsync_SectionNotFound_ThrowsEntityNotFoundException()
     {
         // Arrange
         var sectionId = Guid.NewGuid();
@@ -83,13 +82,12 @@ public class StudentServiceTest
         _mockSectionRepository.Setup(r => r.GetSectionByIdAsync(sectionId)).ReturnsAsync((Section?)null);
 
         // Act & Assert
-        var exception = await Assert.ThrowsAsync<EntityServiceException>(() => _service.CreateStudentAsync(createStudent, _testUserPrincipal));
-        Assert.Equal("Student", exception.EntityName);
-        Assert.Contains("does not exist", exception.Message);
+        var exception = await Assert.ThrowsAsync<EntityNotFoundException<Guid>>(() => _service.CreateStudentAsync(createStudent, _testUserPrincipal));
+        Assert.Equal("Section", exception.EntityName);
     }
 
     [Fact]
-    public async Task CreateStudentAsync_MissingUserId_ThrowsEntityServiceException()
+    public async Task CreateStudentAsync_MissingUserId_ThrowsValidationException()
     {
         // Arrange
         var createStudent = new CreateStudent
@@ -104,8 +102,7 @@ public class StudentServiceTest
         _mockUserContextService.Setup(s => s.GetUserIdAsync(_testUserPrincipal)).ReturnsAsync((string?)null);
 
         // Act & Assert
-        var exception = await Assert.ThrowsAsync<EntityServiceException>(() => _service.CreateStudentAsync(createStudent, _testUserPrincipal));
-        Assert.Equal("Student", exception.EntityName);
+        var exception = await Assert.ThrowsAsync<ValidationException>(() => _service.CreateStudentAsync(createStudent, _testUserPrincipal));
         Assert.Contains("User ID not found", exception.Message);
     }
 

@@ -373,7 +373,7 @@ namespace attendance_monitoring.Services
                     if (updatedSchedule == null)
                     {
                         logger.LogWarning("Schedule update failed: Failed to update schedule with ID {Id}", id);
-                        throw new EntityServiceException("Schedule", $"UpdateSchedule: {id}", "Failed to update schedule");
+                        throw new EntityNotFoundException<Guid>("Schedule", id);
                     }
 
                     logger.LogInformation("Successfully updated schedule with ID: {Id}", updatedSchedule.Id);
@@ -451,7 +451,7 @@ namespace attendance_monitoring.Services
                 if (rowsAffected == 0)
                 {
                     logger.LogWarning("Schedule deletion failed: Schedule with ID {Id} may have been deleted by another process", id);
-                    throw new EntityServiceException("Schedule", $"DeleteSchedule: {id}", "Schedule may have been deleted by another process.");
+                    throw new EntityNotFoundException<Guid>("Schedule", id);
                 }
 
                 logger.LogInformation("Successfully deleted schedule with ID: {Id}", id);

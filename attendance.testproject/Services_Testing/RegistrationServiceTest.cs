@@ -252,7 +252,7 @@ public class RegistrationServiceTest
     }
 
     [Fact]
-    public async Task RegisterAsync_ThrowsEntityServiceException_WhenFactoryReturnsFailure()
+    public async Task RegisterAsync_ThrowsValidationException_WhenFactoryReturnsFailure()
     {
         var registerDto = CreateValidRegisterDto(role: "Instructor", sectionId: null);
         _accountRepository.Setup(repo => repo.FindUserByUsernameAsync(It.IsAny<string>())).ReturnsAsync((IdentityUser?)null);
@@ -260,10 +260,8 @@ public class RegistrationServiceTest
         _userFactory.Setup(factory => factory.CreateUserAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<Guid?>()))
             .ReturnsAsync(new UserCreationResult { Success = false, Errors = new[] { "Error 1", "Error 2" } });
 
-        var exception = await Assert.ThrowsAsync<EntityServiceException>(() => _service.RegisterAsync(registerDto));
+        var exception = await Assert.ThrowsAsync<ValidationException>(() => _service.RegisterAsync(registerDto));
 
-        Assert.Equal("User", exception.EntityName);
-        Assert.Equal("registration", exception.Operation);
         Assert.Contains("Error 1", exception.Message);
         Assert.Contains("Error 2", exception.Message);
     }

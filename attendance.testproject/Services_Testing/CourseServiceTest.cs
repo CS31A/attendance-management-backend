@@ -83,16 +83,15 @@ public class CourseServiceTest
     #region Create Operations
 
     [Fact]
-    public async Task CreateCourseAsync_MissingUserId_ThrowsEntityServiceException()
+    public async Task CreateCourseAsync_MissingUserId_ThrowsValidationException()
     {
         _mockUserContextService
             .Setup(s => s.GetUserIdAsync(_testUserPrincipal))
             .ReturnsAsync((string?)null);
 
-        var exception = await Assert.ThrowsAsync<EntityServiceException>(
+        var exception = await Assert.ThrowsAsync<ValidationException>(
             () => _service.CreateCourseAsync(new CreateCourse { Name = "Physics" }, _testUserPrincipal));
 
-        Assert.Equal("Course", exception.EntityName);
         Assert.Contains("User ID not found", exception.Message, StringComparison.OrdinalIgnoreCase);
     }
 
@@ -118,16 +117,15 @@ public class CourseServiceTest
     #region Update Operations
 
     [Fact]
-    public async Task UpdateCourseAsync_MissingUserId_ThrowsEntityServiceException()
+    public async Task UpdateCourseAsync_MissingUserId_ThrowsValidationException()
     {
         _mockUserContextService
             .Setup(s => s.GetUserIdAsync(_testUserPrincipal))
             .ReturnsAsync(string.Empty);
 
-        var exception = await Assert.ThrowsAsync<EntityServiceException>(
+        var exception = await Assert.ThrowsAsync<ValidationException>(
             () => _service.UpdateCourseAsync(Guid.NewGuid(), new UpdateCourse { Name = "New" }, _testUserPrincipal));
 
-        Assert.Equal("Course", exception.EntityName);
         Assert.Contains("User ID not found", exception.Message, StringComparison.OrdinalIgnoreCase);
     }
 
@@ -171,16 +169,15 @@ public class CourseServiceTest
     #region Delete Operations
 
     [Fact]
-    public async Task DeleteCourseAsync_MissingUserId_ThrowsEntityServiceException()
+    public async Task DeleteCourseAsync_MissingUserId_ThrowsValidationException()
     {
         _mockUserContextService
             .Setup(s => s.GetUserIdAsync(_testUserPrincipal))
             .ReturnsAsync((string?)null);
 
-        var exception = await Assert.ThrowsAsync<EntityServiceException>(
+        var exception = await Assert.ThrowsAsync<ValidationException>(
             () => _service.DeleteCourseAsync(Guid.NewGuid(), _testUserPrincipal));
 
-        Assert.Equal("Course", exception.EntityName);
         Assert.Contains("User ID not found", exception.Message, StringComparison.OrdinalIgnoreCase);
     }
 
