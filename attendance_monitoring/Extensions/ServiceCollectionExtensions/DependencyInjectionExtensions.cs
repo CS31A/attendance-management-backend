@@ -1,8 +1,11 @@
+using attendance_monitoring.Classes;
 using attendance_monitoring.IRepository;
 using attendance_monitoring.IServices;
+using attendance_monitoring.Models.DTO.Request;
 using attendance_monitoring.Options;
 using attendance_monitoring.Repositories;
 using attendance_monitoring.Services;
+using attendance_monitoring.Services.Crud;
 using attendance_monitoring.Services.HealthChecks;
 using attendance_monitoring.Services.Account;
 using attendance_monitoring.Services.AdminData;
@@ -36,6 +39,12 @@ public static class DependencyInjectionExtensions
         services.AddScoped<ISessionRepository, SessionRepository>();
         services.AddScoped<IAttendanceRepository, AttendanceRepository>();
         services.AddScoped<IFingerprintRepository, FingerprintRepository>();
+
+        // Generic CRUD repositories
+        services.AddScoped<IGenericCrudRepository<Classroom>, GenericCrudRepository<Classroom>>();
+        services.AddScoped<IGenericCrudRepository<Subject>, GenericCrudRepository<Subject>>();
+        services.AddScoped<IGenericCrudRepository<Course>, GenericCrudRepository<Course>>();
+        services.AddScoped<IGenericCrudRepository<Section>, GenericCrudRepository<Section>>();
 
         return services;
     }
@@ -77,9 +86,29 @@ public static class DependencyInjectionExtensions
         services.AddScoped<IProfileService, ProfileService>();
         services.AddScoped<IAdminService, AdminService>();
         services.AddScoped<IUserFactory, attendance_monitoring.Classes.Factory.UserFactory>();
+        // Section CRUD via generic module
+        services.AddScoped<CrudServiceConfig<Section, Section, Section>>(_ =>
+            SectionConfig.Create());
+        services.AddScoped<ICrudService<Section, Section, Section>,
+            CrudService<Section, Section, Section>>();
         services.AddScoped<ISectionService, SectionService>();
+        // Course CRUD via generic module
+        services.AddScoped<CrudServiceConfig<Course, CreateCourse, UpdateCourse>>(_ =>
+            CourseConfig.Create());
+        services.AddScoped<ICrudService<Course, CreateCourse, UpdateCourse>,
+            CrudService<Course, CreateCourse, UpdateCourse>>();
         services.AddScoped<ICourseService, CourseService>();
+        // Subject CRUD via generic module
+        services.AddScoped<CrudServiceConfig<Subject, CreateSubject, UpdateSubject>>(sp =>
+            SubjectConfig.Create(sp.GetRequiredService<ISubjectRepository>()));
+        services.AddScoped<ICrudService<Subject, CreateSubject, UpdateSubject>,
+            CrudService<Subject, CreateSubject, UpdateSubject>>();
         services.AddScoped<ISubjectService, SubjectService>();
+        // Classroom CRUD via generic module
+        services.AddScoped<CrudServiceConfig<Classroom, CreateClassroom, UpdateClassroom>>(sp =>
+            ClassroomConfig.Create(sp.GetRequiredService<IClassroomRepository>()));
+        services.AddScoped<ICrudService<Classroom, CreateClassroom, UpdateClassroom>,
+            CrudService<Classroom, CreateClassroom, UpdateClassroom>>();
         services.AddScoped<IClassroomService, ClassroomService>();
         services.AddScoped<IScheduleService, ScheduleService>();
         services.AddScoped<IQrCodeService>(sp => new QrCodeService(
