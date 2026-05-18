@@ -14,7 +14,10 @@ namespace attendance_monitoring.Controllers;
 [ApiController]
 [Route("api/[controller]")]
 public class QrCodeController(
-    IQrCodeService qrCodeService,
+    IQrCodeQueryService queryService,
+    IQrCodeWriteService writeService,
+    IQrCodeGenerationService generationService,
+    IQrCodeScanService scanService,
     ISessionRepository sessionRepository,
     IUserContextService userContextService,
     ILogger<QrCodeController> logger) : ControllerBase
@@ -34,7 +37,7 @@ public class QrCodeController(
                 request.SessionId);
 
             // Generate and save QR code to database
-            var result = await qrCodeService.GenerateQrCodeAsync(request, User);
+            var result = await generationService.GenerateQrCodeAsync(request, User);
 
             if (!result.Success)
             {
@@ -96,7 +99,7 @@ public class QrCodeController(
     {
         logger.LogInformation("Revoking QR code with ID: {QrCodeId}", id);
 
-        await qrCodeService.RevokeQrCodeAsync(id, request?.Reason, User);
+        await writeService.RevokeQrCodeAsync(id, request?.Reason, User);
 
         logger.LogInformation("Successfully revoked QR code with ID: {QrCodeId}", id);
         return NoContent();
@@ -108,7 +111,7 @@ public class QrCodeController(
     {
         logger.LogInformation("Revoking QR code with UUID: {QrCodeUuid}", id);
 
-        await qrCodeService.RevokeQrCodeByUuidAsync(id, request?.Reason, User);
+        await writeService.RevokeQrCodeByUuidAsync(id, request?.Reason, User);
 
         logger.LogInformation("Successfully revoked QR code with UUID: {QrCodeUuid}", id);
         return NoContent();
@@ -126,7 +129,7 @@ public class QrCodeController(
     {
         logger.LogInformation("Revoking QR code with hash: {QrHash}", qrHash);
 
-        await qrCodeService.RevokeQrCodeByHashAsync(qrHash, request?.Reason, User);
+        await writeService.RevokeQrCodeByHashAsync(qrHash, request?.Reason, User);
 
         logger.LogInformation("Successfully revoked QR code with hash: {QrHash}", qrHash);
         return NoContent();
@@ -144,7 +147,7 @@ public class QrCodeController(
     {
         logger.LogInformation("Reactivating QR code with ID: {QrCodeId}", id);
 
-        await qrCodeService.ReactivateQrCodeAsync(id, User);
+        await writeService.ReactivateQrCodeAsync(id, User);
 
         logger.LogInformation("Successfully reactivated QR code with ID: {QrCodeId}", id);
         return NoContent();
@@ -156,7 +159,7 @@ public class QrCodeController(
     {
         logger.LogInformation("Reactivating QR code with UUID: {QrCodeUuid}", id);
 
-        await qrCodeService.ReactivateQrCodeByUuidAsync(id, User);
+        await writeService.ReactivateQrCodeByUuidAsync(id, User);
 
         logger.LogInformation("Successfully reactivated QR code with UUID: {QrCodeUuid}", id);
         return NoContent();
@@ -173,7 +176,7 @@ public class QrCodeController(
     {
         logger.LogInformation("Reactivating QR code with hash: {QrHash}", qrHash);
 
-        await qrCodeService.ReactivateQrCodeByHashAsync(qrHash, User);
+        await writeService.ReactivateQrCodeByHashAsync(qrHash, User);
 
         logger.LogInformation("Successfully reactivated QR code with hash: {QrHash}", qrHash);
         return NoContent();
@@ -191,7 +194,7 @@ public class QrCodeController(
     {
         logger.LogInformation("Retrieving QR code with ID: {QrCodeId}", id);
 
-        var qrCode = await qrCodeService.GetQrCodeByIdAsync(id);
+        var qrCode = await queryService.GetQrCodeByIdAsync(id);
 
         if (qrCode == null)
         {
@@ -210,7 +213,7 @@ public class QrCodeController(
     {
         logger.LogInformation("Retrieving QR code with UUID: {QrCodeUuid}", id);
 
-        var qrCode = await qrCodeService.GetQrCodeByUuidAsync(id);
+        var qrCode = await queryService.GetQrCodeByUuidAsync(id);
 
         if (qrCode == null)
         {
@@ -235,7 +238,7 @@ public class QrCodeController(
     {
         logger.LogInformation("Retrieving QR code image for ID: {QrCodeId}", id);
 
-        var qrCode = await qrCodeService.GetQrCodeByIdAsync(id);
+        var qrCode = await queryService.GetQrCodeByIdAsync(id);
 
         if (qrCode == null)
         {
@@ -261,7 +264,7 @@ public class QrCodeController(
     {
         logger.LogInformation("Retrieving QR code image for UUID: {QrCodeUuid}", id);
 
-        var qrCode = await qrCodeService.GetQrCodeByUuidAsync(id);
+        var qrCode = await queryService.GetQrCodeByUuidAsync(id);
 
         if (qrCode == null)
         {
@@ -289,7 +292,7 @@ public class QrCodeController(
     {
         logger.LogInformation("Retrieving QR code with hash: {QrHash}", qrHash);
 
-        var qrCode = await qrCodeService.GetQrCodeByHashAsync(qrHash);
+        var qrCode = await queryService.GetQrCodeByHashAsync(qrHash);
 
         if (qrCode == null)
         {
@@ -349,7 +352,7 @@ public class QrCodeController(
                 }
             }
 
-            var qrCodes = await qrCodeService.GetQrCodesBySessionIdAsync(sessionId);
+            var qrCodes = await queryService.GetQrCodesBySessionIdAsync(sessionId);
 
             var qrCodesList = qrCodes.ToList();
             if (!qrCodesList.Any())
@@ -407,7 +410,7 @@ public class QrCodeController(
                 }
             }
 
-            var qrCodes = await qrCodeService.GetQrCodesBySessionUuidAsync(sessionUuid);
+            var qrCodes = await queryService.GetQrCodesBySessionUuidAsync(sessionUuid);
             var qrCodesList = qrCodes.ToList();
 
             if (!qrCodesList.Any())
@@ -438,7 +441,7 @@ public class QrCodeController(
     {
         logger.LogInformation("Validating QR code with hash: {QrHash}", qrHash);
 
-        var result = await qrCodeService.ValidateQrCodeAsync(qrHash);
+        var result = await writeService.ValidateQrCodeAsync(qrHash);
 
         if (!result.IsValid)
         {
@@ -466,7 +469,7 @@ public class QrCodeController(
             request.StudentId,
             User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value);
 
-        var result = await qrCodeService.ScanQrCodeAsync(request, User);
+        var result = await scanService.ScanQrCodeAsync(request, User);
 
         if (!result.Success)
         {
@@ -513,7 +516,7 @@ public class QrCodeController(
                 "Instructor {InstructorId} ({UserRole}) requesting scan history for QR code {QrCodeId}",
                 instructorId.Value, userRole, id);
 
-            var result = await qrCodeService.GetScanHistoryAsync(
+            var result = await queryService.GetScanHistoryAsync(
                 id, instructorId.Value, userRole, pageNumber, pageSize);
 
             return Ok(result);
@@ -567,7 +570,7 @@ public class QrCodeController(
                 "Instructor {InstructorId} ({UserRole}) requesting scan history for QR code UUID {QrCodeUuid}",
                 instructorId.Value, userRole, id);
 
-            var result = await qrCodeService.GetScanHistoryByUuidAsync(
+            var result = await queryService.GetScanHistoryByUuidAsync(
                 id, instructorId.Value, userRole, pageNumber, pageSize);
 
             return Ok(result);
@@ -628,7 +631,7 @@ public class QrCodeController(
                 "Instructor {InstructorId} ({UserRole}) requesting scan history for QR hash {QrHash}",
                 instructorId.Value, userRole, qrHash);
 
-            var result = await qrCodeService.GetScanHistoryByHashAsync(
+            var result = await queryService.GetScanHistoryByHashAsync(
                 qrHash, instructorId.Value, userRole, pageNumber, pageSize);
 
             return Ok(result);

@@ -4,8 +4,10 @@ using attendance_monitoring.Exceptions;
 using attendance_monitoring.IServices;
 using attendance_monitoring.Models.DTO;
 using attendance_monitoring.Models.DTO.Response;
+using attendance_monitoring.Services.Account;
 using attendance.testproject.Integration_Testing.Support;
 using Microsoft.AspNetCore.Http;
+using IAuthenticationService = attendance_monitoring.Services.Account.IAuthenticationService;
 
 namespace attendance.testproject.Integration_Testing;
 
@@ -17,7 +19,7 @@ public sealed class AccountAuthIntegrationTests
         await using var host = await ApiIntegrationHost.CreateAsync();
         var loginDto = new LoginDto { Username = "admin", Password = "Password123!" };
 
-        host.AccountService
+        host.AuthenticationService
             .Setup(service => service.LoginAsync(It.Is<LoginDto>(request =>
                 request.Username == loginDto.Username &&
                 request.Password == loginDto.Password)))
@@ -56,7 +58,7 @@ public sealed class AccountAuthIntegrationTests
             OldAccessToken = "access-token-1"
         };
 
-        host.AccountService
+        host.AuthenticationService
             .Setup(service => service.RefreshAsync(It.Is<RefreshTokenRequestDto>(request =>
                 request.RefreshToken == refreshRequest.RefreshToken &&
                 request.OldAccessToken == refreshRequest.OldAccessToken)))
@@ -85,7 +87,7 @@ public sealed class AccountAuthIntegrationTests
         var revokeRequest = new RevokeTokenRequestDto { RefreshToken = "refresh-token-2" };
         host.AuthenticateAs(userId: "user-42", username: "admin", role: "Admin");
 
-        host.AccountService
+        host.AuthenticationService
             .Setup(service => service.RevokeAsync(
                 It.Is<RevokeTokenRequestDto>(request => request.RefreshToken == revokeRequest.RefreshToken),
                 "user-42"))
@@ -112,7 +114,7 @@ public sealed class AccountAuthIntegrationTests
         var bearerToken = TestAuthTokenFactory.CreateToken("user-42", "admin", "Admin");
         host.AuthenticateAs(userId: "user-42", username: "admin", role: "Admin");
 
-        host.AccountService
+        host.AuthenticationService
             .Setup(service => service.LogoutAsync("user-42", bearerToken))
             .ReturnsAsync(new LogoutResponseDto
             {
@@ -136,7 +138,7 @@ public sealed class AccountAuthIntegrationTests
         await using var host = await ApiIntegrationHost.CreateAsync();
         var webLoginDto = new WebLoginDto { Identifier = "admin@example.com", Password = "Password123!" };
 
-        host.AccountService
+        host.AuthenticationService
             .Setup(service => service.LoginAsync(It.Is<LoginDto>(request =>
                 request.Username == webLoginDto.Identifier &&
                 request.Password == webLoginDto.Password)))
@@ -177,7 +179,7 @@ public sealed class AccountAuthIntegrationTests
         host.SetCookie("accessToken", "current-access-token");
         host.SetCookie("refreshToken", "current-refresh-token");
 
-        host.AccountService
+        host.AuthenticationService
             .Setup(service => service.RefreshAsync(It.Is<RefreshTokenRequestDto>(request =>
                 request.RefreshToken == "current-refresh-token" &&
                 request.OldAccessToken == "current-access-token")))
@@ -212,7 +214,7 @@ public sealed class AccountAuthIntegrationTests
         host.SetCookie("accessToken", "current-access-token");
         host.SetCookie("refreshToken", "current-refresh-token");
 
-        host.AccountService
+        host.AuthenticationService
             .Setup(service => service.WebLogoutAsync("user-42", "current-access-token"))
             .ReturnsAsync(new LogoutResponseDto
             {
@@ -239,7 +241,7 @@ public sealed class AccountAuthIntegrationTests
     public async Task PostApiAccountLogin_ReturnsUnauthorized_ForInvalidCredentials()
     {
         await using var host = await ApiIntegrationHost.CreateAsync();
-        host.AccountService
+        host.AuthenticationService
             .Setup(service => service.LoginAsync(It.IsAny<LoginDto>()))
             .ThrowsAsync(new ValidationException("Invalid email or username or password"));
 
@@ -260,7 +262,7 @@ public sealed class AccountAuthIntegrationTests
     public async Task PostApiAccountLogin_ReturnsErrorResponseDto_ForUnexpectedFailures()
     {
         await using var host = await ApiIntegrationHost.CreateAsync();
-        host.AccountService
+        host.AuthenticationService
             .Setup(service => service.LoginAsync(It.IsAny<LoginDto>()))
             .ThrowsAsync(new InvalidOperationException("Unexpected failure"));
 

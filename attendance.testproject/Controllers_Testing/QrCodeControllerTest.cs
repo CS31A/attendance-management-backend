@@ -18,7 +18,10 @@ namespace attendance.testproject.Controllers_Testing;
 /// </summary>
 public class QrCodeControllerTest
 {
-    private readonly Mock<IQrCodeService> _mockQrCodeService;
+    private readonly Mock<IQrCodeQueryService> _mockQrCodeQueryService;
+    private readonly Mock<IQrCodeWriteService> _mockQrCodeWriteService;
+    private readonly Mock<IQrCodeGenerationService> _mockQrCodeGenerationService;
+    private readonly Mock<IQrCodeScanService> _mockQrCodeScanService;
     private readonly Mock<ISessionRepository> _mockSessionRepository;
     private readonly Mock<ILogger<QrCodeController>> _mockLogger;
     private readonly Mock<IUserContextService> _mockUserContextService;
@@ -26,11 +29,14 @@ public class QrCodeControllerTest
 
     public QrCodeControllerTest()
     {
-        _mockQrCodeService = new Mock<IQrCodeService>();
+        _mockQrCodeQueryService = new Mock<IQrCodeQueryService>();
+        _mockQrCodeWriteService = new Mock<IQrCodeWriteService>();
+        _mockQrCodeGenerationService = new Mock<IQrCodeGenerationService>();
+        _mockQrCodeScanService = new Mock<IQrCodeScanService>();
         _mockSessionRepository = new Mock<ISessionRepository>();
         _mockLogger = new Mock<ILogger<QrCodeController>>();
         _mockUserContextService = new Mock<IUserContextService>();
-        _qrCodeController = new QrCodeController(_mockQrCodeService.Object, _mockSessionRepository.Object, _mockUserContextService.Object, _mockLogger.Object);
+        _qrCodeController = new QrCodeController(_mockQrCodeQueryService.Object, _mockQrCodeWriteService.Object, _mockQrCodeGenerationService.Object, _mockQrCodeScanService.Object, _mockSessionRepository.Object, _mockUserContextService.Object, _mockLogger.Object);
         SetUserContext();
     }
 
@@ -53,7 +59,7 @@ public class QrCodeControllerTest
             QrCodeId = Guid.NewGuid(),
             ExpiresAt = DateTime.UtcNow.AddMinutes(30)
         };
-        _mockQrCodeService.Setup(s => s.GenerateQrCodeAsync(It.IsAny<QrCodeRequest>(), It.IsAny<System.Security.Claims.ClaimsPrincipal>()))
+        _mockQrCodeGenerationService.Setup(s => s.GenerateQrCodeAsync(It.IsAny<QrCodeRequest>(), It.IsAny<System.Security.Claims.ClaimsPrincipal>()))
             .ReturnsAsync(mockResponse);
 
         // Act
@@ -129,7 +135,7 @@ public class QrCodeControllerTest
             QrCodeId = Guid.NewGuid(),
             ExpiresAt = DateTime.UtcNow.AddMinutes(15)
         };
-        _mockQrCodeService.Setup(s => s.GenerateQrCodeAsync(It.IsAny<QrCodeRequest>(), It.IsAny<System.Security.Claims.ClaimsPrincipal>()))
+        _mockQrCodeGenerationService.Setup(s => s.GenerateQrCodeAsync(It.IsAny<QrCodeRequest>(), It.IsAny<System.Security.Claims.ClaimsPrincipal>()))
             .ReturnsAsync(mockResponse);
 
         // Act
@@ -178,7 +184,7 @@ public class QrCodeControllerTest
             UniqueHash = "slice-b-uuid-shape"
         };
 
-        _mockQrCodeService.Setup(s => s.GenerateQrCodeAsync(It.IsAny<QrCodeRequest>(), It.IsAny<System.Security.Claims.ClaimsPrincipal>()))
+        _mockQrCodeGenerationService.Setup(s => s.GenerateQrCodeAsync(It.IsAny<QrCodeRequest>(), It.IsAny<System.Security.Claims.ClaimsPrincipal>()))
             .ReturnsAsync(new attendance_monitoring.Models.DTO.Response.QrCodeGenerationResponseDto
             {
                 Success = true,
@@ -221,7 +227,7 @@ public class QrCodeControllerTest
             QrCodeId = Guid.NewGuid(),
             ExpiresAt = DateTime.UtcNow.AddMinutes(60)
         };
-        _mockQrCodeService.Setup(s => s.GenerateQrCodeAsync(It.IsAny<QrCodeRequest>(), It.IsAny<System.Security.Claims.ClaimsPrincipal>()))
+        _mockQrCodeGenerationService.Setup(s => s.GenerateQrCodeAsync(It.IsAny<QrCodeRequest>(), It.IsAny<System.Security.Claims.ClaimsPrincipal>()))
             .ReturnsAsync(mockResponse);
 
         // Act
@@ -253,7 +259,7 @@ public class QrCodeControllerTest
             IsActive = true
         };
 
-        _mockQrCodeService.Setup(s => s.GetQrCodeByIdAsync(qrCodeId))
+        _mockQrCodeQueryService.Setup(s => s.GetQrCodeByIdAsync(qrCodeId))
             .ReturnsAsync(mockQrCode);
 
         // Act
@@ -290,7 +296,7 @@ public class QrCodeControllerTest
     {
         // Arrange
         var qrCodeId = Guid.NewGuid();
-        _mockQrCodeService.Setup(s => s.GetQrCodeByIdAsync(qrCodeId))
+        _mockQrCodeQueryService.Setup(s => s.GetQrCodeByIdAsync(qrCodeId))
             .ReturnsAsync((attendance_monitoring.Models.DTO.Response.QrCodeResponseDto?)null);
 
         // Act
@@ -326,7 +332,7 @@ public class QrCodeControllerTest
             IsActive = true
         };
 
-        _mockQrCodeService.Setup(s => s.GetQrCodeByIdAsync(qrCodeId))
+        _mockQrCodeQueryService.Setup(s => s.GetQrCodeByIdAsync(qrCodeId))
             .ReturnsAsync(mockQrCode);
 
         // Act
@@ -357,7 +363,7 @@ public class QrCodeControllerTest
             IsActive = true
         };
 
-        _mockQrCodeService
+        _mockQrCodeQueryService
             .Setup(service => service.GetQrCodeByUuidAsync(qrCodeUuid))
             .ReturnsAsync(qrCode);
 
@@ -373,7 +379,7 @@ public class QrCodeControllerTest
     {
         var qrCodeUuid = Guid.NewGuid();
 
-        _mockQrCodeService
+        _mockQrCodeQueryService
             .Setup(service => service.GetQrCodeByUuidAsync(qrCodeUuid))
             .ReturnsAsync((attendance_monitoring.Models.DTO.Response.QrCodeResponseDto?)null);
 
@@ -397,7 +403,7 @@ public class QrCodeControllerTest
             IsActive = true
         };
 
-        _mockQrCodeService
+        _mockQrCodeQueryService
             .Setup(service => service.GetQrCodeByUuidAsync(qrCodeUuid))
             .ReturnsAsync(qrCode);
 
@@ -413,7 +419,7 @@ public class QrCodeControllerTest
     {
         var qrCodeUuid = Guid.NewGuid();
 
-        _mockQrCodeService
+        _mockQrCodeQueryService
             .Setup(service => service.GetQrCodeByUuidAsync(qrCodeUuid))
             .ReturnsAsync((attendance_monitoring.Models.DTO.Response.QrCodeResponseDto?)null);
 
@@ -518,7 +524,7 @@ public class QrCodeControllerTest
                     TimeOut = new TimeOnly(9, 0)
                 }
             });
-        _mockQrCodeService
+        _mockQrCodeQueryService
             .Setup(service => service.GetQrCodesBySessionUuidAsync(sessionUuid))
             .ReturnsAsync([]);
 
@@ -554,7 +560,7 @@ public class QrCodeControllerTest
         _mockUserContextService
             .Setup(service => service.GetInstructorIdAsync(It.IsAny<ClaimsPrincipal>()))
             .ReturnsAsync(instructorId);
-        _mockQrCodeService
+        _mockQrCodeQueryService
             .Setup(service => service.GetScanHistoryByUuidAsync(qrCodeUuid, instructorId, RoleConstants.Instructor, 1, 50))
             .ThrowsAsync(new attendance_monitoring.Exceptions.EntityNotFoundException<Guid>("QrCode", qrCodeUuid));
 
@@ -574,7 +580,7 @@ public class QrCodeControllerTest
         _mockUserContextService
             .Setup(service => service.GetInstructorIdAsync(It.IsAny<ClaimsPrincipal>()))
             .ReturnsAsync(instructorId);
-        _mockQrCodeService
+        _mockQrCodeQueryService
             .Setup(service => service.GetScanHistoryByUuidAsync(qrCodeUuid, instructorId, RoleConstants.Instructor, 1, 50))
             .ThrowsAsync(new attendance_monitoring.Exceptions.EntityUnauthorizedException("QrCode", "View scan history", instructorId.ToString()));
 

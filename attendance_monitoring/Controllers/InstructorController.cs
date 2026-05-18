@@ -10,7 +10,7 @@ namespace attendance_monitoring.Controllers;
 [Authorize]
 [ApiController]
 [Route("api/instructors")]
-public class InstructorController(IInstructorService instructorService, ILogger<InstructorController> logger) : ControllerBase
+public class InstructorController(IInstructorCrudService crudService, IInstructorQueryService queryService, IInstructorDetailService detailService, ILogger<InstructorController> logger) : ControllerBase
 {
     #region Read Operations
 
@@ -19,7 +19,7 @@ public class InstructorController(IInstructorService instructorService, ILogger<
     public async Task<ActionResult<IList<Instructor>>> GetInstructors()
     {
         logger.LogInformation("Getting all instructors");
-        var instructors = await instructorService.GetAllInstructorsAsync();
+        var instructors = await crudService.GetAllInstructorsAsync();
         logger.LogInformation("Successfully retrieved {Count} instructors", instructors.Count);
         return Ok(instructors);
     }
@@ -29,7 +29,7 @@ public class InstructorController(IInstructorService instructorService, ILogger<
     public async Task<ActionResult<Instructor>> GetInstructor(Guid id)
     {
         logger.LogInformation("Getting instructor with ID: {Id}", id);
-        var instructor = await instructorService.GetInstructorByIdAsync(id);
+        var instructor = await crudService.GetInstructorByIdAsync(id);
         logger.LogInformation("Successfully retrieved instructor with ID: {Id}", id);
         return Ok(instructor);
     }
@@ -39,7 +39,7 @@ public class InstructorController(IInstructorService instructorService, ILogger<
     public async Task<ActionResult<IEnumerable<SubjectResponseDto>>> GetInstructorSubjects(Guid instructorId)
     {
         logger.LogInformation("Getting subjects for instructor ID: {InstructorId}", instructorId);
-        var subjects = await instructorService.GetSubjectsByInstructorIdAsync(instructorId);
+        var subjects = await queryService.GetSubjectsByInstructorIdAsync(instructorId);
         logger.LogInformation("Successfully retrieved subjects for instructor ID: {InstructorId}", instructorId);
         return Ok(subjects);
     }
@@ -49,7 +49,7 @@ public class InstructorController(IInstructorService instructorService, ILogger<
     public async Task<ActionResult<InstructorProfileResponseDto>> GetInstructorProfile()
     {
         logger.LogInformation("Getting instructor profile for authenticated user");
-        var profile = await instructorService.GetInstructorProfileAsync(User);
+        var profile = await queryService.GetInstructorProfileAsync(User);
 
         if (profile == null)
         {
@@ -67,7 +67,7 @@ public class InstructorController(IInstructorService instructorService, ILogger<
     public async Task<ActionResult<IEnumerable<ScheduleResponseDto>>> GetMySchedules()
     {
         logger.LogInformation("Getting schedules for authenticated instructor");
-        var schedules = await instructorService.GetSchedulesByInstructorAsync(User);
+        var schedules = await queryService.GetSchedulesByInstructorAsync(User);
         logger.LogInformation("Successfully retrieved {Count} schedules for authenticated instructor", schedules.Count());
         return Ok(schedules);
     }
@@ -78,7 +78,7 @@ public class InstructorController(IInstructorService instructorService, ILogger<
     public async Task<ActionResult<InstructorSectionsWithStudentsResponseDto>> GetMySectionsWithStudents()
     {
         logger.LogInformation("Getting sections with students for authenticated instructor");
-        var response = await instructorService.GetSectionsWithStudentsByInstructorAsync(User);
+        var response = await queryService.GetSectionsWithStudentsByInstructorAsync(User);
         logger.LogInformation("Successfully retrieved sections with students for instructor ID: {InstructorId}", response.InstructorId);
         return Ok(response);
     }
@@ -89,7 +89,7 @@ public class InstructorController(IInstructorService instructorService, ILogger<
     public async Task<ActionResult<List<InstructorSectionOverviewDto>>> GetMySectionsOverview()
     {
         logger.LogInformation("Getting sections overview for authenticated instructor");
-        var sections = await instructorService.GetInstructorSectionsOverviewAsync(User);
+        var sections = await detailService.GetInstructorSectionsOverviewAsync(User);
         logger.LogInformation("Successfully retrieved {Count} section overviews for authenticated instructor", sections.Count);
         return Ok(sections);
     }
@@ -100,7 +100,7 @@ public class InstructorController(IInstructorService instructorService, ILogger<
     public async Task<ActionResult<InstructorSectionDetailDto>> GetMySectionDetail([FromRoute(Name = "id")] Guid sectionId)
     {
         logger.LogInformation("Getting section detail for section UUID: {SectionId}", sectionId);
-        var sectionDetail = await instructorService.GetInstructorSectionDetailByUuidAsync(User, sectionId);
+        var sectionDetail = await detailService.GetInstructorSectionDetailByUuidAsync(User, sectionId);
         logger.LogInformation("Successfully retrieved section detail for section UUID: {SectionId}", sectionId);
         return Ok(sectionDetail);
     }
@@ -111,7 +111,7 @@ public class InstructorController(IInstructorService instructorService, ILogger<
     public async Task<ActionResult<InstructorStudentDetailDto>> GetMyStudentDetail([FromRoute(Name = "id")] Guid studentId)
     {
         logger.LogInformation("Getting student detail for student UUID: {StudentId}", studentId);
-        var studentDetail = await instructorService.GetInstructorStudentDetailByUuidAsync(User, studentId);
+        var studentDetail = await detailService.GetInstructorStudentDetailByUuidAsync(User, studentId);
         logger.LogInformation("Successfully retrieved student detail for student UUID: {StudentId}", studentId);
         return Ok(studentDetail);
     }
@@ -132,7 +132,7 @@ public class InstructorController(IInstructorService instructorService, ILogger<
             return BadRequest(ModelState);
         }
 
-        var instructor = await instructorService.UpdateInstructorAsync(id, updateInstructor, User);
+        var instructor = await crudService.UpdateInstructorAsync(id, updateInstructor, User);
         logger.LogInformation("Successfully updated instructor with ID: {Id}", id);
         return Ok(instructor);
     }
@@ -147,7 +147,7 @@ public class InstructorController(IInstructorService instructorService, ILogger<
     public async Task<ActionResult<SoftDeleteResponse>> SoftDeleteInstructor(Guid id)
     {
         logger.LogInformation("Soft deleting instructor with ID: {Id}", id);
-        await instructorService.SoftDeleteInstructorAsync(id, User);
+        await crudService.SoftDeleteInstructorAsync(id, User);
         logger.LogInformation("Soft delete operation completed for instructor with ID: {Id}", id);
         return Ok(new SoftDeleteResponse
         {
@@ -162,7 +162,7 @@ public class InstructorController(IInstructorService instructorService, ILogger<
     public async Task<ActionResult<SoftDeleteResponse>> HardDeleteInstructor(Guid id)
     {
         logger.LogInformation("Hard deleting instructor with ID: {Id}", id);
-        await instructorService.HardDeleteInstructorAsync(id, User);
+        await crudService.HardDeleteInstructorAsync(id, User);
         logger.LogInformation("Hard delete operation completed for instructor with ID: {Id}", id);
         return Ok(new SoftDeleteResponse
         {
@@ -177,7 +177,7 @@ public class InstructorController(IInstructorService instructorService, ILogger<
     public async Task<ActionResult<SoftDeleteResponse>> RestoreInstructor(Guid id)
     {
         logger.LogInformation("Restoring instructor with ID: {Id}", id);
-        await instructorService.RestoreInstructorAsync(id, User);
+        await crudService.RestoreInstructorAsync(id, User);
         logger.LogInformation("Restore operation completed for instructor with ID: {Id}", id);
         return Ok(new SoftDeleteResponse
         {

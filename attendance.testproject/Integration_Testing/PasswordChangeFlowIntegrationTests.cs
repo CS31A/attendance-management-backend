@@ -39,7 +39,7 @@ public sealed class PasswordChangeFlowIntegrationTests
             UpdatedAt = DateTime.UtcNow
         };
 
-        host.AccountService
+        host.ProfileService
             .Setup(s => s.UpdateUserProfileAsync(context.UserId, It.Is<UpdateProfile>(p =>
                 p.CurrentPassword == ValidInitialPassword &&
                 p.NewPassword == ValidNewPassword &&
@@ -59,7 +59,7 @@ public sealed class PasswordChangeFlowIntegrationTests
         Assert.Equal(HttpStatusCode.OK, patchResponse.StatusCode);
 
         // Verify service was called with correct parameters
-        host.AccountService.Verify(s => s.UpdateUserProfileAsync(context.UserId, It.Is<UpdateProfile>(p =>
+        host.ProfileService.Verify(s => s.UpdateUserProfileAsync(context.UserId, It.Is<UpdateProfile>(p =>
             p.CurrentPassword == ValidInitialPassword &&
             p.NewPassword == ValidNewPassword &&
             p.ConfirmNewPassword == ValidNewPassword)), Times.Once);
@@ -110,7 +110,7 @@ public sealed class PasswordChangeFlowIntegrationTests
         host.AuthenticateAs(context.UserId, context.Email, context.Role);
 
         // Configure mock to return BadRequest when CurrentPassword is missing
-        host.AccountService
+        host.ProfileService
             .Setup(s => s.UpdateUserProfileAsync(context.UserId, It.Is<UpdateProfile>(p =>
                 string.IsNullOrEmpty(p.CurrentPassword))))
             .ThrowsAsync(new ValidationException("Current password is required"));
@@ -138,7 +138,7 @@ public sealed class PasswordChangeFlowIntegrationTests
         host.AuthenticateAs(context.UserId, context.Email, context.Role);
 
         // Configure mock to return BadRequest when passwords mismatch
-        host.AccountService
+        host.ProfileService
             .Setup(s => s.UpdateUserProfileAsync(context.UserId, It.Is<UpdateProfile>(p =>
                 p.NewPassword != p.ConfirmNewPassword)))
             .ThrowsAsync(new ValidationException("Passwords do not match"));
@@ -167,7 +167,7 @@ public sealed class PasswordChangeFlowIntegrationTests
         host.AuthenticateAs(context.UserId, context.Email, context.Role);
 
         // Configure mock to return BadRequest when current password is incorrect
-        host.AccountService
+        host.ProfileService
             .Setup(s => s.UpdateUserProfileAsync(context.UserId, It.Is<UpdateProfile>(p =>
                 p.CurrentPassword == "WrongPassword@123")))
             .ThrowsAsync(new ValidationException("Current password is incorrect"));
@@ -205,7 +205,7 @@ public sealed class PasswordChangeFlowIntegrationTests
             UpdatedAt = DateTime.UtcNow
         };
 
-        host.AccountService
+        host.ProfileService
             .Setup(s => s.UpdateUserProfileAsync(context.UserId, It.IsAny<UpdateProfile>()))
             .ReturnsAsync(updatedProfile);
 
@@ -222,7 +222,7 @@ public sealed class PasswordChangeFlowIntegrationTests
         Assert.Equal(HttpStatusCode.OK, patchResponse.StatusCode);
 
         // Verify service was called
-        host.AccountService.Verify(s => s.UpdateUserProfileAsync(context.UserId, It.IsAny<UpdateProfile>()), Times.Once);
+        host.ProfileService.Verify(s => s.UpdateUserProfileAsync(context.UserId, It.IsAny<UpdateProfile>()), Times.Once);
     }
 
     [Fact]
@@ -235,7 +235,7 @@ public sealed class PasswordChangeFlowIntegrationTests
         host.AuthenticateAs(context.UserId, context.Email, context.Role);
 
         // Configure mock to return BadRequest for invalid password
-        host.AccountService
+        host.ProfileService
             .Setup(s => s.UpdateUserProfileAsync(context.UserId, It.Is<UpdateProfile>(p =>
                 p.NewPassword == InvalidPassword)))
             .ThrowsAsync(new ValidationException("Password does not meet complexity requirements"));
@@ -277,7 +277,7 @@ public sealed class PasswordChangeFlowIntegrationTests
             UpdatedAt = DateTime.UtcNow
         };
 
-        host.AccountService
+        host.ProfileService
             .Setup(s => s.UpdateUserProfileAsync(context.UserId, It.Is<UpdateProfile>(p =>
                 p.CurrentPassword == ValidInitialPassword &&
                 p.NewPassword == ValidNewPassword &&
@@ -297,7 +297,7 @@ public sealed class PasswordChangeFlowIntegrationTests
         Assert.Equal(HttpStatusCode.OK, patchResponse.StatusCode);
 
         // Verify service was called with correct parameters
-        host.AccountService.Verify(s => s.UpdateUserProfileAsync(context.UserId, It.Is<UpdateProfile>(p =>
+        host.ProfileService.Verify(s => s.UpdateUserProfileAsync(context.UserId, It.Is<UpdateProfile>(p =>
             p.CurrentPassword == ValidInitialPassword &&
             p.NewPassword == ValidNewPassword &&
             p.ConfirmNewPassword == ValidNewPassword)), Times.Once);
@@ -348,7 +348,7 @@ public sealed class PasswordChangeFlowIntegrationTests
         host.AuthenticateAs(context.UserId, context.Email, context.Role);
 
         // Configure mock to return BadRequest when CurrentPassword is missing
-        host.AccountService
+        host.ProfileService
             .Setup(s => s.UpdateUserProfileAsync(context.UserId, It.Is<UpdateProfile>(p =>
                 string.IsNullOrEmpty(p.CurrentPassword))))
             .ThrowsAsync(new ValidationException("Current password is required"));
@@ -376,7 +376,7 @@ public sealed class PasswordChangeFlowIntegrationTests
         host.AuthenticateAs(context.UserId, context.Email, context.Role);
 
         // Configure mock to return BadRequest when passwords mismatch
-        host.AccountService
+        host.ProfileService
             .Setup(s => s.UpdateUserProfileAsync(context.UserId, It.Is<UpdateProfile>(p =>
                 p.NewPassword != p.ConfirmNewPassword)))
             .ThrowsAsync(new ValidationException("Passwords do not match"));
@@ -405,7 +405,7 @@ public sealed class PasswordChangeFlowIntegrationTests
         host.AuthenticateAs(context.UserId, context.Email, context.Role);
 
         // Configure mock to return BadRequest when current password is incorrect
-        host.AccountService
+        host.ProfileService
             .Setup(s => s.UpdateUserProfileAsync(context.UserId, It.Is<UpdateProfile>(p =>
                 p.CurrentPassword == "WrongPassword@123")))
             .ThrowsAsync(new ValidationException("Current password is incorrect"));
@@ -443,7 +443,7 @@ public sealed class PasswordChangeFlowIntegrationTests
             UpdatedAt = DateTime.UtcNow
         };
 
-        host.AccountService
+        host.ProfileService
             .Setup(s => s.UpdateUserProfileAsync(context.UserId, It.IsAny<UpdateProfile>()))
             .ReturnsAsync(updatedProfile);
 
@@ -460,7 +460,7 @@ public sealed class PasswordChangeFlowIntegrationTests
         Assert.Equal(HttpStatusCode.OK, patchResponse.StatusCode);
 
         // Verify service was called
-        host.AccountService.Verify(s => s.UpdateUserProfileAsync(context.UserId, It.IsAny<UpdateProfile>()), Times.Once);
+        host.ProfileService.Verify(s => s.UpdateUserProfileAsync(context.UserId, It.IsAny<UpdateProfile>()), Times.Once);
     }
 
     [Fact]
@@ -473,7 +473,7 @@ public sealed class PasswordChangeFlowIntegrationTests
         host.AuthenticateAs(context.UserId, context.Email, context.Role);
 
         // Configure mock to return BadRequest for invalid password
-        host.AccountService
+        host.ProfileService
             .Setup(s => s.UpdateUserProfileAsync(context.UserId, It.Is<UpdateProfile>(p =>
                 p.NewPassword == InvalidPassword)))
             .ThrowsAsync(new ValidationException("Password does not meet complexity requirements"));
@@ -515,7 +515,7 @@ public sealed class PasswordChangeFlowIntegrationTests
             UpdatedAt = DateTime.UtcNow
         };
 
-        host.AccountService
+        host.ProfileService
             .Setup(s => s.UpdateUserProfileAsync(context.UserId, It.Is<UpdateProfile>(p =>
                 p.CurrentPassword == ValidInitialPassword &&
                 p.NewPassword == ValidNewPassword &&
@@ -535,7 +535,7 @@ public sealed class PasswordChangeFlowIntegrationTests
         Assert.Equal(HttpStatusCode.OK, patchResponse.StatusCode);
 
         // Verify service was called with correct parameters
-        host.AccountService.Verify(s => s.UpdateUserProfileAsync(context.UserId, It.Is<UpdateProfile>(p =>
+        host.ProfileService.Verify(s => s.UpdateUserProfileAsync(context.UserId, It.Is<UpdateProfile>(p =>
             p.CurrentPassword == ValidInitialPassword &&
             p.NewPassword == ValidNewPassword &&
             p.ConfirmNewPassword == ValidNewPassword)), Times.Once);
@@ -586,7 +586,7 @@ public sealed class PasswordChangeFlowIntegrationTests
         host.AuthenticateAs(context.UserId, context.Email, context.Role);
 
         // Configure mock to return BadRequest when CurrentPassword is missing
-        host.AccountService
+        host.ProfileService
             .Setup(s => s.UpdateUserProfileAsync(context.UserId, It.Is<UpdateProfile>(p =>
                 string.IsNullOrEmpty(p.CurrentPassword))))
             .ThrowsAsync(new ValidationException("Current password is required"));
@@ -614,7 +614,7 @@ public sealed class PasswordChangeFlowIntegrationTests
         host.AuthenticateAs(context.UserId, context.Email, context.Role);
 
         // Configure mock to return BadRequest when passwords mismatch
-        host.AccountService
+        host.ProfileService
             .Setup(s => s.UpdateUserProfileAsync(context.UserId, It.Is<UpdateProfile>(p =>
                 p.NewPassword != p.ConfirmNewPassword)))
             .ThrowsAsync(new ValidationException("Passwords do not match"));
@@ -643,7 +643,7 @@ public sealed class PasswordChangeFlowIntegrationTests
         host.AuthenticateAs(context.UserId, context.Email, context.Role);
 
         // Configure mock to return BadRequest when current password is incorrect
-        host.AccountService
+        host.ProfileService
             .Setup(s => s.UpdateUserProfileAsync(context.UserId, It.Is<UpdateProfile>(p =>
                 p.CurrentPassword == "WrongPassword@123")))
             .ThrowsAsync(new ValidationException("Current password is incorrect"));
@@ -681,7 +681,7 @@ public sealed class PasswordChangeFlowIntegrationTests
             UpdatedAt = DateTime.UtcNow
         };
 
-        host.AccountService
+        host.ProfileService
             .Setup(s => s.UpdateUserProfileAsync(context.UserId, It.IsAny<UpdateProfile>()))
             .ReturnsAsync(updatedProfile);
 
@@ -698,7 +698,7 @@ public sealed class PasswordChangeFlowIntegrationTests
         Assert.Equal(HttpStatusCode.OK, patchResponse.StatusCode);
 
         // Verify service was called
-        host.AccountService.Verify(s => s.UpdateUserProfileAsync(context.UserId, It.IsAny<UpdateProfile>()), Times.Once);
+        host.ProfileService.Verify(s => s.UpdateUserProfileAsync(context.UserId, It.IsAny<UpdateProfile>()), Times.Once);
     }
 
     [Fact]
@@ -711,7 +711,7 @@ public sealed class PasswordChangeFlowIntegrationTests
         host.AuthenticateAs(context.UserId, context.Email, context.Role);
 
         // Configure mock to return BadRequest for invalid password
-        host.AccountService
+        host.ProfileService
             .Setup(s => s.UpdateUserProfileAsync(context.UserId, It.Is<UpdateProfile>(p =>
                 p.NewPassword == InvalidPassword)))
             .ThrowsAsync(new ValidationException("Password does not meet complexity requirements"));

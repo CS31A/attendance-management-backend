@@ -11,10 +11,12 @@ using attendance_monitoring.Extensions.ServiceCollectionExtensions;
 using attendance_monitoring.Extensions.WebApplicationExtensions;
 using attendance_monitoring.IServices;
 using attendance_monitoring.Services;
+using attendance_monitoring.Services.Account;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using IAuthenticationService = attendance_monitoring.Services.Account.IAuthenticationService;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.ApplicationParts;
@@ -27,6 +29,9 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using attendance_monitoring.Models;
+using attendance_monitoring.Models.DTO.Request;
+using attendance_monitoring.Models.DTO.Response;
 
 namespace attendance.testproject.Integration_Testing.Support;
 
@@ -40,19 +45,28 @@ internal sealed class ApiIntegrationHost : IAsyncDisposable
     private readonly Dictionary<string, string> _cookies = new(StringComparer.Ordinal);
     private readonly ReliabilityTelemetryCollector? _telemetryCollector;
     private readonly Func<ValueTask>? _cleanupAsync;
-    private readonly Mock<IAccountService>? _accountService;
+    private readonly Mock<IRegistrationService>? _registrationService;
+    private readonly Mock<IAuthenticationService>? _authenticationService;
+    private readonly Mock<IProfileService>? _profileService;
+    private readonly Mock<IAdminService>? _adminService;
 
     private ApiIntegrationHost(
         WebApplication app,
         HttpClient client,
-        Mock<IAccountService>? accountService = null,
+        Mock<IRegistrationService>? registrationService = null,
+        Mock<IAuthenticationService>? authenticationService = null,
+        Mock<IProfileService>? profileService = null,
+        Mock<IAdminService>? adminService = null,
         SqliteConnection? sqliteConnection = null,
         ReliabilityTelemetryCollector? telemetryCollector = null,
         Func<ValueTask>? cleanupAsync = null)
     {
         _app = app;
         Client = client;
-        _accountService = accountService;
+        _registrationService = registrationService;
+        _authenticationService = authenticationService;
+        _profileService = profileService;
+        _adminService = adminService;
         _sqliteConnection = sqliteConnection;
         _telemetryCollector = telemetryCollector;
         _cleanupAsync = cleanupAsync;
@@ -60,8 +74,14 @@ internal sealed class ApiIntegrationHost : IAsyncDisposable
 
     public HttpClient Client { get; }
 
-    public Mock<IAccountService> AccountService => _accountService
-        ?? throw new InvalidOperationException("IAccountService mock is not configured for this host.");
+    public Mock<IRegistrationService> RegistrationService => _registrationService
+        ?? throw new InvalidOperationException("IRegistrationService mock is not configured for this host.");
+    public Mock<IAuthenticationService> AuthenticationService => _authenticationService
+        ?? throw new InvalidOperationException("IAuthenticationService mock is not configured for this host.");
+    public Mock<IProfileService> ProfileService => _profileService
+        ?? throw new InvalidOperationException("IProfileService mock is not configured for this host.");
+    public Mock<IAdminService> AdminService => _adminService
+        ?? throw new InvalidOperationException("IAdminService mock is not configured for this host.");
 
     public AttendanceQrScenarioContext? AttendanceQrScenario { get; private set; }
 
@@ -78,8 +98,12 @@ internal sealed class ApiIntegrationHost : IAsyncDisposable
     public ReliabilityTelemetryCollector Telemetry => _telemetryCollector
         ?? throw new InvalidOperationException("Reliability telemetry collection is not configured for this host.");
 
-    public static async Task<ApiIntegrationHost> CreateAsync()
+    public static async Task<ApiIntegrationHost> CreateAsync(CancellationToken cancellationToken = default)
     {
+        var connectionString = $"Data Source=file:account-integration-{Guid.NewGuid():N}?mode=memory&cache=shared";
+        var connection = new SqliteConnection(connectionString);
+        await connection.OpenAsync(cancellationToken);
+
         var builder = WebApplication.CreateBuilder(new WebApplicationOptions
         {
             EnvironmentName = Environments.Production
@@ -88,10 +112,39 @@ internal sealed class ApiIntegrationHost : IAsyncDisposable
         builder.WebHost.UseTestServer();
         builder.Services.AddLogging();
         builder.Services.AddRouting();
+        builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["CookieSettings:AccessTokenExpirationMinutes"] = "15",
+            ["CookieSettings:RefreshTokenDays"] = "7",
+            ["CorsSettings:AllowedOrigins"] = "https://localhost",
+            ["TimeZoneSettings:TimeZoneId"] = TimeZoneInfo.Local.Id,
+            ["SessionAutoEnd:Enabled"] = "false"
+        });
+
+        builder.Services.AddDbContext<ApplicationDbContext>(options => options.UseSqlite(connectionString));
+        builder.Services.AddIdentity<IdentityUser, IdentityRole>()
+            .AddEntityFrameworkStores<ApplicationDbContext>()
+            .AddDefaultTokenProviders();
         builder.Services
-            .AddAuthentication(AuthenticationScheme)
+            .AddAuthentication(options =>
+            {
+                options.DefaultAuthenticateScheme = AuthenticationScheme;
+                options.DefaultChallengeScheme = AuthenticationScheme;
+                options.DefaultScheme = AuthenticationScheme;
+            })
             .AddScheme<AuthenticationSchemeOptions, TestAuthenticationHandler>(AuthenticationScheme, _ => { });
-        builder.Services.AddAuthorization();
+        builder.Services.ConfigureApplicationCookie(options =>
+        {
+            options.LoginPath = PathString.Empty;
+            options.AccessDeniedPath = PathString.Empty;
+        });
+        builder.Services.Configure<attendance_monitoring.Options.SessionAutoEndOptions>(options => options.Enabled = false);
+        builder.Services.AddAuthorizationPolicies();
+        builder.Services.AddResponseHandling();
+        builder.Services.AddCorsPolicy(builder.Configuration);
+        builder.Services.AddSignalRServices();
+        builder.Services.AddRepositories();
+        builder.Services.AddApplicationServices();
         builder.Services.AddControllers()
             .ConfigureApplicationPartManager(manager =>
             {
@@ -99,17 +152,22 @@ internal sealed class ApiIntegrationHost : IAsyncDisposable
                 manager.ApplicationParts.Add(new AssemblyPart(typeof(AccountController).Assembly));
             });
 
-        builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
-        {
-            ["CookieSettings:AccessTokenExpirationMinutes"] = "15",
-            ["CookieSettings:RefreshTokenExpirationDays"] = "7",
-            ["TimeZoneSettings:TimeZoneId"] = TimeZoneInfo.Local.Id,
-            ["SessionAutoEnd:Enabled"] = "false"
-        });
+        var registrationService = new Mock<IRegistrationService>(MockBehavior.Strict);
+        builder.Services.AddSingleton(registrationService);
+        builder.Services.AddSingleton<IRegistrationService>(sp => sp.GetRequiredService<Mock<IRegistrationService>>().Object);
 
-        var accountService = new Mock<IAccountService>(MockBehavior.Strict);
-        builder.Services.AddSingleton(accountService);
-        builder.Services.AddSingleton<IAccountService>(sp => sp.GetRequiredService<Mock<IAccountService>>().Object);
+        var authenticationService = new Mock<IAuthenticationService>(MockBehavior.Strict);
+        builder.Services.AddSingleton(authenticationService);
+        builder.Services.AddSingleton<IAuthenticationService>(sp => sp.GetRequiredService<Mock<IAuthenticationService>>().Object);
+
+        var profileService = new Mock<IProfileService>(MockBehavior.Strict);
+        builder.Services.AddSingleton(profileService);
+        builder.Services.AddSingleton<IProfileService>(sp => sp.GetRequiredService<Mock<IProfileService>>().Object);
+
+        var adminService = new Mock<IAdminService>(MockBehavior.Strict);
+        builder.Services.AddSingleton(adminService);
+        builder.Services.AddSingleton<IAdminService>(sp => sp.GetRequiredService<Mock<IAdminService>>().Object);
+
         builder.Services.AddScoped<ICookieOptionsService, CookieOptionsService>();
 
         var app = builder.Build();
@@ -119,12 +177,12 @@ internal sealed class ApiIntegrationHost : IAsyncDisposable
         app.UseGlobalExceptionHandler();
         app.MapControllers();
 
-        await app.StartAsync();
+        await app.StartAsync(cancellationToken);
 
         var client = app.GetTestClient();
         client.BaseAddress = new Uri("https://localhost");
 
-        return new ApiIntegrationHost(app, client, accountService);
+        return new ApiIntegrationHost(app, client, registrationService, authenticationService: authenticationService, profileService: profileService, adminService: adminService, sqliteConnection: connection);
     }
 
     public static async Task<ApiIntegrationHost> CreateAdminUserManagementAsync(
@@ -272,9 +330,13 @@ internal sealed class ApiIntegrationHost : IAsyncDisposable
                 manager.ApplicationParts.Add(new AssemblyPart(typeof(AttendanceController).Assembly));
             });
 
-        var accountService = new Mock<IAccountService>(MockBehavior.Strict);
-        builder.Services.AddSingleton(accountService);
-        builder.Services.AddSingleton<IAccountService>(sp => sp.GetRequiredService<Mock<IAccountService>>().Object);
+        var registrationService = new Mock<IRegistrationService>(MockBehavior.Strict);
+        builder.Services.AddSingleton(registrationService);
+        builder.Services.AddSingleton<IRegistrationService>(sp => sp.GetRequiredService<Mock<IRegistrationService>>().Object);
+
+        var adminService = new Mock<IAdminService>(MockBehavior.Strict);
+        builder.Services.AddSingleton(adminService);
+        builder.Services.AddSingleton<IAdminService>(sp => sp.GetRequiredService<Mock<IAdminService>>().Object);
 
         var app = builder.Build();
         app.UseRouting();
@@ -288,7 +350,7 @@ internal sealed class ApiIntegrationHost : IAsyncDisposable
         var client = app.GetTestClient();
         client.BaseAddress = new Uri("https://localhost");
 
-        var host = new ApiIntegrationHost(app, client, accountService, sqliteConnection: connection);
+        var host = new ApiIntegrationHost(app, client, registrationService: registrationService, adminService: adminService, sqliteConnection: connection);
         await host.LoadAttendanceQrScenarioAsync(scenarioName, cancellationToken);
         return host;
     }
@@ -350,9 +412,21 @@ internal sealed class ApiIntegrationHost : IAsyncDisposable
                 manager.ApplicationParts.Add(new AssemblyPart(typeof(AccountController).Assembly));
             });
 
-        var accountService = new Mock<IAccountService>(MockBehavior.Strict);
-        builder.Services.AddSingleton(accountService);
-        builder.Services.AddSingleton<IAccountService>(sp => sp.GetRequiredService<Mock<IAccountService>>().Object);
+        var registrationService = new Mock<IRegistrationService>(MockBehavior.Strict);
+        builder.Services.AddSingleton(registrationService);
+        builder.Services.AddSingleton<IRegistrationService>(sp => sp.GetRequiredService<Mock<IRegistrationService>>().Object);
+
+        var authenticationService = new Mock<IAuthenticationService>(MockBehavior.Strict);
+        builder.Services.AddSingleton(authenticationService);
+        builder.Services.AddSingleton<IAuthenticationService>(sp => sp.GetRequiredService<Mock<IAuthenticationService>>().Object);
+
+        var profileService = new Mock<IProfileService>(MockBehavior.Strict);
+        builder.Services.AddSingleton(profileService);
+        builder.Services.AddSingleton<IProfileService>(sp => sp.GetRequiredService<Mock<IProfileService>>().Object);
+
+        var adminService = new Mock<IAdminService>(MockBehavior.Strict);
+        builder.Services.AddSingleton(adminService);
+        builder.Services.AddSingleton<IAdminService>(sp => sp.GetRequiredService<Mock<IAdminService>>().Object);
         builder.Services.AddScoped<ICookieOptionsService, CookieOptionsService>();
 
         var app = builder.Build();
@@ -366,7 +440,7 @@ internal sealed class ApiIntegrationHost : IAsyncDisposable
         var client = app.GetTestClient();
         client.BaseAddress = new Uri("https://localhost");
 
-        var host = new ApiIntegrationHost(app, client, accountService, sqliteConnection: connection, telemetryCollector: telemetryCollector);
+        var host = new ApiIntegrationHost(app, client, registrationService: registrationService, authenticationService: authenticationService, profileService: profileService, adminService: adminService, sqliteConnection: connection, telemetryCollector: telemetryCollector);
         await host.LoadAttendanceQrScenarioAsync(scenarioName, cancellationToken);
         return host;
     }
@@ -437,9 +511,23 @@ internal sealed class ApiIntegrationHost : IAsyncDisposable
                 manager.ApplicationParts.Add(new AssemblyPart(typeof(AccountController).Assembly));
             });
 
-        var accountService = new Mock<IAccountService>(MockBehavior.Strict);
-        builder.Services.AddSingleton(accountService);
-        builder.Services.AddSingleton<IAccountService>(sp => sp.GetRequiredService<Mock<IAccountService>>().Object);
+        var registrationService = new Mock<IRegistrationService>(MockBehavior.Strict);
+        builder.Services.AddSingleton(registrationService);
+        builder.Services.AddSingleton<IRegistrationService>(sp => sp.GetRequiredService<Mock<IRegistrationService>>().Object);
+
+        var authenticationService = new Mock<IAuthenticationService>(MockBehavior.Strict);
+        builder.Services.AddSingleton(authenticationService);
+        builder.Services.AddSingleton<IAuthenticationService>(sp => sp.GetRequiredService<Mock<IAuthenticationService>>().Object);
+
+        var profileService = new Mock<IProfileService>(MockBehavior.Strict);
+        builder.Services.AddSingleton(profileService);
+        builder.Services.AddSingleton<IProfileService>(sp => sp.GetRequiredService<Mock<IProfileService>>().Object);
+
+        var adminService = new Mock<IAdminService>(MockBehavior.Strict);
+        adminService.Setup(s => s.GetAllUsersAsync(It.IsAny<UserStatus>()))
+            .ReturnsAsync(new List<GetAllUsersDto>());
+        builder.Services.AddSingleton(adminService);
+        builder.Services.AddSingleton<IAdminService>(sp => sp.GetRequiredService<Mock<IAdminService>>().Object);
 
         var app = builder.Build();
         app.UseRouting();
@@ -450,10 +538,12 @@ internal sealed class ApiIntegrationHost : IAsyncDisposable
 
         await app.StartAsync(cancellationToken);
 
+        var activeUsers = await adminService.Object.GetAllUsersAsync(UserStatus.Active);
+
         var client = app.GetTestClient();
         client.BaseAddress = new Uri("https://localhost");
 
-        var host = new ApiIntegrationHost(app, client, accountService, sqliteConnection: connection);
+        var host = new ApiIntegrationHost(app, client, registrationService: registrationService, authenticationService: authenticationService, profileService: profileService, adminService: adminService, sqliteConnection: connection);
         await host.LoadReportsScenarioAsync(cancellationToken);
         return host;
     }

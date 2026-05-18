@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using attendance_monitoring.Controllers;
 using attendance_monitoring.IServices;
+using attendance_monitoring.Services.Account;
 using attendance_monitoring.Models.DTO.Response;
 using attendance_monitoring.Models.DTO.Request;
 using attendance_monitoring.Exceptions;
@@ -15,15 +16,15 @@ namespace attendance.testproject.Controllers_Testing;
 /// </summary>
 public class UserControllerTest
 {
-    private readonly Mock<IAccountService> _mockAccountService;
+    private readonly Mock<IAdminService> _mockAdminService;
     private readonly Mock<ILogger<UserController>> _mockLogger;
     private readonly UserController _userController;
 
     public UserControllerTest()
     {
-        _mockAccountService = new Mock<IAccountService>();
+        _mockAdminService = new Mock<IAdminService>();
         _mockLogger = new Mock<ILogger<UserController>>();
-        _userController = new UserController(_mockAccountService.Object, _mockLogger.Object);
+        _userController = new UserController(_mockAdminService.Object, _mockLogger.Object);
     }
 
     #region GetAllUsers Tests
@@ -81,7 +82,7 @@ public class UserControllerTest
             }
         };
 
-        _mockAccountService
+        _mockAdminService
             .Setup(s => s.GetAllUsersAsync(It.IsAny<UserStatus>()))
             .ReturnsAsync(expectedUsers);
 
@@ -105,7 +106,7 @@ public class UserControllerTest
         Assert.Equal("Doe", firstUser.StudentProfile.Lastname);
 
         // Verify service was called once with default Active status
-        _mockAccountService.Verify(s => s.GetAllUsersAsync(UserStatus.Active), Times.Once);
+        _mockAdminService.Verify(s => s.GetAllUsersAsync(UserStatus.Active), Times.Once);
     }
 
     [Fact]
@@ -113,7 +114,7 @@ public class UserControllerTest
     {
         // Arrange
         var emptyUsersList = new List<GetAllUsersDto>();
-        _mockAccountService
+        _mockAdminService
             .Setup(s => s.GetAllUsersAsync(It.IsAny<UserStatus>()))
             .ReturnsAsync(emptyUsersList);
 
@@ -126,7 +127,7 @@ public class UserControllerTest
         Assert.Empty(users);
 
         // Verify service was called once
-        _mockAccountService.Verify(s => s.GetAllUsersAsync(UserStatus.Active), Times.Once);
+        _mockAdminService.Verify(s => s.GetAllUsersAsync(UserStatus.Active), Times.Once);
     }
 
     [Fact]
@@ -134,7 +135,7 @@ public class UserControllerTest
     {
         // Arrange
         var exceptionMessage = "Database connection failed";
-        _mockAccountService
+        _mockAdminService
             .Setup(s => s.GetAllUsersAsync(It.IsAny<UserStatus>()))
             .ThrowsAsync(new Exception(exceptionMessage));
 
@@ -143,7 +144,7 @@ public class UserControllerTest
 
         // Assert
         Assert.Equal(exceptionMessage, exception.Message);
-        _mockAccountService.Verify(s => s.GetAllUsersAsync(It.IsAny<UserStatus>()), Times.Once);
+        _mockAdminService.Verify(s => s.GetAllUsersAsync(It.IsAny<UserStatus>()), Times.Once);
     }
 
     [Fact]
@@ -169,7 +170,7 @@ public class UserControllerTest
             }
         };
 
-        _mockAccountService
+        _mockAdminService
             .Setup(s => s.GetAllUsersAsync(UserStatus.Active))
             .ReturnsAsync(activeUsers);
 
@@ -183,7 +184,7 @@ public class UserControllerTest
         Assert.Equal("john.doe", users.First().Username);
 
         // Verify service was called with Active status
-        _mockAccountService.Verify(s => s.GetAllUsersAsync(UserStatus.Active), Times.Once);
+        _mockAdminService.Verify(s => s.GetAllUsersAsync(UserStatus.Active), Times.Once);
     }
 
     [Fact]
@@ -209,7 +210,7 @@ public class UserControllerTest
             }
         };
 
-        _mockAccountService
+        _mockAdminService
             .Setup(s => s.GetAllUsersAsync(UserStatus.Archived))
             .ReturnsAsync(archivedUsers);
 
@@ -223,7 +224,7 @@ public class UserControllerTest
         Assert.Equal("archived.user", users.First().Username);
 
         // Verify service was called with Archived status
-        _mockAccountService.Verify(s => s.GetAllUsersAsync(UserStatus.Archived), Times.Once);
+        _mockAdminService.Verify(s => s.GetAllUsersAsync(UserStatus.Archived), Times.Once);
     }
 
     [Fact]
@@ -264,7 +265,7 @@ public class UserControllerTest
             }
         };
 
-        _mockAccountService
+        _mockAdminService
             .Setup(s => s.GetAllUsersAsync(UserStatus.All))
             .ReturnsAsync(allUsers);
 
@@ -277,7 +278,7 @@ public class UserControllerTest
         Assert.Equal(2, users.Count);
 
         // Verify service was called with All status
-        _mockAccountService.Verify(s => s.GetAllUsersAsync(UserStatus.All), Times.Once);
+        _mockAdminService.Verify(s => s.GetAllUsersAsync(UserStatus.All), Times.Once);
     }
 
     [Fact]
@@ -296,7 +297,7 @@ public class UserControllerTest
             }
         };
 
-        _mockAccountService
+        _mockAdminService
             .Setup(s => s.GetAllUsersAsync(It.IsAny<UserStatus>()))
             .ReturnsAsync(usersWithNullFields);
 
@@ -318,7 +319,7 @@ public class UserControllerTest
         Assert.Null(user.AdminProfile);
 
         // Verify service was called once
-        _mockAccountService.Verify(s => s.GetAllUsersAsync(It.IsAny<UserStatus>()), Times.Once);
+        _mockAdminService.Verify(s => s.GetAllUsersAsync(It.IsAny<UserStatus>()), Times.Once);
     }
 
     #endregion
@@ -334,7 +335,7 @@ public class UserControllerTest
 
         SetupControllerWithUser(adminId);
 
-        _mockAccountService
+        _mockAdminService
             .Setup(s => s.AdminDeleteUserAsync(adminId, targetUserId))
             .Returns(Task.CompletedTask);
 
@@ -348,7 +349,7 @@ public class UserControllerTest
         Assert.Equal("User deleted successfully", response.Message);
 
         // Verify service was called once with correct parameters
-        _mockAccountService.Verify(s => s.AdminDeleteUserAsync(adminId, targetUserId), Times.Once);
+        _mockAdminService.Verify(s => s.AdminDeleteUserAsync(adminId, targetUserId), Times.Once);
     }
 
     [Fact]
@@ -360,7 +361,7 @@ public class UserControllerTest
 
         SetupControllerWithUser(adminId);
 
-        _mockAccountService
+        _mockAdminService
             .Setup(s => s.AdminDeleteUserAsync(adminId, targetUserId))
             .Returns(Task.CompletedTask);
 
@@ -374,7 +375,7 @@ public class UserControllerTest
         Assert.Equal("User deleted successfully", response.Message);
 
         // Verify service was called once with correct parameters
-        _mockAccountService.Verify(s => s.AdminDeleteUserAsync(adminId, targetUserId), Times.Once);
+        _mockAdminService.Verify(s => s.AdminDeleteUserAsync(adminId, targetUserId), Times.Once);
     }
 
     [Fact]
@@ -386,7 +387,7 @@ public class UserControllerTest
 
         SetupControllerWithUser(adminId);
 
-        _mockAccountService
+        _mockAdminService
             .Setup(s => s.AdminDeleteUserAsync(adminId, targetUserId))
             .Returns(Task.CompletedTask);
 
@@ -400,7 +401,7 @@ public class UserControllerTest
         Assert.Equal("User deleted successfully", response.Message);
 
         // Verify service was called once with correct parameters
-        _mockAccountService.Verify(s => s.AdminDeleteUserAsync(adminId, targetUserId), Times.Once);
+        _mockAdminService.Verify(s => s.AdminDeleteUserAsync(adminId, targetUserId), Times.Once);
     }
 
     [Fact]
@@ -413,7 +414,7 @@ public class UserControllerTest
 
         SetupControllerWithUser(adminId);
 
-        _mockAccountService
+        _mockAdminService
             .Setup(s => s.AdminDeleteUserAsync(adminId, targetUserId))
             .ThrowsAsync(new EntityNotFoundException<string>("User", targetUserId, expectedMessage));
 
@@ -427,7 +428,7 @@ public class UserControllerTest
         Assert.Contains(expectedMessage, response.Message);
 
         // Verify service was called once
-        _mockAccountService.Verify(s => s.AdminDeleteUserAsync(adminId, targetUserId), Times.Once);
+        _mockAdminService.Verify(s => s.AdminDeleteUserAsync(adminId, targetUserId), Times.Once);
     }
 
     [Fact]
@@ -439,7 +440,7 @@ public class UserControllerTest
 
         SetupControllerWithUser(adminId);
 
-        _mockAccountService
+        _mockAdminService
             .Setup(s => s.AdminDeleteUserAsync(adminId, adminId))
             .ThrowsAsync(new ValidationException(expectedMessage));
 
@@ -453,7 +454,7 @@ public class UserControllerTest
         Assert.Equal(expectedMessage, response.Message);
 
         // Verify service was called once
-        _mockAccountService.Verify(s => s.AdminDeleteUserAsync(adminId, adminId), Times.Once);
+        _mockAdminService.Verify(s => s.AdminDeleteUserAsync(adminId, adminId), Times.Once);
     }
 
     [Fact]
@@ -481,7 +482,7 @@ public class UserControllerTest
         Assert.Equal("Admin not authenticated", response.Message);
 
         // Verify service was not called
-        _mockAccountService.Verify(s => s.AdminDeleteUserAsync(It.IsAny<string>(), It.IsAny<string>()), Times.Never);
+        _mockAdminService.Verify(s => s.AdminDeleteUserAsync(It.IsAny<string>(), It.IsAny<string>()), Times.Never);
     }
 
     [Fact]
@@ -494,7 +495,7 @@ public class UserControllerTest
 
         SetupControllerWithUser(adminId);
 
-        _mockAccountService
+        _mockAdminService
             .Setup(s => s.AdminDeleteUserAsync(adminId, targetUserId))
             .ThrowsAsync(new EntityUnauthorizedException("User", "delete", adminId, expectedMessage));
 
@@ -509,7 +510,7 @@ public class UserControllerTest
         Assert.Equal(expectedMessage, response.Message);
 
         // Verify service was called once
-        _mockAccountService.Verify(s => s.AdminDeleteUserAsync(adminId, targetUserId), Times.Once);
+        _mockAdminService.Verify(s => s.AdminDeleteUserAsync(adminId, targetUserId), Times.Once);
     }
 
     [Fact]
@@ -530,7 +531,7 @@ public class UserControllerTest
         Assert.Equal("User ID is required", response.Message);
 
         // Verify service was not called
-        _mockAccountService.Verify(s => s.AdminDeleteUserAsync(It.IsAny<string>(), It.IsAny<string>()), Times.Never);
+        _mockAdminService.Verify(s => s.AdminDeleteUserAsync(It.IsAny<string>(), It.IsAny<string>()), Times.Never);
     }
 
     [Fact]
@@ -551,7 +552,7 @@ public class UserControllerTest
         Assert.Equal("User ID is required", response.Message);
 
         // Verify service was not called
-        _mockAccountService.Verify(s => s.AdminDeleteUserAsync(It.IsAny<string>(), It.IsAny<string>()), Times.Never);
+        _mockAdminService.Verify(s => s.AdminDeleteUserAsync(It.IsAny<string>(), It.IsAny<string>()), Times.Never);
     }
 
     [Fact]
@@ -564,7 +565,7 @@ public class UserControllerTest
 
         SetupControllerWithUser(adminId);
 
-        _mockAccountService
+        _mockAdminService
             .Setup(s => s.AdminDeleteUserAsync(adminId, targetUserId))
             .ThrowsAsync(new EntityNotFoundException<string>("User", targetUserId, expectedMessage));
 
@@ -578,7 +579,7 @@ public class UserControllerTest
         Assert.Contains(expectedMessage, response.Message);
 
         // Verify service was called once
-        _mockAccountService.Verify(s => s.AdminDeleteUserAsync(adminId, targetUserId), Times.Once);
+        _mockAdminService.Verify(s => s.AdminDeleteUserAsync(adminId, targetUserId), Times.Once);
     }
 
     #endregion
@@ -594,7 +595,7 @@ public class UserControllerTest
 
         SetupControllerWithUser(adminId);
 
-        _mockAccountService
+        _mockAdminService
             .Setup(s => s.AdminHardDeleteUserAsync(adminId, targetUserId))
             .Returns(Task.CompletedTask);
 
@@ -608,7 +609,7 @@ public class UserControllerTest
         Assert.Equal("User permanently deleted successfully", response.Message);
 
         // Verify service was called once with correct parameters
-        _mockAccountService.Verify(s => s.AdminHardDeleteUserAsync(adminId, targetUserId), Times.Once);
+        _mockAdminService.Verify(s => s.AdminHardDeleteUserAsync(adminId, targetUserId), Times.Once);
     }
 
     [Fact]
@@ -620,7 +621,7 @@ public class UserControllerTest
 
         SetupControllerWithUser(adminId);
 
-        _mockAccountService
+        _mockAdminService
             .Setup(s => s.AdminHardDeleteUserAsync(adminId, targetUserId))
             .Returns(Task.CompletedTask);
 
@@ -634,7 +635,7 @@ public class UserControllerTest
         Assert.Equal("User permanently deleted successfully", response.Message);
 
         // Verify service was called once with correct parameters
-        _mockAccountService.Verify(s => s.AdminHardDeleteUserAsync(adminId, targetUserId), Times.Once);
+        _mockAdminService.Verify(s => s.AdminHardDeleteUserAsync(adminId, targetUserId), Times.Once);
     }
 
     [Fact]
@@ -646,7 +647,7 @@ public class UserControllerTest
 
         SetupControllerWithUser(adminId);
 
-        _mockAccountService
+        _mockAdminService
             .Setup(s => s.AdminHardDeleteUserAsync(adminId, targetUserId))
             .Returns(Task.CompletedTask);
 
@@ -660,7 +661,7 @@ public class UserControllerTest
         Assert.Equal("User permanently deleted successfully", response.Message);
 
         // Verify service was called once with correct parameters
-        _mockAccountService.Verify(s => s.AdminHardDeleteUserAsync(adminId, targetUserId), Times.Once);
+        _mockAdminService.Verify(s => s.AdminHardDeleteUserAsync(adminId, targetUserId), Times.Once);
     }
 
     [Fact]
@@ -673,7 +674,7 @@ public class UserControllerTest
 
         SetupControllerWithUser(adminId);
 
-        _mockAccountService
+        _mockAdminService
             .Setup(s => s.AdminHardDeleteUserAsync(adminId, targetUserId))
             .ThrowsAsync(new EntityNotFoundException<string>("User", targetUserId, expectedMessage));
 
@@ -687,7 +688,7 @@ public class UserControllerTest
         Assert.Contains(expectedMessage, response.Message);
 
         // Verify service was called once
-        _mockAccountService.Verify(s => s.AdminHardDeleteUserAsync(adminId, targetUserId), Times.Once);
+        _mockAdminService.Verify(s => s.AdminHardDeleteUserAsync(adminId, targetUserId), Times.Once);
     }
 
     [Fact]
@@ -699,7 +700,7 @@ public class UserControllerTest
 
         SetupControllerWithUser(adminId);
 
-        _mockAccountService
+        _mockAdminService
             .Setup(s => s.AdminHardDeleteUserAsync(adminId, adminId))
             .ThrowsAsync(new ValidationException(expectedMessage));
 
@@ -713,7 +714,7 @@ public class UserControllerTest
         Assert.Equal(expectedMessage, response.Message);
 
         // Verify service was called once
-        _mockAccountService.Verify(s => s.AdminHardDeleteUserAsync(adminId, adminId), Times.Once);
+        _mockAdminService.Verify(s => s.AdminHardDeleteUserAsync(adminId, adminId), Times.Once);
     }
 
     [Fact]
@@ -741,7 +742,7 @@ public class UserControllerTest
         Assert.Equal("Admin not authenticated", response.Message);
 
         // Verify service was not called
-        _mockAccountService.Verify(s => s.AdminHardDeleteUserAsync(It.IsAny<string>(), It.IsAny<string>()), Times.Never);
+        _mockAdminService.Verify(s => s.AdminHardDeleteUserAsync(It.IsAny<string>(), It.IsAny<string>()), Times.Never);
     }
 
     [Fact]
@@ -754,7 +755,7 @@ public class UserControllerTest
 
         SetupControllerWithUser(adminId);
 
-        _mockAccountService
+        _mockAdminService
             .Setup(s => s.AdminHardDeleteUserAsync(adminId, targetUserId))
             .ThrowsAsync(new EntityUnauthorizedException("User", "hard delete", adminId, expectedMessage));
 
@@ -769,7 +770,7 @@ public class UserControllerTest
         Assert.Equal(expectedMessage, response.Message);
 
         // Verify service was called once
-        _mockAccountService.Verify(s => s.AdminHardDeleteUserAsync(adminId, targetUserId), Times.Once);
+        _mockAdminService.Verify(s => s.AdminHardDeleteUserAsync(adminId, targetUserId), Times.Once);
     }
 
     [Fact]
@@ -790,7 +791,7 @@ public class UserControllerTest
         Assert.Equal("User ID is required", response.Message);
 
         // Verify service was not called
-        _mockAccountService.Verify(s => s.AdminHardDeleteUserAsync(It.IsAny<string>(), It.IsAny<string>()), Times.Never);
+        _mockAdminService.Verify(s => s.AdminHardDeleteUserAsync(It.IsAny<string>(), It.IsAny<string>()), Times.Never);
     }
 
     #endregion
@@ -806,7 +807,7 @@ public class UserControllerTest
 
         SetupControllerWithUser(adminId);
 
-        _mockAccountService
+        _mockAdminService
             .Setup(s => s.AdminRestoreUserAsync(adminId, targetUserId))
             .Returns(Task.CompletedTask);
 
@@ -820,7 +821,7 @@ public class UserControllerTest
         Assert.Equal("User restored successfully", response.Message);
 
         // Verify service was called once with correct parameters
-        _mockAccountService.Verify(s => s.AdminRestoreUserAsync(adminId, targetUserId), Times.Once);
+        _mockAdminService.Verify(s => s.AdminRestoreUserAsync(adminId, targetUserId), Times.Once);
     }
 
     [Fact]
@@ -832,7 +833,7 @@ public class UserControllerTest
 
         SetupControllerWithUser(adminId);
 
-        _mockAccountService
+        _mockAdminService
             .Setup(s => s.AdminRestoreUserAsync(adminId, targetUserId))
             .Returns(Task.CompletedTask);
 
@@ -846,7 +847,7 @@ public class UserControllerTest
         Assert.Equal("User restored successfully", response.Message);
 
         // Verify service was called once with correct parameters
-        _mockAccountService.Verify(s => s.AdminRestoreUserAsync(adminId, targetUserId), Times.Once);
+        _mockAdminService.Verify(s => s.AdminRestoreUserAsync(adminId, targetUserId), Times.Once);
     }
 
     [Fact]
@@ -858,7 +859,7 @@ public class UserControllerTest
 
         SetupControllerWithUser(adminId);
 
-        _mockAccountService
+        _mockAdminService
             .Setup(s => s.AdminRestoreUserAsync(adminId, targetUserId))
             .Returns(Task.CompletedTask);
 
@@ -872,7 +873,7 @@ public class UserControllerTest
         Assert.Equal("User restored successfully", response.Message);
 
         // Verify service was called once with correct parameters
-        _mockAccountService.Verify(s => s.AdminRestoreUserAsync(adminId, targetUserId), Times.Once);
+        _mockAdminService.Verify(s => s.AdminRestoreUserAsync(adminId, targetUserId), Times.Once);
     }
 
     [Fact]
@@ -885,7 +886,7 @@ public class UserControllerTest
 
         SetupControllerWithUser(adminId);
 
-        _mockAccountService
+        _mockAdminService
             .Setup(s => s.AdminRestoreUserAsync(adminId, targetUserId))
             .ThrowsAsync(new EntityNotFoundException<string>("User", targetUserId, expectedMessage));
 
@@ -899,7 +900,7 @@ public class UserControllerTest
         Assert.Contains(expectedMessage, response.Message);
 
         // Verify service was called once
-        _mockAccountService.Verify(s => s.AdminRestoreUserAsync(adminId, targetUserId), Times.Once);
+        _mockAdminService.Verify(s => s.AdminRestoreUserAsync(adminId, targetUserId), Times.Once);
     }
 
     [Fact]
@@ -912,7 +913,7 @@ public class UserControllerTest
 
         SetupControllerWithUser(adminId);
 
-        _mockAccountService
+        _mockAdminService
             .Setup(s => s.AdminRestoreUserAsync(adminId, targetUserId))
             .ThrowsAsync(new ValidationException(expectedMessage));
 
@@ -926,7 +927,7 @@ public class UserControllerTest
         Assert.Equal(expectedMessage, response.Message);
 
         // Verify service was called once
-        _mockAccountService.Verify(s => s.AdminRestoreUserAsync(adminId, targetUserId), Times.Once);
+        _mockAdminService.Verify(s => s.AdminRestoreUserAsync(adminId, targetUserId), Times.Once);
     }
 
     [Fact]
@@ -954,7 +955,7 @@ public class UserControllerTest
         Assert.Equal("Admin not authenticated", response.Message);
 
         // Verify service was not called
-        _mockAccountService.Verify(s => s.AdminRestoreUserAsync(It.IsAny<string>(), It.IsAny<string>()), Times.Never);
+        _mockAdminService.Verify(s => s.AdminRestoreUserAsync(It.IsAny<string>(), It.IsAny<string>()), Times.Never);
     }
 
     [Fact]
@@ -967,7 +968,7 @@ public class UserControllerTest
 
         SetupControllerWithUser(adminId);
 
-        _mockAccountService
+        _mockAdminService
             .Setup(s => s.AdminRestoreUserAsync(adminId, targetUserId))
             .ThrowsAsync(new EntityUnauthorizedException("User", "restore", adminId, expectedMessage));
 
@@ -982,7 +983,7 @@ public class UserControllerTest
         Assert.Equal(expectedMessage, response.Message);
 
         // Verify service was called once
-        _mockAccountService.Verify(s => s.AdminRestoreUserAsync(adminId, targetUserId), Times.Once);
+        _mockAdminService.Verify(s => s.AdminRestoreUserAsync(adminId, targetUserId), Times.Once);
     }
 
     [Fact]
@@ -1003,7 +1004,7 @@ public class UserControllerTest
         Assert.Equal("User ID is required", response.Message);
 
         // Verify service was not called
-        _mockAccountService.Verify(s => s.AdminRestoreUserAsync(It.IsAny<string>(), It.IsAny<string>()), Times.Never);
+        _mockAdminService.Verify(s => s.AdminRestoreUserAsync(It.IsAny<string>(), It.IsAny<string>()), Times.Never);
     }
 
     [Fact]
@@ -1024,7 +1025,7 @@ public class UserControllerTest
         Assert.Equal("User ID is required", response.Message);
 
         // Verify service was not called
-        _mockAccountService.Verify(s => s.AdminRestoreUserAsync(It.IsAny<string>(), It.IsAny<string>()), Times.Never);
+        _mockAdminService.Verify(s => s.AdminRestoreUserAsync(It.IsAny<string>(), It.IsAny<string>()), Times.Never);
     }
 
     [Fact]
@@ -1037,7 +1038,7 @@ public class UserControllerTest
 
         SetupControllerWithUser(adminId);
 
-        _mockAccountService
+        _mockAdminService
             .Setup(s => s.AdminRestoreUserAsync(adminId, targetUserId))
             .ThrowsAsync(new ValidationException(expectedMessage));
 
@@ -1051,7 +1052,7 @@ public class UserControllerTest
         Assert.Equal(expectedMessage, response.Message);
 
         // Verify service was called once
-        _mockAccountService.Verify(s => s.AdminRestoreUserAsync(adminId, targetUserId), Times.Once);
+        _mockAdminService.Verify(s => s.AdminRestoreUserAsync(adminId, targetUserId), Times.Once);
     }
 
     #endregion
