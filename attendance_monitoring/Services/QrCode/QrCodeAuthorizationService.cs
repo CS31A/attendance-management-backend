@@ -5,7 +5,7 @@ using attendance_monitoring.IServices;
 
 namespace attendance_monitoring.Services.QrCode;
 
-internal sealed class QrCodeAuthorizationService
+public sealed class QrCodeAuthorizationService
 {
     private readonly ISessionRepository _sessionRepository;
     private readonly IAutomaticSessionEndService? _automaticSessionEndService;

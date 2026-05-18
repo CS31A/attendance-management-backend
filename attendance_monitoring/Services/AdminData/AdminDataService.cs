@@ -7,6 +7,7 @@ using attendance_monitoring.Data;
 using attendance_monitoring.Exceptions;
 using AppValidationEx = attendance_monitoring.Exceptions.ValidationException;
 using attendance_monitoring.IServices;
+using attendance_monitoring.Services.Account;
 using attendance_monitoring.Models.DTO;
 using attendance_monitoring.Models.DTO.Request;
 using attendance_monitoring.Models.DTO.Response;
@@ -35,7 +36,8 @@ public sealed class AdminDataService : IAdminDataService
     private const string RollbackIssueCode = "import_rollback";
     private const string RollbackIssueMessage = "Row was imported but rolled back because another row failed.";
 
-    private readonly IAccountService _accountService;
+    private readonly IRegistrationService _registrationService;
+    private readonly IAdminService _adminService;
     private readonly IClassroomService _classroomService;
     private readonly ApplicationDbContext _context;
     private readonly ICourseService _courseService;
@@ -48,7 +50,8 @@ public sealed class AdminDataService : IAdminDataService
 
     public AdminDataService(
         ApplicationDbContext context,
-        IAccountService accountService,
+        IRegistrationService registrationService,
+        IAdminService adminService,
         ICourseService courseService,
         IClassroomService classroomService,
         ISectionService sectionService,
@@ -59,7 +62,8 @@ public sealed class AdminDataService : IAdminDataService
         ILogger<AdminDataService> logger)
     {
         _context = context;
-        _accountService = accountService;
+        _registrationService = registrationService;
+        _adminService = adminService;
         _courseService = courseService;
         _classroomService = classroomService;
         _sectionService = sectionService;
@@ -647,7 +651,7 @@ public sealed class AdminDataService : IAdminDataService
             }
         }
 
-        await _accountService.RegisterAsync(new RegisterDto
+        await _registrationService.RegisterAsync(new RegisterDto
         {
             Username = values.GetValueOrDefault("username") ?? string.Empty,
             Email = values.GetValueOrDefault("email") ?? string.Empty,
@@ -828,7 +832,7 @@ public sealed class AdminDataService : IAdminDataService
         var status = Enum.TryParse<UserStatus>(statusValue, true, out var parsedStatus) ? parsedStatus : UserStatus.Active;
         var role = filters.TryGetValue("role", out var roleValue) ? roleValue : null;
         var search = filters.TryGetValue("search", out var searchValue) ? searchValue : null;
-        var users = (await _accountService.GetAllUsersAsync(status).ConfigureAwait(false))
+        var users = (await _adminService.GetAllUsersAsync(status).ConfigureAwait(false))
             .Where(user => MatchesUserExportFilters(user, role, search))
             .ToList();
 
@@ -864,7 +868,7 @@ public sealed class AdminDataService : IAdminDataService
         var students = await _context.Students.AsNoTracking().Include(student => student.User).Where(student => !student.IsDeleted && student.User.Email != null).ToDictionaryAsync(student => student.User.Email!, student => student.Id, StringComparer.OrdinalIgnoreCase, cancellationToken).ConfigureAwait(false);
         var studentUuids = await _context.Students.AsNoTracking().Include(student => student.User).Where(student => !student.IsDeleted && student.User.Email != null).ToDictionaryAsync(student => student.User.Email!, student => student.Id, StringComparer.OrdinalIgnoreCase, cancellationToken).ConfigureAwait(false);
         var primarySections = await _context.Students.AsNoTracking().Where(student => !student.IsDeleted).ToDictionaryAsync(student => student.Id, student => student.SectionId, cancellationToken).ConfigureAwait(false);
-        var users = (await _accountService.GetAllUsersAsync(UserStatus.All).ConfigureAwait(false)).ToList();
+        var users = (await _adminService.GetAllUsersAsync(UserStatus.All).ConfigureAwait(false)).ToList();
 
         return new LookupCache(
             courses,

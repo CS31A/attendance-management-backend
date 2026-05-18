@@ -13,7 +13,7 @@ using QrCodeEntity = attendance_monitoring.Classes.QrCode;
 
 namespace attendance_monitoring.Services.QrCode;
 
-internal sealed class QrCodeGenerationService
+public sealed class QrCodeGenerationService : IQrCodeGenerationService
 {
     private const int MaxCreateRetries = 3;
     private const int MaxHashGenerationAttempts = 10;

@@ -10,7 +10,6 @@ public class ServiceArchitectureGuardrailTests
         nameof(AttendanceService),
         nameof(DataSeederService),
         nameof(FingerprintService),
-        nameof(InstructorService),
         nameof(ScheduleService),
         nameof(SessionService),
         nameof(StudentService)

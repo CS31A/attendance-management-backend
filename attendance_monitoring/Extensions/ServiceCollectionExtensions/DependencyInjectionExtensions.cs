@@ -12,6 +12,7 @@ using attendance_monitoring.Services.AdminData;
 using attendance_monitoring.Services.QrCode;
 using attendance_monitoring.Services.InstructorServices;
 
+
 namespace attendance_monitoring.Extensions.ServiceCollectionExtensions;
 
 /// <summary>
@@ -78,16 +79,7 @@ public static class DependencyInjectionExtensions
         services.AddScoped<IInstructorCrudService, InstructorCrudService>();
         services.AddScoped<IInstructorQueryService, InstructorQueryService>();
         services.AddScoped<IInstructorDetailService, InstructorDetailService>();
-        services.AddScoped<IInstructorService>(sp => new InstructorService(
-            sp.GetRequiredService<IInstructorCrudService>(),
-            sp.GetRequiredService<IInstructorQueryService>(),
-            sp.GetRequiredService<IInstructorDetailService>()));
         services.AddScoped<IRefreshTokenService, RefreshTokenService>();
-        services.AddScoped<IAccountService>(sp => new AccountService(
-            sp.GetRequiredService<IRegistrationService>(),
-            sp.GetRequiredService<IAuthenticationService>(),
-            sp.GetRequiredService<IProfileService>(),
-            sp.GetRequiredService<IAdminService>()));
         services.AddScoped<IRegistrationService, RegistrationService>();
         services.AddScoped<IAuthenticationService, AuthenticationService>();
         services.AddScoped<IProfileService, ProfileService>();
@@ -118,16 +110,11 @@ public static class DependencyInjectionExtensions
             CrudService<Classroom, CreateClassroom, UpdateClassroom>>();
         services.AddScoped<IClassroomService, ClassroomService>();
         services.AddScoped<IScheduleService, ScheduleService>();
-        services.AddScoped<IQrCodeService>(sp => new QrCodeService(
-            sp.GetRequiredService<QrCodeQueryService>(),
-            sp.GetRequiredService<QrCodeWriteService>(),
-            sp.GetRequiredService<QrCodeGenerationService>(),
-            sp.GetRequiredService<QrCodeScanService>()));
         services.AddScoped<QrCodeAuthorizationService>();
-        services.AddScoped<QrCodeQueryService>();
-        services.AddScoped<QrCodeWriteService>();
-        services.AddScoped<QrCodeGenerationService>();
-        services.AddScoped<QrCodeScanService>();
+        services.AddScoped<IQrCodeQueryService, QrCodeQueryService>();
+        services.AddScoped<IQrCodeWriteService, QrCodeWriteService>();
+        services.AddScoped<IQrCodeGenerationService, QrCodeGenerationService>();
+        services.AddScoped<IQrCodeScanService, QrCodeScanService>();
         services.AddScoped<IRoleInitializationService, RoleInitializationService>();
         services.AddScoped<IUserContextService, UserContextService>();
         services.AddScoped<ITokenValidationService, TokenValidationService>();

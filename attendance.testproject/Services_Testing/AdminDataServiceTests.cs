@@ -1,16 +1,21 @@
 using attendance_monitoring.Classes;
 using attendance_monitoring.Data;
 using attendance_monitoring.Exceptions;
+using attendance_monitoring.Extensions;
+using attendance_monitoring.Extensions.WebApplicationExtensions;
 using attendance_monitoring.IServices;
+using attendance_monitoring.Models;
 using attendance_monitoring.Models.DTO;
 using attendance_monitoring.Models.DTO.Request;
 using attendance_monitoring.Models.DTO.Response;
 using attendance_monitoring.Options;
 using attendance_monitoring.Repositories;
 using attendance_monitoring.Services;
+using attendance_monitoring.Services.Account;
 using attendance_monitoring.Services.AdminData;
 using attendance_monitoring.Services.Crud;
 using ClosedXML.Excel;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Data.Sqlite;
@@ -33,11 +38,11 @@ public class AdminDataServiceTests
         context.Sections.Add(new Section { Id = Guid.NewGuid(), Name = "BSCS-1A", CourseId = Guid.NewGuid(), CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow });
         await context.SaveChangesAsync();
 
-        var accountService = new Mock<IAccountService>();
-        accountService.Setup(service => service.GetAllUsersAsync(It.IsAny<UserStatus>()))
+        var adminService = new Mock<IAdminService>();
+        adminService.Setup(service => service.GetAllUsersAsync(It.IsAny<UserStatus>()))
             .ReturnsAsync(Array.Empty<GetAllUsersDto>());
 
-        var service = CreateService(context, accountService.Object);
+        var service = CreateService(context, adminService: adminService.Object);
         var file = CreateFormFile("users.csv", "username,email,firstname,lastname,role,sectionName,temporaryPassword\nalpha,alpha@example.com,Alice,Anderson,Student,BSCS-1A,Secret123\n");
 
         var result = await service.PreviewImportAsync("users", file, new Dictionary<string, string?>());
@@ -58,8 +63,8 @@ public class AdminDataServiceTests
         context.Sections.Add(new Section { Id = Guid.NewGuid(), Name = "BSIT-1B", CourseId = Guid.NewGuid(), CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow });
         await context.SaveChangesAsync();
 
-        var accountService = new Mock<IAccountService>();
-        accountService.Setup(service => service.GetAllUsersAsync(It.IsAny<UserStatus>()))
+        var adminService = new Mock<IAdminService>();
+        adminService.Setup(service => service.GetAllUsersAsync(It.IsAny<UserStatus>()))
             .ReturnsAsync(new[]
             {
                 new GetAllUsersDto
@@ -71,7 +76,7 @@ public class AdminDataServiceTests
                 },
             });
 
-        var service = CreateService(context, accountService.Object);
+        var service = CreateService(context, adminService: adminService.Object);
         var file = CreateFormFile("users.csv", "username,email,firstname,lastname,role,sectionName,temporaryPassword\nalpha,alpha@example.com,Alice,Anderson,Student,BSIT-1B,Secret123\n");
 
         var result = await service.PreviewImportAsync("users", file, new Dictionary<string, string?>());
@@ -133,11 +138,11 @@ public class AdminDataServiceTests
         });
         await context.SaveChangesAsync();
 
-        var accountService = new Mock<IAccountService>();
-        accountService.Setup(service => service.GetAllUsersAsync(It.IsAny<UserStatus>()))
+        var adminService = new Mock<IAdminService>();
+        adminService.Setup(service => service.GetAllUsersAsync(It.IsAny<UserStatus>()))
             .ReturnsAsync(Array.Empty<GetAllUsersDto>());
 
-        var service = CreateService(context, accountService.Object);
+        var service = CreateService(context, adminService: adminService.Object);
         var file = CreateFormFile("schedules.csv", "dayOfWeek,timeIn,timeOut,subjectCode,sectionName,classroomName,instructorEmail\nMonday,08:00,not-a-time,CS101,BSCS-1A,Lab 1,teacher@example.com\n");
 
         var result = await service.PreviewImportAsync("schedules", file, new Dictionary<string, string?>());
@@ -155,13 +160,14 @@ public class AdminDataServiceTests
         context.Sections.Add(new Section { Id = Guid.NewGuid(), Name = "BSCS-1A", CourseId = Guid.NewGuid(), CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow });
         await context.SaveChangesAsync();
 
-        var accountService = new Mock<IAccountService>();
-        accountService.Setup(service => service.GetAllUsersAsync(It.IsAny<UserStatus>()))
+        var adminService = new Mock<IAdminService>();
+        var registrationService = new Mock<IRegistrationService>();
+        adminService.Setup(service => service.GetAllUsersAsync(It.IsAny<UserStatus>()))
             .ReturnsAsync(Array.Empty<GetAllUsersDto>());
-        accountService.Setup(service => service.RegisterAsync(It.IsAny<RegisterDto>()))
+        registrationService.Setup(service => service.RegisterAsync(It.IsAny<RegisterDto>()))
             .ReturnsAsync(new RegisterResponseDto());
 
-        var service = CreateService(context, accountService.Object, new BulkDataOptions { MaxPreviewRows = 1 });
+        var service = CreateService(context, registrationService: registrationService.Object, adminService: adminService.Object, new BulkDataOptions { MaxPreviewRows = 1 });
         var file = CreateFormFile(
             "users.csv",
             "username,email,firstname,lastname,role,sectionName,temporaryPassword\n"
@@ -179,7 +185,7 @@ public class AdminDataServiceTests
         Assert.Equal(3, result.CreatedRows);
         Assert.Equal(0, result.FailedRows);
         Assert.Equal(0, result.SkippedDuplicateRows);
-        accountService.Verify(service => service.RegisterAsync(It.IsAny<RegisterDto>()), Times.Exactly(3));
+        registrationService.Verify(service => service.RegisterAsync(It.IsAny<RegisterDto>()), Times.Exactly(3));
     }
 
     [Fact]
@@ -245,11 +251,11 @@ public class AdminDataServiceTests
         });
         await context.SaveChangesAsync();
 
-        var accountService = new Mock<IAccountService>();
-        accountService.Setup(service => service.GetAllUsersAsync(It.IsAny<UserStatus>()))
+        var adminService = new Mock<IAdminService>();
+        adminService.Setup(service => service.GetAllUsersAsync(It.IsAny<UserStatus>()))
             .ReturnsAsync(Array.Empty<GetAllUsersDto>());
 
-        var service = CreateService(context, accountService.Object);
+        var service = CreateService(context, adminService: adminService.Object);
         var file = CreateFormFile("schedules.csv", "dayOfWeek,timeIn,timeOut,subjectCode,sectionName,classroomName,instructorEmail\nMonday,8:00,16:00,CS101,BSCS-1A,Lab 1,teacher@example.com\n");
 
         var result = await service.PreviewImportAsync("schedules", file, new Dictionary<string, string?>());
@@ -265,8 +271,8 @@ public class AdminDataServiceTests
     {
         await using var context = CreateContext();
 
-        var accountService = new Mock<IAccountService>();
-        accountService.Setup(service => service.GetAllUsersAsync(UserStatus.Active))
+        var adminService = new Mock<IAdminService>();
+        adminService.Setup(service => service.GetAllUsersAsync(UserStatus.Active))
             .ReturnsAsync(new[]
             {
                 new GetAllUsersDto
@@ -295,7 +301,7 @@ public class AdminDataServiceTests
                 },
             });
 
-        var service = CreateService(context, accountService.Object);
+        var service = CreateService(context, adminService: adminService.Object);
 
         var export = await service.ExportAsync("users", "csv", new Dictionary<string, string?>
         {
@@ -308,7 +314,7 @@ public class AdminDataServiceTests
 
         Assert.Contains("ada.teacher", csv);
         Assert.DoesNotContain("bob.student", csv);
-        accountService.Verify(service => service.GetAllUsersAsync(UserStatus.Active), Times.Once);
+        adminService.Verify(service => service.GetAllUsersAsync(UserStatus.Active), Times.Once);
     }
 
     [Fact]
@@ -316,11 +322,11 @@ public class AdminDataServiceTests
     {
         await using var context = CreateContext();
 
-        var accountService = new Mock<IAccountService>();
-        accountService.Setup(service => service.GetAllUsersAsync(It.IsAny<UserStatus>()))
+        var adminService = new Mock<IAdminService>();
+        adminService.Setup(service => service.GetAllUsersAsync(It.IsAny<UserStatus>()))
             .ReturnsAsync(Array.Empty<GetAllUsersDto>());
 
-        var service = CreateService(context, accountService.Object, new BulkDataOptions { MaxIssues = 2 });
+        var service = CreateService(context, adminService: adminService.Object, options: new BulkDataOptions { MaxIssues = 2 });
         var file = CreateFormFile("users.csv", "username,email,firstname,lastname,role,sectionName,temporaryPassword\n,,, ,Student,,\n");
 
         var result = await service.PreviewImportAsync("users", file, new Dictionary<string, string?>());
@@ -337,11 +343,11 @@ public class AdminDataServiceTests
     {
         await using var context = CreateContext();
 
-        var accountService = new Mock<IAccountService>();
-        accountService.Setup(service => service.GetAllUsersAsync(It.IsAny<UserStatus>()))
+        var adminService = new Mock<IAdminService>();
+        adminService.Setup(service => service.GetAllUsersAsync(It.IsAny<UserStatus>()))
             .ReturnsAsync(Array.Empty<GetAllUsersDto>());
 
-        var service = CreateService(context, accountService.Object, new BulkDataOptions { MaxIssues = 2 });
+        var service = CreateService(context, adminService: adminService.Object, options: new BulkDataOptions { MaxIssues = 2 });
         var file = CreateFormFile(
             "users.csv",
             "username,email,firstname,lastname,role,sectionName,temporaryPassword\n"
@@ -376,15 +382,15 @@ public class AdminDataServiceTests
         var expectedSectionId = await context.Sections.Select(section => section.Id).SingleAsync();
         var expectedInstructorId = await context.Instructors.Select(instructor => instructor.Id).SingleAsync();
 
-        var accountService = new Mock<IAccountService>();
-        accountService.Setup(s => s.GetAllUsersAsync(It.IsAny<UserStatus>()))
+        var adminService = new Mock<IAdminService>();
+        adminService.Setup(s => s.GetAllUsersAsync(It.IsAny<UserStatus>()))
             .ReturnsAsync(Array.Empty<GetAllUsersDto>());
 
         var scheduleService = new Mock<IScheduleService>();
         scheduleService.Setup(s => s.CreateScheduleAsync(It.IsAny<CreateSchedule>()))
             .ReturnsAsync(new Schedules());
 
-        var service = CreateService(context, accountService.Object, scheduleService: scheduleService.Object);
+        var service = CreateService(context, adminService: adminService.Object, scheduleService: scheduleService.Object);
         var file = CreateFormFile("schedules.csv",
             "dayOfWeek,timeIn,timeOut,subjectCode,sectionName,classroomName,instructorEmail\n" +
             "Monday,08:00,10:00,CS101,BSCS-1A,Room A,prof@x.com\n" +
@@ -415,15 +421,15 @@ public class AdminDataServiceTests
         context.Courses.Add(new Course { Id = Guid.NewGuid(), Name = "CS", CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow });
         await context.SaveChangesAsync();
 
-        var accountService = new Mock<IAccountService>();
-        accountService.Setup(s => s.GetAllUsersAsync(It.IsAny<UserStatus>()))
+        var adminService = new Mock<IAdminService>();
+        adminService.Setup(s => s.GetAllUsersAsync(It.IsAny<UserStatus>()))
             .ReturnsAsync(Array.Empty<GetAllUsersDto>());
 
         var sectionService = new Mock<ISectionService>();
         sectionService.Setup(s => s.CreateSectionAsync(It.IsAny<Section>()))
             .ReturnsAsync(new SectionResponseDto());
 
-        var service = CreateService(context, accountService.Object, sectionService: sectionService.Object);
+        var service = CreateService(context, adminService: adminService.Object, sectionService: sectionService.Object);
         var file = CreateFormFile("sections.csv", "name,courseName\nSection1,CS\nSection2,CS\n");
 
         var result = await service.ImportAsync("sections", file, CreatePrincipal(), new Dictionary<string, string?>());
@@ -452,15 +458,15 @@ public class AdminDataServiceTests
         context.Subjects.Add(new Subject { Id = Guid.NewGuid(), Code = "CS101", Name = "Computing", CreatedAt = now, UpdatedAt = now });
         await context.SaveChangesAsync();
 
-        var accountService = new Mock<IAccountService>();
-        accountService.Setup(s => s.GetAllUsersAsync(It.IsAny<UserStatus>()))
+        var adminService = new Mock<IAdminService>();
+        adminService.Setup(s => s.GetAllUsersAsync(It.IsAny<UserStatus>()))
             .ReturnsAsync(Array.Empty<GetAllUsersDto>());
 
         var enrollmentService = new Mock<IStudentEnrollmentService>();
         enrollmentService.Setup(s => s.EnrollStudentAsync(It.IsAny<CreateStudentEnrollment>()))
             .ReturnsAsync(new StudentEnrollment());
 
-        var service = CreateService(context, accountService.Object, enrollmentService: enrollmentService.Object);
+        var service = CreateService(context, adminService: adminService.Object, enrollmentService: enrollmentService.Object);
         var file = CreateFormFile("enrollments.csv",
             "studentEmail,sectionName,subjectCode,enrollmentType,academicYear,semester\n" +
             "student@x.com,BSCS-1A,CS101,Regular,2024-2025,1st\n");
@@ -484,13 +490,14 @@ public class AdminDataServiceTests
         context.Sections.Add(new Section { Id = sectionUuid, Name = "BSCS-1A", CourseId = Guid.NewGuid(), CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow });
         await context.SaveChangesAsync();
 
-        var accountService = new Mock<IAccountService>();
-        accountService.Setup(s => s.GetAllUsersAsync(It.IsAny<UserStatus>()))
+        var adminService = new Mock<IAdminService>();
+        var registrationService = new Mock<IRegistrationService>();
+        adminService.Setup(s => s.GetAllUsersAsync(It.IsAny<UserStatus>()))
             .ReturnsAsync(Array.Empty<GetAllUsersDto>());
-        accountService.Setup(s => s.RegisterAsync(It.IsAny<RegisterDto>()))
+        registrationService.Setup(s => s.RegisterAsync(It.IsAny<RegisterDto>()))
             .ReturnsAsync(new RegisterResponseDto());
 
-        var service = CreateService(context, accountService.Object);
+        var service = CreateService(context, registrationService: registrationService.Object, adminService: adminService.Object);
         var file = CreateFormFile("users.csv",
             "username,email,firstname,lastname,role,sectionName,temporaryPassword\n" +
             "user1,user1@example.com,First,Last,Student,BSCS-1A,Secret123!\n");
@@ -500,7 +507,7 @@ public class AdminDataServiceTests
         Assert.True(result.Success);
         Assert.Equal(1, result.CreatedRows);
 
-        var registerDto = accountService.Invocations
+        var registerDto = registrationService.Invocations
             .First(i => i.Method.Name == "RegisterAsync").Arguments[0] as RegisterDto;
         Assert.NotNull(registerDto);
         Assert.Equal(sectionUuid, registerDto.SectionId);
@@ -514,8 +521,8 @@ public class AdminDataServiceTests
         await using var sqlite = await CreateSqliteDatabaseAsync();
         await using var context = new ApplicationDbContext(sqlite.Options);
 
-        var accountService = new Mock<IAccountService>();
-        accountService.Setup(s => s.GetAllUsersAsync(It.IsAny<UserStatus>()))
+        var adminService = new Mock<IAdminService>();
+        adminService.Setup(s => s.GetAllUsersAsync(It.IsAny<UserStatus>()))
             .ReturnsAsync(Array.Empty<GetAllUsersDto>());
 
         var sectionService = new Mock<ISectionService>();
@@ -538,7 +545,7 @@ public class AdminDataServiceTests
                 CourseId = section.Course?.Id,
             });
 
-        var service = CreateService(context, accountService.Object, sectionService: sectionService.Object);
+        var service = CreateService(context, adminService: adminService.Object, sectionService: sectionService.Object);
         var file = CreateFormFile("sections.csv", "name,courseName\nSection1,CS\nSection2,CS\n");
 
         var result = await service.ImportAsync("sections", file, CreatePrincipal(), new Dictionary<string, string?>());
@@ -567,8 +574,8 @@ public class AdminDataServiceTests
         await using var sqlite = await CreateSqliteDatabaseAsync();
         await using var context = new ApplicationDbContext(sqlite.Options);
 
-        var accountService = new Mock<IAccountService>();
-        accountService.Setup(s => s.GetAllUsersAsync(It.IsAny<UserStatus>()))
+        var adminService = new Mock<IAdminService>();
+        adminService.Setup(s => s.GetAllUsersAsync(It.IsAny<UserStatus>()))
             .ReturnsAsync(Array.Empty<GetAllUsersDto>());
 
         var sectionService = new Mock<ISectionService>();
@@ -586,7 +593,7 @@ public class AdminDataServiceTests
                 CourseId = section.Course?.Id,
             });
 
-        var service = CreateService(context, accountService.Object, sectionService: sectionService.Object);
+        var service = CreateService(context, adminService: adminService.Object, sectionService: sectionService.Object);
         var file = CreateFormFile("sections.csv", "name,courseName\nSection1,CS\nSection2,CS\n");
 
         var result = await service.ImportAsync("sections", file, CreatePrincipal(), new Dictionary<string, string?>());
@@ -607,8 +614,8 @@ public class AdminDataServiceTests
         await using var sqlite = await CreateSqliteDatabaseAsync();
         await using var context = new ApplicationDbContext(sqlite.Options);
 
-        var accountService = new Mock<IAccountService>();
-        accountService.Setup(s => s.GetAllUsersAsync(It.IsAny<UserStatus>()))
+        var adminService = new Mock<IAdminService>();
+        adminService.Setup(s => s.GetAllUsersAsync(It.IsAny<UserStatus>()))
             .ReturnsAsync(Array.Empty<GetAllUsersDto>());
 
         var sectionService = new Mock<ISectionService>();
@@ -631,7 +638,7 @@ public class AdminDataServiceTests
                 CourseId = section.Course?.Id,
             });
 
-        var service = CreateService(context, accountService.Object, sectionService: sectionService.Object);
+        var service = CreateService(context, adminService: adminService.Object, sectionService: sectionService.Object);
         var file = CreateFormFile("sections.csv", "name,courseName\nSection1,CS\nSection1-dup,CS\n");
 
         var result = await service.ImportAsync("sections", file, CreatePrincipal(), new Dictionary<string, string?>());
@@ -656,8 +663,8 @@ public class AdminDataServiceTests
         await using var sqlite = await CreateSqliteDatabaseAsync();
         await using var context = new ApplicationDbContext(sqlite.Options);
 
-        var accountService = new Mock<IAccountService>();
-        accountService.Setup(s => s.GetAllUsersAsync(It.IsAny<UserStatus>()))
+        var adminService = new Mock<IAdminService>();
+        adminService.Setup(s => s.GetAllUsersAsync(It.IsAny<UserStatus>()))
             .ReturnsAsync(Array.Empty<GetAllUsersDto>());
 
         var sectionService = new Mock<ISectionService>();
@@ -680,7 +687,7 @@ public class AdminDataServiceTests
                 CourseId = section.Course?.Id,
             });
 
-        var service = CreateService(context, accountService.Object, sectionService: sectionService.Object);
+        var service = CreateService(context, adminService: adminService.Object, sectionService: sectionService.Object);
         var file = CreateFormFile("sections.csv", "name,courseName\nSec1,CS\nSec2,CS\nSec3,CS\n");
 
         var result = await service.ImportAsync("sections", file, CreatePrincipal(), new Dictionary<string, string?>());
@@ -710,8 +717,8 @@ public class AdminDataServiceTests
         await using var sqlite = await CreateSqliteDatabaseAsync();
         await using var context = new ApplicationDbContext(sqlite.Options);
 
-        var accountService = new Mock<IAccountService>();
-        accountService.Setup(s => s.GetAllUsersAsync(It.IsAny<UserStatus>()))
+        var adminService = new Mock<IAdminService>();
+        adminService.Setup(s => s.GetAllUsersAsync(It.IsAny<UserStatus>()))
             .ReturnsAsync(Array.Empty<GetAllUsersDto>());
 
         using var cancellationTokenSource = new CancellationTokenSource();
@@ -738,7 +745,7 @@ public class AdminDataServiceTests
                 CourseId = section.Course?.Id,
             });
 
-        var service = CreateService(context, accountService.Object, sectionService: sectionService.Object);
+        var service = CreateService(context, adminService: adminService.Object, sectionService: sectionService.Object);
         var file = CreateFormFile("sections.csv", "name,courseName\nSec1,CS\nSec2,CS\n");
 
         var result = await service.ImportAsync("sections", file, CreatePrincipal(), new Dictionary<string, string?>(), cancellationTokenSource.Token);
@@ -761,8 +768,8 @@ public class AdminDataServiceTests
         await using var sqlite = await CreateSqliteDatabaseAsync(useRetryingExecutionStrategy: true);
         await using var context = new ApplicationDbContext(sqlite.Options);
 
-        var accountService = new Mock<IAccountService>();
-        accountService.Setup(s => s.GetAllUsersAsync(It.IsAny<UserStatus>()))
+        var adminService = new Mock<IAdminService>();
+        adminService.Setup(s => s.GetAllUsersAsync(It.IsAny<UserStatus>()))
             .ReturnsAsync(Array.Empty<GetAllUsersDto>());
 
         var classroomRepository = new ClassroomRepository(context);
@@ -773,7 +780,8 @@ public class AdminDataServiceTests
         var classroomService = new ClassroomService(classroomCrudService, classroomRepository, Mock.Of<ILogger<ClassroomService>>());
         var service = new AdminDataService(
             context,
-            accountService.Object,
+            Mock.Of<IRegistrationService>(),
+            adminService.Object,
             Mock.Of<ICourseService>(),
             classroomService,
             Mock.Of<ISectionService>(),
@@ -797,8 +805,8 @@ public class AdminDataServiceTests
     public async Task GenerateTemplateAsync_UsersCsv_ReturnsExpectedHeaders()
     {
         await using var context = CreateContext();
-        var accountService = new Mock<IAccountService>();
-        var service = CreateService(context, accountService.Object);
+        var adminService = new Mock<IAdminService>();
+        var service = CreateService(context, adminService: adminService.Object);
 
         var result = await service.GenerateTemplateAsync("users", "csv");
 
@@ -812,8 +820,8 @@ public class AdminDataServiceTests
     public async Task GenerateTemplateAsync_UsersXlsx_IncludesDataAndInstructionsSheets()
     {
         await using var context = CreateContext();
-        var accountService = new Mock<IAccountService>();
-        var service = CreateService(context, accountService.Object);
+        var adminService = new Mock<IAdminService>();
+        var service = CreateService(context, adminService: adminService.Object);
 
         var result = await service.GenerateTemplateAsync("users", "xlsx");
 
@@ -831,8 +839,8 @@ public class AdminDataServiceTests
     public async Task GenerateTemplateAsync_InvalidEntity_ThrowsValidationException()
     {
         await using var context = CreateContext();
-        var accountService = new Mock<IAccountService>();
-        var service = CreateService(context, accountService.Object);
+        var adminService = new Mock<IAdminService>();
+        var service = CreateService(context, adminService: adminService.Object);
 
         await Assert.ThrowsAsync<ValidationException>(() => service.GenerateTemplateAsync("invalid", "csv"));
     }
@@ -841,8 +849,8 @@ public class AdminDataServiceTests
     public async Task PreviewImport_EmptyFile_ThrowsValidationException()
     {
         await using var context = CreateContext();
-        var accountService = new Mock<IAccountService>();
-        var service = CreateService(context, accountService.Object);
+        var adminService = new Mock<IAdminService>();
+        var service = CreateService(context, adminService: adminService.Object);
         var file = CreateFormFile("users.csv", string.Empty);
 
         await Assert.ThrowsAsync<ValidationException>(() => service.PreviewImportAsync("users", file, new Dictionary<string, string?>()));
@@ -852,8 +860,8 @@ public class AdminDataServiceTests
     public async Task PreviewImport_UnsupportedExtension_ThrowsValidationException()
     {
         await using var context = CreateContext();
-        var accountService = new Mock<IAccountService>();
-        var service = CreateService(context, accountService.Object);
+        var adminService = new Mock<IAdminService>();
+        var service = CreateService(context, adminService: adminService.Object);
         var file = CreateFormFile("users.txt", "username,email\nalpha,alpha@example.com\n");
 
         await Assert.ThrowsAsync<ValidationException>(() => service.PreviewImportAsync("users", file, new Dictionary<string, string?>()));
@@ -863,11 +871,11 @@ public class AdminDataServiceTests
     public async Task PreviewImport_TooManyRows_ThrowsValidationException()
     {
         await using var context = CreateContext();
-        var accountService = new Mock<IAccountService>();
-        accountService.Setup(s => s.GetAllUsersAsync(It.IsAny<UserStatus>()))
+        var adminService = new Mock<IAdminService>();
+        adminService.Setup(s => s.GetAllUsersAsync(It.IsAny<UserStatus>()))
             .ReturnsAsync(Array.Empty<GetAllUsersDto>());
 
-        var service = CreateService(context, accountService.Object, new BulkDataOptions { MaxRows = 2 });
+        var service = CreateService(context, adminService: adminService.Object, options: new BulkDataOptions { MaxRows = 2 });
         var file = CreateFormFile("users.csv", "username,email\nalpha,alpha@example.com\nbravo,bravo@example.com\ncharlie,charlie@example.com\n");
 
         await Assert.ThrowsAsync<ValidationException>(() => service.PreviewImportAsync("users", file, new Dictionary<string, string?>()));
@@ -880,11 +888,12 @@ public class AdminDataServiceTests
         context.Sections.Add(new Section { Id = Guid.NewGuid(), Name = "BSCS-1A", CourseId = Guid.NewGuid(), CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow });
         await context.SaveChangesAsync();
 
-        var accountService = new Mock<IAccountService>();
-        accountService.Setup(s => s.GetAllUsersAsync(It.IsAny<UserStatus>()))
+        var adminService = new Mock<IAdminService>();
+        adminService.Setup(s => s.GetAllUsersAsync(It.IsAny<UserStatus>()))
             .ReturnsAsync(Array.Empty<GetAllUsersDto>());
 
-        var service = CreateService(context, accountService.Object);
+        var registrationService = new Mock<IRegistrationService>();
+        var service = CreateService(context, registrationService: registrationService.Object, adminService: adminService.Object);
         var file = CreateFormFile("users.csv", "username,email,firstname,lastname,role,sectionName,temporaryPassword\n,,, ,Student,BSCS-1A,Secret123\n");
 
         var result = await service.ImportAsync("users", file, CreatePrincipal(), new Dictionary<string, string?>());
@@ -892,15 +901,15 @@ public class AdminDataServiceTests
         Assert.False(result.Success);
         Assert.Equal(1, result.FailedRows);
         Assert.Equal(0, result.SkippedDuplicateRows);
-        accountService.Verify(s => s.RegisterAsync(It.IsAny<RegisterDto>()), Times.Never);
+        registrationService.Verify(s => s.RegisterAsync(It.IsAny<RegisterDto>()), Times.Never);
     }
 
     [Fact]
     public async Task ImportAsync_CoursesCsv_PassesPrincipalToCourseService()
     {
         await using var context = CreateContext();
-        var accountService = new Mock<IAccountService>();
-        accountService.Setup(s => s.GetAllUsersAsync(It.IsAny<UserStatus>()))
+        var adminService = new Mock<IAdminService>();
+        adminService.Setup(s => s.GetAllUsersAsync(It.IsAny<UserStatus>()))
             .ReturnsAsync(Array.Empty<GetAllUsersDto>());
 
         var uniqueCourseName = $"Course-{Guid.NewGuid()}";
@@ -909,7 +918,7 @@ public class AdminDataServiceTests
             .ReturnsAsync(new Course { Id = Guid.NewGuid(), Name = uniqueCourseName, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow });
 
         var principal = CreatePrincipal();
-        var service = CreateService(context, accountService.Object, courseService: courseService.Object);
+        var service = CreateService(context, adminService: adminService.Object, courseService: courseService.Object);
         var file = CreateFormFile("courses.csv", $"name\n{uniqueCourseName}\n");
 
         var result = await service.ImportAsync("courses", file, principal, new Dictionary<string, string?>());
@@ -923,15 +932,15 @@ public class AdminDataServiceTests
     public async Task ImportAsync_SubjectsCsv_MapsCreateSubjectPayload()
     {
         await using var context = CreateContext();
-        var accountService = new Mock<IAccountService>();
-        accountService.Setup(s => s.GetAllUsersAsync(It.IsAny<UserStatus>()))
+        var adminService = new Mock<IAdminService>();
+        adminService.Setup(s => s.GetAllUsersAsync(It.IsAny<UserStatus>()))
             .ReturnsAsync(Array.Empty<GetAllUsersDto>());
 
         var subjectService = new Mock<ISubjectService>();
         subjectService.Setup(s => s.CreateSubjectAsync(It.IsAny<CreateSubject>()))
             .ReturnsAsync(new Subject { Id = Guid.NewGuid(), Code = "CS101", Name = "Intro to Computing", CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow });
 
-        var service = CreateService(context, accountService.Object, subjectService: subjectService.Object);
+        var service = CreateService(context, adminService: adminService.Object, subjectService: subjectService.Object);
         var file = CreateFormFile("subjects.csv", "code,name\nCS101,Intro to Computing\n");
 
         var result = await service.ImportAsync("subjects", file, CreatePrincipal(), new Dictionary<string, string?>());
@@ -953,15 +962,15 @@ public class AdminDataServiceTests
         context.Subjects.Add(new Subject { Id = Guid.NewGuid(), Code = "CS101", Name = "Computing", CreatedAt = now, UpdatedAt = now });
         await context.SaveChangesAsync();
 
-        var accountService = new Mock<IAccountService>();
-        accountService.Setup(s => s.GetAllUsersAsync(It.IsAny<UserStatus>()))
+        var adminService = new Mock<IAdminService>();
+        adminService.Setup(s => s.GetAllUsersAsync(It.IsAny<UserStatus>()))
             .ReturnsAsync(Array.Empty<GetAllUsersDto>());
 
         var enrollmentService = new Mock<IStudentEnrollmentService>();
         enrollmentService.Setup(s => s.EnrollStudentAsync(It.IsAny<CreateStudentEnrollment>()))
             .ReturnsAsync(new StudentEnrollment());
 
-        var service = CreateService(context, accountService.Object, enrollmentService: enrollmentService.Object);
+        var service = CreateService(context, adminService: adminService.Object, enrollmentService: enrollmentService.Object);
         var file = CreateFormFile("enrollments.csv", "studentEmail,sectionName,subjectCode\nstudent@x.com,BSCS-1A,CS101\n");
 
         var result = await service.ImportAsync("enrollments", file, CreatePrincipal(), new Dictionary<string, string?>());
@@ -978,7 +987,7 @@ public class AdminDataServiceTests
     public async Task ExportAsync_SubjectsXlsx_ReturnsProjectedRows()
     {
         await using var context = CreateContext();
-        var accountService = new Mock<IAccountService>();
+        var adminService = new Mock<IAdminService>();
 
         var subjectService = new Mock<ISubjectService>();
         subjectService.Setup(s => s.GetAllSubjectsAsync())
@@ -988,7 +997,7 @@ public class AdminDataServiceTests
                 new Subject { Id = Guid.NewGuid(), Code = "CS102", Name = "Data Structures", CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow },
             });
 
-        var service = CreateService(context, accountService.Object, subjectService: subjectService.Object);
+        var service = CreateService(context, adminService: adminService.Object, subjectService: subjectService.Object);
 
         var export = await service.ExportAsync("subjects", "xlsx", new Dictionary<string, string?>());
 
@@ -1009,7 +1018,7 @@ public class AdminDataServiceTests
     public async Task ExportAsync_CoursesXlsx_ReturnsProjectedRows()
     {
         await using var context = CreateContext();
-        var accountService = new Mock<IAccountService>();
+        var adminService = new Mock<IAdminService>();
 
         var courseService = new Mock<ICourseService>();
         courseService.Setup(s => s.GetAllCoursesAsync())
@@ -1019,7 +1028,7 @@ public class AdminDataServiceTests
                 new Course { Id = Guid.NewGuid(), Name = "Information Technology", CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow },
             });
 
-        var service = CreateService(context, accountService.Object, courseService: courseService.Object);
+        var service = CreateService(context, adminService: adminService.Object, courseService: courseService.Object);
 
         var export = await service.ExportAsync("courses", "xlsx", new Dictionary<string, string?>());
 
@@ -1046,11 +1055,11 @@ public class AdminDataServiceTests
         context.Sections.Add(new Section { Id = Guid.NewGuid(), Name = "BSCS-1B", CourseId = courseId, CreatedAt = now, UpdatedAt = now });
         await context.SaveChangesAsync();
 
-        var accountService = new Mock<IAccountService>();
-        accountService.Setup(s => s.GetAllUsersAsync(It.IsAny<UserStatus>()))
+        var adminService = new Mock<IAdminService>();
+        adminService.Setup(s => s.GetAllUsersAsync(It.IsAny<UserStatus>()))
             .ReturnsAsync(Array.Empty<GetAllUsersDto>());
 
-        var service = CreateService(context, accountService.Object);
+        var service = CreateService(context, adminService: adminService.Object);
 
         var export = await service.ExportAsync("sections", "xlsx", new Dictionary<string, string?>());
 
@@ -1070,7 +1079,7 @@ public class AdminDataServiceTests
     public async Task ExportAsync_ClassroomsXlsx_ReturnsProjectedRows()
     {
         await using var context = CreateContext();
-        var accountService = new Mock<IAccountService>();
+        var adminService = new Mock<IAdminService>();
 
         var classroomService = new Mock<IClassroomService>();
         classroomService.Setup(s => s.GetAllClassroomsAsync())
@@ -1080,7 +1089,7 @@ public class AdminDataServiceTests
                 new Classroom { Id = Guid.NewGuid(), Name = "Lab 2", CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow },
             });
 
-        var service = CreateService(context, accountService.Object, classroomService: classroomService.Object);
+        var service = CreateService(context, adminService: adminService.Object, classroomService: classroomService.Object);
 
         var export = await service.ExportAsync("classrooms", "xlsx", new Dictionary<string, string?>());
 
@@ -1108,8 +1117,8 @@ public class AdminDataServiceTests
         context.Instructors.Add(new Instructor { Id = Guid.NewGuid(), UserId = "inst-1", Firstname = "Ada", Lastname = "Lovelace", CreatedAt = now, UpdatedAt = now });
         await context.SaveChangesAsync();
 
-        var accountService = new Mock<IAccountService>();
-        accountService.Setup(s => s.GetAllUsersAsync(It.IsAny<UserStatus>()))
+        var adminService = new Mock<IAdminService>();
+        adminService.Setup(s => s.GetAllUsersAsync(It.IsAny<UserStatus>()))
             .ReturnsAsync(Array.Empty<GetAllUsersDto>());
 
         var scheduleService = new Mock<IScheduleService>();
@@ -1131,7 +1140,7 @@ public class AdminDataServiceTests
                 },
             });
 
-        var service = CreateService(context, accountService.Object, scheduleService: scheduleService.Object);
+        var service = CreateService(context, adminService: adminService.Object, scheduleService: scheduleService.Object);
 
         var export = await service.ExportAsync("schedules", "xlsx", new Dictionary<string, string?>());
 
@@ -1156,8 +1165,8 @@ public class AdminDataServiceTests
     {
         await using var context = CreateContext();
 
-        var accountService = new Mock<IAccountService>();
-        accountService.Setup(service => service.GetAllUsersAsync(UserStatus.Active))
+        var adminService = new Mock<IAdminService>();
+        adminService.Setup(service => service.GetAllUsersAsync(UserStatus.Active))
             .ReturnsAsync(new[]
             {
                 new GetAllUsersDto
@@ -1186,7 +1195,7 @@ public class AdminDataServiceTests
                 },
             });
 
-        var service = CreateService(context, accountService.Object);
+        var service = CreateService(context, adminService: adminService.Object);
 
         var export = await service.ExportAsync("users", "xlsx", new Dictionary<string, string?>
         {
@@ -1207,7 +1216,7 @@ public class AdminDataServiceTests
         Assert.Equal("Instructor", dataSheet.Cell(2, 5).GetString());
         Assert.Equal(string.Empty, dataSheet.Cell(2, 6).GetString());
         Assert.Equal("bob.student", dataSheet.Cell(3, 1).GetString());
-        accountService.Verify(service => service.GetAllUsersAsync(UserStatus.Active), Times.Once);
+        adminService.Verify(service => service.GetAllUsersAsync(UserStatus.Active), Times.Once);
     }
 
     [Fact]
@@ -1237,11 +1246,11 @@ public class AdminDataServiceTests
         });
         await context.SaveChangesAsync();
 
-        var accountService = new Mock<IAccountService>();
-        accountService.Setup(s => s.GetAllUsersAsync(It.IsAny<UserStatus>()))
+        var adminService = new Mock<IAdminService>();
+        adminService.Setup(s => s.GetAllUsersAsync(It.IsAny<UserStatus>()))
             .ReturnsAsync(Array.Empty<GetAllUsersDto>());
 
-        var service = CreateService(context, accountService.Object);
+        var service = CreateService(context, adminService: adminService.Object);
 
         var export = await service.ExportAsync("enrollments", "xlsx", new Dictionary<string, string?>());
 
@@ -1301,11 +1310,11 @@ public class AdminDataServiceTests
         });
         await context.SaveChangesAsync();
 
-        var accountService = new Mock<IAccountService>();
-        accountService.Setup(s => s.GetAllUsersAsync(It.IsAny<UserStatus>()))
+        var adminService = new Mock<IAdminService>();
+        adminService.Setup(s => s.GetAllUsersAsync(It.IsAny<UserStatus>()))
             .ReturnsAsync(Array.Empty<GetAllUsersDto>());
 
-        var service = CreateService(context, accountService.Object);
+        var service = CreateService(context, adminService: adminService.Object);
 
         var export = await service.ExportAsync("enrollments", "csv", new Dictionary<string, string?>
         {
@@ -1331,11 +1340,11 @@ public class AdminDataServiceTests
         context.Subjects.Add(new Subject { Id = Guid.NewGuid(), Code = "CS101", Name = "Computing", CreatedAt = now, UpdatedAt = now });
         await context.SaveChangesAsync();
 
-        var accountService = new Mock<IAccountService>();
-        accountService.Setup(s => s.GetAllUsersAsync(It.IsAny<UserStatus>()))
+        var adminService = new Mock<IAdminService>();
+        adminService.Setup(s => s.GetAllUsersAsync(It.IsAny<UserStatus>()))
             .ReturnsAsync(Array.Empty<GetAllUsersDto>());
 
-        var service = CreateService(context, accountService.Object);
+        var service = CreateService(context, adminService: adminService.Object);
         var file = CreateFormFile("enrollments.csv", "studentEmail,sectionName,subjectCode\nstudent@x.com,BSCS-1B,CS101\n");
 
         var result = await service.PreviewImportAsync("enrollments", file, new Dictionary<string, string?>
@@ -1355,8 +1364,8 @@ public class AdminDataServiceTests
         await using var sqlite = await CreateSqliteDatabaseAsync();
         await using var context = new ApplicationDbContext(sqlite.Options);
 
-        var accountService = new Mock<IAccountService>();
-        accountService.Setup(s => s.GetAllUsersAsync(It.IsAny<UserStatus>()))
+        var adminService = new Mock<IAdminService>();
+        adminService.Setup(s => s.GetAllUsersAsync(It.IsAny<UserStatus>()))
             .ReturnsAsync(Array.Empty<GetAllUsersDto>());
 
         var classroomRepository = new ClassroomRepository(context);
@@ -1367,7 +1376,8 @@ public class AdminDataServiceTests
         var classroomService = new ClassroomService(classroomCrudService, classroomRepository, Mock.Of<ILogger<ClassroomService>>());
         var service = new AdminDataService(
             context,
-            accountService.Object,
+            Mock.Of<IRegistrationService>(),
+            adminService.Object,
             Mock.Of<ICourseService>(),
             classroomService,
             Mock.Of<ISectionService>(),
@@ -1398,7 +1408,8 @@ public class AdminDataServiceTests
 
     private static AdminDataService CreateService(
         ApplicationDbContext context,
-        IAccountService accountService,
+        IRegistrationService? registrationService = null,
+        IAdminService? adminService = null,
         BulkDataOptions? options = null,
         ISectionService? sectionService = null,
         IScheduleService? scheduleService = null,
@@ -1409,7 +1420,8 @@ public class AdminDataServiceTests
     {
         return new AdminDataService(
             context,
-            accountService,
+            registrationService ?? Mock.Of<IRegistrationService>(),
+            adminService ?? Mock.Of<IAdminService>(),
             courseService ?? Mock.Of<ICourseService>(),
             classroomService ?? Mock.Of<IClassroomService>(),
             sectionService ?? Mock.Of<ISectionService>(),

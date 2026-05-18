@@ -3,7 +3,7 @@ using attendance_monitoring.Models.DTO.Response;
 
 namespace attendance_monitoring.Services.Account;
 
-internal interface IAdminService
+public interface IAdminService
 {
     Task<IEnumerable<GetAllUsersDto>> GetAllUsersAsync(UserStatus status = UserStatus.Active);
     Task<UserProfileResponseDto> AdminUpdateUserProfileAsync(string adminId, AdminUpdateUser adminUpdateDto);

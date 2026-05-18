@@ -35,7 +35,7 @@ public sealed class AccountProfileIntegrationTests
             Role = "Student"
         };
 
-        host.AccountService
+        host.ProfileService
             .Setup(service => service.UpdateUserProfileAsync(
                 It.Is<string>(userId => userId == "user-123"),
                 It.Is<UpdateProfile>(dto =>
@@ -94,7 +94,7 @@ public sealed class AccountProfileIntegrationTests
             ConfirmNewPassword = "NewPassword123!"
         };
 
-        host.AccountService
+        host.ProfileService
             .Setup(service => service.UpdateUserProfileAsync(
                 It.IsAny<string>(),
                 It.IsAny<UpdateProfile>()))
@@ -125,7 +125,7 @@ public sealed class AccountProfileIntegrationTests
             Email = "existing@test.com"
         };
 
-        host.AccountService
+        host.ProfileService
             .Setup(service => service.UpdateUserProfileAsync(
                 It.IsAny<string>(),
                 It.IsAny<UpdateProfile>()))
@@ -211,7 +211,7 @@ public sealed class AccountProfileIntegrationTests
             Role = "Student"
         };
 
-        host.AccountService
+        host.ProfileService
             .Setup(service => service.UpdateUserProfileAsync(
                 It.Is<string>(userId => userId == "user-123"),
                 It.Is<UpdateProfile>(dto =>
@@ -228,7 +228,7 @@ public sealed class AccountProfileIntegrationTests
         await host.SendAsync(request);
 
         // Verify the service was called with the correct password fields
-        host.AccountService.Verify(
+        host.ProfileService.Verify(
             service => service.UpdateUserProfileAsync(
                 It.Is<string>(userId => userId == "user-123"),
                 It.Is<UpdateProfile>(dto =>

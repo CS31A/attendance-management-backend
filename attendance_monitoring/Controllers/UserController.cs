@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using attendance_monitoring.IServices;
+using attendance_monitoring.Services.Account;
 using attendance_monitoring.Models.DTO.Response;
 using attendance_monitoring.Models.DTO.Request;
 using attendance_monitoring.Exceptions;
@@ -11,7 +11,7 @@ namespace attendance_monitoring.Controllers;
 [ApiController]
 [Route("api/users")]
 [Authorize(Policy = "AdminPolicy")]
-public class UserController(IAccountService accountService, ILogger<UserController> logger) : ControllerBase
+public class UserController(IAdminService adminService, ILogger<UserController> logger) : ControllerBase
 {
     /// <summary>
     /// Get all users with their role and profile information
@@ -22,7 +22,7 @@ public class UserController(IAccountService accountService, ILogger<UserControll
     public async Task<ActionResult<IEnumerable<GetAllUsersDto>>> GetAllUsers([FromQuery] UserStatus status = UserStatus.Active)
     {
         logger.LogInformation("Getting all users with status filter: {Status}", status);
-        var users = await accountService.GetAllUsersAsync(status);
+        var users = await adminService.GetAllUsersAsync(status);
         var usersList = users.ToList();
         logger.LogInformation("Successfully retrieved {Count} users with status: {Status}", usersList.Count, status);
         return Ok(usersList);
@@ -63,7 +63,7 @@ public class UserController(IAccountService accountService, ILogger<UserControll
 
         try
         {
-            await accountService.AdminDeleteUserAsync(adminId, userId);
+            await adminService.AdminDeleteUserAsync(adminId, userId);
             logger.LogInformation("Admin {AdminId} successfully deleted user {TargetUserId}.", adminId, userId);
             return Ok(new DeleteUserResponseDto
             {
@@ -129,7 +129,7 @@ public class UserController(IAccountService accountService, ILogger<UserControll
 
         try
         {
-            await accountService.AdminHardDeleteUserAsync(adminId, userId);
+            await adminService.AdminHardDeleteUserAsync(adminId, userId);
             logger.LogInformation("Admin {AdminId} successfully hard deleted user {TargetUserId}.", adminId, userId);
             return Ok(new DeleteUserResponseDto
             {
@@ -195,7 +195,7 @@ public class UserController(IAccountService accountService, ILogger<UserControll
 
         try
         {
-            await accountService.AdminRestoreUserAsync(adminId, userId);
+            await adminService.AdminRestoreUserAsync(adminId, userId);
             logger.LogInformation("Admin {AdminId} successfully restored user {TargetUserId}.", adminId, userId);
             return Ok(new DeleteUserResponseDto
             {

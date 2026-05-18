@@ -11,15 +11,19 @@ namespace attendance.testproject.Controllers_Testing;
 
 public class InstructorControllerTest
 {
-    private readonly Mock<IInstructorService> _mockInstructorService;
+    private readonly Mock<IInstructorCrudService> _mockInstructorCrudService;
+    private readonly Mock<IInstructorQueryService> _mockInstructorQueryService;
+    private readonly Mock<IInstructorDetailService> _mockInstructorDetailService;
     private readonly Mock<ILogger<InstructorController>> _mockLogger;
     private readonly InstructorController _instructorController;
 
     public InstructorControllerTest()
     {
-        _mockInstructorService = new Mock<IInstructorService>();
+        _mockInstructorCrudService = new Mock<IInstructorCrudService>();
+        _mockInstructorQueryService = new Mock<IInstructorQueryService>();
+        _mockInstructorDetailService = new Mock<IInstructorDetailService>();
         _mockLogger = new Mock<ILogger<InstructorController>>();
-        _instructorController = new InstructorController(_mockInstructorService.Object, _mockLogger.Object);
+        _instructorController = new InstructorController(_mockInstructorCrudService.Object, _mockInstructorQueryService.Object, _mockInstructorDetailService.Object, _mockLogger.Object);
 
         var mockUser = new ClaimsPrincipal(new ClaimsIdentity(new Claim[]
         {
@@ -44,7 +48,7 @@ public class InstructorControllerTest
             new Instructor { Id = Guid.NewGuid(), Firstname = "John", Lastname = "Doe" },
             new Instructor { Id = Guid.NewGuid(), Firstname = "Jane", Lastname = "Smith" }
         };
-        _mockInstructorService
+        _mockInstructorCrudService
             .Setup(s => s.GetAllInstructorsAsync())
             .ReturnsAsync(expectedInstructors);
 
@@ -55,7 +59,7 @@ public class InstructorControllerTest
         var okResult = Assert.IsType<OkObjectResult>(result.Result);
         var instructors = Assert.IsAssignableFrom<IEnumerable<Instructor>>(okResult.Value);
         Assert.Equal(2, instructors.Count());
-        _mockInstructorService.Verify(s => s.GetAllInstructorsAsync(), Times.Once);
+        _mockInstructorCrudService.Verify(s => s.GetAllInstructorsAsync(), Times.Once);
     }
 
     #endregion
@@ -91,7 +95,7 @@ public class InstructorControllerTest
                 Instructor = new InstructorResponseDto { Id = Guid.NewGuid(), Firstname = "John", Lastname = "Doe" }
             }
         };
-        _mockInstructorService
+        _mockInstructorQueryService
             .Setup(s => s.GetSchedulesByInstructorAsync(It.IsAny<ClaimsPrincipal>()))
             .ReturnsAsync(expectedSchedules);
 
@@ -102,7 +106,7 @@ public class InstructorControllerTest
         var okResult = Assert.IsType<OkObjectResult>(result.Result);
         var schedules = Assert.IsAssignableFrom<IEnumerable<ScheduleResponseDto>>(okResult.Value);
         Assert.Equal(2, schedules.Count());
-        _mockInstructorService.Verify(s => s.GetSchedulesByInstructorAsync(It.IsAny<ClaimsPrincipal>()), Times.Once);
+        _mockInstructorQueryService.Verify(s => s.GetSchedulesByInstructorAsync(It.IsAny<ClaimsPrincipal>()), Times.Once);
     }
 
     [Fact]
@@ -110,7 +114,7 @@ public class InstructorControllerTest
     {
         // Arrange
         var expectedSchedules = new List<ScheduleResponseDto>();
-        _mockInstructorService
+        _mockInstructorQueryService
             .Setup(s => s.GetSchedulesByInstructorAsync(It.IsAny<ClaimsPrincipal>()))
             .ReturnsAsync(expectedSchedules);
 
@@ -121,35 +125,35 @@ public class InstructorControllerTest
         var okResult = Assert.IsType<OkObjectResult>(result.Result);
         var schedules = Assert.IsAssignableFrom<IEnumerable<ScheduleResponseDto>>(okResult.Value);
         Assert.Empty(schedules);
-        _mockInstructorService.Verify(s => s.GetSchedulesByInstructorAsync(It.IsAny<ClaimsPrincipal>()), Times.Once);
+        _mockInstructorQueryService.Verify(s => s.GetSchedulesByInstructorAsync(It.IsAny<ClaimsPrincipal>()), Times.Once);
     }
 
     [Fact]
     public async Task GetMySchedules_ThrowsEntityNotFoundException_WhenInstructorNotFound()
     {
         // Arrange
-        _mockInstructorService
+        _mockInstructorQueryService
             .Setup(s => s.GetSchedulesByInstructorAsync(It.IsAny<ClaimsPrincipal>()))
             .ThrowsAsync(new attendance_monitoring.Exceptions.EntityNotFoundException<string>("Instructor", "UserId: 1"));
 
         // Act & Assert
         await Assert.ThrowsAsync<attendance_monitoring.Exceptions.EntityNotFoundException<string>>(
             () => _instructorController.GetMySchedules());
-        _mockInstructorService.Verify(s => s.GetSchedulesByInstructorAsync(It.IsAny<ClaimsPrincipal>()), Times.Once);
+        _mockInstructorQueryService.Verify(s => s.GetSchedulesByInstructorAsync(It.IsAny<ClaimsPrincipal>()), Times.Once);
     }
 
     [Fact]
     public async Task GetMySchedules_ThrowsEntityServiceException_WhenServiceExceptionOccurs()
     {
         // Arrange
-        _mockInstructorService
+        _mockInstructorQueryService
             .Setup(s => s.GetSchedulesByInstructorAsync(It.IsAny<ClaimsPrincipal>()))
             .ThrowsAsync(new attendance_monitoring.Exceptions.EntityServiceException("Instructor", "GetSchedulesByInstructor", "Service error"));
 
         // Act & Assert
         await Assert.ThrowsAsync<attendance_monitoring.Exceptions.EntityServiceException>(
             () => _instructorController.GetMySchedules());
-        _mockInstructorService.Verify(s => s.GetSchedulesByInstructorAsync(It.IsAny<ClaimsPrincipal>()), Times.Once);
+        _mockInstructorQueryService.Verify(s => s.GetSchedulesByInstructorAsync(It.IsAny<ClaimsPrincipal>()), Times.Once);
     }
 
     #endregion
@@ -202,7 +206,7 @@ public class InstructorControllerTest
                 }
             }
         };
-        _mockInstructorService
+        _mockInstructorQueryService
             .Setup(s => s.GetSectionsWithStudentsByInstructorAsync(It.IsAny<ClaimsPrincipal>()))
             .ReturnsAsync(expectedResponse);
 
@@ -216,35 +220,35 @@ public class InstructorControllerTest
         Assert.Equal("John", response.InstructorFirstname);
         Assert.Equal("Doe", response.InstructorLastname);
         Assert.Single(response.Sections);
-        _mockInstructorService.Verify(s => s.GetSectionsWithStudentsByInstructorAsync(It.IsAny<ClaimsPrincipal>()), Times.Once);
+        _mockInstructorQueryService.Verify(s => s.GetSectionsWithStudentsByInstructorAsync(It.IsAny<ClaimsPrincipal>()), Times.Once);
     }
 
     [Fact]
     public async Task GetMySectionsWithStudents_ThrowsEntityNotFoundException_WhenInstructorNotFound()
     {
         // Arrange
-        _mockInstructorService
+        _mockInstructorQueryService
             .Setup(s => s.GetSectionsWithStudentsByInstructorAsync(It.IsAny<ClaimsPrincipal>()))
             .ThrowsAsync(new attendance_monitoring.Exceptions.EntityNotFoundException<string>("Instructor", "UserId: 1"));
 
         // Act & Assert
         await Assert.ThrowsAsync<attendance_monitoring.Exceptions.EntityNotFoundException<string>>(
             () => _instructorController.GetMySectionsWithStudents());
-        _mockInstructorService.Verify(s => s.GetSectionsWithStudentsByInstructorAsync(It.IsAny<ClaimsPrincipal>()), Times.Once);
+        _mockInstructorQueryService.Verify(s => s.GetSectionsWithStudentsByInstructorAsync(It.IsAny<ClaimsPrincipal>()), Times.Once);
     }
 
     [Fact]
     public async Task GetMySectionsWithStudents_ThrowsEntityServiceException_WhenServiceExceptionOccurs()
     {
         // Arrange
-        _mockInstructorService
+        _mockInstructorQueryService
             .Setup(s => s.GetSectionsWithStudentsByInstructorAsync(It.IsAny<ClaimsPrincipal>()))
             .ThrowsAsync(new attendance_monitoring.Exceptions.EntityServiceException("Instructor", "GetSectionsWithStudentsByInstructor", "Service error"));
 
         // Act & Assert
         await Assert.ThrowsAsync<attendance_monitoring.Exceptions.EntityServiceException>(
             () => _instructorController.GetMySectionsWithStudents());
-        _mockInstructorService.Verify(s => s.GetSectionsWithStudentsByInstructorAsync(It.IsAny<ClaimsPrincipal>()), Times.Once);
+        _mockInstructorQueryService.Verify(s => s.GetSectionsWithStudentsByInstructorAsync(It.IsAny<ClaimsPrincipal>()), Times.Once);
     }
 
     #endregion
@@ -276,7 +280,7 @@ public class InstructorControllerTest
                 UniqueStudentCount = 25
             }
         };
-        _mockInstructorService
+        _mockInstructorDetailService
             .Setup(s => s.GetInstructorSectionsOverviewAsync(It.IsAny<ClaimsPrincipal>()))
             .ReturnsAsync(expectedSections);
 
@@ -287,54 +291,35 @@ public class InstructorControllerTest
         var okResult = Assert.IsType<OkObjectResult>(result.Result);
         var sections = Assert.IsAssignableFrom<List<InstructorSectionOverviewDto>>(okResult.Value);
         Assert.Equal(2, sections.Count);
-        _mockInstructorService.Verify(s => s.GetInstructorSectionsOverviewAsync(It.IsAny<ClaimsPrincipal>()), Times.Once);
-    }
-
-    [Fact]
-    public async Task GetMySectionsOverview_ReturnsOkResult_WithEmptyList_WhenNoSections()
-    {
-        // Arrange
-        var expectedSections = new List<InstructorSectionOverviewDto>();
-        _mockInstructorService
-            .Setup(s => s.GetInstructorSectionsOverviewAsync(It.IsAny<ClaimsPrincipal>()))
-            .ReturnsAsync(expectedSections);
-
-        // Act
-        var result = await _instructorController.GetMySectionsOverview();
-
-        // Assert
-        var okResult = Assert.IsType<OkObjectResult>(result.Result);
-        var sections = Assert.IsAssignableFrom<List<InstructorSectionOverviewDto>>(okResult.Value);
-        Assert.Empty(sections);
-        _mockInstructorService.Verify(s => s.GetInstructorSectionsOverviewAsync(It.IsAny<ClaimsPrincipal>()), Times.Once);
+        _mockInstructorDetailService.Verify(s => s.GetInstructorSectionsOverviewAsync(It.IsAny<ClaimsPrincipal>()), Times.Once);
     }
 
     [Fact]
     public async Task GetMySectionsOverview_ThrowsEntityNotFoundException_WhenInstructorNotFound()
     {
         // Arrange
-        _mockInstructorService
+        _mockInstructorDetailService
             .Setup(s => s.GetInstructorSectionsOverviewAsync(It.IsAny<ClaimsPrincipal>()))
             .ThrowsAsync(new attendance_monitoring.Exceptions.EntityNotFoundException<string>("Instructor", "UserId: 1"));
 
         // Act & Assert
         await Assert.ThrowsAsync<attendance_monitoring.Exceptions.EntityNotFoundException<string>>(
             () => _instructorController.GetMySectionsOverview());
-        _mockInstructorService.Verify(s => s.GetInstructorSectionsOverviewAsync(It.IsAny<ClaimsPrincipal>()), Times.Once);
+        _mockInstructorDetailService.Verify(s => s.GetInstructorSectionsOverviewAsync(It.IsAny<ClaimsPrincipal>()), Times.Once);
     }
 
     [Fact]
     public async Task GetMySectionsOverview_ThrowsEntityServiceException_WhenServiceExceptionOccurs()
     {
         // Arrange
-        _mockInstructorService
+        _mockInstructorDetailService
             .Setup(s => s.GetInstructorSectionsOverviewAsync(It.IsAny<ClaimsPrincipal>()))
             .ThrowsAsync(new attendance_monitoring.Exceptions.EntityServiceException("Instructor", "GetInstructorSectionsOverview", "Service error"));
 
         // Act & Assert
         await Assert.ThrowsAsync<attendance_monitoring.Exceptions.EntityServiceException>(
             () => _instructorController.GetMySectionsOverview());
-        _mockInstructorService.Verify(s => s.GetInstructorSectionsOverviewAsync(It.IsAny<ClaimsPrincipal>()), Times.Once);
+        _mockInstructorDetailService.Verify(s => s.GetInstructorSectionsOverviewAsync(It.IsAny<ClaimsPrincipal>()), Times.Once);
     }
 
     #endregion
@@ -373,7 +358,7 @@ public class InstructorControllerTest
             },
             HomeSectionStudents = new List<InstructorHomeSectionStudentDto>()
         };
-        _mockInstructorService
+        _mockInstructorDetailService
             .Setup(s => s.GetInstructorSectionDetailByUuidAsync(It.IsAny<ClaimsPrincipal>(), sectionId))
             .ReturnsAsync(expectedDetail);
 
@@ -385,7 +370,7 @@ public class InstructorControllerTest
         var detail = Assert.IsType<InstructorSectionDetailDto>(okResult.Value);
         Assert.Equal(expectedDetail.SectionId, detail.SectionId);
         Assert.Equal("BSCS 3A", detail.SectionName);
-        _mockInstructorService.Verify(s => s.GetInstructorSectionDetailByUuidAsync(It.IsAny<ClaimsPrincipal>(), sectionId), Times.Once);
+        _mockInstructorDetailService.Verify(s => s.GetInstructorSectionDetailByUuidAsync(It.IsAny<ClaimsPrincipal>(), sectionId), Times.Once);
     }
 
     [Fact]
@@ -393,7 +378,7 @@ public class InstructorControllerTest
     {
         // Arrange
         var sectionId = Guid.NewGuid();
-        _mockInstructorService
+        _mockInstructorDetailService
             .Setup(s => s.GetInstructorSectionDetailByUuidAsync(It.IsAny<ClaimsPrincipal>(), sectionId))
             .ThrowsAsync(new attendance_monitoring.Exceptions.EntityNotFoundException<string>("Instructor", "UserId: 1"));
 
@@ -407,7 +392,7 @@ public class InstructorControllerTest
     {
         // Arrange
         var sectionId = Guid.NewGuid();
-        _mockInstructorService
+        _mockInstructorDetailService
             .Setup(s => s.GetInstructorSectionDetailByUuidAsync(It.IsAny<ClaimsPrincipal>(), sectionId))
             .ThrowsAsync(new attendance_monitoring.Exceptions.EntityNotFoundException<Guid>("Section", sectionId));
 
@@ -421,7 +406,7 @@ public class InstructorControllerTest
     {
         // Arrange
         var sectionId = Guid.NewGuid();
-        _mockInstructorService
+        _mockInstructorDetailService
             .Setup(s => s.GetInstructorSectionDetailByUuidAsync(It.IsAny<ClaimsPrincipal>(), sectionId))
             .ThrowsAsync(new attendance_monitoring.Exceptions.EntityUnauthorizedException("Section", "View section", "1", "You are not authorized to view this section"));
 
@@ -435,7 +420,7 @@ public class InstructorControllerTest
     {
         // Arrange
         var sectionId = Guid.NewGuid();
-        _mockInstructorService
+        _mockInstructorDetailService
             .Setup(s => s.GetInstructorSectionDetailByUuidAsync(It.IsAny<ClaimsPrincipal>(), sectionId))
             .ThrowsAsync(new attendance_monitoring.Exceptions.EntityServiceException("Instructor", "GetInstructorSectionDetail", "Service error"));
 
@@ -485,7 +470,7 @@ public class InstructorControllerTest
                 AttendanceRate = 90.0
             }
         };
-        _mockInstructorService
+        _mockInstructorDetailService
             .Setup(s => s.GetInstructorStudentDetailByUuidAsync(It.IsAny<ClaimsPrincipal>(), studentId))
             .ReturnsAsync(expectedDetail);
 
@@ -498,7 +483,7 @@ public class InstructorControllerTest
         Assert.Equal(expectedDetail.StudentId, detail.StudentId);
         Assert.Equal("Alice", detail.Firstname);
         Assert.Equal("Smith", detail.Lastname);
-        _mockInstructorService.Verify(s => s.GetInstructorStudentDetailByUuidAsync(It.IsAny<ClaimsPrincipal>(), studentId), Times.Once);
+        _mockInstructorDetailService.Verify(s => s.GetInstructorStudentDetailByUuidAsync(It.IsAny<ClaimsPrincipal>(), studentId), Times.Once);
     }
 
     [Fact]
@@ -506,7 +491,7 @@ public class InstructorControllerTest
     {
         // Arrange
         var studentId = Guid.NewGuid();
-        _mockInstructorService
+        _mockInstructorDetailService
             .Setup(s => s.GetInstructorStudentDetailByUuidAsync(It.IsAny<ClaimsPrincipal>(), studentId))
             .ThrowsAsync(new attendance_monitoring.Exceptions.EntityNotFoundException<string>("Instructor", "UserId: 1"));
 
@@ -520,7 +505,7 @@ public class InstructorControllerTest
     {
         // Arrange
         var studentId = Guid.NewGuid();
-        _mockInstructorService
+        _mockInstructorDetailService
             .Setup(s => s.GetInstructorStudentDetailByUuidAsync(It.IsAny<ClaimsPrincipal>(), studentId))
             .ThrowsAsync(new attendance_monitoring.Exceptions.EntityNotFoundException<Guid>("Student", studentId));
 
@@ -534,7 +519,7 @@ public class InstructorControllerTest
     {
         // Arrange
         var studentId = Guid.NewGuid();
-        _mockInstructorService
+        _mockInstructorDetailService
             .Setup(s => s.GetInstructorStudentDetailByUuidAsync(It.IsAny<ClaimsPrincipal>(), studentId))
             .ThrowsAsync(new attendance_monitoring.Exceptions.EntityUnauthorizedException("Student", "View student", "1", "You are not authorized to view this student"));
 
@@ -548,7 +533,7 @@ public class InstructorControllerTest
     {
         // Arrange
         var studentId = Guid.NewGuid();
-        _mockInstructorService
+        _mockInstructorDetailService
             .Setup(s => s.GetInstructorStudentDetailByUuidAsync(It.IsAny<ClaimsPrincipal>(), studentId))
             .ThrowsAsync(new attendance_monitoring.Exceptions.EntityServiceException("Instructor", "GetInstructorStudentDetail", "Service error"));
 

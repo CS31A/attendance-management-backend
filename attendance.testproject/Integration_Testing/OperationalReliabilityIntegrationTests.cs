@@ -5,6 +5,7 @@ using attendance_monitoring.IServices;
 using attendance_monitoring.Models.DTO;
 using attendance_monitoring.Models.DTO.Request;
 using attendance_monitoring.Models.DTO.Response;
+using attendance_monitoring.Services.Account;
 using attendance_monitoring.Data;
 using Microsoft.EntityFrameworkCore;
 
@@ -24,7 +25,7 @@ public sealed class OperationalReliabilityIntegrationTests
         var inboundCorrelationId = "auth-login-correlation-123";
         var loginDto = new LoginDto { Username = "admin", Password = "Password123!" };
 
-        host.AccountService
+        host.AuthenticationService
             .Setup(service => service.LoginAsync(It.Is<LoginDto>(request =>
                 request.Username == loginDto.Username &&
                 request.Password == loginDto.Password)))
@@ -121,7 +122,7 @@ public sealed class OperationalReliabilityIntegrationTests
         await using var host = await ApiIntegrationHost.CreateOperationalReliabilityAsync(AttendanceQrSeedData.ValidQrScan);
         var inboundCorrelationId = "auth-error-correlation-456";
 
-        host.AccountService
+        host.AuthenticationService
             .Setup(service => service.LoginAsync(It.IsAny<LoginDto>()))
             .ThrowsAsync(new InvalidOperationException("Unexpected failure"));
 
@@ -239,7 +240,7 @@ public sealed class OperationalReliabilityIntegrationTests
     private static Task<HttpResponseMessage> SendAuthSuccessAsync(ApiIntegrationHost host)
     {
         var loginDto = new LoginDto { Username = "admin", Password = "Password123!" };
-        host.AccountService
+        host.AuthenticationService
             .Setup(service => service.LoginAsync(It.Is<LoginDto>(request =>
                 request.Username == loginDto.Username &&
                 request.Password == loginDto.Password)))
@@ -259,7 +260,7 @@ public sealed class OperationalReliabilityIntegrationTests
 
     private static Task<HttpResponseMessage> SendAuthFailureAsync(ApiIntegrationHost host)
     {
-        host.AccountService
+        host.AuthenticationService
             .Setup(service => service.LoginAsync(It.IsAny<LoginDto>()))
             .ThrowsAsync(new InvalidOperationException("Unexpected failure"));
 

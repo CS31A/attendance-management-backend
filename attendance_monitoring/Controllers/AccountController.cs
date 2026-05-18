@@ -6,12 +6,13 @@ using attendance_monitoring.Models.DTO;
 using attendance_monitoring.IServices;
 using attendance_monitoring.Models.DTO.Response;
 using attendance_monitoring.Services;
+using attendance_monitoring.Services.Account;
 
 namespace attendance_monitoring.Controllers
 {
     [ApiController]
     [Route("api/account")]
-    public class AccountController(IAccountService accountService, ILogger<AccountController> logger, ICookieOptionsService cookieOptionsService)
+    public class AccountController(IRegistrationService registrationService, IAuthenticationService authenticationService, IProfileService profileService, IAdminService adminService, ILogger<AccountController> logger, ICookieOptionsService cookieOptionsService)
         : ControllerBase
     {
         #region Endpoints
@@ -43,7 +44,7 @@ namespace attendance_monitoring.Controllers
 
             try
             {
-                var response = await accountService.RegisterAsync(registerDto);
+                var response = await registrationService.RegisterAsync(registerDto);
                 logger.LogInformation("User registered successfully: {Username}", registerDto.Username);
                 return Ok(response);
             }
@@ -95,7 +96,7 @@ namespace attendance_monitoring.Controllers
 
             try
             {
-                var loginResult = await accountService.LoginAsync(loginDto);
+                var loginResult = await authenticationService.LoginAsync(loginDto);
 
                 logger.LogInformation("User logged in successfully");
                 return Ok(new LoginResponseDto
@@ -148,7 +149,7 @@ namespace attendance_monitoring.Controllers
                     Password = webLoginDto.Password
                 };
 
-                var loginResult = await accountService.LoginAsync(loginDto);
+                var loginResult = await authenticationService.LoginAsync(loginDto);
 
                 // Set HTTP-only cookies for access and refresh tokens
                 cookieOptionsService.SetTokenCookies(Response, loginResult.TokenResponse.AccessToken, loginResult.TokenResponse.RefreshToken);
@@ -195,7 +196,7 @@ namespace attendance_monitoring.Controllers
 
             try
             {
-                var tokenResponse = await accountService.RefreshAsync(refreshTokenRequest);
+                var tokenResponse = await authenticationService.RefreshAsync(refreshTokenRequest);
 
                 logger.LogInformation("Token refreshed successfully.");
                 return Ok(new RefreshResponseDto
@@ -251,7 +252,7 @@ namespace attendance_monitoring.Controllers
                     RefreshToken = refreshToken,
                     OldAccessToken = oldAccessToken
                 };
-                var tokenResponse = await accountService.RefreshAsync(refreshTokenRequest);
+                var tokenResponse = await authenticationService.RefreshAsync(refreshTokenRequest);
 
                 // Update HTTP-only cookies with new tokens
                 cookieOptionsService.SetTokenCookies(Response, tokenResponse.AccessToken, tokenResponse.RefreshToken);
@@ -305,7 +306,7 @@ namespace attendance_monitoring.Controllers
 
             try
             {
-                var response = await accountService.RevokeAsync(revokeTokenRequest, userId);
+                var response = await authenticationService.RevokeAsync(revokeTokenRequest, userId);
 
                 logger.LogInformation("Refresh token revoked successfully for user {UserId}.", userId);
                 return Ok(new RevokeResponseDto { Success = true, Message = response.Message });
@@ -356,7 +357,7 @@ namespace attendance_monitoring.Controllers
             try
             {
                 var revokeTokenRequest = new RevokeTokenRequestDto { RefreshToken = refreshToken };
-                var response = await accountService.RevokeAsync(revokeTokenRequest, userId);
+                var response = await authenticationService.RevokeAsync(revokeTokenRequest, userId);
 
                 // Clear cookies after revocation
                 cookieOptionsService.ClearTokenCookies(Response);
@@ -421,7 +422,7 @@ namespace attendance_monitoring.Controllers
 
             try
             {
-                var profile = await accountService.GetUserProfileAsync(userId);
+                var profile = await profileService.GetUserProfileAsync(userId);
 
                 logger.LogInformation("Profile fetched successfully for user: {UserId}", userId);
                 return Ok(profile);
@@ -458,7 +459,7 @@ namespace attendance_monitoring.Controllers
             var accessToken = Request.Cookies.TryGetValue("accessToken", out var token) ? token : null;
 
             // Always perform logout operations regardless of token validity to prevent timing attacks
-            await accountService.WebLogoutAsync(userId, accessToken);
+            await authenticationService.WebLogoutAsync(userId, accessToken);
 
             // Always clear cookies
             cookieOptionsService.ClearTokenCookies(Response);
@@ -501,7 +502,7 @@ namespace attendance_monitoring.Controllers
             }
 
             // Always perform logout operations regardless of token validity to prevent timing attacks
-            await accountService.LogoutAsync(userId, accessToken);
+            await authenticationService.LogoutAsync(userId, accessToken);
 
             logger.LogInformation("User logged out successfully: {UserId}", userId);
             return Ok(new LogoutResponseDto { Success = true, Message = "Logged out successfully" });
@@ -545,7 +546,7 @@ namespace attendance_monitoring.Controllers
 
             try
             {
-                var profile = await accountService.UpdateUserProfileAsync(userId, updateProfileDto);
+                var profile = await profileService.UpdateUserProfileAsync(userId, updateProfileDto);
                 logger.LogInformation("Profile updated successfully for user {UserId}.", userId);
                 return Ok(new UpdateProfileResponse
                 {
@@ -621,7 +622,7 @@ namespace attendance_monitoring.Controllers
 
             try
             {
-                var profile = await accountService.AdminUpdateUserProfileAsync(adminId, adminUpdateDto);
+                var profile = await adminService.AdminUpdateUserProfileAsync(adminId, adminUpdateDto);
                 logger.LogInformation("Admin {AdminId} successfully updated profile for user {TargetUserId}.", adminId, userId);
                 return Ok(new UpdateProfileResponse
                 {
@@ -697,7 +698,7 @@ namespace attendance_monitoring.Controllers
 
             try
             {
-                await accountService.AdminDeleteUserAsync(adminId, userId);
+                await adminService.AdminDeleteUserAsync(adminId, userId);
                 logger.LogInformation("Admin {AdminId} successfully deleted user {TargetUserId}.", adminId, userId);
                 return Ok(new DeleteUserResponseDto
                 {

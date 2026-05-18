@@ -8,24 +8,34 @@ using attendance_monitoring.Models.DTO;
 using attendance_monitoring.Models.DTO.Request;
 using attendance_monitoring.Models.DTO.Response;
 using attendance_monitoring.Exceptions;
+using attendance_monitoring.Services.Account;
 using System.Security.Claims;
 
 namespace attendance.testproject.Controllers_Testing;
 
 public class AccountControllerTest
 {
-    private readonly Mock<IAccountService> _mockAccountService;
+    private readonly Mock<IRegistrationService> _mockRegistrationService;
+    private readonly Mock<IAuthenticationService> _mockAuthenticationService;
+    private readonly Mock<IProfileService> _mockProfileService;
+    private readonly Mock<IAdminService> _mockAdminService;
     private readonly Mock<ILogger<AccountController>> _mockLogger;
     private readonly Mock<ICookieOptionsService> _mockCookieOptionsService;
     private readonly AccountController _accountController;
 
     public AccountControllerTest()
     {
-        _mockAccountService = new Mock<IAccountService>();
+        _mockRegistrationService = new Mock<IRegistrationService>();
+        _mockAuthenticationService = new Mock<IAuthenticationService>();
+        _mockProfileService = new Mock<IProfileService>();
+        _mockAdminService = new Mock<IAdminService>();
         _mockLogger = new Mock<ILogger<AccountController>>();
         _mockCookieOptionsService = new Mock<ICookieOptionsService>();
         _accountController = new AccountController(
-            _mockAccountService.Object,
+            _mockRegistrationService.Object,
+            _mockAuthenticationService.Object,
+            _mockProfileService.Object,
+            _mockAdminService.Object,
             _mockLogger.Object,
             _mockCookieOptionsService.Object);
     }
@@ -38,7 +48,7 @@ public class AccountControllerTest
         // Arrange
         var registerDto = new RegisterDto { Username = "testuser", Password = "Test@123", Email = "test@test.com", RepeatedPassword = "Test@123", Role = "Student", SectionId = Guid.NewGuid() };
         var response = new RegisterResponseDto { Success = true, Message = "User registered successfully" };
-        _mockAccountService.Setup(s => s.RegisterAsync(registerDto)).ReturnsAsync(response);
+        _mockRegistrationService.Setup(s => s.RegisterAsync(registerDto)).ReturnsAsync(response);
 
         // Act
         var result = await _accountController.Register(registerDto);
@@ -47,7 +57,7 @@ public class AccountControllerTest
         var okResult = Assert.IsType<OkObjectResult>(result.Result);
         var responseDto = Assert.IsType<RegisterResponseDto>(okResult.Value);
         Assert.True(responseDto.Success);
-        _mockAccountService.Verify(s => s.RegisterAsync(registerDto), Times.Once);
+        _mockRegistrationService.Verify(s => s.RegisterAsync(registerDto), Times.Once);
     }
 
     [Fact]
@@ -127,7 +137,7 @@ public class AccountControllerTest
             Role = "Instructor"
         };
         var response = new RegisterResponseDto { Success = true, Message = "User registered successfully" };
-        _mockAccountService.Setup(s => s.RegisterAsync(registerDto)).ReturnsAsync(response);
+        _mockRegistrationService.Setup(s => s.RegisterAsync(registerDto)).ReturnsAsync(response);
 
         // Act
         var result = await _accountController.Register(registerDto);
@@ -183,7 +193,7 @@ public class AccountControllerTest
             // No SectionId - this is valid for admins
         };
         var response = new RegisterResponseDto { Success = true, Message = "User registered successfully" };
-        _mockAccountService.Setup(s => s.RegisterAsync(registerDto)).ReturnsAsync(response);
+        _mockRegistrationService.Setup(s => s.RegisterAsync(registerDto)).ReturnsAsync(response);
 
         // Act
         var result = await _accountController.Register(registerDto);
@@ -274,7 +284,7 @@ public class AccountControllerTest
         RegisterDto? capturedDto = null;
         var response = new RegisterResponseDto { Success = true, Message = "User registered successfully" };
 
-        _mockAccountService
+        _mockRegistrationService
             .Setup(s => s.RegisterAsync(It.IsAny<RegisterDto>()))
             .Callback<RegisterDto>(dto => capturedDto = dto) // Capture the DTO
             .ReturnsAsync(response);
@@ -285,7 +295,7 @@ public class AccountControllerTest
         // Assert
         Assert.NotNull(capturedDto);
         Assert.Equal("Instructor", capturedDto.Role);
-        _mockAccountService.Verify(s => s.RegisterAsync(It.IsAny<RegisterDto>()), Times.Once);
+        _mockRegistrationService.Verify(s => s.RegisterAsync(It.IsAny<RegisterDto>()), Times.Once);
     }
     [Fact]
     public async Task Register_ReturnsBadRequest_WhenTeacherRegistrationWithSectionId()
@@ -353,7 +363,7 @@ public class AccountControllerTest
         var loginDto = new LoginDto { Username = "test@test.com", Password = "Test@123" };
         var tokenResponseDto = new TokenResponseDto { AccessToken = "access_token", RefreshToken = "refresh_token" };
         var loginResult = new LoginResult { TokenResponse = tokenResponseDto, Username = "testuser", Role = "Student" };
-        _mockAccountService.Setup(s => s.LoginAsync(loginDto)).ReturnsAsync(loginResult);
+        _mockAuthenticationService.Setup(s => s.LoginAsync(loginDto)).ReturnsAsync(loginResult);
 
         // Act
         var result = await _accountController.Login(loginDto);
@@ -382,7 +392,7 @@ public class AccountControllerTest
             Role = "Student",
             SectionId = Guid.NewGuid()
         };
-        _mockAccountService.Setup(s => s.RegisterAsync(It.IsAny<RegisterDto>()))
+        _mockRegistrationService.Setup(s => s.RegisterAsync(It.IsAny<RegisterDto>()))
             .ThrowsAsync(new EntityAlreadyExistsException<string>("User", "Username", "existinguser", "Username already exists"));
 
         // Act
@@ -407,7 +417,7 @@ public class AccountControllerTest
             Role = "Student",
             SectionId = Guid.NewGuid()
         };
-        _mockAccountService.Setup(s => s.RegisterAsync(It.IsAny<RegisterDto>()))
+        _mockRegistrationService.Setup(s => s.RegisterAsync(It.IsAny<RegisterDto>()))
             .ThrowsAsync(new EntityNotFoundException<Guid>("Section", registerDto.SectionId!.Value));
 
         // Act
@@ -432,7 +442,7 @@ public class AccountControllerTest
             Role = "Student",
             SectionId = Guid.NewGuid()
         };
-        _mockAccountService.Setup(s => s.RegisterAsync(It.IsAny<RegisterDto>()))
+        _mockRegistrationService.Setup(s => s.RegisterAsync(It.IsAny<RegisterDto>()))
             .ThrowsAsync(new ValidationException("Password does not meet requirements"));
 
         // Act
@@ -458,7 +468,7 @@ public class AccountControllerTest
             Role = "Student",
             SectionId = Guid.NewGuid()
         };
-        _mockAccountService.Setup(s => s.RegisterAsync(It.IsAny<RegisterDto>()))
+        _mockRegistrationService.Setup(s => s.RegisterAsync(It.IsAny<RegisterDto>()))
             .ThrowsAsync(new EntityServiceException("User", "register", "An error occurred while creating the user"));
 
         // Act
@@ -496,7 +506,7 @@ public class AccountControllerTest
     {
         // Arrange
         var loginDto = new LoginDto { Username = "wronguser", Password = "wrongpassword" };
-        _mockAccountService.Setup(s => s.LoginAsync(loginDto))
+        _mockAuthenticationService.Setup(s => s.LoginAsync(loginDto))
             .ThrowsAsync(new ValidationException("Invalid email or username or password"));
 
         // Act
@@ -521,7 +531,7 @@ public class AccountControllerTest
         var tokenResponseDto = new TokenResponseDto { AccessToken = "access_token", RefreshToken = "refresh_token" };
         var loginResult = new LoginResult { TokenResponse = tokenResponseDto, Username = "testuser", Role = "Student" };
 
-        _mockAccountService.Setup(s => s.LoginAsync(It.IsAny<LoginDto>())).ReturnsAsync(loginResult);
+        _mockAuthenticationService.Setup(s => s.LoginAsync(It.IsAny<LoginDto>())).ReturnsAsync(loginResult);
 
         // Setup mock HttpResponse for cookies
         var httpContext = new DefaultHttpContext();
@@ -559,7 +569,7 @@ public class AccountControllerTest
     {
         // Arrange
         var webLoginDto = new WebLoginDto { Identifier = "wrong@test.com", Password = "wrongpassword" };
-        _mockAccountService.Setup(s => s.LoginAsync(It.IsAny<LoginDto>()))
+        _mockAuthenticationService.Setup(s => s.LoginAsync(It.IsAny<LoginDto>()))
             .ThrowsAsync(new ValidationException("Invalid email or username or password"));
 
         var httpContext = new DefaultHttpContext();
@@ -584,7 +594,7 @@ public class AccountControllerTest
         // Arrange
         var refreshRequest = new RefreshTokenRequestDto { RefreshToken = "valid_refresh_token" };
         var tokenResponse = new TokenResponseDto { AccessToken = "new_access_token", RefreshToken = "new_refresh_token" };
-        _mockAccountService.Setup(s => s.RefreshAsync(refreshRequest)).ReturnsAsync(tokenResponse);
+        _mockAuthenticationService.Setup(s => s.RefreshAsync(refreshRequest)).ReturnsAsync(tokenResponse);
 
         // Act
         var result = await _accountController.Refresh(refreshRequest);
@@ -617,7 +627,7 @@ public class AccountControllerTest
     {
         // Arrange
         var refreshRequest = new RefreshTokenRequestDto { RefreshToken = "expired_token" };
-        _mockAccountService.Setup(s => s.RefreshAsync(refreshRequest))
+        _mockAuthenticationService.Setup(s => s.RefreshAsync(refreshRequest))
             .ThrowsAsync(new ValidationException("Refresh token has expired"));
 
         // Act
@@ -634,7 +644,7 @@ public class AccountControllerTest
     {
         // Arrange
         var refreshRequest = new RefreshTokenRequestDto { RefreshToken = "nonexistent_token" };
-        _mockAccountService.Setup(s => s.RefreshAsync(refreshRequest))
+        _mockAuthenticationService.Setup(s => s.RefreshAsync(refreshRequest))
             .ThrowsAsync(new EntityNotFoundException<string>("RefreshToken", "nonexistent_token"));
 
         // Act
@@ -662,7 +672,7 @@ public class AccountControllerTest
         var claimsPrincipal = new ClaimsPrincipal(identity);
         _accountController.ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext { User = claimsPrincipal } };
 
-        _mockAccountService.Setup(s => s.RevokeAsync(revokeRequest, "user123")).ReturnsAsync(revokeResponse);
+        _mockAuthenticationService.Setup(s => s.RevokeAsync(revokeRequest, "user123")).ReturnsAsync(revokeResponse);
 
         // Act
         var result = await _accountController.Revoke(revokeRequest);
@@ -719,7 +729,7 @@ public class AccountControllerTest
         var claimsPrincipal = new ClaimsPrincipal(identity);
         _accountController.ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext { User = claimsPrincipal } };
 
-        _mockAccountService.Setup(s => s.RevokeAsync(revokeRequest, "user123"))
+        _mockAuthenticationService.Setup(s => s.RevokeAsync(revokeRequest, "user123"))
             .ThrowsAsync(new ValidationException("Token is invalid or already revoked"));
 
         // Act
@@ -742,7 +752,7 @@ public class AccountControllerTest
         var claimsPrincipal = new ClaimsPrincipal(identity);
         _accountController.ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext { User = claimsPrincipal } };
 
-        _mockAccountService.Setup(s => s.RevokeAsync(revokeRequest, "user123"))
+        _mockAuthenticationService.Setup(s => s.RevokeAsync(revokeRequest, "user123"))
             .ThrowsAsync(new EntityUnauthorizedException("RefreshToken", "revoke", "user123", "Token does not belong to this user"));
 
         // Act
@@ -775,7 +785,7 @@ public class AccountControllerTest
             Email = "test@test.com",
             Role = "Student"
         };
-        _mockAccountService.Setup(s => s.GetUserProfileAsync("user123")).ReturnsAsync(profileResponse);
+        _mockProfileService.Setup(s => s.GetUserProfileAsync("user123")).ReturnsAsync(profileResponse);
 
         // Act
         var result = await _accountController.GetMe();
@@ -808,7 +818,7 @@ public class AccountControllerTest
         var claimsPrincipal = new ClaimsPrincipal(identity);
         _accountController.ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext { User = claimsPrincipal } };
 
-        _mockAccountService.Setup(s => s.GetUserProfileAsync("nonexistent_user"))
+        _mockProfileService.Setup(s => s.GetUserProfileAsync("nonexistent_user"))
             .ThrowsAsync(new EntityNotFoundException<string>("User", "nonexistent_user"));
 
         // Act
@@ -845,7 +855,7 @@ public class AccountControllerTest
                 Lastname = "Student"
             }
         };
-        _mockAccountService.Setup(s => s.GetUserProfileAsync("student123")).ReturnsAsync(profileResponse);
+        _mockProfileService.Setup(s => s.GetUserProfileAsync("student123")).ReturnsAsync(profileResponse);
 
         // Act
         var result = await _accountController.GetMe();
@@ -882,7 +892,7 @@ public class AccountControllerTest
                 Lastname = "Instructor"
             }
         };
-        _mockAccountService.Setup(s => s.GetUserProfileAsync("instructor123")).ReturnsAsync(profileResponse);
+        _mockProfileService.Setup(s => s.GetUserProfileAsync("instructor123")).ReturnsAsync(profileResponse);
 
         // Act
         var result = await _accountController.GetMe();
@@ -917,7 +927,7 @@ public class AccountControllerTest
                 Lastname = "Admin"
             }
         };
-        _mockAccountService.Setup(s => s.GetUserProfileAsync("admin123")).ReturnsAsync(profileResponse);
+        _mockProfileService.Setup(s => s.GetUserProfileAsync("admin123")).ReturnsAsync(profileResponse);
 
         // Act
         var result = await _accountController.GetMe();
@@ -950,7 +960,7 @@ public class AccountControllerTest
             Email = "newemail@test.com",
             Role = "Student"
         };
-        _mockAccountService.Setup(s => s.UpdateUserProfileAsync("user123", updateProfileDto)).ReturnsAsync(profileResponse);
+        _mockProfileService.Setup(s => s.UpdateUserProfileAsync("user123", updateProfileDto)).ReturnsAsync(profileResponse);
 
         // Act
         var result = await _accountController.UpdateProfile(updateProfileDto);
@@ -1003,7 +1013,7 @@ public class AccountControllerTest
         var claimsPrincipal = new ClaimsPrincipal(identity);
         _accountController.ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext { User = claimsPrincipal } };
 
-        _mockAccountService.Setup(s => s.UpdateUserProfileAsync("user123", updateProfileDto))
+        _mockProfileService.Setup(s => s.UpdateUserProfileAsync("user123", updateProfileDto))
             .ThrowsAsync(new EntityNotFoundException<string>("User", "user123"));
 
         // Act
@@ -1025,7 +1035,7 @@ public class AccountControllerTest
         var claimsPrincipal = new ClaimsPrincipal(identity);
         _accountController.ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext { User = claimsPrincipal } };
 
-        _mockAccountService.Setup(s => s.UpdateUserProfileAsync("user123", updateProfileDto))
+        _mockProfileService.Setup(s => s.UpdateUserProfileAsync("user123", updateProfileDto))
             .ThrowsAsync(new EntityAlreadyExistsException<string>("User", "Email", "existing@test.com", "Email already in use"));
 
         // Act
@@ -1047,7 +1057,7 @@ public class AccountControllerTest
         var claimsPrincipal = new ClaimsPrincipal(identity);
         _accountController.ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext { User = claimsPrincipal } };
 
-        _mockAccountService.Setup(s => s.UpdateUserProfileAsync("user123", updateProfileDto))
+        _mockProfileService.Setup(s => s.UpdateUserProfileAsync("user123", updateProfileDto))
             .ThrowsAsync(new ValidationException("Invalid email format"));
 
         // Act
@@ -1085,7 +1095,7 @@ public class AccountControllerTest
             Email = "test@test.com",
             Role = "Student"
         };
-        _mockAccountService.Setup(s => s.UpdateUserProfileAsync("user123", updateProfileDto)).ReturnsAsync(profileResponse);
+        _mockProfileService.Setup(s => s.UpdateUserProfileAsync("user123", updateProfileDto)).ReturnsAsync(profileResponse);
 
         // Act
         var result = await _accountController.UpdateProfile(updateProfileDto);
@@ -1094,7 +1104,7 @@ public class AccountControllerTest
         var okResult = Assert.IsType<OkObjectResult>(result.Result);
         var responseDto = Assert.IsType<UpdateProfileResponse>(okResult.Value);
         Assert.True(responseDto.Success);
-        _mockAccountService.Verify(s => s.UpdateUserProfileAsync("user123", updateProfileDto), Times.Once);
+        _mockProfileService.Verify(s => s.UpdateUserProfileAsync("user123", updateProfileDto), Times.Once);
     }
 
     [Fact]
@@ -1112,7 +1122,7 @@ public class AccountControllerTest
         var claimsPrincipal = new ClaimsPrincipal(identity);
         _accountController.ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext { User = claimsPrincipal } };
 
-        _mockAccountService.Setup(s => s.UpdateUserProfileAsync("user123", updateProfileDto))
+        _mockProfileService.Setup(s => s.UpdateUserProfileAsync("user123", updateProfileDto))
             .ThrowsAsync(new ValidationException("Current password is incorrect"));
 
         // Act
@@ -1223,7 +1233,7 @@ public class AccountControllerTest
         var claimsPrincipal = new ClaimsPrincipal(identity);
         _accountController.ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext { User = claimsPrincipal } };
 
-        _mockAccountService.Setup(s => s.UpdateUserProfileAsync("user123", updateProfileDto))
+        _mockProfileService.Setup(s => s.UpdateUserProfileAsync("user123", updateProfileDto))
             .ThrowsAsync(new ValidationException("Current password is required to change password"));
 
         // Act
@@ -1258,7 +1268,7 @@ public class AccountControllerTest
             Email = "newemail@test.com",
             Role = "Student"
         };
-        _mockAccountService.Setup(s => s.AdminUpdateUserProfileAsync("admin123", It.IsAny<AdminUpdateUser>())).ReturnsAsync(profileResponse);
+        _mockAdminService.Setup(s => s.AdminUpdateUserProfileAsync("admin123", It.IsAny<AdminUpdateUser>())).ReturnsAsync(profileResponse);
 
         // Act
         var result = await _accountController.AdminUpdateUser(targetUserId, adminUpdateDto);
@@ -1312,7 +1322,7 @@ public class AccountControllerTest
         var claimsPrincipal = new ClaimsPrincipal(identity);
         _accountController.ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext { User = claimsPrincipal } };
 
-        _mockAccountService.Setup(s => s.AdminUpdateUserProfileAsync("admin123", It.IsAny<AdminUpdateUser>()))
+        _mockAdminService.Setup(s => s.AdminUpdateUserProfileAsync("admin123", It.IsAny<AdminUpdateUser>()))
             .ThrowsAsync(new EntityNotFoundException<string>("User", targetUserId));
 
         // Act
@@ -1335,7 +1345,7 @@ public class AccountControllerTest
         var claimsPrincipal = new ClaimsPrincipal(identity);
         _accountController.ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext { User = claimsPrincipal } };
 
-        _mockAccountService.Setup(s => s.AdminUpdateUserProfileAsync("admin123", It.IsAny<AdminUpdateUser>()))
+        _mockAdminService.Setup(s => s.AdminUpdateUserProfileAsync("admin123", It.IsAny<AdminUpdateUser>()))
             .ThrowsAsync(new EntityUnauthorizedException("User", "update", "admin123", "Cannot update this user"));
 
         // Act
@@ -1360,7 +1370,7 @@ public class AccountControllerTest
         var claimsPrincipal = new ClaimsPrincipal(identity);
         _accountController.ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext { User = claimsPrincipal } };
 
-        _mockAccountService.Setup(s => s.AdminUpdateUserProfileAsync("admin123", It.IsAny<AdminUpdateUser>()))
+        _mockAdminService.Setup(s => s.AdminUpdateUserProfileAsync("admin123", It.IsAny<AdminUpdateUser>()))
             .ThrowsAsync(new EntityAlreadyExistsException<string>("User", "Email", "existing@test.com", "Email already in use"));
 
         // Act
@@ -1388,7 +1398,7 @@ public class AccountControllerTest
         httpContext.Request.Headers["Authorization"] = "Bearer test_token";
         _accountController.ControllerContext = new ControllerContext { HttpContext = httpContext };
 
-        _mockAccountService.Setup(s => s.LogoutAsync("user123", "test_token"))
+        _mockAuthenticationService.Setup(s => s.LogoutAsync("user123", "test_token"))
             .ReturnsAsync(new LogoutResponseDto { Success = true, Message = "Logged out successfully" });
 
         // Act
@@ -1431,7 +1441,7 @@ public class AccountControllerTest
         httpContext.Request.Headers.Cookie = "accessToken=test_token; refreshToken=test_refresh";
         _accountController.ControllerContext = new ControllerContext { HttpContext = httpContext };
 
-        _mockAccountService.Setup(s => s.WebLogoutAsync("user123", It.IsAny<string?>()))
+        _mockAuthenticationService.Setup(s => s.WebLogoutAsync("user123", It.IsAny<string?>()))
             .ReturnsAsync(new LogoutResponseDto { Success = true, Message = "Logged out successfully" });
 
         // Act
