@@ -115,7 +115,7 @@ internal sealed class ApiIntegrationHost : IAsyncDisposable
         builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
         {
             ["CookieSettings:AccessTokenExpirationMinutes"] = "15",
-            ["CookieSettings:RefreshTokenDays"] = "7",
+            ["CookieSettings:RefreshTokenExpirationDays"] = "7",
             ["CorsSettings:AllowedOrigins"] = "https://localhost",
             ["TimeZoneSettings:TimeZoneId"] = TimeZoneInfo.Local.Id,
             ["SessionAutoEnd:Enabled"] = "false"
