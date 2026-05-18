@@ -18,7 +18,7 @@ namespace attendance_monitoring.Services.QrCode;
 /// Keeps the QR usage increment and attendance write in a single atomic unit of work.
 /// Notifications are dispatched only after the transaction commits successfully.
 /// </summary>
-internal sealed class QrCodeScanService
+public sealed class QrCodeScanService : IQrCodeScanService
 {
     private readonly ApplicationDbContext _dbContext;
     private readonly IQrCodeRepository _qrCodeRepository;

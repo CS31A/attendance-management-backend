@@ -3,12 +3,13 @@ using attendance_monitoring.Constants;
 using attendance_monitoring.Exceptions;
 using attendance_monitoring.Helpers;
 using attendance_monitoring.IRepository;
+using attendance_monitoring.IServices;
 using attendance_monitoring.Models.DTO.Request;
 using attendance_monitoring.Models.DTO.Response;
 
 namespace attendance_monitoring.Services.QrCode;
 
-internal sealed class QrCodeWriteService
+public sealed class QrCodeWriteService : IQrCodeWriteService
 {
     private readonly IQrCodeRepository _qrCodeRepository;
     private readonly QrCodeAuthorizationService _authorizationService;

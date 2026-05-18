@@ -3,6 +3,7 @@ using attendance_monitoring.Constants;
 using attendance_monitoring.Data;
 using attendance_monitoring.Exceptions;
 using attendance_monitoring.IRepository;
+using attendance_monitoring.IServices;
 using attendance_monitoring.Models.DTO.Response;
 
 namespace attendance_monitoring.Services.QrCode;
@@ -11,7 +12,7 @@ namespace attendance_monitoring.Services.QrCode;
 /// Focused unit responsible for read/query operations on QR codes.
 /// Handles retrieval by ID, hash, schedule, section, session, and scan history.
 /// </summary>
-internal sealed class QrCodeQueryService
+public sealed class QrCodeQueryService : IQrCodeQueryService
 {
     private readonly IQrCodeRepository _qrCodeRepository;
     private readonly ApplicationDbContext _context;
