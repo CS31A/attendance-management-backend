@@ -15,7 +15,10 @@ public class HighRiskModuleGuardrailTests
         var constructorParameters = GetSingleConstructorParameters(typeof(AccountController));
         var parameterTypes = constructorParameters.Select(parameter => parameter.ParameterType).ToList();
 
-        Assert.Contains(parameterTypes, type => type == typeof(IAccountService));
+        Assert.Contains(parameterTypes, type => type == typeof(IRegistrationService));
+        Assert.Contains(parameterTypes, type => type == typeof(IAuthenticationService));
+        Assert.Contains(parameterTypes, type => type == typeof(IProfileService));
+        Assert.Contains(parameterTypes, type => type == typeof(IAdminService));
         Assert.Contains(parameterTypes, type => type == typeof(ICookieOptionsService));
         Assert.DoesNotContain(parameterTypes, type => type.Namespace == "attendance_monitoring.IRepository");
         Assert.DoesNotContain(parameterTypes, type => type.Namespace == "attendance_monitoring.Repositories");
@@ -45,7 +48,10 @@ public class HighRiskModuleGuardrailTests
         Assert.Single(repositoryParameters);
         Assert.Equal(typeof(ISessionRepository), repositoryParameters[0]);
         Assert.DoesNotContain(constructorParameters, parameter => parameter.ParameterType.Namespace == "attendance_monitoring.Repositories");
-        Assert.Contains(constructorParameters, parameter => parameter.ParameterType == typeof(IQrCodeService));
+        Assert.Contains(constructorParameters, parameter => parameter.ParameterType == typeof(IQrCodeQueryService));
+        Assert.Contains(constructorParameters, parameter => parameter.ParameterType == typeof(IQrCodeWriteService));
+        Assert.Contains(constructorParameters, parameter => parameter.ParameterType == typeof(IQrCodeGenerationService));
+        Assert.Contains(constructorParameters, parameter => parameter.ParameterType == typeof(IQrCodeScanService));
     }
 
     [Fact]
