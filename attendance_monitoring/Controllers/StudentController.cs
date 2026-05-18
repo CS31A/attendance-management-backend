@@ -215,6 +215,15 @@ public class StudentController(IStudentService studentService, ILogger<StudentCo
                 Message = ex.Message
             });
         }
+        catch (ValidationException ex)
+        {
+            logger.LogWarning(ex, "Validation failed for soft delete student with ID: {Id}", id);
+            return BadRequest(new SoftDeleteResponse
+            {
+                Success = false,
+                Message = ex.Message
+            });
+        }
     }
 
     /// <summary>
