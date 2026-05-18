@@ -146,7 +146,7 @@ internal sealed class RegistrationService : IRegistrationService
         {
             var errors = string.Join("; ", userCreationResult.Errors);
             _logger.LogWarning("User registration failed for username {Username}: {Errors}", registerDto.Username, errors);
-            throw new EntityServiceException("User", "registration", errors);
+            throw new ValidationException(errors);
         }
 
         _logger.LogInformation("User registered successfully: {Username} with role {Role}", registerDto.Username, roleToAssign);

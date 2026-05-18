@@ -115,7 +115,7 @@ public class CourseService : ICourseService
         {
             var context = courseId.HasValue ? $" for course {courseId}" : "";
             _logger.LogWarning("{Operation} failed{Context}: User ID not found in token", operation, context);
-            throw new EntityServiceException("Course", $"{operation}{context}", "User ID not found in token");
+            throw new ValidationException("User ID not found in token");
         }
     }
 

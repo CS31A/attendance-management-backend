@@ -102,7 +102,6 @@ namespace attendance_monitoring.Services
                         "kent.jay.otadoy@student.com",
                         "jan.nino.rosalijos@student.com",
                         "christian.dave.sayson@student.com",
-                        "neil.jhonreise.vallecer@student.com",
                         "rajiemae.villa@student.com"
                     };
                     
@@ -566,7 +565,6 @@ namespace attendance_monitoring.Services
                 new { Lastname = "Otadoy", Firstname = "Kent Jay", Section = "CS31A", Course = "BSCS", Usn = "C23-6783-MAN135" },
                 new { Lastname = "Rosalijos", Firstname = "Jan Nino", Section = "CS31B", Course = "BSCS", Usn = "C23-6784-MAN136" },
                 new { Lastname = "Sayson", Firstname = "Christian Dave", Section = "CS31B", Course = "BSCS", Usn = "C23-6785-MAN137" },
-                new { Lastname = "Vallecer", Firstname = "Neil Jhonreise", Section = "CS31C", Course = "BSCS", Usn = "C23-6786-MAN138" },
                 new { Lastname = "Villa", Firstname = "Rajiemae", Section = "CS31B", Course = "BSCS", Usn = "C23-6787-MAN139" }
             };
 

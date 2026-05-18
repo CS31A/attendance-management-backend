@@ -162,7 +162,7 @@ namespace attendance_monitoring.Services
                 if (createStudent.SectionId == Guid.Empty)
                 {
                     _logger.LogWarning("Student creation failed: Invalid section ID");
-                    throw new EntityServiceException("Student", "CreateStudent", "Invalid section ID");
+                    throw new ValidationException("Invalid section ID");
                 }
 
                 // Validate that the SectionId exists
@@ -170,14 +170,14 @@ namespace attendance_monitoring.Services
                 if (section == null)
                 {
                     _logger.LogWarning("Student creation failed: The specified section does not exist");
-                    throw new EntityServiceException("Student", "CreateStudent", "The specified section does not exist");
+                    throw new EntityNotFoundException<Guid>("Section", createStudent.SectionId);
                 }
 
                 var userId = await _userContextService.GetUserIdAsync(userPrincipal).ConfigureAwait(false);
                 if (string.IsNullOrEmpty(userId))
                 {
                     _logger.LogWarning("Student creation failed: User ID not found in token");
-                    throw new EntityServiceException("Student", "CreateStudent", "User ID not found in token");
+                    throw new ValidationException("User ID not found in token");
                 }
 
                 var existingStudent = await _studentRepository.GetStudentByUserIdAsync(userId).ConfigureAwait(false);
@@ -211,9 +211,19 @@ namespace attendance_monitoring.Services
                 // Re-throw EntityAlreadyExistsException as-is
                 throw;
             }
+            catch (ValidationException)
+            {
+                // Re-throw ValidationException as-is
+                throw;
+            }
             catch (EntityServiceException)
             {
                 // Re-throw EntityServiceException as-is
+                throw;
+            }
+            catch (EntityNotFoundException<Guid>)
+            {
+                // Re-throw EntityNotFoundException as-is
                 throw;
             }
             catch (Exception ex)
@@ -247,7 +257,7 @@ namespace attendance_monitoring.Services
                 if (string.IsNullOrEmpty(userId))
                 {
                     _logger.LogWarning("Student update failed: User ID not found in token");
-                    throw new EntityServiceException("Student", $"UpdateStudent: {id}", "User ID not found in token");
+                    throw new ValidationException("User ID not found in token");
                 }
 
                 var existingStudent = await _studentRepository.GetStudentByIdAsync(id).ConfigureAwait(false);
@@ -297,6 +307,11 @@ namespace attendance_monitoring.Services
                 // Re-throw EntityUnauthorizedException as-is
                 throw;
             }
+            catch (ValidationException)
+            {
+                // Re-throw ValidationException as-is
+                throw;
+            }
             catch (EntityServiceException)
             {
                 // Re-throw EntityServiceException as-is
@@ -329,14 +344,14 @@ namespace attendance_monitoring.Services
                 if (id == Guid.Empty)
                 {
                     _logger.LogWarning("Student soft delete failed: Invalid student ID {Id}", id);
-                    throw new EntityServiceException("Student", $"SoftDeleteStudent: {id}", "Invalid student ID");
+                    throw new ValidationException("Invalid student ID");
                 }
 
                 var userId = await _userContextService.GetUserIdAsync(userPrincipal).ConfigureAwait(false);
                 if (string.IsNullOrEmpty(userId))
                 {
                     _logger.LogWarning("Student soft delete failed: User ID not found in token");
-                    throw new EntityServiceException("Student", $"SoftDeleteStudent: {id}", "User ID not found in token");
+                    throw new ValidationException("User ID not found in token");
                 }
 
                 var existingStudent = await _studentRepository.GetStudentByIdAsync(id).ConfigureAwait(false);
@@ -357,7 +372,7 @@ namespace attendance_monitoring.Services
                 if (!result)
                 {
                     _logger.LogError("Student soft delete failed: Failed to soft delete student with ID {Id}", id);
-                    throw new EntityServiceException("Student", $"SoftDeleteStudent: {id}", "Failed to soft delete student");
+                    throw new EntityNotFoundException<Guid>("Student", id);
                 }
 
                 await _studentRepository.SaveChangesAsync().ConfigureAwait(false);
@@ -371,6 +386,11 @@ namespace attendance_monitoring.Services
             catch (EntityUnauthorizedException)
             {
                 // Re-throw EntityUnauthorizedException as-is
+                throw;
+            }
+            catch (ValidationException)
+            {
+                // Re-throw ValidationException as-is
                 throw;
             }
             catch (EntityServiceException)
@@ -528,7 +548,7 @@ namespace attendance_monitoring.Services
                 if (string.IsNullOrEmpty(userId))
                 {
                     _logger.LogWarning("Get student subjects failed: User ID not found in token");
-                    throw new EntityServiceException("Student", "GetStudentSubjects", "User ID not found in token");
+                    throw new ValidationException("User ID not found in token");
                 }
 
                 // Verify that the user is a student
@@ -584,6 +604,11 @@ namespace attendance_monitoring.Services
                 // Re-throw EntityNotFoundException as-is
                 throw;
             }
+            catch (ValidationException)
+            {
+                // Re-throw ValidationException as-is
+                throw;
+            }
             catch (EntityServiceException)
             {
                 // Re-throw EntityServiceException as-is
@@ -608,29 +633,29 @@ namespace attendance_monitoring.Services
                 if (string.IsNullOrWhiteSpace(searchTerm))
                 {
                     _logger.LogWarning("Student name search failed: Search term is null or empty");
-                    throw new EntityServiceException("Student", "SearchStudentsByName", "Search term cannot be null or empty");
+                    throw new ValidationException("Search term cannot be null or empty");
                 }
 
                 searchTerm = searchTerm.Trim();
                 if (searchTerm.Length < 2)
                 {
                     _logger.LogWarning("Student name search failed: Search term too short");
-                    throw new EntityServiceException("Student", "SearchStudentsByName", "Search term must be at least 2 characters");
+                    throw new ValidationException("Search term must be at least 2 characters");
                 }
                 if (searchTerm.Length > 100)
                 {
                     _logger.LogWarning("Student name search failed: Search term too long");
-                    throw new EntityServiceException("Student", "SearchStudentsByName", "Search term cannot exceed 100 characters");
+                    throw new ValidationException("Search term cannot exceed 100 characters");
                 }
                 if (pageNumber < 1)
                 {
                     _logger.LogWarning("Student name search failed: Invalid page number {PageNumber}", pageNumber);
-                    throw new EntityServiceException("Student", "SearchStudentsByName", "Page number must be greater than or equal to 1");
+                    throw new ValidationException("Page number must be greater than or equal to 1");
                 }
                 if (pageSize < 1 || pageSize > 100)
                 {
                     _logger.LogWarning("Student name search failed: Invalid page size {PageSize}", pageSize);
-                    throw new EntityServiceException("Student", "SearchStudentsByName", "Page size must be between 1 and 100");
+                    throw new ValidationException("Page size must be between 1 and 100");
                 }
 
                 _logger.LogInformation("Searching students by name with term: {SearchTerm}, page: {PageNumber}, size: {PageSize}",
@@ -641,7 +666,7 @@ namespace attendance_monitoring.Services
                 _logger.LogInformation("Successfully retrieved {Count} students matching name search", students.Count());
                 return students;
             }
-            catch (EntityServiceException) { throw; }
+            catch (ValidationException) { throw; }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error occurred while searching students by name with term: {SearchTerm}", searchTerm);
@@ -659,29 +684,29 @@ namespace attendance_monitoring.Services
                 if (string.IsNullOrWhiteSpace(searchTerm))
                 {
                     _logger.LogWarning("Student email search failed: Search term is null or empty");
-                    throw new EntityServiceException("Student", "SearchStudentsByEmail", "Search term cannot be null or empty");
+                    throw new ValidationException("Search term cannot be null or empty");
                 }
 
                 searchTerm = searchTerm.Trim();
                 if (searchTerm.Length < 2)
                 {
                     _logger.LogWarning("Student email search failed: Search term too short");
-                    throw new EntityServiceException("Student", "SearchStudentsByEmail", "Search term must be at least 2 characters");
+                    throw new ValidationException("Search term must be at least 2 characters");
                 }
                 if (searchTerm.Length > 100)
                 {
                     _logger.LogWarning("Student email search failed: Search term too long");
-                    throw new EntityServiceException("Student", "SearchStudentsByEmail", "Search term cannot exceed 100 characters");
+                    throw new ValidationException("Search term cannot exceed 100 characters");
                 }
                 if (pageNumber < 1)
                 {
                     _logger.LogWarning("Student email search failed: Invalid page number {PageNumber}", pageNumber);
-                    throw new EntityServiceException("Student", "SearchStudentsByEmail", "Page number must be greater than or equal to 1");
+                    throw new ValidationException("Page number must be greater than or equal to 1");
                 }
                 if (pageSize < 1 || pageSize > 100)
                 {
                     _logger.LogWarning("Student email search failed: Invalid page size {PageSize}", pageSize);
-                    throw new EntityServiceException("Student", "SearchStudentsByEmail", "Page size must be between 1 and 100");
+                    throw new ValidationException("Page size must be between 1 and 100");
                 }
 
                 _logger.LogInformation("Searching students by email with term: {SearchTerm}, page: {PageNumber}, size: {PageSize}",
@@ -692,7 +717,7 @@ namespace attendance_monitoring.Services
                 _logger.LogInformation("Successfully retrieved {Count} students matching email search", students.Count());
                 return students;
             }
-            catch (EntityServiceException) { throw; }
+            catch (ValidationException) { throw; }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error occurred while searching students by email with term: {SearchTerm}", searchTerm);

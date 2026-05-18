@@ -182,7 +182,7 @@ public class InstructorCrudService : IInstructorCrudService
             if (string.IsNullOrEmpty(userId))
             {
                 _logger.LogWarning("Instructor update failed: User ID not found in token");
-                throw new EntityServiceException("Instructor", $"UpdateInstructor: {id}", "User ID not found in token");
+                throw new ValidationException("User ID not found in token");
             }
 
             var existingInstructor = await _instructorRepository.GetInstructorByIdAsync(id).ConfigureAwait(false);
@@ -224,6 +224,10 @@ public class InstructorCrudService : IInstructorCrudService
             _logger.LogInformation("Successfully updated instructor with ID: {Id}", id);
             return updatedInstructor;
         }
+        catch (ValidationException)
+        {
+            throw;
+        }
         catch (EntityNotFoundException<Guid>)
         {
             // Re-throw EntityNotFoundException as-is
@@ -232,11 +236,6 @@ public class InstructorCrudService : IInstructorCrudService
         catch (EntityUnauthorizedException)
         {
             // Re-throw EntityUnauthorizedException as-is
-            throw;
-        }
-        catch (EntityServiceException)
-        {
-            // Re-throw EntityServiceException as-is
             throw;
         }
         catch (Exception ex)
@@ -265,14 +264,14 @@ public class InstructorCrudService : IInstructorCrudService
             if (id == Guid.Empty)
             {
                 _logger.LogWarning("Instructor soft delete failed: Invalid instructor ID {Id}", id);
-                throw new EntityServiceException("Instructor", $"SoftDeleteInstructor: {id}", "Invalid instructor ID");
+                throw new ValidationException("Invalid instructor ID");
             }
 
             var userId = await _userContextService.GetUserIdAsync(userPrincipal).ConfigureAwait(false);
             if (string.IsNullOrEmpty(userId))
             {
                 _logger.LogWarning("Instructor soft delete failed: User ID not found in token");
-                throw new EntityServiceException("Instructor", $"SoftDeleteInstructor: {id}", "User ID not found in token");
+                throw new ValidationException("User ID not found in token");
             }
 
             var existingInstructor = await _instructorRepository.GetInstructorByIdAsync(id).ConfigureAwait(false);
@@ -293,11 +292,15 @@ public class InstructorCrudService : IInstructorCrudService
             if (!result)
             {
                 _logger.LogError("Instructor soft delete failed: Failed to soft delete instructor with ID {Id}", id);
-                throw new EntityServiceException("Instructor", $"SoftDeleteInstructor: {id}", "Failed to soft delete instructor");
+                throw new EntityNotFoundException<Guid>("Instructor", id);
             }
 
             await _instructorRepository.SaveChangesAsync().ConfigureAwait(false);
             _logger.LogInformation("Successfully soft deleted instructor with ID: {Id}", id);
+        }
+        catch (ValidationException)
+        {
+            throw;
         }
         catch (EntityNotFoundException<Guid>)
         {
@@ -307,11 +310,6 @@ public class InstructorCrudService : IInstructorCrudService
         catch (EntityUnauthorizedException)
         {
             // Re-throw EntityUnauthorizedException as-is
-            throw;
-        }
-        catch (EntityServiceException)
-        {
-            // Re-throw EntityServiceException as-is
             throw;
         }
         catch (Exception ex)
@@ -369,7 +367,7 @@ public class InstructorCrudService : IInstructorCrudService
             if (!result)
             {
                 _logger.LogError("Instructor hard delete failed: Failed to hard delete instructor with ID {Id}", id);
-                throw new EntityServiceException("Instructor", $"HardDeleteInstructor: {id}", "Failed to hard delete instructor");
+                throw new EntityNotFoundException<Guid>("Instructor", id);
             }
 
             await _instructorRepository.SaveChangesAsync().ConfigureAwait(false);
@@ -384,10 +382,6 @@ public class InstructorCrudService : IInstructorCrudService
             throw;
         }
         catch (EntityUnauthorizedException)
-        {
-            throw;
-        }
-        catch (EntityServiceException)
         {
             throw;
         }
@@ -453,7 +447,7 @@ public class InstructorCrudService : IInstructorCrudService
             if (!result)
             {
                 _logger.LogError("Instructor restore failed: Failed to restore instructor with ID {Id}", id);
-                throw new EntityServiceException("Instructor", $"RestoreInstructor: {id}", "Failed to restore instructor");
+                throw new EntityNotFoundException<Guid>("Instructor", id);
             }
 
             await _instructorRepository.SaveChangesAsync().ConfigureAwait(false);
@@ -468,10 +462,6 @@ public class InstructorCrudService : IInstructorCrudService
             throw;
         }
         catch (EntityUnauthorizedException)
-        {
-            throw;
-        }
-        catch (EntityServiceException)
         {
             throw;
         }

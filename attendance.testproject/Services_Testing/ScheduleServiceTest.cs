@@ -702,7 +702,7 @@ public class ScheduleServiceTest : IDisposable
     }
 
     [Fact]
-    public async Task UpdateScheduleAsync_RepositoryUpdateReturnsNull_ThrowsEntityServiceException()
+    public async Task UpdateScheduleAsync_RepositoryUpdateReturnsNull_ThrowsEntityNotFoundException()
     {
         // Arrange
         var scheduleId = Guid.NewGuid();
@@ -729,9 +729,8 @@ public class ScheduleServiceTest : IDisposable
         _mockScheduleRepository.Setup(r => r.UpdateScheduleAsync(It.IsAny<Schedules>())).ReturnsAsync((Schedules?)null);
 
         // Act & Assert
-        var exception = await Assert.ThrowsAsync<EntityServiceException>(() => _service.UpdateScheduleAsync(scheduleId, updateSchedule));
+        var exception = await Assert.ThrowsAsync<EntityNotFoundException<Guid>>(() => _service.UpdateScheduleAsync(scheduleId, updateSchedule));
         Assert.Equal("Schedule", exception.EntityName);
-        Assert.Contains("UpdateSchedule", exception.Operation);
     }
 
     [Theory]

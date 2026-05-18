@@ -804,7 +804,7 @@ internal sealed class QrCodeWriteService
             if (string.IsNullOrEmpty(userId))
             {
                 _logger.LogWarning("QR code cleanup failed: User ID not found in token");
-                throw new EntityServiceException("QrCode", "CleanupExpiredQrCodes", "User ID not found in token");
+                throw new ValidationException("User ID not found in token");
             }
 
             var isAuthorized = await _authorizationService.UserContext
@@ -813,7 +813,7 @@ internal sealed class QrCodeWriteService
             if (!isAuthorized)
             {
                 _logger.LogWarning("QR code cleanup failed: User not authorized");
-                throw new EntityServiceException("QrCode", "CleanupExpiredQrCodes", "You are not authorized to cleanup QR codes");
+                throw new EntityUnauthorizedException("QrCode", "CleanupExpiredQrCodes", userId, "You are not authorized to cleanup QR codes");
             }
 
             var deletedCount = await _qrCodeRepository.DeleteExpiredQrCodesAsync().ConfigureAwait(false);
@@ -823,6 +823,8 @@ internal sealed class QrCodeWriteService
             return deletedCount;
         }
         catch (EntityServiceException) { throw; }
+        catch (ValidationException) { throw; }
+        catch (EntityUnauthorizedException) { throw; }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error occurred while cleaning up expired QR codes");
